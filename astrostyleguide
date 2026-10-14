@@ -96,23 +96,29 @@ The platform aggregates foundational engineering tools and services into unified
 
 ```mermaid
 flowchart TD
-    Core["Enterprise Mobile Platform"]
+    Core["Enterprise Mobile Engineering Platform"]
 
-    Core --> Eng["Engineering & Delivery"]
-    Core --> Gov["Quality & Governance"]
+    subgraph Eng["Pillar 1: Engineering & Delivery"]
+        Dev["1. Client Development\n(Android Compose, iOS SwiftUI, React Native)"]
+        CI["2. CI/CD & Build Pipelines\n(Bitrise Cloud Runners & Fastlane)"]
+        Dist["3. Store Distribution\n(App Store, Google Play & Enterprise Portal)"]
+        Dev --> CI --> Dist
+    end
 
-    Eng --> Dev["1. Client Development\n(Android Compose, iOS SwiftUI, React Native)"]
-    Eng --> CI["2. CI/CD & Build Pipelines\n(Bitrise Cloud Runners & Fastlane)"]
-    Eng --> Dist["3. Store Distribution\n(App Store, Google Play & Enterprise Portal)"]
+    subgraph Gov["Pillar 2: Quality & Governance"]
+        Test["4. Automated Testing\n(Sauce Labs Cloud & Parallel Suites)"]
+        Sec["5. Security & Governance\n(NowSecure SAST/DAST & TGRC)"]
+        Obs["6. Observability & Services\n(Datadog RUM, Push Alerts & Feature Flags)"]
+        Test --> Sec --> Obs
+    end
 
-    Gov --> Test["4. Automated Testing\n(Sauce Labs Cloud & Parallel Suites)"]
-    Gov --> Sec["5. Security & Governance\n(NowSecure SAST/DAST & TGRC)"]
-    Gov --> Obs["6. Observability & Services\n(Datadog RUM, Push Alerts & Feature Flags)"]
+    Core --> Eng
+    Core --> Gov
 
     classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
     classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef nodeBox fill:#13251c,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class Core,Eng,Gov highlight;
+    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
+    class Core highlight;
     class Dev,CI,Dist,Test,Sec,Obs nodeBox;
 ```
 
@@ -281,30 +287,30 @@ The documentation portal is organized into 6 core technical domains that collect
 
 ```mermaid
 flowchart TD
-    Mob["Mobile Engineering Ecosystem"]
+    Mob["Enterprise Mobile Engineering Ecosystem"]
 
-    subgraph Found["Foundations & Standards"]
+    subgraph Found["Foundations & Platforms"]
         D1["Domain 1: Architecture & Standards\n(Clean Architecture & Circuit Breaker)"]
-        D2["Domain 2: Development Platforms\n(Compose, SwiftUI, React Native & SDKs)"]
+        D2["Domain 2: Client Stacks & SDKs\n(Compose, SwiftUI, React Native)"]
     end
 
-    subgraph Pipeline["Build & Quality Pipeline"]
+    subgraph Pipeline["Build & Security Pipeline"]
         D3["Domain 3: Build & Release CI/CD\n(Bitrise Pipelines & Code Signing)"]
-        D4["Domain 4: Security & Observability\n(NowSecure Scans & Datadog RUM)"]
+        D4["Domain 4: Security & Compliance\n(NowSecure SAST/DAST & TGRC)"]
     end
 
-    subgraph Delivery["Delivery & Enablement"]
-        D5["Domain 5: App Distribution\n(Public Stores & Enterprise Internal)"]
-        D6["Domain 6: Developer Productivity\n(Doctor CLI & Workstation Automation)"]
+    subgraph Delivery["Distribution & Enablement"]
+        D5["Domain 5: App Distribution & Stores\n(Public Stores & Enterprise Internal)"]
+        D6["Domain 6: Developer Productivity\n(Doctor Diagnostic CLI & Templates)"]
     end
 
     Mob --> Found
-    Found --> Pipeline
-    Pipeline --> Delivery
+    Mob --> Pipeline
+    Mob --> Delivery
 
     classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
     classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef terminal fill:#102619,stroke:#22c55e,stroke-width:2px,color:#22c55e;
+    classDef terminal fill:#102619,stroke:#22c55e,stroke-width:2px,color:#ffffff;
     class Mob highlight;
     class D1,D2,D3,D4,D5,D6 terminal;
 ```
