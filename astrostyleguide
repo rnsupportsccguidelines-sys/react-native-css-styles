@@ -1,415 +1,415 @@
 ---
-title: Machine Setup & Workstation Guide
-description: Step-by-step MacBook workstation setup guide for Android Native, iOS Native, and React Native engineering teams.
+title: Architecture & Platform Standards Overview
+description: Master architectural overview and governance framework for enterprise mobile engineering across iOS, Android, and React Native.
 sidebar:
-  order: 6
-  label: Machine Setup (MacBook)
+  order: 1
+  label: Architecture Overview
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">[WORKSTATION BOOTSTRAP]</span>
-    <span class="portal-hub-tag">MACBOOK (APPLE SILICON &amp; INTEL)</span>
+    <span class="portal-badge-hub">[MODULE 02]</span>
+    <span class="portal-hub-tag">ARCHITECTURE &amp; PLATFORM STANDARDS</span>
   </div>
-  <div class="portal-hero-title">Enterprise Mobile Workstation Setup Guide</div>
+  <div class="portal-hero-title">Enterprise Mobile Architecture Overview</div>
   <div class="portal-hero-desc">
-    Step-by-step workstation configuration for engineers on corporate MacBooks (Apple Silicon M1/M2/M3/M4 or Intel). Follow the common baseline prerequisites, then select your platform tab below for comprehensive terminal commands, environment variables, simulator configurations, and Doctor CLI validation.
+    The master architectural blueprint governing all enterprise iOS, Android, and React Native applications. Enforces strict 4-layer clean architecture, unidirectional data flow (UDF), offline-first network resilience, runtime feature flag governance, and hardware-backed credential storage.
   </div>
 
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Hardware Target</div>
-      <div class="portal-cap-desc">macOS Sonoma (14.5+) or macOS Sequoia (15.x) on Apple Silicon / Intel</div>
+      <div class="portal-cap-title">Macro Topology</div>
+      <div class="portal-cap-desc">4-tier pipeline connecting mobile clients to enterprise microservices</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Android Toolchain</div>
-      <div class="portal-cap-desc">OpenJDK 17, Android Studio Koala/Ladybug, Android SDK 34/35 &amp; AVD</div>
+      <div class="portal-cap-title">Clean Architecture</div>
+      <div class="portal-cap-desc">Isolated Presentation, Domain, Data &amp; Core Infrastructure layers</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">iOS Toolchain</div>
-      <div class="portal-cap-desc">Xcode 16.x, Command Line Tools, CocoaPods &amp; iOS Simulator</div>
+      <div class="portal-cap-title">Network Resilience</div>
+      <div class="portal-cap-desc">Automated Circuit Breaker with encrypted local cache fallback</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">React Native</div>
-      <div class="portal-cap-desc">Node.js 20 LTS (via FNM), Watchman &amp; unified dual-platform toolchain</div>
+      <div class="portal-cap-title">Governance</div>
+      <div class="portal-cap-desc">Architecture Decision Records (ADRs) &amp; Architecture Review Board (ARB)</div>
     </div>
   </div>
 </div>
 
-## Common MacBook Baseline Prerequisites
+## Macro Architecture Topology
 
-Before installing platform-specific SDKs, execute these three foundational configuration steps on your MacBook:
+The enterprise mobile ecosystem is organized into four distinct operational tiers, from client devices to enterprise cloud backends:
 
-### 1. Install Homebrew (Package Manager)
+```mermaid
+flowchart TD
+    subgraph Clients["Tier 1: Client Application Tier"]
+        RN["React Native\n(Fabric & TypeScript)"]
+        Android["Native Android\n(Kotlin & Compose)"]
+        iOS["Native iOS\n(Swift & SwiftUI)"]
+    end
 
-Homebrew is required to manage command-line developer utilities on macOS:
+    subgraph SDKs["Tier 2: Enterprise Shared SDK Tier"]
+        Auth["Identity SSO\n(OAuth2 / OIDC)"]
+        Breaker["Resilience Client\n(Circuit Breaker)"]
+        RUM["Datadog Telemetry\n(RUM & Crash Traces)"]
+        Tokens["Design System\n(Enterprise Tokens)"]
+    end
 
-```bash
-# Install Homebrew
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    subgraph Gateway["Tier 3: Enterprise Edge Gateway"]
+        Edge["API Management Gateway\n(Rate Limiting & Token Exchange)"]
+        WAF["Web Application Firewall\n& Mutual TLS (mTLS)"]
+    end
 
-# For Apple Silicon MacBooks (M1/M2/M3/M4), add Homebrew to your shell environment:
-echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-eval "$(/opt/homebrew/bin/brew shellenv)"
+    subgraph Backend["Tier 4: Enterprise Core Services"]
+        APIs["Domain Microservices\n(Orders, Logistics, Billing)"]
+        Kafka["Enterprise Event Hub\n(Kafka / Event Streams)"]
+    end
 
-# Verify Homebrew installation
-brew --version
-```
+    Clients --> SDKs
+    SDKs --> Gateway
+    Gateway --> Backend
 
-### 2. Install Enterprise Proxy Certificates
-
-Corporate MacBooks route network traffic through internal SSL proxies. Install the enterprise root certificate into your macOS System Keychain so package managers (curl, git, npm, Gradle) trust internal endpoints:
-
-```bash
-# Download and trust the Enterprise Root CA in your macOS System Keychain
-sudo security add-trusted-cert -d -r trustRoot \
-  -k /Library/Keychains/System.keychain \
-  /Library/Application\ Support/Enterprise/Certs/EnterpriseRootCA.crt
-
-# Verify certificate is trusted
-security find-certificate -c "Enterprise Root CA" /Library/Keychains/System.keychain
-```
-
-### 3. Generate SSH Key for Enterprise GitHub
-
-```bash
-# Generate a modern ed25519 SSH key
-ssh-keygen -t ed25519 -C "your_username@enterprise.com" -f ~/.ssh/id_ed25519_enterprise
-
-# Configure SSH agent to automatically load keys from macOS Keychain
-cat << 'EOF' >> ~/.ssh/config
-Host github.enterprise.com
-  IdentityFile ~/.ssh/id_ed25519_enterprise
-  AddKeysToAgent yes
-  UseKeychain yes
-EOF
-
-# Add key to Keychain and test connection
-ssh-add --apple-use-keychain ~/.ssh/id_ed25519_enterprise
-ssh -T git@github.enterprise.com
+    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
+    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
+    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
+    class Clients,SDKs,Gateway,Backend highlight;
+    class RN,Android,iOS,Auth,Breaker,RUM,Tokens,Edge,WAF,APIs,Kafka nodeBox;
 ```
 
 ---
 
-## Platform-Specific Installation Instructions
-
-Select your primary development platform tab below to configure your MacBook toolchain:
-
-<Tabs>
-  <TabItem label="Android (Kotlin / Compose)">
-
-### Step 1: Install OpenJDK 17
-
-Android Gradle Plugin 8.x requires Java 17. Install OpenJDK 17 via Homebrew:
-
-```bash
-# Install OpenJDK 17
-brew install openjdk@17
-
-# Create a symlink so macOS system Java wrapper recognizes OpenJDK 17
-sudo ln -sfn /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-17.jdk
-
-# Verify Java version
-java -version
-# Expected: openjdk version "17.0.x"
-```
-
-### Step 2: Install Android Studio
-
-Download and install **Android Studio (Koala or Ladybug release)** optimized for Apple Silicon (`.dmg (Mac with Apple chip)`):
-
-```bash
-# Optional: Install via Homebrew Cask
-brew install --cask android-studio
-```
-
-Launch Android Studio and complete the **Setup Wizard**:
-* Choose **Standard** setup type.
-* Agree to license agreements for `android-sdk-license` and `intel-android-extra-license`.
-
-### Step 3: Install Required SDK Components
-
-In Android Studio, open **Settings / Preferences &rarr; Languages & Frameworks &rarr; Android SDK**:
-
-1. Under **SDK Platforms**, check:
-   * **Android 14.0 (UpsideDownCake) - API Level 34**
-   * **Android 15.0 (VanillaIceCream) - API Level 35**
-2. Under **SDK Tools**, check:
-   * **Android SDK Build-Tools 34.0.0**
-   * **Android SDK Command-line Tools (latest)**
-   * **Android SDK Platform-Tools**
-   * **Android Emulator**
-3. Click **Apply** to install the selected packages.
-
-### Step 4: Configure `~/.zshrc` Environment Variables
-
-Add Android SDK paths to your `~/.zshrc` file:
-
-```bash
-# Open ~/.zshrc in your editor
-cat << 'EOF' >> ~/.zshrc
-
-# Java Home (OpenJDK 17)
-export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-
-# Android SDK Environment Variables
-export ANDROID_HOME="$HOME/Library/Android/sdk"
-export PATH="$PATH:$ANDROID_HOME/emulator"
-export PATH="$PATH:$ANDROID_HOME/platform-tools"
-export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
-export PATH="$PATH:$ANDROID_HOME/tools"
-export PATH="$PATH:$ANDROID_HOME/tools/bin"
-
-EOF
-
-# Reload shell configuration
-source ~/.zshrc
-```
-
-### Step 5: Verify Android CLI & Create an AVD Emulator
-
-Verify that `adb` and the emulator binaries are globally accessible in your terminal:
-
-```bash
-# 1. Verify adb is active
-adb version
-
-# 2. Install Google Play system image for ARM64 (Apple Silicon)
-sdkmanager "system-images;android-34;google_apis;arm64-v8a"
-
-# 3. Create a Pixel 8 virtual device
-avdmanager create avd \
-  -n "Pixel_8_API_34" \
-  -k "system-images;android-34;google_apis;arm64-v8a" \
-  -d "pixel_8"
-
-# 4. Launch the Android Emulator from terminal
-emulator -avd Pixel_8_API_34 -netdelay none -netspeed full &
-```
-
-  </TabItem>
-
-  <TabItem label="iOS (Swift / SwiftUI)">
-
-### Step 1: Install Xcode from the Mac App Store
-
-1. Open the macOS **App Store** and search for **Xcode**.
-2. Install the latest official release (Xcode 16.x).
-3. Open Xcode once to complete initial system component installations.
-
-### Step 2: Configure Xcode Command Line Tools
-
-Ensure your terminal uses the full Xcode developer tools directory rather than standalone command-line tools:
-
-```bash
-# Point active developer directory to Xcode.app
-sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-# Verify active developer path
-xcode-select -p
-# Expected: /Applications/Xcode.app/Contents/Developer
-```
-
-### Step 3: Accept Xcode License Agreement & Download Platforms
-
-```bash
-# Accept Xcode license agreement
-sudo xcodebuild -license accept
-
-# Pre-install iOS Simulator runtime platform
-sudo xcodebuild -downloadPlatform iOS
-
-# First-time launch setup
-sudo xcodebuild -runFirstLaunch
-```
-
-### Step 4: Install CocoaPods Package Manager
-
-Install CocoaPods for projects requiring third-party Objective-C/Swift pods:
-
-```bash
-# Install CocoaPods via Homebrew (recommended on Apple Silicon)
-brew install cocoapods
-
-# Verify CocoaPods installation
-pod --version
-```
-
-### Step 5: Configure Apple Developer Account in Xcode
-
-1. Open Xcode and navigate to **Settings &rarr; Accounts** (`Cmd + ,`).
-2. Click **+ &rarr; Apple ID** and authenticate with your corporate enterprise Apple credentials.
-3. Select your team: **Enterprise Mobile Engineering Team**.
-4. Click **Download Manual Profiles** to sync enterprise provisioning profiles into your local keychain.
-
-### Step 6: Launch and Verify iOS Simulator via CLI
-
-You can boot simulators directly from your terminal:
-
-```bash
-# List all available iOS device simulators
-xcrun simctl list devices available | grep "iPhone"
-
-# Boot an iPhone 15 Pro simulator
-xcrun simctl boot "iPhone 15 Pro"
-
-# Open the macOS Simulator graphical interface
-open -a Simulator
-```
-
-  </TabItem>
-
-  <TabItem label="React Native (Cross-Platform)">
-
-### Step 1: Install Node.js 20 LTS via FNM (Fast Node Manager)
-
-We recommend **FNM** over NVM because it is built in Rust, loads 40x faster, and handles shell integration seamlessly:
-
-```bash
-# Install FNM and Watchman file observer
-brew install fnm watchman
-
-# Configure FNM in ~/.zshrc
-echo 'eval "$(fnm env --use-on-cd)"' >> ~/.zshrc
-source ~/.zshrc
-
-# Install and activate Node.js 20 LTS
-fnm install 20
-fnm use 20
-fnm default 20
-
-# Verify versions
-node -v   # Expected: v20.x.x
-npm -v    # Expected: 10.x.x
-```
-
-### Step 2: Unified Toolchain Setup (Android & iOS Combined)
-
-React Native projects compile to both platforms. Ensure you complete:
-1. **Android Setup:** OpenJDK 17, `ANDROID_HOME`, and `platform-tools` (from the Android Tab).
-2. **iOS Setup:** Xcode 16, Command Line Tools, and CocoaPods (from the iOS Tab).
-
-Add the combined environment block to your `~/.zshrc`:
-
-```bash
-cat << 'EOF' >> ~/.zshrc
-
-# Java 17 for React Native Android compilation
-export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-
-# Android SDK
-export ANDROID_HOME="$HOME/Library/Android/sdk"
-export PATH="$PATH:$ANDROID_HOME/emulator"
-export PATH="$PATH:$ANDROID_HOME/platform-tools"
-export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
-
-# CocoaPods & Homebrew paths
-export PATH="/opt/homebrew/bin:$PATH"
-
-EOF
-
-source ~/.zshrc
-```
-
-### Step 3: Run the Enterprise Doctor Diagnostic CLI
-
-Run the automated Doctor toolchain checker to verify your dual-platform setup:
-
-```bash
-# Execute workstation check
-npx @enterprise/doctor-cli check
-
-# Expected validation output:
-# [PASS] Node.js 20.x detected
-# [PASS] Watchman 2024.x detected
-# [PASS] Xcode Command Line Tools (/Applications/Xcode.app)
-# [PASS] CocoaPods installed
-# [PASS] OpenJDK 17 installed
-# [PASS] ANDROID_HOME configured
-# [PASS] adb connected to local platform-tools
-```
-
-### Step 4: Boot Your First Starter Application
-
-```bash
-# Clone the enterprise React Native starter repository
-git clone git@github.enterprise.com:mobile-starters/react-native-starter.git my-app
-cd my-app
-
-# Install project dependencies
-npm install
-
-# Install iOS CocoaPod native dependencies
-cd ios && pod install && cd ..
-
-# Boot the app on iOS Simulator
-npm run ios
-
-# Boot the app on Android Emulator (ensure AVD is started)
-npm run android
-```
-
-  </TabItem>
-</Tabs>
+## The 4 Core Architectural Pillars
+
+All mobile applications delivered across the enterprise must implement the four foundational architectural pillars:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Architectural Pillar</th>
+        <th>Standard Enforced</th>
+        <th>Engineering Purpose</th>
+        <th>Verification Method</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Clean Architecture</strong></td>
+        <td>Strict 4-layer model (Presentation, Domain, Data, Core). Domain layer has zero external dependencies.</td>
+        <td>Decouples pure business rules from volatile UI frameworks and databases. Guarantees 100% portable domain testing.</td>
+        <td>Danger PR code structure audit &amp; unit tests.</td>
+      </tr>
+      <tr>
+        <td><strong>2. Network Resilience</strong></td>
+        <td>Threshold-based Circuit Breaker wrapping all remote HTTP calls with local offline cache fallback.</td>
+        <td>Prevents cascading connection timeouts, stops battery drain, and maintains offline usability in dead zones.</td>
+        <td>Automated unit tests with simulated 500/timeout responses.</td>
+      </tr>
+      <tr>
+        <td><strong>3. Remote Config &amp; Flags</strong></td>
+        <td>Dynamic feature flags and emergency kill switches decoupled from store release cycles.</td>
+        <td>Enables staged percentage rollouts (5% &rarr; 25% &rarr; 100%) and instant kill-switching without waiting for 72-hour store review.</td>
+        <td>Integration with enterprise feature flag SDK.</td>
+      </tr>
+      <tr>
+        <td><strong>4. Hardware-Backed Security</strong></td>
+        <td>OAuth2/OIDC SSO tokens stored in hardware KeyStore (Android) or Keychain (iOS). Zero plain-text credentials.</td>
+        <td>Protects against binary reverse engineering, memory dumping, and stolen device credential exfiltration.</td>
+        <td>NowSecure SAST/DAST automated security scanning.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
 ---
 
-## Universal Workstation Verification
+## Unidirectional Data Flow (UDF) & State Architecture
 
-Regardless of which platform tab you configured, run the enterprise Doctor CLI to produce your final system health report:
+To prevent race conditions, stale views, and inconsistent screen states, all user actions follow a strict **Unidirectional Data Flow (UDF)** loop:
 
-```bash
-npx @enterprise/doctor-cli check --verbose
+```mermaid
+flowchart TD
+    subgraph Loop["Unidirectional Data Flow (UDF) Cycle"]
+        UI["1. Declarative View\n(Renders current immutable state)"]
+        Action["2. User Intent / Action\n(Button tap, scroll, text input)"]
+        Reducer["3. State Holder / ViewModel\n(Processes intent via Domain Use Case)"]
+        NewState["4. New Immutable State\n(Emitted as fresh state snapshot)"]
+
+        UI -->|"User interacts"| Action
+        Action -->|"Dispatched to"| Reducer
+        Reducer -->|"Calculates & emits"| NewState
+        NewState -->|"Re-renders"| UI
+    end
+
+    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
+    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
+    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
+    class Loop highlight;
+    class UI,Action,Reducer,NewState nodeBox;
 ```
 
-```
-============================================================
-       ENTERPRISE MOBILE WORKSTATION HEALTH REPORT
-============================================================
- [OK] Operating System: macOS 15.0.1 (Apple M3 Max)
- [OK] Terminal Shell: zsh 5.9
- [OK] Homebrew: 4.4.2 (/opt/homebrew/bin/brew)
- [OK] Enterprise Root Certificate: Installed in System Keychain
- [OK] OpenJDK: 17.0.12 (/Library/Java/JavaVirtualMachines/openjdk-17.jdk)
- [OK] Android SDK: 34.0.0 (/Users/developer/Library/Android/sdk)
- [OK] Android Debug Bridge: 1.0.41 (Version 35.0.2)
- [OK] Xcode: 16.0 (Build 16A242d)
- [OK] CocoaPods: 1.15.2
- [OK] Node.js: v20.18.0
- [OK] Watchman: 2024.10.07.00
-------------------------------------------------------------
- RESULT: 11 Passed, 0 Failed, 0 Warnings
- Workstation is fully certified for Enterprise Mobile Engineering.
-============================================================
+### Implementing UDF State Modeling (TypeScript Example)
+
+Every screen model must be expressed as an immutable, discriminated state union to eliminate undefined or conflicting intermediate UI states:
+
+```typescript
+// 1. Define explicit, exhaustive UI state states
+export type ScreenState<T> =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: T; isStaleFromCache: boolean }
+  | { status: 'error'; message: string; canRetry: boolean };
+
+// 2. Define user actions (Intents)
+export type OrderAction =
+  | { type: 'FETCH_ORDERS' }
+  | { type: 'REFRESH_ORDERS' }
+  | { type: 'CANCEL_ORDER'; orderId: string };
+
+// 3. State Reducer (Guarantees predictable state transitions)
+export function orderReducer(state: ScreenState<Order[]>, action: OrderAction): ScreenState<Order[]> {
+  switch (action.type) {
+    case 'FETCH_ORDERS':
+      return { status: 'loading' };
+    case 'REFRESH_ORDERS':
+      // Preserve existing data while refreshing in background
+      return state.status === 'success' ? state : { status: 'loading' };
+    default:
+      return state;
+  }
+}
 ```
 
 ---
 
-## Apple Silicon MacBook Troubleshooting
+## Architecture Navigation Directory
+
+Explore the dedicated architecture specifications to implement specific technical standards:
+
+<div class="portal-cards-grid">
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-green">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Clean Architecture Specification</h3>
+        <span class="portal-tag-pill">LAYER STANDARDS</span>
+      </div>
+      <p class="portal-card-desc">
+        Deep dive into the 4-layer structure with complete code implementations across React Native, Kotlin Jetpack Compose, and Swift SwiftUI.
+      </p>
+      <div class="portal-card-pills">
+        <span>Presentation</span>
+        <span>Domain</span>
+        <span>Data</span>
+        <span>Dependency Inversion</span>
+      </div>
+    </div>
+    <div class="portal-card-action">
+      <a href="/mobile/architecture/clean-architecture/" class="portal-card-link">View Clean Architecture &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-coral">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Circuit Breaker &amp; Resilience</h3>
+        <span class="portal-tag-pill">NETWORK RESILIENCE</span>
+      </div>
+      <p class="portal-card-desc">
+        Threshold configuration, state machines (Closed, Open, Half-Open), and offline storage fallbacks to prevent cascading socket failures.
+      </p>
+      <div class="portal-card-pills">
+        <span>Circuit Breaker</span>
+        <span>Offline Cache</span>
+        <span>Retry Policies</span>
+      </div>
+    </div>
+    <div class="portal-card-action">
+      <a href="/mobile/architecture/circuit-breaker/" class="portal-card-link">View Resilience Guide &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-purple">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+            <line x1="4" y1="22" x2="4" y2="15"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Feature Flags &amp; Remote Config</h3>
+        <span class="portal-tag-pill">RELEASE GOVERNANCE</span>
+      </div>
+      <p class="portal-card-desc">
+        Runtime feature toggling, dynamic rollouts by user segment, and emergency production kill switches decoupled from app store review queues.
+      </p>
+      <div class="portal-card-pills">
+        <span>Remote Flags</span>
+        <span>Kill Switches</span>
+        <span>Phased Rollouts</span>
+      </div>
+    </div>
+    <div class="portal-card-action">
+      <a href="/mobile/architecture/feature-flags/" class="portal-card-link">View Feature Flags Guide &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-amber">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="9" ry="3"/>
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Offline Synchronization &amp; Storage</h3>
+        <span class="portal-tag-pill">OFFLINE FIRST</span>
+      </div>
+      <p class="portal-card-desc">
+        Local database standards (Room SQLite, CoreData, MMKV), schema migration policies, and two-way sync conflict resolution protocols.
+      </p>
+      <div class="portal-card-pills">
+        <span>SQLite / Room</span>
+        <span>MMKV Storage</span>
+        <span>Conflict Resolution</span>
+      </div>
+    </div>
+    <div class="portal-card-action">
+      <a href="/mobile/architecture/offline-sync/" class="portal-card-link">View Storage Guide &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-blue">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="6" y1="3" x2="6" y2="15"/>
+            <circle cx="18" cy="6" r="3"/>
+            <circle cx="6" cy="18" r="3"/>
+            <path d="M18 9a9 9 0 0 1-9 9"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Branching &amp; PR Conventions</h3>
+        <span class="portal-tag-pill">GIT STANDARDS</span>
+      </div>
+      <p class="portal-card-desc">
+        Standardized GitFlow branch models, Conventional Commits formatting rules, and automated Danger PR verification checks.
+      </p>
+      <div class="portal-card-pills">
+        <span>Trunk Based</span>
+        <span>Conventional Commits</span>
+        <span>Danger Bot</span>
+      </div>
+    </div>
+    <div class="portal-card-action">
+      <a href="/mobile/architecture/branching-prs/" class="portal-card-link">View Branching Guide &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-teal">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Repository Health &amp; Inactivity Policy</h3>
+        <span class="portal-tag-pill">GOVERNANCE</span>
+      </div>
+      <p class="portal-card-desc">
+        Automated policies governing repository deprecation, mandatory dependency vulnerability patching, and security audits.
+      </p>
+      <div class="portal-card-pills">
+        <span>Repo Health</span>
+        <span>Vulnerability Scans</span>
+        <span>Deprecation</span>
+      </div>
+    </div>
+    <div class="portal-card-action">
+      <a href="/mobile/architecture/repository-health/" class="portal-card-link">View Health Policy &rarr;</a>
+    </div>
+  </div>
+
+</div>
+
+---
+
+## Architectural Non-Negotiables ("The Golden Rules")
 
 <div class="portal-alert-box">
-  <div class="portal-alert-title">M-SERIES (ARM64) MACBOOK TIPS</div>
+  <div class="portal-alert-title">MANDATORY ARCHITECTURAL ENFORCEMENT</div>
+  <p>The following five constraints are programmatically enforced via CI and trigger automated PR rejection if violated:</p>
   <ul>
-    <li><strong>Android Emulator Acceleration:</strong> On Apple Silicon (M1/M2/M3/M4), do <em>not</em> attempt to install Intel HAXM. The Android Emulator uses Apple's native Hypervisor.framework out of the box. Always select the <code>arm64-v8a</code> ABI system image.</li>
-    <li><strong>Homebrew Binary Path:</strong> Homebrew installs to <code>/opt/homebrew/bin</code> on Apple Silicon and <code>/usr/local/bin</code> on Intel. Never copy `~/.zshrc` files from an Intel Mac without adjusting paths.</li>
-    <li><strong>Rosetta 2 for Legacy Pods:</strong> If an older third-party pod fails with an architecture compilation error, install Rosetta 2: <code>softwareupdate --install-rosetta --agree-to-license</code>.</li>
-    <li><strong>Node.js Architecture Mismatch:</strong> If you see `mach-o file, but is an incompatible architecture`, verify that your Node binary is native ARM64: <code>node -p "process.arch"</code> should return <code>arm64</code>.</li>
+    <li><strong>1. No Direct Network or Database Access from UI:</strong> Views and ViewModels must never instantiate HTTP clients or execute direct SQL queries. All persistence and remote queries must be dispatched through Domain Use Cases.</li>
+    <li><strong>2. Zero Framework Imports in the Domain Layer:</strong> The Domain layer must remain pure business logic. It must never import <code>android.*</code>, <code>UIKit</code>, <code>SwiftUI</code>, or <code>react-native</code>.</li>
+    <li><strong>3. Mandatory Circuit Breaker on Remote Calls:</strong> All external API endpoints called from mobile clients must be encapsulated inside the enterprise Circuit Breaker.</li>
+    <li><strong>4. Hardware-Backed Credential Storage:</strong> Auth tokens and cryptographic keys must be stored in Android KeyStore or iOS Keychain with biometric gating where required. Never store tokens in plain local storage or commit them in code.</li>
+    <li><strong>5. Minimum 80% Unit Test Coverage on Domain Logic:</strong> All Use Cases, validation logic, and business rules must have automated unit test coverage with mock repositories.</li>
   </ul>
 </div>
 
 ---
 
-## What You Should Understand Before Moving On
+## Architecture Decision Records (ADR) Process
+
+When an engineering team proposes a substantial architectural change—such as introducing a new third-party dependency, modifying database engines, or altering authentication handshakes—they must submit an **Architecture Decision Record (ADR)** to the **Architecture Review Board (ARB)**.
+
+### Standard Enterprise ADR Template (`docs/adr/ADR-0001-template.md`)
+
+```markdown
+# ADR-0001: Adoption of MMKV for High-Speed Key-Value Storage
+
+## Status
+Accepted (Date: 2026-10-14)
+
+## Context
+Our mobile application requires synchronous access to user preferences and encryption salts during app cold start. The existing async storage engine introduces 180ms of cold-start latency on Android devices.
+
+## Decision
+We will adopt Tencent MMKV as the enterprise standard key-value storage engine for fast, synchronous, encrypted access on both iOS and Android.
+
+## Consequences
+### Positive
+* Cold-start storage read time reduced from 180ms to < 8ms.
+* Built-in multi-process synchronization support.
+* Transparent AES-128 encryption with keys managed in iOS Keychain and Android KeyStore.
+
+### Trade-offs / Mitigations
+* Introduces a native C++ library dependency (adds ~250KB to binary size).
+* Mitigation: Pre-compiled binary verified by NowSecure and approved by Security.
+```
+
+---
+
+## Architecture Review Board (ARB) Checklist
 
 <div class="portal-checklist-box">
-  <div class="portal-checklist-title">COMPLETION CHECKLIST</div>
-  <p>Confirm your MacBook workstation meets the baseline development standard:</p>
+  <div class="portal-checklist-title">ARCHITECTURE CONFORMANCE CHECKLIST</div>
+  <p>Before advancing a new mobile initiative into production sprint planning, ensure your project satisfies these architectural baselines:</p>
   <ul>
-    <li><strong>Doctor Pass:</strong> Successful execution of <code>npx @enterprise/doctor-cli check</code> with 0 errors.</li>
-    <li><strong>Simulator Readiness:</strong> Ability to launch both iOS Simulator and Android Emulator without UI freezing.</li>
-    <li><strong>Shell Configured:</strong> <code>~/.zshrc</code> contains valid <code>JAVA_HOME</code> and <code>ANDROID_HOME</code> environment exports.</li>
-    <li><strong>Git &amp; Certificates:</strong> SSH authentication verified for <code>git@github.enterprise.com</code> and enterprise proxy CA cert installed in Keychain.</li>
+    <li><strong>Layer Separation Verified:</strong> Repository structure mirrors the Presentation, Domain, Data, and Core package layout.</li>
+    <li><strong>Unidirectional Data Flow:</strong> ViewModels emit single immutable state streams; UI dispatches explicit user intents.</li>
+    <li><strong>Circuit Breaker Configured:</strong> External HTTP endpoints are configured with failure thresholds and fallback local caches.</li>
+    <li><strong>ADRs Documented:</strong> Any deviations from tier-1 standards have an approved ADR committed in the <code>docs/adr/</code> directory.</li>
+    <li><strong>Zero Security Leaks:</strong> Credentials and API tokens are resolved at runtime via Enterprise SSO and stored in secure hardware enclaves.</li>
   </ul>
 </div>
