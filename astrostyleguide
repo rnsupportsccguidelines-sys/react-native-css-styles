@@ -81,3 +81,253 @@ flowchart TD
     classDef terminal fill:#102619,stroke:#22c55e,stroke-width:2px,color:#ffffff;
     class Dev,PR highlight;
     class Datadog terminal;
+```
+
+* **Development:** Feature development executed in Android Studio, Xcode, or VS Code using enterprise templates and internal shared SDK packages.
+* **Quality & Security:** Automated Bitrise CI triggers on every pull request, executing static Danger inspections, unit test suites, cloud device regression, and binary vulnerability scanning.
+* **Distribution:** Automated deployment to public app stores (Apple App Store, Google Play Store) or private Enterprise App Distribution portals.
+* **Operations:** Real-time production telemetry via Datadog RUM, crash report tracking, and remote emergency kill switches.
+
+---
+
+## Core Platform Capabilities
+
+The platform aggregates foundational engineering tools and services into unified operational pillars:
+
+```mermaid
+flowchart TD
+    Core["Enterprise Mobile Platform"]
+
+    Core --> Eng["Engineering & Delivery"]
+    Core --> Gov["Quality & Governance"]
+
+    Eng --> Dev["1. Client Development\n(Android Compose, iOS SwiftUI, React Native)"]
+    Eng --> CI["2. CI/CD & Build Pipelines\n(Bitrise Cloud Runners & Fastlane)"]
+    Eng --> Dist["3. Store Distribution\n(App Store, Google Play & Enterprise Portal)"]
+
+    Gov --> Test["4. Automated Testing\n(Sauce Labs Cloud & Parallel Suites)"]
+    Gov --> Sec["5. Security & Governance\n(NowSecure SAST/DAST & TGRC)"]
+    Gov --> Obs["6. Observability & Services\n(Datadog RUM, Push Alerts & Feature Flags)"]
+
+    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
+    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
+    classDef nodeBox fill:#13251c,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
+    class Core,Eng,Gov highlight;
+    class Dev,CI,Dist,Test,Sec,Obs nodeBox;
+```
+
+---
+
+## Supported Development Platforms
+
+The platform supports three tier-1 mobile architectures. Each stack is equipped with dedicated scaffolding templates, linting configurations, and enterprise SDK mirrors:
+
+<div class="portal-cards-grid">
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-blue">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">React Native (New Architecture)</h3>
+        <span class="portal-tag-pill">CROSS-PLATFORM</span>
+      </div>
+      <p class="portal-card-desc">
+        Optimized for feature velocity and high code reuse across platforms. Leverages Fabric native renderer, TurboModules, and internal TypeScript packages.
+      </p>
+      <div class="portal-card-pills">
+        <span>TypeScript</span>
+        <span>Fabric Renderer</span>
+        <span>TurboModules</span>
+      </div>
+    </div>
+    <div class="portal-card-action">
+      <a href="/mobile/development/react-native/" class="portal-card-link">View React Native Guide &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-green">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Native Android (Kotlin / Compose)</h3>
+        <span class="portal-tag-pill">NATIVE ANDROID</span>
+      </div>
+      <p class="portal-card-desc">
+        Engineered for hardware-intensive workflows, offline background sync, Bluetooth peripherals, and deep Android OS integrations.
+      </p>
+      <div class="portal-card-pills">
+        <span>Kotlin 2.0</span>
+        <span>Jetpack Compose</span>
+        <span>Hilt DI</span>
+      </div>
+    </div>
+    <div class="portal-card-action">
+      <a href="/mobile/development/android/" class="portal-card-link">View Android Guide &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card portal-card-full">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-coral">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Native iOS (Swift / SwiftUI)</h3>
+        <span class="portal-tag-pill">NATIVE IOS</span>
+      </div>
+      <p class="portal-card-desc">
+        Tailored for flagship Apple ecosystem experiences requiring native Metal graphics, CoreML acceleration, secure enclave operations, or advanced iOS system integrations.
+      </p>
+      <div class="portal-card-pills">
+        <span>Swift 6</span>
+        <span>SwiftUI</span>
+        <span>Async/Await</span>
+        <span>KeyStore Enclave</span>
+      </div>
+    </div>
+    <div class="portal-card-action">
+      <a href="/mobile/development/ios/" class="portal-card-link">View iOS Guide &rarr;</a>
+    </div>
+  </div>
+
+</div>
+
+---
+
+## Quality and Security Gates
+
+Every production application binary progresses through a strict, automated verification pipeline before release approval:
+
+<div class="portal-gates-container">
+  <div class="portal-gates-flow">
+    <div class="portal-gate-node">
+      <div class="portal-gate-title">1. Pull Request</div>
+      <div class="portal-gate-sub">Branch validation</div>
+    </div>
+    <span class="portal-gate-arrow">&rarr;</span>
+    <div class="portal-gate-node">
+      <div class="portal-gate-title">2. Code Review</div>
+      <div class="portal-gate-sub">Peer approvals</div>
+    </div>
+    <span class="portal-gate-arrow">&rarr;</span>
+    <div class="portal-gate-node">
+      <div class="portal-gate-title">3. Bitrise & Danger</div>
+      <div class="portal-gate-sub">CI runner & PR checks</div>
+    </div>
+    <span class="portal-gate-arrow">&rarr;</span>
+    <div class="portal-gate-node">
+      <div class="portal-gate-title">4. Sauce Labs</div>
+      <div class="portal-gate-sub">Device cloud regression</div>
+    </div>
+    <span class="portal-gate-arrow">&rarr;</span>
+    <div class="portal-gate-node">
+      <div class="portal-gate-title">5. NowSecure</div>
+      <div class="portal-gate-sub">SAST / DAST scans</div>
+    </div>
+    <span class="portal-gate-arrow">&rarr;</span>
+    <div class="portal-gate-node">
+      <div class="portal-gate-title">6. Release Gate</div>
+      <div class="portal-gate-sub">App store deployment</div>
+    </div>
+  </div>
+</div>
+
+### CI/CD Automation (Bitrise)
+
+All pull requests trigger automated **Bitrise** workflows:
+* **Automated Webhooks:** Every PR push triggers dedicated macOS and Linux cloud runners in Bitrise.
+* **Danger PR Bot Inspection:** Runs inside Bitrise to analyze bundle size changes, verify conventional commit syntax, and enforce changelog updates.
+* **Fastlane Build Pipelines:** Compiles signed test binaries (`.aab` for Android, `.ipa` for iOS) and triggers parallel cloud testing.
+
+### Code Quality
+
+Code standards are enforced continuously through automated branch policies:
+* **Peer Reviews:** Mandatory minimum of two passing reviews from code owners before merge.
+* **Branch Protection:** Direct pushes to `main` and `release/*` branches are strictly prohibited.
+* **Automated Danger Checks:** Danger Bot enforces changelog updates, inspects binary bundle size deltas, and validates conventional commit messages.
+
+### Functional Validation
+
+Test integrity is verified across isolated execution environments:
+* **Unit and Component Tests:** Must achieve minimum 80% code coverage threshold.
+* **Sauce Labs Cloud Execution:** Automated regression suites run across physical Android and iOS devices, validating UI state under varying battery, connectivity, and OS versions.
+
+### Security and Governance
+
+Mobile application security is strictly audited prior to distribution:
+* **NowSecure SAST/DAST Scans:** Automated scanning detects insecure data storage, hardcoded secrets, and network communication vulnerabilities.
+* **TGRC Enterprise Sign-Off:** Automated compliance checks ensure regulatory standards (data privacy, encryption in transit and at rest) are fully verified.
+
+---
+
+## Engineering Domains
+
+The documentation portal is organized into 6 core technical domains that collectively support the mobile engineering lifecycle:
+
+```mermaid
+flowchart TD
+    Mob["Mobile Engineering Ecosystem"]
+
+    subgraph Found["Foundations & Standards"]
+        D1["Domain 1: Architecture & Standards\n(Clean Architecture & Circuit Breaker)"]
+        D2["Domain 2: Development Platforms\n(Compose, SwiftUI, React Native & SDKs)"]
+    end
+
+    subgraph Pipeline["Build & Quality Pipeline"]
+        D3["Domain 3: Build & Release CI/CD\n(Bitrise Pipelines & Code Signing)"]
+        D4["Domain 4: Security & Observability\n(NowSecure Scans & Datadog RUM)"]
+    end
+
+    subgraph Delivery["Delivery & Enablement"]
+        D5["Domain 5: App Distribution\n(Public Stores & Enterprise Internal)"]
+        D6["Domain 6: Developer Productivity\n(Doctor CLI & Workstation Automation)"]
+    end
+
+    Mob --> Found
+    Found --> Pipeline
+    Pipeline --> Delivery
+
+    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
+    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
+    classDef terminal fill:#102619,stroke:#22c55e,stroke-width:2px,color:#22c55e;
+    class Mob highlight;
+    class D1,D2,D3,D4,D5,D6 terminal;
+```
+
+1. **Architecture & Standards:** Clean Architecture patterns, unidirectional data flow, Circuit Breaker resilience, and remote feature flag governance.
+2. **Development Platforms:** In-depth guidelines, design tokens, and shared SDK catalogs for Android, iOS, and React Native.
+3. **Build & Release:** Bitrise pipeline configurations, Fastlane lanes, automated code signing, and release train schedules.
+4. **Security & Observability:** KeyStore/Keychain secure token storage, Datadog RUM monitoring, crash triaging, and NowSecure compliance.
+5. **App Distribution:** Workflows for enterprise internal distribution, test flights, and public store releases.
+6. **Developer Productivity:** Workstation setup automation, Doctor diagnostic CLI, and repository starter templates.
+
+---
+
+## What You Should Understand Before Moving On
+
+<div class="portal-checklist-box">
+  <div class="portal-checklist-title">COMPLETION CHECKLIST</div>
+  <p>Before proceeding to your developer track, confirm you can answer the following:</p>
+  <ul>
+    <li><strong>Major Architecture Components:</strong> How client applications interact with enterprise backend APIs through shared SDKs and Circuit Breaker resilience.</li>
+    <li><strong>Application Delivery Lifecycle:</strong> The path code travels from local feature development through automated quality gates to production.</li>
+    <li><strong>Quality and Security Verification:</strong> Where automated Danger, Sauce Labs cloud devices, and NowSecure scans occur in CI.</li>
+    <li><strong>Supported Platforms:</strong> The trade-offs and decision criteria for choosing React Native vs. Native Android vs. Native iOS.</li>
+    <li><strong>Platform Services:</strong> The availability and integration patterns for shared push notifications, auth SSO, and Datadog telemetry.</li>
+  </ul>
+</div>
