@@ -1,81 +1,118 @@
 ---
-title: Enterprise Standard Mobile Architecture
-description: Comprehensive specification of the 4-Layer Clean Architecture standard enforced across all enterprise iOS, Android, and React Native applications.
+title: Circuit Breaker & Network Resilience Pattern
+description: Enterprise specification and implementation guide for wrapping mobile API calls with Circuit Breaker fault tolerance, exponential backoff, and offline cache fallbacks.
 sidebar:
-  order: 1
-  label: Clean Architecture
+  order: 2
+  label: Circuit Breaker & Resilience
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">[PLATFORM STANDARDS]</span>
-    <span class="portal-hub-tag">MODULE 02: ARCHITECTURE SPECIFICATION</span>
+    <span class="portal-badge-hub">[RESILIENCE PATTERN]</span>
+    <span class="portal-hub-tag">MODULE 02.2: NETWORK FAULT TOLERANCE</span>
   </div>
-  <div class="portal-hero-title">Enterprise Standard Mobile Architecture: 4-Layer Clean Architecture</div>
+  <div class="portal-hero-title">Circuit Breaker &amp; Network Resilience Pattern</div>
   <div class="portal-hero-desc">
-    The foundational architectural pattern enforced across all enterprise iOS, Android, and React Native codebases. By decoupling Presentation, Domain, Data, and Infrastructure into distinct layers governed by Dependency Inversion, applications maintain high testability, predictable state flow, and zero framework lock-in.
+    The enterprise fault-tolerance standard for mobile client applications. Prevents cascading socket timeouts, preserves device battery, and eliminates screen freezing during backend service degradation by wrapping all remote HTTP endpoints in an automated three-state Circuit Breaker with encrypted local storage fallback.
   </div>
 
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Presentation Layer</div>
-      <div class="portal-cap-desc">Declarative UI (Compose / SwiftUI / Fabric) &amp; reactive State Holders</div>
+      <div class="portal-cap-title">Trip Threshold</div>
+      <div class="portal-cap-desc">Automatically trips after 3 consecutive 5xx errors or socket timeouts</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Domain Layer</div>
-      <div class="portal-cap-desc">Pure business Use Cases, Entities &amp; Repository contracts (zero OS imports)</div>
+      <div class="portal-cap-title">Fast-Fail Cache</div>
+      <div class="portal-cap-desc">Instant return of stale encrypted local data without hitting dead radio sockets</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Data Layer</div>
-      <div class="portal-cap-desc">Repository implementations, offline local caches &amp; network DTO mappers</div>
+      <div class="portal-cap-title">Half-Open Probe</div>
+      <div class="portal-cap-desc">Automated canary probe after 30-second reset window to test backend recovery</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Core Infrastructure</div>
-      <div class="portal-cap-desc">Shared Enterprise SDKs: SSO Identity, Circuit Breaker &amp; Datadog Telemetry</div>
+      <div class="portal-cap-title">Telemetry Traces</div>
+      <div class="portal-cap-desc">Real-time state transition logging to Datadog RUM alerting dashboards</div>
     </div>
   </div>
 </div>
 
-## The 4-Layer Clean Architecture Specification
+## The Mobile Problem: Cascading Socket Timeouts
 
-Every enterprise mobile codebase—whether implemented in Kotlin, Swift, or TypeScript—must strictly adhere to the 4 architectural layers described below:
+Mobile devices do not operate in stable data centers. Cellular connections frequently experience high latency, packet loss, and transient disconnections (subways, rural elevators, airplane mode).
+
+When a backend service slows down or becomes unavailable, standard HTTP clients without a Circuit Breaker cause severe client-side degradation:
+* **Cellular Baseband Battery Drain:** Hanging TCP sockets force the device modem into continuous high-power radio states (RRC Connected mode), draining battery life within minutes.
+* **Thread Exhaustion:** Thread pools become saturated with blocked requests, freezing background tasks and UI rendering.
+* **Thundering Herd Outages:** When thousands of mobile apps continuously retry failed requests simultaneously, they overwhelm recovering backend microservices.
+
+---
+
+## Circuit Breaker State Machine
+
+The enterprise Circuit Breaker operates as a state machine with three strictly defined states: **Closed**, **Open**, and **Half-Open**:
+
+```mermaid
+flowchart TD
+    subgraph States["Circuit Breaker State Machine"]
+        Closed["1. Closed (Normal Operation)\n• All HTTP requests pass to network\n• Successes reset failure count\n• 3 consecutive 5xx/timeouts trip breaker"]
+        Open["2. Open (Fault Tripped)\n• Requests fail-fast immediately\n• Zero network calls executed\n• Serves local encrypted cache\n• Starts 30s reset timer"]
+        HalfOpen["3. Half-Open (Canary Probe)\n• Reset timer expires\n• Allows single trial request\n• If success: resets to Closed\n• If failure: returns to Open"]
+
+        Closed -->|"Failure threshold exceeded (3 errors)"| Open
+        Open -->|"Reset timeout expires (30s)"| HalfOpen
+        HalfOpen -->|"Canary probe succeeds"| Closed
+        HalfOpen -->|"Canary probe fails"| Open
+    end
+
+    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
+    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
+    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
+    class States highlight;
+    class Closed,Open,HalfOpen nodeBox;
+```
+
+---
+
+## Standard Configuration Parameters
+
+Enterprise mobile applications must initialize circuit breakers using these standardized operational parameters:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Architectural Layer</th>
-        <th>Primary Responsibilities</th>
-        <th>Allowed Inward Dependencies</th>
-        <th>Prohibited Elements</th>
+        <th>Configuration Parameter</th>
+        <th>Recommended Value</th>
+        <th>Behavioral Impact</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>1. Presentation Layer</strong></td>
-        <td>Renders reactive UI views, captures user input, and manages screen lifecycle state.</td>
-        <td>Depends only on the <strong>Domain Layer</strong> (executes Use Cases and observes state).</td>
-        <td>No direct SQL queries, no direct HTTP client calls, no raw network DTO models.</td>
+        <td><code>failureThreshold</code></td>
+        <td><code>3 consecutive failures</code></td>
+        <td>Number of 5xx server errors or socket timeouts before transitioning from <strong>Closed</strong> to <strong>Open</strong>.</td>
       </tr>
       <tr>
-        <td><strong>2. Domain Layer</strong></td>
-        <td>Encapsulates pure enterprise business rules, entity models, and abstract repository contracts.</td>
-        <td><strong>Zero external dependencies.</strong> Pure language code (zero Android, iOS, or React imports).</td>
-        <td>No UI widgets, no database drivers, no third-party SDK dependencies, no platform imports.</td>
+        <td><code>requestTimeoutMs</code></td>
+        <td><code>5,000 ms (5 seconds)</code></td>
+        <td>Maximum duration for an individual network request before considering it a timeout failure.</td>
       </tr>
       <tr>
-        <td><strong>3. Data Layer</strong></td>
-        <td>Implements domain repository contracts. Coordinates remote APIs with offline local databases.</td>
-        <td>Depends on the <strong>Domain Layer</strong> (implements interfaces) and <strong>Infrastructure</strong>.</td>
-        <td>No direct UI rendering logic, no lifecycle observation, no business rule mutation.</td>
+        <td><code>resetTimeoutMs</code></td>
+        <td><code>30,000 ms (30 seconds)</code></td>
+        <td>Duration the breaker remains in <strong>Open</strong> before allowing a canary probe in <strong>Half-Open</strong>.</td>
       </tr>
       <tr>
-        <td><strong>4. Infrastructure / Core</strong></td>
-        <td>Provides foundational cross-cutting capabilities (SSO Auth, Circuit Breaker, Datadog RUM, KeyStore).</td>
-        <td>Standalone shared packages consumed by the Data and Presentation layers.</td>
-        <td>No feature-specific business domain logic. Must remain reusable across repositories.</td>
+        <td><code>maxRetriesWithBackoff</code></td>
+        <td><code>2 retries</code></td>
+        <td>Exponential backoff with jitter applied only while in <strong>Closed</strong> state before counting as a failure.</td>
+      </tr>
+      <tr>
+        <td><code>ignoredErrorCodes</code></td>
+        <td><code>400, 401, 403, 404, 422</code></td>
+        <td>Client-side 4xx errors <strong>never</strong> trip the breaker because they represent validation or auth issues, not backend outages.</td>
       </tr>
     </tbody>
   </table>
@@ -83,297 +120,169 @@ Every enterprise mobile codebase—whether implemented in Kotlin, Swift, or Type
 
 ---
 
-## Dependency Inversion & Data Flow Diagram
+## Implementation Across Platforms
 
-The **Dependency Rule** dictates that source code dependencies must only point inward toward higher-level business logic. The Domain layer is the core of the system and knows nothing about databases, network protocols, or UI widgets:
-
-```mermaid
-flowchart TD
-    subgraph Client["1. Presentation Layer"]
-        UI["UI Views\n(SwiftUI / Jetpack Compose / React Native)"]
-        VM["State Holders\n(ViewModels / React Hooks / State Machines)"]
-        UI -->|"User Event"| VM
-    end
-
-    subgraph CoreDomain["2. Domain Layer (Pure Business Core)"]
-        UC["Use Cases & Interactors\n(e.g., SubmitOrderUseCase)"]
-        Entities["Pure Business Entities\n(e.g., Order, LineItem, User)"]
-        RepoContract["Repository Interfaces\n(e.g., OrderRepository Contract)"]
-        VM -->|"Executes"| UC
-        UC -->|"Operates On"| Entities
-        UC -->|"Invokes Contract"| RepoContract
-    end
-
-    subgraph DataInfra["3. Data & Infrastructure Layer"]
-        RepoImpl["Repository Implementation\n(e.g., OrderRepositoryImpl)"]
-        LocalSource["Local Offline Cache\n(Room SQLite / CoreData / MMKV)"]
-        RemoteSource["Remote API Client\n(Circuit Breaker + Auth Headers)"]
-        RepoImpl -.->|"Implements"| RepoContract
-        RepoImpl -->|"Read / Write"| LocalSource
-        RepoImpl -->|"HTTP Network"| RemoteSource
-    end
-
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class Client,CoreDomain,DataInfra highlight;
-    class UI,VM,UC,Entities,RepoContract,RepoImpl,LocalSource,RemoteSource nodeBox;
-```
-
----
-
-## Cross-Platform Clean Architecture Implementation
-
-To understand how Clean Architecture is implemented in practice, observe the following end-to-end implementation of an `OrderSubmission` feature across all three supported platforms:
+The enterprise resilience library is available across all three tier-1 mobile stacks. Observe the complete implementation patterns below:
 
 <Tabs syncKey="mobile-platform">
 <TabItem label="React Native (TypeScript)">
 
-#### Domain Layer: Pure Contract & Use Case
+Using the official enterprise resilience client with MMKV local cache fallback:
+
 ```typescript
-// src/domain/entities/Order.ts
-export interface Order {
-  id: string;
-  totalAmount: number;
-  currency: string;
-  items: Array<{ sku: string; quantity: number }>;
-}
-
-// src/domain/repositories/OrderRepository.ts
-export interface OrderRepository {
-  submitOrder(order: Order): Promise<{ confirmationId: string }>;
-}
-
-// src/domain/usecases/SubmitOrderUseCase.ts
-export class SubmitOrderUseCase {
-  constructor(private orderRepository: OrderRepository) {}
-
-  async execute(order: Order): Promise<{ confirmationId: string }> {
-    if (order.items.length === 0) {
-      throw new Error('Cannot submit an order with zero items.');
-    }
-    return await this.orderRepository.submitOrder(order);
-  }
-}
-```
-
-#### Data Layer: Repository Implementation with Circuit Breaker
-```typescript
-// src/data/repositories/OrderRepositoryImpl.ts
-import { OrderRepository } from '../../domain/repositories/OrderRepository';
-import { Order } from '../../domain/entities/Order';
 import { CircuitBreaker } from '@enterprise/resilience-sdk';
+import { MMKV } from 'react-native-mmkv';
 
-export class OrderRepositoryImpl implements OrderRepository {
-  private breaker = new CircuitBreaker({ failureThreshold: 3, resetTimeoutMs: 15000 });
+const storage = new MMKV({ id: 'user-cache-secure' });
 
-  async submitOrder(order: Order): Promise<{ confirmationId: string }> {
-    return await this.breaker.execute(async () => {
-      const response = await fetch('https://api.enterprise.internal/v1/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(order),
-      });
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-      return await response.json();
-    });
-  }
+export interface OrderDashboard {
+  userId: string;
+  activeOrders: number;
+  totalSpent: number;
 }
-```
 
-#### Presentation Layer: Hook & Screen Component
-```typescript
-// src/presentation/hooks/useSubmitOrder.ts
-import { useState } from 'react';
-import { SubmitOrderUseCase } from '../../domain/usecases/SubmitOrderUseCase';
-import { Order } from '../../domain/entities/Order';
+// 1. Initialize Circuit Breaker for the Orders Domain
+export const ordersBreaker = new CircuitBreaker({
+  name: 'OrdersServiceBreaker',
+  failureThreshold: 3,
+  resetTimeoutMs: 30000,
+  requestTimeoutMs: 5000,
+  onStateChange: (from, to) => {
+    console.warn(`[Resilience] Orders Breaker transitioned: ${from} -> ${to}`);
+  },
+});
 
-export function useSubmitOrder(useCase: SubmitOrderUseCase) {
-  const [submitting, setSubmitting] = useState(false);
-  const [confirmationId, setConfirmationId] = useState<string | null>(null);
+// 2. Wrap network request with automatic offline cache fallback
+export async function getOrderDashboard(userId: string): Promise<OrderDashboard> {
+  const cacheKey = `dashboard_${userId}`;
 
-  const submit = async (order: Order) => {
-    setSubmitting(true);
-    try {
-      const result = await useCase.execute(order);
-      setConfirmationId(result.confirmationId);
-    } finally {
-      setSubmitting(false);
+  return await ordersBreaker.execute(
+    // Primary Action: Remote Network Query
+    async () => {
+      const response = await fetch(`https://api.enterprise.internal/v1/orders/dashboard/${userId}`, {
+        headers: { 'Accept': 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status}`);
+      }
+
+      const freshData: OrderDashboard = await response.json();
+      // Update encrypted local cache on successful network call
+      storage.set(cacheKey, JSON.stringify(freshData));
+      return freshData;
+    },
+    // Fallback Action: Executed immediately when breaker is Open or network drops
+    async (error) => {
+      const cached = storage.getString(cacheKey);
+      if (cached) {
+        console.info(`[Resilience] Serving cached dashboard data due to: ${error.message}`);
+        return JSON.parse(cached) as OrderDashboard;
+      }
+      throw new Error('Offline and no cached dashboard data available.');
     }
-  };
-
-  return { submit, submitting, confirmationId };
+  );
 }
 ```
 </TabItem>
 <TabItem label="Android (Kotlin)">
 
-#### Domain Layer: Entities, Contract & Use Case
+In native Android, the Circuit Breaker is injected via Hilt into repository implementations and switches dispatchers cleanly:
+
 ```kotlin
-package com.enterprise.mobile.domain
+package com.enterprise.mobile.data.resilience
 
-data class Order(
-    val id: String,
-    val totalAmount: Double,
-    val items: List<OrderItem>
-)
-
-interface OrderRepository {
-    suspend fun submitOrder(order: Order): Result<String>
-}
-
-class SubmitOrderUseCase(
-    private val repository: OrderRepository
-) {
-    suspend operator fun invoke(order: Order): Result<String> {
-        if (order.items.isEmpty()) {
-            return Result.failure(IllegalArgumentException("Order must contain at least one item."))
-        }
-        return repository.submitOrder(order)
-    }
-}
-```
-
-#### Data Layer: Repository Implementation with Local Cache & Remote API
-```kotlin
-package com.enterprise.mobile.data
-
-import com.enterprise.mobile.domain.Order
-import com.enterprise.mobile.domain.OrderRepository
+import com.enterprise.resilience.CircuitBreaker
+import com.enterprise.resilience.CircuitBreakerConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class OrderRepositoryImpl(
-    private val apiService: OrderApiService,
-    private val orderDao: OrderDao
+    private val api: OrderApiService,
+    private val dao: OrderDao
 ) : OrderRepository {
 
-    override suspend fun submitOrder(order: Order): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val response = apiService.postOrder(order.toDto())
-            // Save confirmation locally for offline persistence
-            orderDao.insertOrder(order.toEntity(response.confirmationId))
-            Result.success(response.confirmationId)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-}
-```
+    // 1. Initialize the Circuit Breaker with enterprise defaults
+    private val breaker = CircuitBreaker(
+        CircuitBreakerConfig(
+            serviceName = "OrderApiService",
+            failureThreshold = 3,
+            resetTimeoutMs = 30000L,
+            requestTimeoutMs = 5000L
+        )
+    )
 
-#### Presentation Layer: ViewModel & Compose Screen
-```kotlin
-package com.enterprise.mobile.presentation
-
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.enterprise.mobile.domain.Order
-import com.enterprise.mobile.domain.SubmitOrderUseCase
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-
-sealed interface OrderState {
-    object Idle : OrderState
-    object Loading : OrderState
-    data class Success(val confirmationId: String) : OrderState
-    data class Error(val message: String) : OrderState
-}
-
-class OrderViewModel(
-    private val submitOrderUseCase: SubmitOrderUseCase
-) : ViewModel() {
-
-    private val _state = MutableStateFlow<OrderState>(OrderState.Idle)
-    val state: StateFlow<OrderState> = _state
-
-    fun submit(order: Order) {
-        viewModelScope.launch {
-            _state.value = OrderState.Loading
-            submitOrderUseCase(order).fold(
-                onSuccess = { _state.value = OrderState.Success(it) },
-                onFailure = { _state.value = OrderState.Error(it.localizedMessage ?: "Submission failed") }
-            )
-        }
+    // 2. Execute network query with local Room SQLite fallback
+    override suspend fun getOrders(): Result<List<Order>> = withContext(Dispatchers.IO) {
+        breaker.execute(
+            action = {
+                val remoteOrders = api.fetchOrders()
+                dao.insertAll(remoteOrders.map { it.toEntity() })
+                Result.success(remoteOrders.map { it.toDomain() })
+            },
+            fallback = { exception ->
+                val cachedOrders = dao.getAllOrders()
+                if (cachedOrders.isNotEmpty()) {
+                    Result.success(cachedOrders.map { it.toDomain() })
+                } else {
+                    Result.failure(exception)
+                }
+            }
+        )
     }
 }
 ```
 </TabItem>
 <TabItem label="iOS (Swift)">
 
-#### Domain Layer: Entities, Protocol & Interactor
+In native iOS, the Circuit Breaker is implemented as an `actor` to guarantee thread-safe state mutations across concurrent async tasks:
+
 ```swift
 import Foundation
 
-struct Order: Identifiable {
-    let id: String
-    let totalAmount: Decimal
-    let items: [OrderItem]
-}
-
-protocol OrderRepositoryProtocol {
-    func submitOrder(_ order: Order) async throws -> String
-}
-
-final class SubmitOrderUseCase {
-    private let repository: OrderRepositoryProtocol
-
-    init(repository: OrderRepositoryProtocol) {
-        self.repository = repository
+public actor CircuitBreaker {
+    public enum State {
+        case closed, open, halfOpen
     }
 
-    func execute(order: Order) async throws -> String {
-        guard !order.items.isEmpty else {
-            throw DomainError.emptyOrder
+    private var state: State = .closed
+    private var failureCount = 0
+    private let failureThreshold: Int
+    private let resetTimeout: TimeInterval
+    private var lastFailureTime: Date?
+
+    public init(failureThreshold: Int = 3, resetTimeout: TimeInterval = 30) {
+        self.failureThreshold = failureThreshold
+        self.resetTimeout = resetTimeout
+    }
+
+    public func execute<T>(
+        action: () async throws -> T,
+        fallback: (Error) async throws -> T
+    ) async throws -> T {
+        // Evaluate reset window before dispatching
+        if state == .open, let lastFail = lastFailureTime, Date().timeIntervalSince(lastFail) > resetTimeout {
+            state = .halfOpen
         }
-        return try await repository.submitOrder(order)
-    }
-}
-```
 
-#### Data Layer: Repository Implementation
-```swift
-import Foundation
+        if state == .open {
+            return try await fallback(NSError(domain: "CircuitBreakerOpen", code: 503))
+        }
 
-final class OrderRepositoryImpl: OrderRepositoryProtocol {
-    private let networkClient: NetworkClientProtocol
-    private let database: LocalDatabaseProtocol
-
-    init(networkClient: NetworkClientProtocol, database: LocalDatabaseProtocol) {
-        self.networkClient = networkClient
-        self.database = database
-    }
-
-    func submitOrder(_ order: Order) async throws -> String {
-        let dto = OrderRequestDTO(from: order)
-        let response: OrderResponseDTO = try await networkClient.post("/v1/orders", body: dto)
-        // Cache to local SQLite/CoreData storage
-        try await database.persistOrderConfirmation(response.confirmationId)
-        return response.confirmationId
-    }
-}
-```
-
-#### Presentation Layer: SwiftUI View & `@MainActor` ViewModel
-```swift
-import SwiftUI
-
-@MainActor
-final class OrderViewModel: ObservableObject {
-    @Published var state: ViewState<String> = .idle
-    private let useCase: SubmitOrderUseCase
-
-    init(useCase: SubmitOrderUseCase) {
-        self.useCase = useCase
-    }
-
-    func submit(order: Order) async {
-        state = .loading
         do {
-            let confirmationId = try await useCase.execute(order: order)
-            self.state = .success(confirmationId)
+            let result = try await action()
+            if state == .halfOpen {
+                state = .closed
+                failureCount = 0
+            }
+            return result
         } catch {
-            self.state = .error(error.localizedDescription)
+            failureCount += 1
+            lastFailureTime = Date()
+            if failureCount >= failureThreshold {
+                state = .open
+            }
+            return try await fallback(error)
         }
     }
 }
@@ -383,15 +292,39 @@ final class OrderViewModel: ObservableObject {
 
 ---
 
+## Telemetry & Datadog RUM Integration
+
+All circuit state transitions emit structured events to Datadog RUM to provide real-time alerting for operations teams:
+
+```mermaid
+flowchart TD
+    subgraph Flow["Telemetry Emission Flow"]
+        App["Mobile Application\n(CircuitBreaker State Change)"]
+        RUM["Datadog RUM SDK\n(Telemetry Event Formatted)"]
+        Dashboard["Datadog Mobile Operations Dashboard\n(Alerts triggered if > 1% users trip breaker)"]
+
+        App -->|"circuit_breaker.transition\nfrom: closed, to: open"| RUM
+        RUM -->|"HTTP Telemetry"| Dashboard
+    end
+
+    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
+    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
+    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
+    class Flow highlight;
+    class App,RUM,Dashboard nodeBox;
+```
+
+---
+
 ## Architectural Anti-Patterns & Prohibitions
 
 <div class="portal-alert-box">
-  <div class="portal-alert-title">ARCHITECTURAL BOUNDARY PROHIBITIONS</div>
+  <div class="portal-alert-title">RESILIENCE ANTI-PATTERNS</div>
   <ul>
-    <li><strong>1. UI Calling Data Sources Directly:</strong> Never call SQLite queries, network endpoints, or KeyStore methods directly from a SwiftUI View, Jetpack Compose Composable, or React component. All access must be brokered through a Domain Use Case.</li>
-    <li><strong>2. Platform Frameworks in Domain:</strong> The Domain layer must never import <code>android.*</code>, <code>UIKit</code>, <code>SwiftUI</code>, or <code>react-native</code>. Pure business logic must remain 100% portable and unit testable in pure JVM or native runtimes.</li>
-    <li><strong>3. Leaking Network DTOs to the UI:</strong> Remote JSON DTOs must be transformed by Data Mappers into immutable Domain Entities before leaving the Data layer. This insulates UI screens from backend API breaking changes.</li>
-    <li><strong>4. God ViewModels / Fat Controllers:</strong> ViewModels must only coordinate UI state and invoke Use Cases. Business validation, multi-source orchestration, and caching logic belong strictly in Use Cases and Repositories.</li>
+    <li><strong>1. Tripping on 4xx Errors:</strong> Never increment the failure count for HTTP 400, 401, 403, or 404 responses. These represent client validation or credential issues, not server degradation.</li>
+    <li><strong>2. Infinite While-Loop Retries:</strong> Never implement unconstrained `while (!success)` retry loops on mobile clients. All retries must be capped at 2 iterations with exponential backoff plus jitter.</li>
+    <li><strong>3. Uncached Fallbacks:</strong> Do not use a Circuit Breaker without an offline local storage fallback. Failing fast with an empty screen offers no UX benefit over a regular error.</li>
+    <li><strong>4. Global Monolithic Breakers:</strong> Never use a single global circuit breaker instance for all app APIs. Each domain microservice (e.g., Orders, Identity, Catalog) must have its own independent circuit instance.</li>
   </ul>
 </div>
 
@@ -400,13 +333,13 @@ final class OrderViewModel: ObservableObject {
 ## Architecture Review Board (ARB) Checklist
 
 <div class="portal-checklist-box">
-  <div class="portal-checklist-title">PR ARCHITECTURE CONFORMANCE CHECKLIST</div>
-  <p>Verify that your implementation complies with enterprise standards before opening a pull request:</p>
+  <div class="portal-checklist-title">PR RESILIENCE CONFORMANCE CHECKLIST</div>
+  <p>Verify that your network repository code satisfies enterprise resilience standards before merging:</p>
   <ul>
-    <li><strong>Clean Layer Separation:</strong> Presentation, Domain, and Data are organized into separate packages or Gradle/SPM/npm modules.</li>
-    <li><strong>Dependency Direction:</strong> All dependencies point inward toward the Domain layer; Domain has zero dependencies on Data or Presentation.</li>
-    <li><strong>Domain Unit Test Coverage:</strong> All Use Cases and business validation rules maintain at least 90% unit test coverage using mock repositories.</li>
-    <li><strong>Circuit Breaker Protection:</strong> All external HTTP requests in repository implementations are wrapped in the enterprise Circuit Breaker.</li>
-    <li><strong>Immutability:</strong> State models in ViewModels are exposed as read-only streams (<code>StateFlow</code> on Android, <code>@Published private(set)</code> on iOS, immutable React state).</li>
+    <li><strong>Independent Instances:</strong> Each distinct backend microservice uses a dedicated Circuit Breaker instance.</li>
+    <li><strong>Offline Storage Tested:</strong> Verified that turning on Airplane Mode gracefully serves cached data without crashing.</li>
+    <li><strong>4xx Filter Verified:</strong> Unit tests confirm that HTTP 401 Unauthorized errors do not trip the circuit to Open.</li>
+    <li><strong>Timeout Clamped:</strong> Individual request timeouts are clamped to a maximum of 5,000ms.</li>
+    <li><strong>Telemetry Verified:</strong> Verified that breaker state changes emit a Datadog custom event.</li>
   </ul>
 </div>
