@@ -1,118 +1,133 @@
 ---
-title: Circuit Breaker & Network Resilience Pattern
-description: Enterprise specification and implementation guide for wrapping mobile API calls with Circuit Breaker fault tolerance, exponential backoff, and offline cache fallbacks.
+title: Feature Flags & Remote Configuration (Unleash)
+description: Enterprise mobile specification for runtime feature toggling, staged percentage rollouts, and instant kill switches using Unleash Proxy Client.
 sidebar:
-  order: 2
-  label: Circuit Breaker & Resilience
+  order: 3
+  label: Feature Flags
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">[RESILIENCE PATTERN]</span>
-    <span class="portal-hub-tag">MODULE 02.2: NETWORK FAULT TOLERANCE</span>
+    <span class="portal-badge-hub">[RELEASE GOVERNANCE]</span>
+    <span class="portal-hub-tag">MODULE 02.3: UNLEASH RUNTIME CONFIGURATION</span>
   </div>
-  <div class="portal-hero-title">Circuit Breaker &amp; Network Resilience Pattern</div>
+  <div class="portal-hero-title">Feature Flags &amp; Remote Configuration: Unleash Proxy Architecture</div>
   <div class="portal-hero-desc">
-    The enterprise fault-tolerance standard for mobile client applications. Prevents cascading socket timeouts, preserves device battery, and eliminates screen freezing during backend service degradation by wrapping all remote HTTP endpoints in an automated three-state Circuit Breaker with encrypted local storage fallback.
+    The enterprise runtime configuration standard for mobile applications powered by <code>unleash-proxy-client</code>. Decouples binary app releases from feature launches, enables progressive percentage rollouts with user stickiness, and delivers zero-binary-update emergency kill switches that propagate in under 60 seconds without waiting for 48–72 hour App Store review queues.
   </div>
 
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Trip Threshold</div>
-      <div class="portal-cap-desc">Automatically trips after 3 consecutive 5xx errors or socket timeouts</div>
+      <div class="portal-cap-title">Edge Proxy Evaluation</div>
+      <div class="portal-cap-desc">Clients connect strictly to Unleash Proxy edges for sub-5ms cached evaluation</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Fast-Fail Cache</div>
-      <div class="portal-cap-desc">Instant return of stale encrypted local data without hitting dead radio sockets</div>
+      <div class="portal-cap-title">Context-Aware Targeting</div>
+      <div class="portal-cap-desc">Dynamic segmentation by <code>userId</code>, <code>appVersion</code>, platform, and geography</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Half-Open Probe</div>
-      <div class="portal-cap-desc">Automated canary probe after 30-second reset window to test backend recovery</div>
+      <div class="portal-cap-title">Emergency Kill Switch</div>
+      <div class="portal-cap-desc">Instant production shutdown bypassing App Store / Play Store review cycles</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Telemetry Traces</div>
-      <div class="portal-cap-desc">Real-time state transition logging to Datadog RUM alerting dashboards</div>
+      <div class="portal-cap-title">Offline Resilience</div>
+      <div class="portal-cap-desc">Encrypted local persistence ensures flags evaluate when the radio is disconnected</div>
     </div>
   </div>
 </div>
 
-## The Mobile Problem: Cascading Socket Timeouts
+## The Mobile Problem: Store Review & Rollout Risk
 
-Mobile devices do not operate in stable data centers. Cellular connections frequently experience high latency, packet loss, and transient disconnections (subways, rural elevators, airplane mode).
+Traditional mobile deployment couples compiled binary distribution with feature enablement. This introduces severe operational vulnerabilities:
+* **Store Review Latency:** An emergency production bug fix takes 24 to 72 hours for Apple App Store and Google Play review approval.
+* **Slow User Adoption:** Even after an emergency binary is approved, users take days or weeks to download updates, leaving millions on compromised versions.
+* **Binary Blast Radius:** Launching a feature to 100% of users on day one risks cascading backend outages or catastrophic client crashes.
 
-When a backend service slows down or becomes unavailable, standard HTTP clients without a Circuit Breaker cause severe client-side degradation:
-* **Cellular Baseband Battery Drain:** Hanging TCP sockets force the device modem into continuous high-power radio states (RRC Connected mode), draining battery life within minutes.
-* **Thread Exhaustion:** Thread pools become saturated with blocked requests, freezing background tasks and UI rendering.
-* **Thundering Herd Outages:** When thousands of mobile apps continuously retry failed requests simultaneously, they overwhelm recovering backend microservices.
+The enterprise mandates **Unleash Proxy Client** to decouple deployment from release. Code is shipped dark in standard sprint binaries and enabled dynamically at runtime.
 
 ---
 
-## Circuit Breaker State Machine
+## Unleash Mobile Edge Proxy Topology
 
-The enterprise Circuit Breaker operates as a state machine with three strictly defined states: **Closed**, **Open**, and **Half-Open**:
+Mobile clients must **never** connect directly to the core Unleash Server instance. Instead, all mobile applications communicate exclusively with the **Unleash Edge / Unleash Proxy**:
 
 ```mermaid
 flowchart TD
-    subgraph States["Circuit Breaker State Machine"]
-        Closed["1. Closed (Normal Operation)\n• All HTTP requests pass to network\n• Successes reset failure count\n• 3 consecutive 5xx/timeouts trip breaker"]
-        Open["2. Open (Fault Tripped)\n• Requests fail-fast immediately\n• Zero network calls executed\n• Serves local encrypted cache\n• Starts 30s reset timer"]
-        HalfOpen["3. Half-Open (Canary Probe)\n• Reset timer expires\n• Allows single trial request\n• If success: resets to Closed\n• If failure: returns to Open"]
-
-        Closed -->|"Failure threshold exceeded (3 errors)"| Open
-        Open -->|"Reset timeout expires (30s)"| HalfOpen
-        HalfOpen -->|"Canary probe succeeds"| Closed
-        HalfOpen -->|"Canary probe fails"| Open
+    subgraph Clients["Mobile Client Tier (unleash-proxy-client)"]
+        RN["React Native App\n(unleash-proxy-client)"]
+        Android["Android Native App\n(Unleash Android Proxy SDK)"]
+        iOS["iOS Native App\n(UnleashProxyClientSwift)"]
     end
+
+    subgraph Edge["Enterprise Edge Layer"]
+        Proxy["Unleash Proxy / Unleash Edge\n• Evaluates client context\n• Enforces read-only client keys\n• Shields core from mobile traffic\n• Sub-5ms response cache"]
+    end
+
+    subgraph Core["Central Platform Core"]
+        AdminServer["Unleash Enterprise Management Server\n• Strategy configuration & targeting\n• Audit logs & RBAC permissions\n• Datadog webhook notifications"]
+        Postgres[(Unleash PostgreSQL\nConfiguration DB)]
+    end
+
+    RN -->|"Polls /proxy (15s)"| Proxy
+    Android -->|"Polls /proxy (15s)"| Proxy
+    iOS -->|"Polls /proxy (15s)"| Proxy
+    Proxy -->|"Syncs state / API"| AdminServer
+    AdminServer --> Postgres
 
     classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
     classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
     classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class States highlight;
-    class Closed,Open,HalfOpen nodeBox;
+    class Clients,Edge,Core highlight;
+    class RN,Android,iOS,Proxy,AdminServer,Postgres nodeBox;
 ```
+
+### Why Unleash Proxy is Mandatory for Mobile:
+1. **Security Isolation:** Mobile client binaries are publicly distributed and can be reverse engineered. The Unleash Proxy uses low-privilege **Client Keys** that can only evaluate flags for a specific environment, preventing exposure of Admin API tokens.
+2. **DDoS Protection:** Millions of mobile devices polling for feature flags would overwhelm the primary management database. Unleash Proxy caches evaluated payloads in memory at the edge.
+3. **Payload Compression:** The proxy evaluates context on the server side and returns only the boolean states and variants relevant to that specific device, keeping network payloads under 2KB.
 
 ---
 
 ## Standard Configuration Parameters
 
-Enterprise mobile applications must initialize circuit breakers using these standardized operational parameters:
+Enterprise mobile applications must initialize `unleash-proxy-client` using these standardized settings:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Configuration Parameter</th>
-        <th>Recommended Value</th>
-        <th>Behavioral Impact</th>
+        <th>Parameter</th>
+        <th>Standard Value</th>
+        <th>Operational Rationale</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><code>failureThreshold</code></td>
-        <td><code>3 consecutive failures</code></td>
-        <td>Number of 5xx server errors or socket timeouts before transitioning from <strong>Closed</strong> to <strong>Open</strong>.</td>
+        <td><code>url</code></td>
+        <td><code>https://flags.enterprise.internal/proxy</code></td>
+        <td>Enterprise edge proxy endpoint routing through corporate CDN.</td>
       </tr>
       <tr>
-        <td><code>requestTimeoutMs</code></td>
-        <td><code>5,000 ms (5 seconds)</code></td>
-        <td>Maximum duration for an individual network request before considering it a timeout failure.</td>
+        <td><code>clientKey</code></td>
+        <td>Resolved via BuildConfig / Environment</td>
+        <td>Environment-scoped client token (e.g., <code>mobile:production.xxx</code>). Never hardcode admin secrets.</td>
       </tr>
       <tr>
-        <td><code>resetTimeoutMs</code></td>
-        <td><code>30,000 ms (30 seconds)</code></td>
-        <td>Duration the breaker remains in <strong>Open</strong> before allowing a canary probe in <strong>Half-Open</strong>.</td>
+        <td><code>refreshInterval</code></td>
+        <td><code>15 seconds</code> (Foreground)</td>
+        <td>Balances flag freshness with radio battery consumption. Polling is automatically stopped when app backgrounds.</td>
       </tr>
       <tr>
-        <td><code>maxRetriesWithBackoff</code></td>
-        <td><code>2 retries</code></td>
-        <td>Exponential backoff with jitter applied only while in <strong>Closed</strong> state before counting as a failure.</td>
+        <td><code>appName</code></td>
+        <td>Standardized app identifier</td>
+        <td>Used by Unleash strategies to scope toggles per application binary.</td>
       </tr>
       <tr>
-        <td><code>ignoredErrorCodes</code></td>
-        <td><code>400, 401, 403, 404, 422</code></td>
-        <td>Client-side 4xx errors <strong>never</strong> trip the breaker because they represent validation or auth issues, not backend outages.</td>
+        <td><code>storageProvider</code></td>
+        <td>MMKV / Encrypted Storage</td>
+        <td>Synchronous encrypted cache ensuring zero-latency startup evaluation when offline.</td>
       </tr>
     </tbody>
   </table>
@@ -120,169 +135,265 @@ Enterprise mobile applications must initialize circuit breakers using these stan
 
 ---
 
-## Implementation Across Platforms
+## Multi-Platform Implementation with Unleash
 
-The enterprise resilience library is available across all three tier-1 mobile stacks. Observe the complete implementation patterns below:
+Every application repository must wrap the Unleash Proxy Client in a clean, type-safe architecture layer with synchronous local caching:
 
 <Tabs syncKey="mobile-platform">
 <TabItem label="React Native (TypeScript)">
 
-Using the official enterprise resilience client with MMKV local cache fallback:
+Using `unleash-proxy-client` with Tencent MMKV for instant synchronous startup reads:
 
+#### 1. Unleash Service Initialization (`src/core/flags/UnleashService.ts`)
 ```typescript
-import { CircuitBreaker } from '@enterprise/resilience-sdk';
+import { UnleashClient } from 'unleash-proxy-client';
 import { MMKV } from 'react-native-mmkv';
+import { AppState, AppStateStatus } from 'react-native';
 
-const storage = new MMKV({ id: 'user-cache-secure' });
+const storage = new MMKV({ id: 'enterprise-feature-flags' });
 
-export interface OrderDashboard {
-  userId: string;
-  activeOrders: number;
-  totalSpent: number;
-}
+export class UnleashService {
+  private static instance: UnleashClient | null = null;
 
-// 1. Initialize Circuit Breaker for the Orders Domain
-export const ordersBreaker = new CircuitBreaker({
-  name: 'OrdersServiceBreaker',
-  failureThreshold: 3,
-  resetTimeoutMs: 30000,
-  requestTimeoutMs: 5000,
-  onStateChange: (from, to) => {
-    console.warn(`[Resilience] Orders Breaker transitioned: ${from} -> ${to}`);
-  },
-});
-
-// 2. Wrap network request with automatic offline cache fallback
-export async function getOrderDashboard(userId: string): Promise<OrderDashboard> {
-  const cacheKey = `dashboard_${userId}`;
-
-  return await ordersBreaker.execute(
-    // Primary Action: Remote Network Query
-    async () => {
-      const response = await fetch(`https://api.enterprise.internal/v1/orders/dashboard/${userId}`, {
-        headers: { 'Accept': 'application/json' },
+  static initialize(userId: string, appVersion: string): UnleashClient {
+    if (!this.instance) {
+      this.instance = new UnleashClient({
+        url: 'https://flags.enterprise.internal/proxy',
+        clientKey: process.env.EXPO_PUBLIC_UNLEASH_CLIENT_KEY ?? '',
+        appName: 'enterprise-mobile-app',
+        refreshInterval: 15,
+        storageProvider: {
+          save: (name: string, data: any) => storage.set(name, JSON.stringify(data)),
+          get: (name: string) => {
+            const data = storage.getString(name);
+            return data ? JSON.parse(data) : undefined;
+          },
+        },
+        context: {
+          userId,
+          appName: 'enterprise-mobile-app',
+          environment: __DEV__ ? 'development' : 'production',
+          properties: {
+            appVersion,
+            platform: 'react-native',
+          },
+        },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
-      }
+      // Pause polling in background to prevent battery drain
+      AppState.addEventListener('change', (state: AppStateStatus) => {
+        if (state === 'active') {
+          this.instance?.start();
+        } else {
+          this.instance?.stop();
+        }
+      });
 
-      const freshData: OrderDashboard = await response.json();
-      // Update encrypted local cache on successful network call
-      storage.set(cacheKey, JSON.stringify(freshData));
-      return freshData;
-    },
-    // Fallback Action: Executed immediately when breaker is Open or network drops
-    async (error) => {
-      const cached = storage.getString(cacheKey);
-      if (cached) {
-        console.info(`[Resilience] Serving cached dashboard data due to: ${error.message}`);
-        return JSON.parse(cached) as OrderDashboard;
-      }
-      throw new Error('Offline and no cached dashboard data available.');
+      this.instance.start();
     }
-  );
+    return this.instance;
+  }
+
+  static isEnabled(flagName: string, defaultValue = false): boolean {
+    if (!this.instance) return defaultValue;
+    return this.instance.isEnabled(flagName);
+  }
+}
+```
+
+#### 2. Declarative Hook & Component Gate (`src/presentation/flags/useFeatureFlag.ts`)
+```typescript
+import { useState, useEffect } from 'react';
+import { UnleashService } from '../../core/flags/UnleashService';
+
+export function useFeatureFlag(flagName: string, defaultValue = false): boolean {
+  const [enabled, setEnabled] = useState(() => UnleashService.isEnabled(flagName, defaultValue));
+
+  useEffect(() => {
+    // Re-evaluate flag state when local storage updates or proxy polls
+    const interval = setInterval(() => {
+      const current = UnleashService.isEnabled(flagName, defaultValue);
+      setEnabled((prev) => (prev !== current ? current : prev));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [flagName, defaultValue]);
+
+  return enabled;
+}
+
+// UI Gating Component
+export function FeatureGate({
+  flag,
+  fallback = null,
+  children,
+}: {
+  flag: string;
+  fallback?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const isEnabled = useFeatureFlag(flag);
+  return isEnabled ? <>{children}</> : <>{fallback}</>;
 }
 ```
 </TabItem>
+
 <TabItem label="Android (Kotlin)">
 
-In native Android, the Circuit Breaker is injected via Hilt into repository implementations and switches dispatchers cleanly:
+Using the official Unleash Android Proxy SDK (`io.getunleash:unleash-android-proxy-sdk`) with Jetpack Compose:
 
+#### 1. Unleash Manager (`com.enterprise.mobile.core.flags.UnleashManager.kt`)
 ```kotlin
-package com.enterprise.mobile.data.resilience
+package com.enterprise.mobile.core.flags
 
-import com.enterprise.resilience.CircuitBreaker
-import com.enterprise.resilience.CircuitBreakerConfig
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import android.content.Context
+import io.getunleash.UnleashClient
+import io.getunleash.UnleashConfig
+import io.getunleash.UnleashContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class OrderRepositoryImpl(
-    private val api: OrderApiService,
-    private val dao: OrderDao
-) : OrderRepository {
+@Singleton
+class UnleashManager @Inject constructor(
+    private val context: Context
+) {
+    private var unleashClient: UnleashClient? = null
+    private val _flagsUpdated = MutableStateFlow(System.currentTimeMillis())
+    val flagsUpdated: StateFlow<Long> = _flagsUpdated.asStateFlow()
 
-    // 1. Initialize the Circuit Breaker with enterprise defaults
-    private val breaker = CircuitBreaker(
-        CircuitBreakerConfig(
-            serviceName = "OrderApiService",
-            failureThreshold = 3,
-            resetTimeoutMs = 30000L,
-            requestTimeoutMs = 5000L
-        )
-    )
+    fun initialize(userId: String, appVersion: String) {
+        val config = UnleashConfig.newBuilder()
+            .appName("enterprise-android-app")
+            .unleashAPI("https://flags.enterprise.internal/proxy")
+            .customHttpHeader("Authorization", "mobile:production.android_key")
+            .fetchTogglesInterval(15)
+            .build()
 
-    // 2. Execute network query with local Room SQLite fallback
-    override suspend fun getOrders(): Result<List<Order>> = withContext(Dispatchers.IO) {
-        breaker.execute(
-            action = {
-                val remoteOrders = api.fetchOrders()
-                dao.insertAll(remoteOrders.map { it.toEntity() })
-                Result.success(remoteOrders.map { it.toDomain() })
-            },
-            fallback = { exception ->
-                val cachedOrders = dao.getAllOrders()
-                if (cachedOrders.isNotEmpty()) {
-                    Result.success(cachedOrders.map { it.toDomain() })
-                } else {
-                    Result.failure(exception)
-                }
-            }
-        )
+        val unleashContext = UnleashContext.newBuilder()
+            .userId(userId)
+            .appName("enterprise-android-app")
+            .addProperty("appVersion", appVersion)
+            .addProperty("platform", "android")
+            .build()
+
+        unleashClient = UnleashClient(config, context, unleashContext)
+        unleashClient?.addStatusListener {
+            _flagsUpdated.value = System.currentTimeMillis()
+        }
+    }
+
+    fun isEnabled(flagKey: String, defaultValue: Boolean = false): Boolean {
+        return unleashClient?.isEnabled(flagKey) ?: defaultValue
+    }
+}
+```
+
+#### 2. Jetpack Compose Feature Gate (`FeatureGate.kt`)
+```kotlin
+package com.enterprise.mobile.presentation.components
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.enterprise.mobile.core.flags.UnleashManager
+
+@Composable
+fun FeatureGate(
+    flagKey: String,
+    unleashManager: UnleashManager,
+    fallback: @Composable () -> Unit = {},
+    content: @Composable () -> Unit
+) {
+    val lastUpdate by unleashManager.flagsUpdated.collectAsState()
+    val isEnabled = unleashManager.isEnabled(flagKey, defaultValue = false)
+
+    if (isEnabled) {
+        content()
+    } else {
+        fallback()
     }
 }
 ```
 </TabItem>
+
 <TabItem label="iOS (Swift)">
 
-In native iOS, the Circuit Breaker is implemented as an `actor` to guarantee thread-safe state mutations across concurrent async tasks:
+Using `UnleashProxyClientSwift` via Swift Package Manager with SwiftUI:
 
+#### 1. Unleash Service Manager (`UnleashManager.swift`)
 ```swift
 import Foundation
+import UnleashProxyClientSwift
 
-public actor CircuitBreaker {
-    public enum State {
-        case closed, open, halfOpen
-    }
+@MainActor
+public final class UnleashManager: ObservableObject {
+    public static let shared = UnleashManager()
+    
+    @Published public private(set) var lastUpdated: Date = Date()
+    private var client: UnleashClient?
 
-    private var state: State = .closed
-    private var failureCount = 0
-    private let failureThreshold: Int
-    private let resetTimeout: TimeInterval
-    private var lastFailureTime: Date?
+    private init() {}
 
-    public init(failureThreshold: Int = 3, resetTimeout: TimeInterval = 30) {
-        self.failureThreshold = failureThreshold
-        self.resetTimeout = resetTimeout
-    }
+    public func initialize(userId: String, appVersion: String) {
+        let unleashClient = UnleashClient(
+            unleashUrl: "https://flags.enterprise.internal/proxy",
+            clientKey: "mobile:production.ios_key",
+            refreshInterval: 15,
+            appName: "enterprise-ios-app",
+            context: [
+                "userId": userId,
+                "appVersion": appVersion,
+                "platform": "ios"
+            ]
+        )
 
-    public func execute<T>(
-        action: () async throws -> T,
-        fallback: (Error) async throws -> T
-    ) async throws -> T {
-        // Evaluate reset window before dispatching
-        if state == .open, let lastFail = lastFailureTime, Date().timeIntervalSince(lastFail) > resetTimeout {
-            state = .halfOpen
+        unleashClient.subscribe(name: "ready") { [weak self] in
+            Task { @MainActor in self?.lastUpdated = Date() }
         }
 
-        if state == .open {
-            return try await fallback(NSError(domain: "CircuitBreakerOpen", code: 503))
+        unleashClient.subscribe(name: "update") { [weak self] in
+            Task { @MainActor in self?.lastUpdated = Date() }
         }
 
-        do {
-            let result = try await action()
-            if state == .halfOpen {
-                state = .closed
-                failureCount = 0
-            }
-            return result
-        } catch {
-            failureCount += 1
-            lastFailureTime = Date()
-            if failureCount >= failureThreshold {
-                state = .open
-            }
-            return try await fallback(error)
+        unleashClient.start()
+        self.client = unleashClient
+    }
+
+    public func isEnabled(_ flagName: String, defaultValue: Boolean = false) -> Bool {
+        return client?.isEnabled(name: flagName) ?? defaultValue
+    }
+}
+```
+
+#### 2. SwiftUI View Extension (`View+FeatureGate.swift`)
+```swift
+import SwiftUI
+
+public extension View {
+    @ViewBuilder
+    func featureGate(
+        _ flagName: String,
+        fallback: (() -> some View)? = nil
+    ) -> some View {
+        if UnleashManager.shared.isEnabled(flagName) {
+            self
+        } else if let fallbackView = fallback {
+            fallbackView()
+        }
+    }
+}
+
+// Example Screen Usage:
+struct CheckoutView: View {
+    var body: some View {
+        VStack {
+            NewCheckoutForm()
+                .featureGate("mobile.checkout.v2_redesign") {
+                    LegacyCheckoutForm()
+                }
         }
     }
 }
@@ -292,39 +403,104 @@ public actor CircuitBreaker {
 
 ---
 
-## Telemetry & Datadog RUM Integration
+## Staged Rollout Strategy in Unleash
 
-All circuit state transitions emit structured events to Datadog RUM to provide real-time alerting for operations teams:
+Enterprise features roll out through four strictly monitored rings using **Gradual Rollout Strategy** with **User ID Stickiness** to guarantee consistent user experience:
 
 ```mermaid
-flowchart TD
-    subgraph Flow["Telemetry Emission Flow"]
-        App["Mobile Application\n(CircuitBreaker State Change)"]
-        RUM["Datadog RUM SDK\n(Telemetry Event Formatted)"]
-        Dashboard["Datadog Mobile Operations Dashboard\n(Alerts triggered if > 1% users trip breaker)"]
-
-        App -->|"circuit_breaker.transition\nfrom: closed, to: open"| RUM
-        RUM -->|"HTTP Telemetry"| Dashboard
-    end
+flowchart LR
+    Ring0["Ring 0: Dogfood\n(100% Internal Staff)\n• isInternalUser == true\n• QA & E2E Validation"] --> Ring1
+    Ring1["Ring 1: Canary\n(5% User Rollout)\n• Stickiness: userId\n• Datadog Crash Watch"] --> Ring2
+    Ring2["Ring 2: Ramp\n(25% User Rollout)\n• Performance Audits\n• API Latency Check"] --> Ring3
+    Ring3["Ring 3: Broad\n(50% Geographic)\n• Regional Verification\n• Conversion Metrics"] --> Ring4
+    Ring4["Ring 4: Full GA\n(100% All Users)\n• Flag Retirement Plan\n• 30-Day TTL Activated"]
 
     classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class Flow highlight;
-    class App,RUM,Dashboard nodeBox;
+    classDef ring fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
+    class Ring0,Ring1,Ring2,Ring3,Ring4 ring;
 ```
+
+### Unleash Strategy Configuration
+* **Stickiness (`stickiness: userId`):** Guarantees that once a user is allocated to the new feature variant, they remain on that variant across app restarts and network reconnections. Never use `random` stickiness on mobile apps.
+* **Gradual Percentage:** Staged at `5%` &rarr; `25%` &rarr; `50%` &rarr; `100%`. Each stage requires a 24-hour observation window in Datadog before expanding.
 
 ---
 
-## Architectural Anti-Patterns & Prohibitions
+## Emergency Kill-Switch Protocol
+
+If an unexpected exception spike or backend latency surge is detected, the feature can be globally deactivated in under 60 seconds without an app store submission:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Ops as Mobile Ops Engineer
+    participant Unleash as Unleash Console
+    participant Proxy as Unleash Proxy Edge
+    participant App as Mobile App (unleash-proxy-client)
+
+    Ops->>Unleash: Toggle Flag OFF in Production
+    Unleash->>Proxy: Webhook syncs state (Instant)
+    App->>Proxy: Polling query /proxy (within 15s)
+    Proxy-->>App: Returns toggle payload (flag: false)
+    App->>App: Re-evaluates UI & falls back to legacy path
+```
+
+1. **Step 1: Detection:** Datadog Mobile RUM triggers a P1 alert (Crash-free users drop below 99.8% or API 5xx rate exceeds 1%).
+2. **Step 2: Deactivation:** Engineer toggles the flag to **OFF** in the Unleash Admin Console.
+3. **Step 3: Edge Propagation:** Unleash Edge/Proxy updates immediately via push or within 15 seconds.
+4. **Step 4: Client Fast-Fail:** Active client applications fetch the updated state on the next 15s poll or upon foregrounding, immediately swapping back to the stable legacy code path.
+
+---
+
+## Flag Hygiene & Retirement Policy
+
+Feature flags must not remain in the codebase indefinitely. Stale flags increase code complexity, inflate test matrices, and create tech debt:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Flag Category</th>
+        <th>Maximum Lifespan (TTL)</th>
+        <th>Owner Responsibility</th>
+        <th>Retirement Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Release Flags</strong></td>
+        <td><code>30 days</code> post-100% GA</td>
+        <td>Feature Squad Lead</td>
+        <td>Delete flag check, remove legacy fallback code, archive flag in Unleash.</td>
+      </tr>
+      <tr>
+        <td><strong>Kill Switches</strong></td>
+        <td>Permanent (Reviewed Semi-Annually)</td>
+        <td>Platform Engineering</td>
+        <td>Audit annually; test fallback functionality in staging chaos drills.</td>
+      </tr>
+      <tr>
+        <td><strong>Experiment Flags</strong></td>
+        <td><code>14 days</code> post-test conclusion</td>
+        <td>Data / Product Squad</td>
+        <td>Merge winning experiment variant; purge losing branch.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## Architectural Non-Negotiables & Prohibitions
 
 <div class="portal-alert-box">
-  <div class="portal-alert-title">RESILIENCE ANTI-PATTERNS</div>
+  <div class="portal-alert-title">UNLEASH ARCHITECTURAL ENFORCEMENTS</div>
   <ul>
-    <li><strong>1. Tripping on 4xx Errors:</strong> Never increment the failure count for HTTP 400, 401, 403, or 404 responses. These represent client validation or credential issues, not server degradation.</li>
-    <li><strong>2. Infinite While-Loop Retries:</strong> Never implement unconstrained `while (!success)` retry loops on mobile clients. All retries must be capped at 2 iterations with exponential backoff plus jitter.</li>
-    <li><strong>3. Uncached Fallbacks:</strong> Do not use a Circuit Breaker without an offline local storage fallback. Failing fast with an empty screen offers no UX benefit over a regular error.</li>
-    <li><strong>4. Global Monolithic Breakers:</strong> Never use a single global circuit breaker instance for all app APIs. Each domain microservice (e.g., Orders, Identity, Catalog) must have its own independent circuit instance.</li>
+    <li><strong>1. No Direct Core Connections:</strong> Mobile binaries must NEVER connect directly to the core Unleash Server. All traffic must route through the Unleash Proxy. PRs containing core Unleash admin URLs are blocked by CI.</li>
+    <li><strong>2. No Blocking App Launch:</strong> Never block app cold-start waiting for an Unleash HTTP response. Always initialize with synchronous cached values from local storage (MMKV / EncryptedSharedPreferences / Keychain).</li>
+    <li><strong>3. Mandatory Fallback Defaults:</strong> Every <code>isEnabled()</code> call must specify an explicit, safe fallback boolean to ensure graceful degradation when offline.</li>
+    <li><strong>4. Stickiness Must Be Set to `userId`:</strong> Never use <code>random</code> stickiness in mobile rollouts, as user state would flip between app restarts.</li>
+    <li><strong>5. Standardized Flag Naming:</strong> Flags must follow the strict schema: <code>mobile.[platform].[domain].[feature_name]</code> (e.g., <code>mobile.all.checkout.one_click_pay</code>).</li>
   </ul>
 </div>
 
@@ -333,13 +509,13 @@ flowchart TD
 ## Architecture Review Board (ARB) Checklist
 
 <div class="portal-checklist-box">
-  <div class="portal-checklist-title">PR RESILIENCE CONFORMANCE CHECKLIST</div>
-  <p>Verify that your network repository code satisfies enterprise resilience standards before merging:</p>
+  <div class="portal-checklist-title">PR FEATURE FLAG CONFORMANCE CHECKLIST</div>
+  <p>Verify these criteria before opening a PR introducing a new Unleash feature flag:</p>
   <ul>
-    <li><strong>Independent Instances:</strong> Each distinct backend microservice uses a dedicated Circuit Breaker instance.</li>
-    <li><strong>Offline Storage Tested:</strong> Verified that turning on Airplane Mode gracefully serves cached data without crashing.</li>
-    <li><strong>4xx Filter Verified:</strong> Unit tests confirm that HTTP 401 Unauthorized errors do not trip the circuit to Open.</li>
-    <li><strong>Timeout Clamped:</strong> Individual request timeouts are clamped to a maximum of 5,000ms.</li>
-    <li><strong>Telemetry Verified:</strong> Verified that breaker state changes emit a Datadog custom event.</li>
+    <li><strong>Unleash Proxy Verified:</strong> Target URL points to the authorized enterprise edge proxy.</li>
+    <li><strong>Local Cache Configured:</strong> Synchronous MMKV/local storage adapter registered to prevent cold-start UI flickering.</li>
+    <li><strong>Safe Defaults Declared:</strong> Fallback parameters guarantee functional offline execution.</li>
+    <li><strong>Lifecycle Ticket Attached:</strong> A Jira technical debt task is scheduled to remove the flag within 30 days of 100% rollout.</li>
+    <li><strong>Stickiness Validated:</strong> Strategy configured with <code>userId</code> stickiness in Unleash Console.</li>
   </ul>
 </div>
