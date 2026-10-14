@@ -185,10 +185,14 @@ sequenceDiagram
 Enterprise standards require each class to reside in its own dedicated, single-responsibility file. Review the complete implementation below, structured across its respective clean architecture packages:
 
 <Tabs>
-  <TabItem label="1. Domain Model">
+  <TabItem label="Domain Layer (Pure Kotlin)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/domain/model/UserDomainModel.kt</span>
+  <span class="portal-file-tag">DOMAIN MODEL</span>
+</div>
 
 ```kotlin
-// File: feature/user/domain/model/UserDomainModel.kt
 package com.enterprise.mobile.feature.user.domain.model
 
 /**
@@ -204,11 +208,12 @@ data class UserDomainModel(
 )
 ```
 
-  </TabItem>
-  <TabItem label="2. Domain Repository Contract">
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/domain/repository/UserRepository.kt</span>
+  <span class="portal-file-tag">REPOSITORY INTERFACE</span>
+</div>
 
 ```kotlin
-// File: feature/user/domain/repository/UserRepository.kt
 package com.enterprise.mobile.feature.user.domain.repository
 
 import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
@@ -224,11 +229,12 @@ interface UserRepository {
 }
 ```
 
-  </TabItem>
-  <TabItem label="3. Domain UseCase">
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/domain/usecase/GetUserProfileUseCase.kt</span>
+  <span class="portal-file-tag">BUSINESS USE CASE</span>
+</div>
 
 ```kotlin
-// File: feature/user/domain/usecase/GetUserProfileUseCase.kt
 package com.enterprise.mobile.feature.user.domain.usecase
 
 import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
@@ -237,38 +243,53 @@ import javax.inject.Inject
 
 /**
  * Single-responsibility use case executing business validation.
+ * Isolated from Android framework and presentation dependencies.
  */
 class GetUserProfileUseCase @Inject constructor(
     private val userRepository: UserRepository
 ) {
     suspend operator fun invoke(userId: String): Result<UserDomainModel> {
         if (userId.isBlank()) {
-            return Result.failure(IllegalArgumentException("User ID must not be empty."))
+            return Result.failure(IllegalArgumentException("User ID must not be empty or blank."))
         }
-        return userRepository.getUserProfile(userId)
+        return userRepository.getUserProfile(userId.trim())
     }
 }
 ```
 
   </TabItem>
-  <TabItem label="4. Data: DTO & API">
+  <TabItem label="Data Layer (Room + Retrofit)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/data/remote/dto/UserNetworkDto.kt</span>
+  <span class="portal-file-tag">DTO MODEL</span>
+</div>
 
 ```kotlin
-// File: feature/user/data/remote/dto/UserNetworkDto.kt
 package com.enterprise.mobile.feature.user.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * Network transfer object matching API schema.
+ * Resilient default values prevent deserialization failures if backend omits keys.
+ */
 @Serializable
 data class UserNetworkDto(
     @SerialName("id") val id: String,
-    @SerialName("full_name") val fullName: String,
-    @SerialName("email") val email: String,
-    @SerialName("is_vip") val isVip: Boolean
+    @SerialName("full_name") val fullName: String = "",
+    @SerialName("email") val email: String = "",
+    @SerialName("is_vip") val isVip: Boolean = false
 )
+```
 
-// File: feature/user/data/remote/UserApiService.kt
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/data/remote/UserApiService.kt</span>
+  <span class="portal-file-tag">RETROFIT API</span>
+</div>
+
+```kotlin
 package com.enterprise.mobile.feature.user.data.remote
 
 import com.enterprise.mobile.feature.user.data.remote.dto.UserNetworkDto
@@ -278,30 +299,54 @@ import retrofit2.http.Path
 
 interface UserApiService {
     @GET("v1/users/{userId}")
-    suspend fun fetchUserProfile(@Path("userId") userId: String): Response<UserNetworkDto>
+    suspend fun fetchUserProfile(
+        @Path("userId") userId: String
+    ): Response<UserNetworkDto>
 }
 ```
 
-  </TabItem>
-  <TabItem label="5. Data: Room Entity & DAO">
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/data/local/entity/UserEntity.kt</span>
+  <span class="portal-file-tag">ROOM ENTITY</span>
+</div>
 
 ```kotlin
-// File: feature/user/data/local/entity/UserEntity.kt
 package com.enterprise.mobile.feature.user.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+/**
+ * SQLite table definition. Explicit column names ensure safety against
+ * ProGuard/R8 code minification.
+ */
 @Entity(tableName = "users")
 data class UserEntity(
-    @PrimaryKey val id: String,
+    @PrimaryKey
+    @ColumnInfo(name = "id")
+    val id: String,
+
+    @ColumnInfo(name = "full_name")
     val fullName: String,
+
+    @ColumnInfo(name = "email")
     val email: String,
+
+    @ColumnInfo(name = "is_vip")
     val isVip: Boolean,
+
+    @ColumnInfo(name = "cached_at")
     val cachedAt: Long
 )
+```
 
-// File: feature/user/data/local/dao/UserDao.kt
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/data/local/dao/UserDao.kt</span>
+  <span class="portal-file-tag">ROOM DAO</span>
+</div>
+
+```kotlin
 package com.enterprise.mobile.feature.user.data.local.dao
 
 import androidx.room.Dao
@@ -321,14 +366,18 @@ interface UserDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)
+
+    @Query("DELETE FROM users WHERE id = :userId")
+    suspend fun deleteUserById(userId: String)
 }
 ```
 
-  </TabItem>
-  <TabItem label="6. Data: Repository Impl & Mapper">
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/data/mapper/UserMappers.kt</span>
+  <span class="portal-file-tag">OBJECT MAPPERS</span>
+</div>
 
 ```kotlin
-// File: feature/user/data/mapper/UserMappers.kt
 package com.enterprise.mobile.feature.user.data.mapper
 
 import com.enterprise.mobile.feature.user.data.local.entity.UserEntity
@@ -351,20 +400,37 @@ fun UserEntity.toDomain(): UserDomainModel = UserDomainModel(
     lastSyncTimestamp = cachedAt
 )
 
-// File: feature/user/data/repository/UserRepositoryImpl.kt
+fun UserNetworkDto.toDomain(): UserDomainModel = UserDomainModel(
+    id = id,
+    name = fullName,
+    email = email,
+    isVip = isVip,
+    lastSyncTimestamp = System.currentTimeMillis()
+)
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/data/repository/UserRepositoryImpl.kt</span>
+  <span class="portal-file-tag">REPOSITORY IMPLEMENTATION</span>
+</div>
+
+```kotlin
 package com.enterprise.mobile.feature.user.data.repository
 
 import com.enterprise.mobile.feature.user.data.local.dao.UserDao
 import com.enterprise.mobile.feature.user.data.mapper.toDomain
 import com.enterprise.mobile.feature.user.data.mapper.toEntity
 import com.enterprise.mobile.feature.user.data.remote.UserApiService
+import com.enterprise.mobile.feature.user.di.IoDispatcher
 import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
 import com.enterprise.mobile.feature.user.domain.repository.UserRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -372,7 +438,7 @@ import javax.inject.Singleton
 class UserRepositoryImpl @Inject constructor(
     private val apiService: UserApiService,
     private val userDao: UserDao,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : UserRepository {
 
     override suspend fun getUserProfile(userId: String): Result<UserDomainModel> =
@@ -380,21 +446,23 @@ class UserRepositoryImpl @Inject constructor(
             try {
                 val response = apiService.fetchUserProfile(userId)
                 if (response.isSuccessful && response.body() != null) {
-                    val dto = response.body()!!
-                    val entity = dto.toEntity()
+                    val entity = response.body()!!.toEntity()
                     userDao.insertUser(entity)
                     Result.success(entity.toDomain())
                 } else {
-                    // Fallback to local cache if network call fails
+                    // Fallback to local SQLite cache on 4xx/5xx responses
                     val cached = userDao.getUserById(userId)
                     if (cached != null) {
                         Result.success(cached.toDomain())
                     } else {
-                        Result.failure(Exception("HTTP ${response.code()}: Unable to load profile."))
+                        Result.failure(HttpException(response))
                     }
                 }
             } catch (e: Exception) {
-                // Offline fallback
+                // Critical: Never swallow CancellationException in coroutines
+                if (e is CancellationException) throw e
+
+                // Offline fallback on IOException / network timeout
                 val cached = userDao.getUserById(userId)
                 if (cached != null) {
                     Result.success(cached.toDomain())
@@ -410,60 +478,53 @@ class UserRepositoryImpl @Inject constructor(
 ```
 
   </TabItem>
-  <TabItem label="7. DI: Hilt Module">
+  <TabItem label="Presentation Layer (Compose + ViewModel)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/presentation/state/UserProfileUiState.kt</span>
+  <span class="portal-file-tag">UI STATE</span>
+</div>
 
 ```kotlin
-// File: feature/user/di/UserFeatureModule.kt
-package com.enterprise.mobile.feature.user.di
-
-import com.enterprise.mobile.feature.user.data.repository.UserRepositoryImpl
-import com.enterprise.mobile.feature.user.domain.repository.UserRepository
-import dagger.Binds
-import dagger.Module
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
-
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class UserFeatureModule {
-
-    @Binds
-    @Singleton
-    abstract fun bindUserRepository(
-        impl: UserRepositoryImpl
-    ): UserRepository
-}
-```
-
-  </TabItem>
-  <TabItem label="8. Presentation: State & Events">
-
-```kotlin
-// File: feature/user/presentation/state/UserProfileUiState.kt
 package com.enterprise.mobile.feature.user.presentation.state
 
+import androidx.compose.runtime.Immutable
 import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
 
+/**
+ * UI State marked @Immutable to allow the Jetpack Compose compiler
+ * to skip recompositions when properties haven't changed.
+ */
+@Immutable
 sealed interface UserProfileUiState {
     data object Loading : UserProfileUiState
     data class Success(val user: UserDomainModel) : UserProfileUiState
     data class Error(val errorMessage: String) : UserProfileUiState
 }
+```
 
-// File: feature/user/presentation/state/UserProfileUiEvent.kt
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/presentation/state/UserProfileUiEvent.kt</span>
+  <span class="portal-file-tag">UI EVENT INTENT</span>
+</div>
+
+```kotlin
 package com.enterprise.mobile.feature.user.presentation.state
 
+/**
+ * User interactions and screen intent actions dispatched via UDF.
+ */
 sealed interface UserProfileUiEvent {
     data class RefreshProfile(val userId: String) : UserProfileUiEvent
 }
 ```
 
-  </TabItem>
-  <TabItem label="9. Presentation: ViewModel">
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/presentation/UserProfileViewModel.kt</span>
+  <span class="portal-file-tag">HILT VIEWMODEL</span>
+</div>
 
 ```kotlin
-// File: feature/user/presentation/UserProfileViewModel.kt
 package com.enterprise.mobile.feature.user.presentation
 
 import androidx.lifecycle.ViewModel
@@ -509,18 +570,22 @@ class UserProfileViewModel @Inject constructor(
 }
 ```
 
-  </TabItem>
-  <TabItem label="10. Presentation: Compose Screen">
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/presentation/ui/UserProfileScreen.kt</span>
+  <span class="portal-file-tag">COMPOSE SCREEN</span>
+</div>
 
 ```kotlin
-// File: feature/user/presentation/ui/UserProfileScreen.kt
 package com.enterprise.mobile.feature.user.presentation.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -529,11 +594,16 @@ import com.enterprise.mobile.feature.user.presentation.UserProfileViewModel
 import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiEvent
 import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiState
 
+/**
+ * Stateful Route Composable: Coordinates ViewModel, lifecycle-aware state collection,
+ * and high-level navigation callbacks.
+ */
 @Composable
-fun UserProfileScreen(
+fun UserProfileRoute(
     userId: String,
-    viewModel: UserProfileViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: UserProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -541,10 +611,39 @@ fun UserProfileScreen(
         viewModel.onEvent(UserProfileUiEvent.RefreshProfile(userId))
     }
 
+    UserProfileScreen(
+        uiState = uiState,
+        onEvent = viewModel::onEvent,
+        onNavigateBack = onNavigateBack,
+        modifier = modifier
+    )
+}
+
+/**
+ * Stateless Screen Composable: Pure UI renderer receiving immutable state and emitting
+ * event callbacks. Enables isolated unit testing and Compose Previews.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserProfileScreen(
+    uiState: UserProfileUiState,
+    onEvent: (UserProfileUiEvent) -> Unit,
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("User Profile") }
+                title = { Text("User Profile") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Navigate Back"
+                        )
+                    }
+                }
             )
         }
     ) { paddingValues ->
@@ -555,24 +654,34 @@ fun UserProfileScreen(
             contentAlignment = Alignment.Center
         ) {
             when (val state = uiState) {
-                is UserProfileUiState.Loading -> CircularProgressIndicator()
-                is UserProfileUiState.Success -> ProfileContentView(
-                    user = state.user,
-                    onRefresh = { viewModel.onEvent(UserProfileUiEvent.RefreshProfile(userId)) }
-                )
-                is UserProfileUiState.Error -> ErrorContentView(
-                    errorMessage = state.errorMessage,
-                    onRetry = { viewModel.onEvent(UserProfileUiEvent.RefreshProfile(userId)) }
-                )
+                is UserProfileUiState.Loading -> {
+                    CircularProgressIndicator()
+                }
+                is UserProfileUiState.Success -> {
+                    ProfileContentView(
+                        user = state.user,
+                        onRefresh = { onEvent(UserProfileUiEvent.RefreshProfile(state.user.id)) }
+                    )
+                }
+                is UserProfileUiState.Error -> {
+                    ErrorContentView(
+                        errorMessage = state.errorMessage,
+                        onRetry = { onEvent(UserProfileUiEvent.RefreshProfile("")) }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ProfileContentView(user: UserDomainModel, onRefresh: () -> Unit) {
+private fun ProfileContentView(
+    user: UserDomainModel,
+    onRefresh: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -583,23 +692,103 @@ private fun ProfileContentView(user: UserDomainModel, onRefresh: () -> Unit) {
             Badge { Text("VIP Account") }
         }
         Spacer(modifier = Modifier.weight(1f))
-        Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = onRefresh,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Refresh Profile")
         }
     }
 }
 
 @Composable
-private fun ErrorContentView(errorMessage: String, onRetry: () -> Unit) {
+private fun ErrorContentView(
+    errorMessage: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(
+        modifier = modifier.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
+        Text(
+            text = errorMessage,
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodyMedium
+        )
         Button(onClick = onRetry) {
             Text("Retry")
         }
     }
+}
+
+@Preview(name = "User Profile - Success State", showBackground = true)
+@Composable
+private fun UserProfileScreenPreview() {
+    MaterialTheme {
+        UserProfileScreen(
+            uiState = UserProfileUiState.Success(
+                user = UserDomainModel(
+                    id = "USR-101",
+                    name = "Alex Mercer",
+                    email = "alex.mercer@enterprise.internal",
+                    isVip = true,
+                    lastSyncTimestamp = System.currentTimeMillis()
+                )
+            ),
+            onEvent = {},
+            onNavigateBack = {}
+        )
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="Dependency Injection (Hilt)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">feature/user/di/UserFeatureModule.kt</span>
+  <span class="portal-file-tag">HILT MODULE</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.feature.user.di
+
+import com.enterprise.mobile.feature.user.data.repository.UserRepositoryImpl
+import com.enterprise.mobile.feature.user.domain.repository.UserRepository
+import dagger.Binds
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import javax.inject.Qualifier
+import javax.inject.Singleton
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class IoDispatcher
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class UserFeatureModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindUserRepository(
+        impl: UserRepositoryImpl
+    ): UserRepository
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+object CoroutinesModule {
+
+    @Provides
+    @IoDispatcher
+    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
 }
 ```
 
