@@ -3,7 +3,7 @@ title: Native Android Standards & MVVM Clean Architecture
 description: Enterprise Android engineering specifications, Jetpack Compose declarative UI standards, Kotlin Coroutines/Flow, Hilt dependency injection, and modular file-by-file MVVM implementation.
 sidebar:
   order: 2
-  label: 3.1 Android Standards
+  label: Android Standards
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
@@ -11,7 +11,7 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
     <span class="portal-badge-hub">TIER-1 RUNTIME</span>
-    <span class="portal-hub-tag">MODULE 3.1: NATIVE ANDROID</span>
+    <span class="portal-hub-tag">PLATFORM SPECIFICATION &bull; JETPACK COMPOSE</span>
   </div>
   <h1 class="portal-hero-title">Native Android Standards &amp; MVVM Clean Architecture</h1>
   <p class="portal-hero-desc">
