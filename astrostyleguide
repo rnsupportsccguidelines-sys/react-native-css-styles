@@ -1,11 +1,11 @@
 /* ==========================================================================
-   ENTERPRISE MOBILE ENGINEERING PLATFORM - COMMON STARLIGHT STYLESHEET
+   ENTERPRISE MOBILE ENGINEERING PLATFORM - COMPREHENSIVE STARLIGHT STYLESHEET
    Recommended Path: src/styles/mobile-portal.css
-   Register in astro.config.mjs under starlight({ customCss: ['./src/styles/mobile-portal.css'] })
+   Compatible with Astro Starlight (.sl-markdown-content scoped components)
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. FULL-WIDTH SCREEN EXPANSION (Eliminates artificial empty side gutters)
+   1. FULL-WIDTH SCREEN CANVAS OVERRIDE
    -------------------------------------------------------------------------- */
 :root {
   --sl-content-width: 100% !important;
@@ -22,7 +22,7 @@ main,
 }
 
 /* --------------------------------------------------------------------------
-   2. HIGH-CONTRAST DUAL THEME TOKENS (Enterprise Dark Green & Crisp Light)
+   2. DUAL THEME TOKENS (Enterprise Dark Green & Clean Light Mode)
    -------------------------------------------------------------------------- */
 :root[data-theme='dark'] {
   --sl-color-bg: #0d1912;
@@ -39,8 +39,9 @@ main,
   --portal-text-body: #cbd5e1;
   --portal-text-muted: #9ca3af;
   --portal-pill-bg: #1a2e23;
-  --portal-pill-border: rgba(255, 255, 255, 0.1);
+  --portal-pill-border: rgba(255, 255, 255, 0.12);
   --portal-pill-text: #e2e8f0;
+  --portal-pill-hover: #233e2f;
   --portal-accent: #22c55e;
   --portal-accent-hover: #4ade80;
 }
@@ -62,6 +63,7 @@ main,
   --portal-pill-bg: #f0f7f2;
   --portal-pill-border: #cfe0d4;
   --portal-pill-text: #133824;
+  --portal-pill-hover: #e1efe5;
   --portal-accent: #007a3d;
   --portal-accent-hover: #005a2b;
 }
@@ -79,25 +81,25 @@ main,
   color: #143823 !important;
 }
 
-.portal-section-heading,
-.sl-markdown-content h2,
-h2 {
+/* Page Section Headings (H2 / H3) - Exclude card internal titles */
+.sl-markdown-content h2:not(.portal-card-title):not(.portal-route-title),
+h2:not(.portal-card-title):not(.portal-route-title) {
   font-size: 1.35rem !important;
   font-weight: 800 !important;
   margin: 36px 0 8px 0 !important;
   border-bottom: none !important;
 }
-:root[data-theme='dark'] h2 { color: #f3d17b !important; }
-:root[data-theme='light'] h2 { color: #143823 !important; }
+:root[data-theme='dark'] h2:not(.portal-card-title):not(.portal-route-title) { color: #f3d17b !important; }
+:root[data-theme='light'] h2:not(.portal-card-title):not(.portal-route-title) { color: #143823 !important; }
 
-.sl-markdown-content h3,
-h3 {
+.sl-markdown-content h3:not(.portal-card-title):not(.portal-route-title),
+h3:not(.portal-card-title):not(.portal-route-title) {
   font-size: 1.08rem !important;
   font-weight: 700 !important;
   margin: 24px 0 6px 0 !important;
 }
-:root[data-theme='dark'] h3 { color: #e2e8f0 !important; }
-:root[data-theme='light'] h3 { color: #143823 !important; }
+:root[data-theme='dark'] h3:not(.portal-card-title):not(.portal-route-title) { color: #e2e8f0 !important; }
+:root[data-theme='light'] h3:not(.portal-card-title):not(.portal-route-title) { color: #143823 !important; }
 
 .portal-section-sub {
   font-size: 0.92rem;
@@ -107,94 +109,119 @@ h3 {
 }
 
 /* --------------------------------------------------------------------------
-   4. HERO ORIENTATION & TOPOLOGY CARD
+   4. HERO ORIENTATION & TOPOLOGY CARDS (Used on all 3 pages)
    -------------------------------------------------------------------------- */
 .portal-hero-card {
-  background: var(--portal-card-bg);
-  border: 1px solid var(--portal-card-border);
-  border-radius: 12px;
-  padding: 20px 24px;
-  margin: 16px 0 28px 0;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-  width: 100%;
-  box-sizing: border-box;
+  background: var(--portal-card-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 12px !important;
+  padding: 20px 24px !important;
+  margin: 16px 0 28px 0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
 }
 
 .portal-hero-topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 10px;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  margin-bottom: 2px !important;
 }
 
 .portal-badge-hub {
-  background: rgba(34, 197, 94, 0.15);
-  color: var(--portal-accent);
-  border: 1px solid rgba(34, 197, 94, 0.35);
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 4px;
-  letter-spacing: 0.06em;
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: var(--portal-accent) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  padding: 3px 10px !important;
+  border-radius: 4px !important;
+  letter-spacing: 0.06em !important;
 }
 
 .portal-hub-tag {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--portal-accent);
-  letter-spacing: 0.05em;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-accent) !important;
+  letter-spacing: 0.05em !important;
 }
 
 .portal-hero-title {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: var(--portal-gold);
-  margin: 0 0 8px 0;
-  line-height: 1.3;
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+  color: var(--portal-gold) !important;
+  margin: 0 0 4px 0 !important;
+  line-height: 1.3 !important;
 }
 
 .portal-hero-desc {
-  font-size: 0.94rem;
-  color: var(--portal-text-body);
-  line-height: 1.55;
-  margin: 0 0 16px 0;
+  font-size: 0.94rem !important;
+  color: var(--portal-text-body) !important;
+  line-height: 1.55 !important;
+  margin: 0 0 12px 0 !important;
+}
+
+.portal-hero-icon {
+  width: 28px !important;
+  height: 28px !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--portal-accent) !important;
+}
+.portal-hero-icon svg {
+  width: 26px !important;
+  height: 26px !important;
+}
+
+.portal-hero-sub {
+  font-size: 0.88rem !important;
+  color: var(--portal-text-muted) !important;
+  margin: 0 !important;
 }
 
 .portal-caps-bar {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid var(--portal-card-border);
-  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 12px !important;
+  padding-top: 14px !important;
+  border-top: 1px solid var(--portal-card-border) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
-@media (max-width: 900px) { .portal-caps-bar { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 520px) { .portal-caps-bar { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .portal-caps-bar { grid-template-columns: repeat(2, 1fr) !important; } }
+@media (max-width: 520px) { .portal-caps-bar { grid-template-columns: 1fr !important; } }
 
 .portal-cap-item {
-  background: var(--portal-pill-bg);
-  border: 1px solid var(--portal-card-border);
-  border-radius: 8px;
-  padding: 10px 12px;
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  box-sizing: border-box !important;
 }
 
 .portal-cap-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--portal-gold);
-  margin-bottom: 3px;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-gold) !important;
+  margin-bottom: 3px !important;
 }
 
 .portal-cap-desc {
-  font-size: 0.78rem;
-  color: var(--portal-text-body);
-  line-height: 1.4;
+  font-size: 0.78rem !important;
+  color: var(--portal-text-body) !important;
+  line-height: 1.4 !important;
 }
 
 /* --------------------------------------------------------------------------
-   5. MERMAID DIAGRAM CENTERING & RESPONSIVE CLAMPING
+   5. MERMAID DIAGRAM RESPONSIVE CONTAINER & CLAMPING
    -------------------------------------------------------------------------- */
 .starlight-mermaid,
 pre.mermaid,
@@ -223,357 +250,409 @@ svg[id^="mermaid"] {
 }
 
 /* --------------------------------------------------------------------------
-   6. 2-COLUMN WIDE CARDS GRID (Supports both portal-cards and portal-routes)
+   6. 3-COLUMN DIRECTORY GRID (portal-overview.mdx)
+   -------------------------------------------------------------------------- */
+.portal-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 18px !important;
+  margin: 16px 0 36px 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 1100px) { .portal-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+@media (max-width: 700px) { .portal-grid { grid-template-columns: 1fr !important; } }
+
+.portal-pills {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px 10px !important;
+  margin-bottom: 16px !important;
+}
+
+.portal-pill-link,
+.sl-markdown-content .portal-pill-link {
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-pill-border) !important;
+  border-radius: 6px !important;
+  padding: 8px 10px !important;
+  color: var(--portal-pill-text) !important;
+  text-decoration: none !important;
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block !important;
+  transition: all 0.15s ease !important;
+}
+
+.portal-pill-link:hover,
+.sl-markdown-content .portal-pill-link:hover {
+  background: var(--portal-accent) !important;
+  border-color: var(--portal-accent) !important;
+  color: #ffffff !important;
+}
+
+.portal-card-foot {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  padding-top: 10px !important;
+  border-top: 1px solid var(--portal-card-border) !important;
+}
+
+.portal-view-link,
+.sl-markdown-content .portal-view-link {
+  color: var(--portal-accent) !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: transform 0.15s ease, color 0.15s ease !important;
+}
+
+.portal-view-link:hover,
+.sl-markdown-content .portal-view-link:hover {
+  color: var(--portal-accent-hover) !important;
+  transform: translateX(2px) !important;
+}
+
+/* --------------------------------------------------------------------------
+   7. 2-COLUMN CARDS GRID (welcome-quickstart & platform-overview)
    -------------------------------------------------------------------------- */
 .portal-cards-grid,
 .portal-routes-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin: 16px 0 28px 0;
-  width: 100%;
-  box-sizing: border-box;
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 16px !important;
+  margin: 16px 0 28px 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 @media (max-width: 768px) {
   .portal-cards-grid,
   .portal-routes-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
 }
 
 .portal-card,
 .portal-route-card {
-  background: var(--portal-card-bg);
-  border: 1px solid var(--portal-card-border);
-  border-radius: 12px;
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-  box-sizing: border-box;
+  background: var(--portal-card-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 12px !important;
+  padding: 18px 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
+  box-sizing: border-box !important;
 }
 
 .portal-card:hover,
 .portal-route-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--portal-accent);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px) !important;
+  border-color: var(--portal-accent) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1) !important;
 }
 
 .portal-card-full,
 .portal-route-card-full {
-  grid-column: span 2;
+  grid-column: span 2 !important;
 }
 @media (max-width: 768px) {
   .portal-card-full,
   .portal-route-card-full {
-    grid-column: span 1;
+    grid-column: span 1 !important;
   }
 }
 
 .portal-card-topbar,
 .portal-route-topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 10px !important;
 }
 
+.portal-icon-badge,
 .portal-card-icon,
 .portal-route-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+}
+
+.portal-icon-badge svg,
+.portal-card-icon svg,
+.portal-route-icon svg {
+  width: 18px !important;
+  height: 18px !important;
 }
 
 /* Badge Accent Colors */
-.badge-green  { background: #22c55e; }
-.badge-purple { background: #8b5cf6; }
-.badge-coral  { background: #f87171; }
-.badge-amber  { background: #f59e0b; }
-.badge-teal   { background: #06b6d4; }
-.badge-blue   { background: #3b82f6; }
+.badge-green  { background: #22c55e !important; }
+.badge-purple { background: #8b5cf6 !important; }
+.badge-coral  { background: #f87171 !important; }
+.badge-rose   { background: #f43f5e !important; }
+.badge-amber  { background: #f59e0b !important; }
+.badge-teal   { background: #06b6d4 !important; }
+.badge-blue   { background: #3b82f6 !important; }
 
 .portal-tag-pill {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--portal-accent);
-  background: rgba(34, 197, 94, 0.12);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  padding: 2px 8px;
-  border-radius: 4px;
-  letter-spacing: 0.05em;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-accent) !important;
+  background: rgba(34, 197, 94, 0.12) !important;
+  border: 1px solid rgba(34, 197, 94, 0.3) !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  letter-spacing: 0.05em !important;
 }
 
+/* Card Titles */
+.sl-markdown-content .portal-card-title,
+.sl-markdown-content .portal-route-title,
 .portal-card-title,
 .portal-route-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--portal-gold);
-  margin: 0 0 6px 0;
-  line-height: 1.3;
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-gold) !important;
+  margin: 0 0 6px 0 !important;
+  line-height: 1.35 !important;
 }
 
 .portal-card-desc,
 .portal-route-desc {
-  font-size: 0.88rem;
-  color: var(--portal-text-body);
-  line-height: 1.45;
-  margin: 0 0 12px 0;
+  font-size: 0.88rem !important;
+  color: var(--portal-text-body) !important;
+  line-height: 1.45 !important;
+  margin: 0 0 12px 0 !important;
 }
 
-.portal-card-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 12px;
+/* Card and Route Pills */
+.portal-card-pills,
+.portal-route-pills {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  margin-bottom: 12px !important;
 }
 
-.portal-card-pills span {
-  font-size: 0.74rem;
-  background: var(--portal-pill-bg);
-  border: 1px solid var(--portal-pill-border);
-  padding: 3px 8px;
-  border-radius: 6px;
-  color: var(--portal-pill-text);
-  font-weight: 600;
+.portal-card-pills span,
+.portal-route-pills span {
+  font-size: 0.74rem !important;
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-pill-border) !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+  color: var(--portal-pill-text) !important;
+  font-weight: 600 !important;
+  display: inline-block !important;
+  line-height: 1.4 !important;
 }
 
 .portal-card-action,
 .portal-route-action {
-  padding-top: 10px;
-  border-top: 1px solid var(--portal-card-border);
-  display: flex;
-  justify-content: flex-end;
+  padding-top: 10px !important;
+  border-top: 1px solid var(--portal-card-border) !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  margin-top: 8px !important;
 }
 
 .portal-card-link,
-.portal-route-link {
+.portal-route-link,
+.sl-markdown-content .portal-card-link,
+.sl-markdown-content .portal-route-link {
   color: var(--portal-accent) !important;
-  font-size: 0.84rem;
-  font-weight: 700;
+  font-size: 0.84rem !important;
+  font-weight: 700 !important;
   text-decoration: none !important;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: transform 0.15s ease, color 0.15s ease;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: transform 0.15s ease, color 0.15s ease !important;
 }
 
 .portal-card-link:hover,
-.portal-route-link:hover {
+.portal-route-link:hover,
+.sl-markdown-content .portal-card-link:hover,
+.sl-markdown-content .portal-route-link:hover {
   color: var(--portal-accent-hover) !important;
-  transform: translateX(2px);
+  transform: translateX(2px) !important;
 }
 
 /* --------------------------------------------------------------------------
-   7. RELEASE GATES SEQUENTIAL BAR
+   8. RELEASE GATES SEQUENTIAL BAR (platform-overview.mdx)
    -------------------------------------------------------------------------- */
 .portal-gates-container {
-  background: var(--portal-card-bg);
-  border: 1px solid var(--portal-card-border);
-  border-radius: 12px;
-  padding: 18px 20px;
-  margin: 16px 0 28px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  width: 100%;
-  box-sizing: border-box;
+  background: var(--portal-card-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 12px !important;
+  padding: 18px 20px !important;
+  margin: 16px 0 28px 0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .portal-gates-flow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 12px 0;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin: 12px 0 !important;
 }
 
 .portal-gate-node {
-  background: var(--portal-pill-bg);
-  border: 1px solid var(--portal-card-border);
-  border-radius: 8px;
-  padding: 8px 12px;
-  text-align: center;
-  flex: 1;
-  min-width: 120px;
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  text-align: center !important;
+  flex: 1 !important;
+  min-width: 120px !important;
 }
 
 .portal-gate-title {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--portal-gold);
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-gold) !important;
 }
 
 .portal-gate-sub {
-  font-size: 0.72rem;
-  color: var(--portal-text-muted);
-  margin-top: 2px;
+  font-size: 0.72rem !important;
+  color: var(--portal-text-muted) !important;
+  margin-top: 2px !important;
 }
 
 .portal-gate-arrow {
-  color: var(--portal-accent);
-  font-weight: 800;
-  font-size: 1rem;
+  color: var(--portal-accent) !important;
+  font-weight: 800 !important;
+  font-size: 1rem !important;
 }
 
 /* --------------------------------------------------------------------------
-   8. COMPLETION CHECKLIST & CALLOUT BOX
+   9. TABLE STYLING (welcome-quickstart.mdx)
+   -------------------------------------------------------------------------- */
+.portal-table-wrap {
+  overflow-x: auto !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 8px !important;
+  margin: 20px 0 28px 0 !important;
+  width: 100% !important;
+  background: var(--portal-card-bg) !important;
+  box-sizing: border-box !important;
+}
+
+.portal-table,
+.sl-markdown-content table.portal-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-size: 0.85rem !important;
+  text-align: left !important;
+  margin: 0 !important;
+  display: table !important;
+}
+
+.portal-table th,
+.sl-markdown-content table.portal-table th {
+  background: var(--portal-pill-bg) !important;
+  color: var(--portal-gold) !important;
+  font-weight: 700 !important;
+  padding: 10px 14px !important;
+  border-bottom: 1px solid var(--portal-card-border) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  font-size: 0.75rem !important;
+}
+
+.portal-table td,
+.sl-markdown-content table.portal-table td {
+  padding: 11px 14px !important;
+  border-bottom: 1px solid var(--portal-card-border) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  color: var(--portal-text-body) !important;
+  font-size: 0.85rem !important;
+}
+
+.portal-table tr:last-child td,
+.sl-markdown-content table.portal-table tr:last-child td {
+  border-bottom: none !important;
+}
+
+.portal-table td code,
+.sl-markdown-content table.portal-table td code {
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  color: var(--portal-accent) !important;
+  font-size: 0.78rem !important;
+}
+
+/* --------------------------------------------------------------------------
+   10. CHECKLIST & ALERT CALLOUT BOXES
    -------------------------------------------------------------------------- */
 .portal-checklist-box,
 .portal-alert-box {
-  background: var(--portal-pill-bg);
-  border: 1px solid var(--portal-card-border);
-  border-left: 4px solid var(--portal-accent);
-  border-radius: 8px;
-  padding: 18px 20px;
-  margin: 28px 0 20px 0;
-  width: 100%;
-  box-sizing: border-box;
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-left: 4px solid var(--portal-accent) !important;
+  border-radius: 8px !important;
+  padding: 18px 20px !important;
+  margin: 28px 0 20px 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .portal-checklist-title,
 .portal-alert-title {
-  font-size: 0.88rem;
-  font-weight: 800;
-  color: var(--portal-gold);
-  letter-spacing: 0.04em;
-  margin-bottom: 8px;
+  font-size: 0.88rem !important;
+  font-weight: 800 !important;
+  color: var(--portal-gold) !important;
+  letter-spacing: 0.04em !important;
+  margin-bottom: 8px !important;
 }
 
 .portal-checklist-box p,
 .portal-alert-box p {
-  font-size: 0.86rem;
-  color: var(--portal-text-body);
-  margin: 0 0 10px 0;
+  font-size: 0.86rem !important;
+  color: var(--portal-text-body) !important;
+  margin: 0 0 10px 0 !important;
 }
 
 .portal-checklist-box ul,
 .portal-alert-box ul {
-  margin: 0;
-  padding-left: 20px;
+  margin: 0 !important;
+  padding-left: 20px !important;
 }
 
 .portal-checklist-box li,
 .portal-alert-box li {
-  font-size: 0.85rem;
-  color: var(--portal-text-body);
-  margin-bottom: 6px;
-  line-height: 1.5;
+  font-size: 0.85rem !important;
+  color: var(--portal-text-body) !important;
+  margin-bottom: 6px !important;
+  line-height: 1.5 !important;
 }
 
 .portal-checklist-box li strong,
 .portal-alert-box li strong {
-  color: var(--portal-accent);
-}
-
-/* --------------------------------------------------------------------------
-   10. ROOT OVERVIEW DIRECTORY GRID & PILL LINKS (portal-overview.mdx)
-   -------------------------------------------------------------------------- */
-.portal-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-  margin-bottom: 36px;
-  width: 100%;
-  box-sizing: border-box;
-}
-@media (max-width: 1100px) {
-  .portal-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-@media (max-width: 700px) {
-  .portal-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.portal-hero-icon {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--portal-accent);
-}
-
-.portal-hero-sub {
-  font-size: 0.88rem;
-  color: var(--portal-text-body);
-  margin: 0;
-}
-
-.portal-icon-badge {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 14px;
-  color: #ffffff;
-}
-
-.badge-rose { background: #f43f5e; }
-
-.portal-pills {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 10px;
-  margin-bottom: 16px;
-}
-
-.portal-pill-link {
-  background: var(--portal-pill-bg);
-  border: 1px solid var(--portal-pill-border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  color: var(--portal-pill-text) !important;
-  text-decoration: none !important;
-  font-size: 0.78rem;
-  font-weight: 500;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: block;
-  transition: all 0.15s ease;
-}
-
-.portal-pill-link:hover {
-  background: var(--portal-pill-hover);
-  border-color: var(--portal-accent);
-  color: #ffffff !important;
-}
-
-.portal-card-foot {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding-top: 10px;
-  border-top: 1px solid var(--portal-card-border);
-}
-
-.portal-view-link {
   color: var(--portal-accent) !important;
-  font-size: 0.82rem;
-  font-weight: 600;
-  text-decoration: none !important;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: transform 0.15s ease, color 0.15s ease;
 }
-
-.portal-view-link:hover {
-  color: var(--portal-accent-hover) !important;
-  transform: translateX(2px);
-}
-
