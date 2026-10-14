@@ -165,7 +165,7 @@ sidebar:
     margin: 0 0 16px 0;
   }
 
-  /* Full-width responsive Mermaid flowchart container */
+  /* Centered vertical Mermaid flowchart container */
   .starlight-mermaid,
   pre.mermaid,
   .mermaid,
@@ -174,15 +174,11 @@ sidebar:
     justify-content: center !important;
     align-items: center !important;
     width: 100% !important;
-    max-width: 100% !important;
     margin: 16px 0 28px 0 !important;
-    padding: 14px 10px !important;
+    padding: 16px 10px !important;
     overflow-x: auto !important;
-    background: var(--portal-card-bg) !important;
-    border: 1px solid var(--portal-card-border) !important;
-    border-radius: 12px !important;
+    background: transparent !important;
     box-sizing: border-box !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
   }
 
   .starlight-mermaid svg,
@@ -190,10 +186,9 @@ sidebar:
   .mermaid svg,
   svg[id^="mermaid"] {
     display: block !important;
-    width: 100% !important;
+    margin: 0 auto !important;
     max-width: 100% !important;
     height: auto !important;
-    margin: 0 auto !important;
   }
 
   /* --------------------------------------------------------------------------
@@ -435,20 +430,23 @@ sidebar:
 <p class="portal-section-sub">Follow this sequential roadmap to navigate through the foundational guides in this section:</p>
 
 ```mermaid
-flowchart LR
-    Start["1. Join Platform"] --> Step1["2. Platform Overview"]
-    Step1 --> Persona{"Persona Check"}
-    Persona -->|Web / Backend| TrackA["3A. Non-Mobile Track"]
-    Persona -->|Experienced| TrackB["3B. Mobile Track"]
-    TrackA --> Step3["4. Tech Selection"]
-    TrackB --> Step3
-    Step3 --> Step4["5. Machine Setup"]
-    Step4 --> Step5["6. Submit PR"]
+flowchart TD
+    Start["New Engineer Joins Mobile Platform"] --> Step1["Step 1: Understand Ecosystem -> Platform Overview"]
+    Step1 --> PersonaCheck{"Determine Developer Persona"}
+    
+    PersonaCheck -- "Web / Backend Transitioning" --> NonMobile["Step 2A: Non-Mobile Engineer Track\n(Mental Models & Core Fundamentals)"]
+    PersonaCheck -- "Experienced Mobile Engineer" --> MobileTrack["Step 2B: New Mobile Engineer Track\n(Monorepos, Conventions & SDKs)"]
+    
+    NonMobile --> Step3["Step 3: Framework Evaluation -> Tech Stack Selection"]
+    MobileTrack --> Step3
+    
+    Step3 --> Step4["Step 4: Local Workstation -> Machine Setup"]
+    Step4 --> Step5["Step 5: Code, Test & Submit First Pull Request"]
 
     classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
     classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
     classDef terminal fill:#102619,stroke:#22c55e,stroke-width:2px,color:#22c55e;
-    class Persona highlight;
+    class PersonaCheck highlight;
     class Step5 terminal;
 ```
 
