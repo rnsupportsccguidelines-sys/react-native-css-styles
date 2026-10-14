@@ -1,3 +1,137 @@
+<div class="portal-routes-grid">
+  <div class="portal-route-card">
+    <div>
+      <div class="portal-route-topbar">
+        <div class="portal-route-icon badge-green">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </div>
+        <h3 class="portal-route-title">Platform Overview</h3>
+        <span class="portal-tag-pill">STEP 01</span>
+      </div>
+      <p class="portal-route-desc">
+        Understand the mobile engineering ecosystem: shared architectural layers, core foundational libraries, telemetry pipelines, and repository topology.
+      </p>
+      <div class="portal-route-pills">
+        <span>Architecture Layers</span>
+        <span>Shared SDKs</span>
+        <span>CI/CD Overview</span>
+      </div>
+    </div>
+    <div class="portal-route-action">
+      <a href="/mobile/onboarding/platform-overview/" class="portal-route-link">Open Platform Overview &rarr;</a>
+    </div>
+  </div>
+  <div class="portal-route-card">
+    <div>
+      <div class="portal-route-topbar">
+        <div class="portal-route-icon badge-purple">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </div>
+        <h3 class="portal-route-title">Non-Mobile Engineer Track</h3>
+        <span class="portal-tag-pill">STEP 02A</span>
+      </div>
+      <p class="portal-route-desc">
+        Designed specifically for web, frontend, and backend developers. Explains native view hierarchies, main thread constraints, and app lifecycles.
+      </p>
+      <div class="portal-route-pills">
+        <span>DOM vs Native Tree</span>
+        <span>Threading &amp; Locks</span>
+        <span>Memory &amp; Lifecycle</span>
+      </div>
+    </div>
+    <div class="portal-route-action">
+      <a href="/mobile/onboarding/non-mobile-dev-guide/" class="portal-route-link">Open Non-Mobile Track &rarr;</a>
+    </div>
+  </div>
+  <div class="portal-route-card">
+    <div>
+      <div class="portal-route-topbar">
+        <div class="portal-route-icon badge-coral">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+            <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+          </svg>
+        </div>
+        <h3 class="portal-route-title">New Mobile Engineer Track</h3>
+        <span class="portal-tag-pill">STEP 02B</span>
+      </div>
+      <p class="portal-route-desc">
+        Accelerated path for experienced mobile developers. Jump directly into our monorepo structures, internal package registries, and PR conventions.
+      </p>
+      <div class="portal-route-pills">
+        <span>Monorepo Structure</span>
+        <span>Private Registries</span>
+        <span>Review Standards</span>
+      </div>
+    </div>
+    <div class="portal-route-action">
+      <a href="/mobile/onboarding/new-mobile-engineer-track/" class="portal-route-link">Open Mobile Track &rarr;</a>
+    </div>
+  </div>
+  <div class="portal-route-card">
+    <div>
+      <div class="portal-route-topbar">
+        <div class="portal-route-icon badge-amber">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+            <polyline points="2 17 12 22 22 17"/>
+            <polyline points="2 12 12 17 22 12"/>
+          </svg>
+        </div>
+        <h3 class="portal-route-title">Tech Stack Selection</h3>
+        <span class="portal-tag-pill">STEP 03</span>
+      </div>
+      <p class="portal-route-desc">
+        Evaluate technical trade-offs between Jetpack Compose, SwiftUI, and React Native New Architecture using the platform decision matrix.
+      </p>
+      <div class="portal-route-pills">
+        <span>Native vs Hybrid</span>
+        <span>Decision Matrix</span>
+        <span>Hardware Features</span>
+      </div>
+    </div>
+    <div class="portal-route-action">
+      <a href="/mobile/onboarding/tech-stack-matrix/" class="portal-route-link">Open Tech Selection &rarr;</a>
+    </div>
+  </div>
+  <div class="portal-route-card portal-route-card-full">
+    <div>
+      <div class="portal-route-topbar">
+        <div class="portal-route-icon badge-teal">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <h3 class="portal-route-title">Machine Setup &amp; Workstation</h3>
+        <span class="portal-tag-pill">STEP 04</span>
+      </div>
+      <p class="portal-route-desc">
+        Automated scripts, Xcode and Android Studio versions, JDK 17 setup, simulator configurations, and terminal diagnostic CLI validation.
+      </p>
+      <div class="portal-route-pills">
+        <span>macOS Toolchains</span>
+        <span>Doctor CLI Check</span>
+        <span>Simulators &amp; Devices</span>
+      </div>
+    </div>
+    <div class="portal-route-action">
+      <a href="/mobile/onboarding/workstation-setup/" class="portal-route-link">Open Machine Setup &rarr;</a>
+    </div>
+  </div>
+</div>
+
+
+
 /* ==========================================================================
    ENTERPRISE MOBILE ENGINEERING PORTAL - MASTER STYLESHEET
    Compatible with Astro Starlight (.sl-markdown-content scoped components)
@@ -308,7 +442,7 @@ h3:not(.portal-card-title):not(.portal-route-title) {
 .badge-teal   { background: #06b6d4 !important; }
 .badge-blue   { background: #3b82f6 !important; }
 
-/* 8. PAGE 1: GETTING STARTED / OVERVIEW HUB (.portal-grid .portal-card) */
+/* 8. PAGE 1: GETTING STARTED / OVERVIEW HUB (.portal-grid .portal-card) - UNTOUCHED */
 .portal-grid .portal-card > div {
   display: grid !important;
   grid-template-columns: 36px 1fr !important;
@@ -362,49 +496,50 @@ h3:not(.portal-card-title):not(.portal-route-title) {
   width: 100% !important;
 }
 
-/* 9. PAGE 2: WELCOME & QUICK START (.portal-routes-grid .portal-route-card) */
+/* 9. PAGE 2: WELCOME & QUICK START (.portal-routes-grid .portal-route-card) - BULLETPROOF FLEX */
 .portal-routes-grid .portal-route-card > div,
 .portal-route-card > div {
-  display: grid !important;
-  grid-template-columns: 36px 1fr auto !important;
-  grid-template-rows: auto auto auto !important;
-  column-gap: 12px !important;
-  row-gap: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
   width: 100% !important;
 }
 
 .portal-route-topbar {
-  display: contents !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-bottom: 12px !important;
+  width: 100% !important;
 }
 
+.portal-route-icon,
 .portal-route-card .portal-route-icon {
-  grid-column: 1 !important;
-  grid-row: 1 !important;
-  margin: 0 !important;
-  align-self: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+  flex-shrink: 0 !important;
 }
 
 .portal-route-title,
 h3.portal-route-title,
 .sl-markdown-content h3.portal-route-title,
 .sl-markdown-content .portal-route-title {
-  grid-column: 2 !important;
-  grid-row: 1 !important;
-  font-size: 1.08rem !important;
+  font-size: 1.1rem !important;
   font-weight: 700 !important;
   color: var(--portal-gold) !important;
   margin: 0 !important;
   padding: 0 !important;
-  align-self: center !important;
-  line-height: 1.3 !important;
+  line-height: 1.35 !important;
+  flex: 1 1 auto !important;
 }
 
 .portal-tag-pill,
 .portal-route-card .portal-tag-pill {
-  grid-column: 3 !important;
-  grid-row: 1 !important;
-  align-self: center !important;
-  justify-self: end !important;
+  margin-left: auto !important;
   font-size: 0.72rem !important;
   font-weight: 700 !important;
   color: var(--portal-accent) !important;
@@ -414,30 +549,27 @@ h3.portal-route-title,
   border-radius: 4px !important;
   letter-spacing: 0.05em !important;
   white-space: nowrap !important;
-  display: inline-block !important;
+  flex-shrink: 0 !important;
 }
 
 .portal-route-desc,
 p.portal-route-desc,
 .sl-markdown-content p.portal-route-desc,
 .sl-markdown-content .portal-route-desc {
-  grid-column: 2 / -1 !important;
-  grid-row: 2 !important;
   font-size: 0.88rem !important;
   color: var(--portal-text-body) !important;
-  line-height: 1.5 !important;
-  margin: 4px 0 10px 0 !important;
+  line-height: 1.55 !important;
+  margin: 0 0 14px 0 !important;
   padding: 0 !important;
+  width: 100% !important;
 }
 
 .portal-route-pills,
 .sl-markdown-content .portal-route-pills {
-  grid-column: 1 / -1 !important;
-  grid-row: 3 !important;
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
-  margin: 6px 0 14px 0 !important;
+  margin: 0 0 16px 0 !important;
   padding: 0 !important;
   width: 100% !important;
 }
@@ -457,47 +589,47 @@ p.portal-route-desc,
   white-space: nowrap !important;
 }
 
-/* 10. PAGE 3: PLATFORM OVERVIEW (.portal-cards-grid .portal-card) */
+/* 10. PAGE 3: PLATFORM OVERVIEW (.portal-cards-grid .portal-card) - BULLETPROOF FLEX */
 .portal-cards-grid .portal-card > div {
-  display: grid !important;
-  grid-template-columns: 36px 1fr auto !important;
-  grid-template-rows: auto auto auto !important;
-  column-gap: 12px !important;
-  row-gap: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
   width: 100% !important;
 }
 
 .portal-card-topbar {
-  display: contents !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-bottom: 12px !important;
+  width: 100% !important;
 }
 
 .portal-cards-grid .portal-card-icon {
-  grid-column: 1 !important;
-  grid-row: 1 !important;
-  margin: 0 !important;
-  align-self: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+  flex-shrink: 0 !important;
 }
 
 .portal-cards-grid .portal-card-title,
 .portal-cards-grid h3.portal-card-title,
 .sl-markdown-content .portal-cards-grid h3.portal-card-title,
 .sl-markdown-content .portal-cards-grid .portal-card-title {
-  grid-column: 2 !important;
-  grid-row: 1 !important;
-  font-size: 1.08rem !important;
+  font-size: 1.1rem !important;
   font-weight: 700 !important;
   color: var(--portal-gold) !important;
   margin: 0 !important;
   padding: 0 !important;
-  align-self: center !important;
-  line-height: 1.3 !important;
+  line-height: 1.35 !important;
+  flex: 1 1 auto !important;
 }
 
 .portal-cards-grid .portal-tag-pill {
-  grid-column: 3 !important;
-  grid-row: 1 !important;
-  align-self: center !important;
-  justify-self: end !important;
+  margin-left: auto !important;
   font-size: 0.72rem !important;
   font-weight: 700 !important;
   color: var(--portal-accent) !important;
@@ -507,30 +639,27 @@ p.portal-route-desc,
   border-radius: 4px !important;
   letter-spacing: 0.05em !important;
   white-space: nowrap !important;
-  display: inline-block !important;
+  flex-shrink: 0 !important;
 }
 
 .portal-cards-grid .portal-card-desc,
 .portal-cards-grid p.portal-card-desc,
 .sl-markdown-content .portal-cards-grid p.portal-card-desc,
 .sl-markdown-content .portal-cards-grid .portal-card-desc {
-  grid-column: 2 / -1 !important;
-  grid-row: 2 !important;
   font-size: 0.88rem !important;
   color: var(--portal-text-body) !important;
-  line-height: 1.5 !important;
-  margin: 4px 0 10px 0 !important;
+  line-height: 1.55 !important;
+  margin: 0 0 14px 0 !important;
   padding: 0 !important;
+  width: 100% !important;
 }
 
 .portal-card-pills,
 .sl-markdown-content .portal-card-pills {
-  grid-column: 1 / -1 !important;
-  grid-row: 3 !important;
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
-  margin: 6px 0 14px 0 !important;
+  margin: 0 0 16px 0 !important;
   padding: 0 !important;
   width: 100% !important;
 }
