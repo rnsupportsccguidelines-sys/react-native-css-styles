@@ -1,320 +1,508 @@
 ---
-title: Development Platforms & Internal SDKs
-description: Official Enterprise mobile engineering platforms, Tier-1 framework specifications, and shared SDK ecosystem for Android, iOS, and React Native.
+title: Native Android Standards & MVVM Clean Architecture
+description: Enterprise Android engineering specifications, Jetpack Compose declarative UI standards, Kotlin Coroutines/Flow, Hilt dependency injection, and modular file-by-file MVVM implementation.
 sidebar:
-  order: 1
-  label: 3.0 Platforms Overview
+  order: 2
+  label: 3.1 Android Standards
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">ENTERPRISE PLATFORM HUB</span>
-    <span class="portal-hub-tag">MODULE 3.0: PLATFORMS &amp; SDKs</span>
+    <span class="portal-badge-hub">TIER-1 RUNTIME</span>
+    <span class="portal-hub-tag">MODULE 3.1: NATIVE ANDROID</span>
   </div>
-  <h1 class="portal-hero-title">Development Platforms &amp; Shared SDK Ecosystem</h1>
+  <h1 class="portal-hero-title">Native Android Standards &amp; MVVM Clean Architecture</h1>
   <p class="portal-hero-desc">
-    All enterprise mobile applications are built strictly upon audited <strong>Tier-1 runtime frameworks</strong>, governed by uniform architectural standards and powered by a centralized catalog of internal enterprise SDKs.
+    All enterprise Android applications must strictly enforce <strong>Modular Clean Architecture</strong> with <strong>Unidirectional Data Flow (UDF)</strong>. ViewModels manage immutable state streams, Use Cases isolate business logic without Android dependencies, and Repositories serve as the single source of truth.
   </p>
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Native Android</div>
-      <div class="portal-cap-desc">Kotlin 1.9+ &bull; Jetpack Compose &bull; Hilt DI &bull; Room DB</div>
+      <div class="portal-cap-title">Language &amp; Runtime</div>
+      <div class="portal-cap-desc">Kotlin 1.9+ &bull; Coroutines &bull; StateFlow &bull; Java 17 LTS</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Native iOS</div>
-      <div class="portal-cap-desc">Swift 5.9+ &bull; SwiftUI &bull; Concurrency &bull; Keychain</div>
+      <div class="portal-cap-title">UI &amp; State</div>
+      <div class="portal-cap-desc">Jetpack Compose &bull; Material 3 &bull; collectAsStateWithLifecycle</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">React Native</div>
-      <div class="portal-cap-desc">RN 0.73+ &bull; TypeScript 5 &bull; Hermes &bull; MMKV</div>
+      <div class="portal-cap-title">Dependency Injection</div>
+      <div class="portal-cap-desc">Dagger Hilt &bull; @HiltViewModel &bull; AssistedInject</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Prohibited Stacks</div>
-      <div class="portal-cap-desc">Zero Flutter, Xamarin, or Ionic (Architecture Violation)</div>
+      <div class="portal-cap-title">Persistence &amp; Network</div>
+      <div class="portal-cap-desc">Room SQLite &bull; SQLCipher &bull; Retrofit 2 &bull; OkHttp 4</div>
     </div>
   </div>
 </div>
 
 ---
 
-## 1. Tier-1 Approved Mobile Stacks
+## 1. Modular Directory & Package Layout
 
-Enterprise mobile projects must strictly select one of the three Tier-1 approved runtime frameworks based on hardware integration depth, performance constraints, and platform scope.
+Enterprise Android applications organize code by **feature vertical slices**, strictly enforcing layer isolation. Code must never be organized into generic monolithic folders.
 
-<div class="portal-cards-grid">
-  <!-- Android Card -->
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-green">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-            <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.4147 13.8533 8.125 12 8.125c-1.8533 0-3.5902.2897-5.1368.8247L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Native Android</h3>
-        <span class="portal-tag-pill">TIER-1 RUNTIME</span>
-      </div>
-      <p class="portal-card-desc">
-        Engineered for hardware-intensive workflows, offline background sync daemons, Bluetooth peripherals, and deep Android OS integration.
-      </p>
-      <div class="portal-card-pills">
-        <span>Kotlin 1.9+</span>
-        <span>Jetpack Compose</span>
-        <span>Hilt DI</span>
-        <span>Coroutines &amp; Flow</span>
-        <span>Room DB</span>
-      </div>
-    </div>
-    <div class="portal-card-action">
-      <a href="/mobile-draft/03-platforms-sdks/02-android-standards/" class="portal-card-link">View Android Standards &rarr;</a>
-    </div>
-  </div>
-
-  <!-- iOS Card -->
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-purple">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 1.01-2.87-.9.04-2.03.62-2.67 1.37-.56.65-.98 1.7-1.03 2.76 1.02.08 2.08-.51 2.69-1.26z"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Native iOS</h3>
-        <span class="portal-tag-pill">TIER-1 RUNTIME</span>
-      </div>
-      <p class="portal-card-desc">
-        Optimized for the Apple ecosystem, WidgetKit extensions, Apple Pay, secure FaceID / TouchID biometric vaults, and low-power CoreLocation.
-      </p>
-      <div class="portal-card-pills">
-        <span>Swift 5.9+</span>
-        <span>SwiftUI</span>
-        <span>@Observable</span>
-        <span>Swift Concurrency</span>
-        <span>Keychain Vault</span>
-      </div>
-    </div>
-    <div class="portal-card-action">
-      <a href="/mobile-draft/03-platforms-sdks/03-ios-standards/" class="portal-card-link">View iOS Standards &rarr;</a>
-    </div>
-  </div>
-
-  <!-- React Native Card -->
-  <div class="portal-card portal-card-full">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-teal">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.2c3.08 0 5.6 2.52 5.6 5.6 0 1.25-.41 2.4-1.11 3.33l-1.42-1.42a3.57 3.57 0 00.53-1.91 3.6 3.6 0 10-3.6 3.6c.7 0 1.35-.2 1.91-.53l1.42 1.42A5.56 5.56 0 0112 15.4c-3.08 0-5.6-2.52-5.6-5.6S8.92 4.2 12 4.2zm0 15.6c-4.3 0-7.8-3.5-7.8-7.8 0-1.8.61-3.46 1.64-4.78l1.43 1.43A5.76 5.76 0 006.2 12c0 3.2 2.6 5.8 5.8 5.8 1.4 0 2.68-.5 3.67-1.33l1.43 1.43C15.78 19.06 13.98 19.8 12 19.8z"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">React Native (Cross-Platform)</h3>
-        <span class="portal-tag-pill">TIER-1 RUNTIME</span>
-      </div>
-      <p class="portal-card-desc">
-        The default enterprise choice for multi-platform business apps requiring 90%+ shared code velocity, unified UI consistency, rapid feature delivery, and shared enterprise logic across platforms.
-      </p>
-      <div class="portal-card-pills">
-        <span>React Native 0.73+</span>
-        <span>TypeScript 5.x</span>
-        <span>Hermes Engine</span>
-        <span>Zustand State</span>
-        <span>MMKV Fast Storage</span>
-        <span>React Navigation 6</span>
-      </div>
-    </div>
-    <div class="portal-card-action">
-      <a href="/mobile-draft/03-platforms-sdks/04-react-native-standards/" class="portal-card-link">View React Native Standards &rarr;</a>
-    </div>
-  </div>
-</div>
-
----
-
-## 2. Technology Selection Decision Matrix
-
-Choosing between Native Android, Native iOS, and React Native must be guided by technical constraints rather than individual developer preference.
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Decision Criteria</th>
-        <th>
-          Native Android<br/>
-          <span style="font-size: 0.72rem; font-weight: 500; text-transform: none; opacity: 0.85;">Kotlin &bull; Gradle / Maven</span>
-        </th>
-        <th>
-          Native iOS<br/>
-          <span style="font-size: 0.72rem; font-weight: 500; text-transform: none; opacity: 0.85;">Swift &bull; SPM / CocoaPods</span>
-        </th>
-        <th>
-          React Native<br/>
-          <span style="font-size: 0.72rem; font-weight: 500; text-transform: none; opacity: 0.85;">TypeScript &bull; npm / yarn</span>
-        </th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Primary Use Case</strong></td>
-        <td>Hardware peripherals, background sync daemons, ruggedized Android devices.</td>
-        <td>Consumer flagship iOS apps, Apple Pay, WidgetKit, Apple Watch extensions.</td>
-        <td>Cross-platform business apps, rapid MVP iteration, shared web/mobile domain logic.</td>
-      </tr>
-      <tr>
-        <td><strong>UI Framework</strong></td>
-        <td>Jetpack Compose (Declarative)</td>
-        <td>SwiftUI (Declarative)</td>
-        <td>React Native JSX + StyleSheet</td>
-      </tr>
-      <tr>
-        <td><strong>State Architecture</strong></td>
-        <td><code>StateFlow</code> + ViewModel</td>
-        <td><code>@Observable</code> ViewModel</td>
-        <td>Custom Hooks + Zustand Store</td>
-      </tr>
-      <tr>
-        <td><strong>Asynchronous Model</strong></td>
-        <td>Kotlin Coroutines &amp; Flow</td>
-        <td>Swift Concurrency (<code>async/await</code>)</td>
-        <td>JavaScript Promises &amp; async/await</td>
-      </tr>
-      <tr>
-        <td><strong>Dependency Injection</strong></td>
-        <td>Hilt / Dagger</td>
-        <td>Swift Protocol DI / Factory</td>
-        <td>React Context / Dependency Container</td>
-      </tr>
-      <tr>
-        <td><strong>Local Database</strong></td>
-        <td>Room (SQLite) + SQLCipher</td>
-        <td>SwiftData / CoreData + Keychain</td>
-        <td>WatermelonDB / MMKV Storage</td>
-      </tr>
-      <tr>
-        <td><strong>Internal SDK Package</strong></td>
-        <td><code>com.enterprise.mobile:*</code> (Maven)</td>
-        <td><code>Enterprise*</code> (SPM / CocoaPods)</td>
-        <td><code>@enterprise/*</code> (Internal NPM)</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
----
-
-## 3. Shared Enterprise SDK Architecture
-
-Regardless of the selected Tier-1 platform, all mobile applications interface with the same enterprise infrastructure via platform-native internal SDK wrappers.
-
-```mermaid
-graph TD
-    subgraph Apps ["Enterprise Mobile Application Layer"]
-        AppAndroid["Android App (Kotlin)"]
-        AppIOS["iOS App (Swift)"]
-        AppRN["React Native App (TS)"]
-    end
-
-    subgraph SDKs ["Centralized Enterprise Shared SDK Layer"]
-        AuthSDK["Enterprise Auth SDK<br/>(OAuth2 / PKCE / Secure Storage)"]
-        ConfigSDK["Enterprise Config SDK<br/>(Unleash Proxy Feature Flags)"]
-        ObsSDK["Enterprise Telemetry SDK<br/>(Datadog RUM &amp; Distributed Tracing)"]
-        ResilienceSDK["Enterprise Resilience SDK<br/>(Circuit Breaker &amp; Offline Outbox)"]
-        DesignSDK["Enterprise Design System<br/>(Brand Tokens &amp; Accessible Components)"]
-    end
-
-    subgraph Infrastructure ["Enterprise Cloud Infrastructure"]
-        AuthServer["Enterprise Identity Provider (Okta / Azure AD)"]
-        EdgeProxy["Unleash Feature Flag Edge Proxy"]
-        DatadogEndpoint["Datadog Telemetry Intake"]
-        APIGateway["Enterprise Core API Gateway"]
-    end
-
-    AppAndroid --> SDKs
-    AppIOS --> SDKs
-    AppRN --> SDKs
-
-    AuthSDK --> AuthServer
-    ConfigSDK --> EdgeProxy
-    ObsSDK --> DatadogEndpoint
-    ResilienceSDK --> APIGateway
+```text
+app/src/main/java/com/enterprise/mobile/
+├── core/                                   # Shared enterprise infrastructure
+│   ├── database/                           # Room database configuration & migrations
+│   ├── network/                            # Retrofit, OkHttp clients & auth interceptors
+│   ├── security/                           # EncryptedSharedPreferences & KeyStore vault
+│   └── ui/theme/                           # Enterprise design tokens (Color, Type, Shape)
+│
+├── di/                                     # Global singleton dependency injection
+│   ├── AppModule.kt                        # Application-scoped providers
+│   ├── NetworkModule.kt                    # Authenticated OkHttp & Retrofit providers
+│   └── DatabaseModule.kt                   # Room DB & DAO providers
+│
+└── feature/user/                           # USER FEATURE MODULE (Vertical Slice)
+    ├── data/                               # Data Layer: Single Source of Truth
+    │   ├── remote/
+    │   │   ├── dto/UserNetworkDto.kt       # API serialization model
+    │   │   └── UserApiService.kt           # Retrofit endpoint definition
+    │   ├── local/
+    │   │   ├── entity/UserEntity.kt        # Room database entity
+    │   │   └── dao/UserDao.kt              # Room DAO with SQLite queries
+    │   ├── mapper/UserMappers.kt           # Bidirectional DTO <-> Entity <-> Domain mappers
+    │   └── repository/UserRepositoryImpl.kt# Repository implementation (Cache + Network)
+    │
+    ├── domain/                             # Pure Domain Layer: Zero Android Framework APIs
+    │   ├── model/UserDomainModel.kt        # Immutable Kotlin business model
+    │   ├── repository/UserRepository.kt    # Repository interface (boundary contract)
+    │   └── usecase/GetUserProfileUseCase.kt# Single-purpose business use case
+    │
+    ├── di/                                 # Feature-scoped Dependency Injection
+    │   └── UserFeatureModule.kt            # Binds repository interfaces to implementations
+    │
+    └── presentation/                       # UI Layer: Jetpack Compose + ViewModels
+        ├── state/
+        │   ├── UserProfileUiState.kt       # Sealed interface representing UI states
+        │   └── UserProfileUiEvent.kt       # User actions & callback intents
+        ├── UserProfileViewModel.kt         # Hilt-injected ViewModel (StateFlow producer)
+        └── ui/
+            ├── UserProfileScreen.kt        # Stateless Composable screen with Scaffold
+            └── components/ProfileCard.kt   # Reusable atomic Compose components
 ```
 
 ---
 
-## 4. Standard Shared SDK Initialization Entry Point
+## 2. Clean Architecture & Data Flow
 
-Every enterprise mobile application must bootstrap core shared SDKs (Observability, Remote Config, and Telemetry) during early application startup.
+### Layered Architecture Flowchart
+
+```mermaid
+graph TD
+    subgraph LayerPresentation ["1. PRESENTATION LAYER (JETPACK COMPOSE)"]
+        View["Compose Screen<br/><b>@Composable</b>"]
+        VM["Feature ViewModel<br/><b>@HiltViewModel</b>"]
+        State["UI State Stream<br/><b>StateFlow&lt;UiState&gt;</b>"]
+        Event["User Action Intent<br/><b>Sealed UiEvent</b>"]
+    end
+
+    subgraph LayerDomain ["2. DOMAIN LAYER (PURE KOTLIN)"]
+        UC["Business Use Case<br/><b>GetUserProfileUseCase</b>"]
+        Model["Domain Model<br/><b>UserDomainModel</b>"]
+        RepoContract["Repository Contract<br/><b>interface UserRepository</b>"]
+    end
+
+    subgraph LayerData ["3. DATA LAYER (SINGLE SOURCE OF TRUTH)"]
+        RepoImpl["Repository Implementation<br/><b>UserRepositoryImpl</b>"]
+        LocalDS["Local SQLite Source<br/><b>Room DB &amp; UserDao</b>"]
+        RemoteDS["Remote HTTP Source<br/><b>Retrofit &amp; UserApiService</b>"]
+    end
+
+    View -->|"1. User taps refresh"| Event
+    Event -->|"2. onEvent(intent)"| VM
+    VM -->|"3. invoke(params)"| UC
+    UC -->|"4. execute query"| RepoContract
+    RepoContract -.->|"binds via Hilt"| RepoImpl
+    RepoImpl -->|"5a. Query local cache"| LocalDS
+    RepoImpl -->|"5b. Fetch fresh API data"| RemoteDS
+    RepoImpl -->|"6. Map to Domain &amp; Cache"| Model
+    Model -->|"7. Result.success(model)"| UC
+    UC -->|"8. Emit result"| VM
+    VM -->|"9. Reduce to UiState"| State
+    State -->|"10. collectAsStateWithLifecycle"| View
+
+    classDef composeBox fill:#0f2e1e,stroke:#22c55e,stroke-width:2px,color:#e2e8f0;
+    classDef domainBox fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#e2e8f0;
+    classDef dataBox fill:#2a2012,stroke:#f59e0b,stroke-width:2px,color:#fef3c7;
+
+    classDef subPres fill:#091910,stroke:#22c55e,stroke-width:1.5px,color:#4ade80;
+    classDef subDom fill:#191226,stroke:#a855f7,stroke-width:1.5px,color:#c084fc;
+    classDef subDat fill:#1a170c,stroke:#f59e0b,stroke-width:1.5px,color:#fcd34d;
+
+    class View,VM,State,Event composeBox;
+    class UC,Model,RepoContract domainBox;
+    class RepoImpl,LocalDS,RemoteDS dataBox;
+
+    class LayerPresentation subPres;
+    class LayerDomain subDom;
+    class LayerData subDat;
+```
+
+---
+
+### Unidirectional Data Flow (UDF) Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Mobile User
+    participant Compose as Jetpack Compose Screen
+    participant VM as UserProfileViewModel
+    participant UseCase as GetUserProfileUseCase
+    participant Repo as UserRepositoryImpl
+    participant LocalDB as Room SQLite Cache
+    participant RemoteAPI as Retrofit API Endpoint
+
+    User->>Compose: Taps "Refresh Profile"
+    Compose->>VM: onEvent(RefreshProfile(userId))
+    VM->>VM: Emit UiState.Loading
+    VM-->>Compose: Renders CircularProgressIndicator
+    VM->>UseCase: invoke(userId)
+    UseCase->>Repo: getUserProfile(userId)
+
+    Repo->>LocalDB: queryUserById(userId)
+    LocalDB-->>Repo: Return cached UserEntity (fast emit)
+
+    Repo->>RemoteAPI: GET /v1/users/{userId}
+    RemoteAPI-->>Repo: 200 OK (UserNetworkDto)
+    Repo->>LocalDB: insertUser(mappedEntity)
+    Repo-->>UseCase: Result.success(mappedDomainUser)
+
+    UseCase-->>VM: Result.success(user)
+    VM->>VM: Emit UiState.Success(user)
+    VM-->>Compose: Recomposes Screen with updated data
+    Compose-->>User: Displays user name, email & verified badge
+```
+
+---
+
+## 3. Modular File-by-File MVVM Implementation
+
+Enterprise standards require each class to reside in its own dedicated, single-responsibility file. Review the complete implementation below, structured across its respective clean architecture packages:
 
 <Tabs>
-  <TabItem label="Android (Kotlin / Hilt)">
+  <TabItem label="1. Domain Model">
 
 ```kotlin
-// File: Application.kt
-package com.enterprise.mobile
+// File: feature/user/domain/model/UserDomainModel.kt
+package com.enterprise.mobile.feature.user.domain.model
 
-import android.app.Application
-import com.enterprise.mobile.core.config.AppConfigProvider
-import com.enterprise.mobile.core.observability.EnterpriseObservability
-import dagger.hilt.android.HiltAndroidApp
+/**
+ * Pure, immutable business model.
+ * Zero Android SDK dependencies (no Parcelable, no Context, no Compose).
+ */
+data class UserDomainModel(
+    val id: String,
+    val name: String,
+    val email: String,
+    val isVip: Boolean,
+    val lastSyncTimestamp: Long
+)
+```
+
+  </TabItem>
+  <TabItem label="2. Domain Repository Contract">
+
+```kotlin
+// File: feature/user/domain/repository/UserRepository.kt
+package com.enterprise.mobile.feature.user.domain.repository
+
+import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * Boundary contract defining user data operations.
+ * The domain layer owns this interface; the data layer implements it.
+ */
+interface UserRepository {
+    suspend fun getUserProfile(userId: String): Result<UserDomainModel>
+    fun observeUserProfile(userId: String): Flow<UserDomainModel?>
+}
+```
+
+  </TabItem>
+  <TabItem label="3. Domain UseCase">
+
+```kotlin
+// File: feature/user/domain/usecase/GetUserProfileUseCase.kt
+package com.enterprise.mobile.feature.user.domain.usecase
+
+import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+import com.enterprise.mobile.feature.user.domain.repository.UserRepository
 import javax.inject.Inject
 
-@HiltAndroidApp
-class EnterpriseApplication : Application() {
-
-    @Inject lateinit var appConfigProvider: AppConfigProvider
-    @Inject lateinit var observability: EnterpriseObservability
-
-    override fun onCreate() {
-        super.onCreate()
-
-        // 1. Initialize Datadog Telemetry & RUM
-        observability.initialize(
-            context = this,
-            clientToken = BuildConfig.DATADOG_CLIENT_TOKEN,
-            environment = BuildConfig.BUILD_TYPE,
-            appVariant = "enterprise-android"
-        )
-
-        // 2. Bootstrap Unleash Remote Configuration Edge Client
-        appConfigProvider.bootstrap(this)
+/**
+ * Single-responsibility use case executing business validation.
+ */
+class GetUserProfileUseCase @Inject constructor(
+    private val userRepository: UserRepository
+) {
+    suspend operator fun invoke(userId: String): Result<UserDomainModel> {
+        if (userId.isBlank()) {
+            return Result.failure(IllegalArgumentException("User ID must not be empty."))
+        }
+        return userRepository.getUserProfile(userId)
     }
 }
 ```
 
   </TabItem>
-  <TabItem label="iOS (Swift / SwiftUI)">
+  <TabItem label="4. Data: DTO & API">
 
-```swift
-// File: EnterpriseApp.swift
-import SwiftUI
-import EnterpriseObservability
-import EnterpriseConfig
+```kotlin
+// File: feature/user/data/remote/dto/UserNetworkDto.kt
+package com.enterprise.mobile.feature.user.data.remote.dto
 
-@main
-struct EnterpriseApp: App {
-    @State private var flagManager = RemoteConfigManager.shared
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-    init() {
-        // 1. Initialize Enterprise Datadog Telemetry & RUM
-        EnterpriseObservability.initialize(
-            clientToken: AppEnvironment.datadogClientToken,
-            environment: AppEnvironment.currentEnv,
-            serviceName: "enterprise-ios"
-        )
+@Serializable
+data class UserNetworkDto(
+    @SerialName("id") val id: String,
+    @SerialName("full_name") val fullName: String,
+    @SerialName("email") val email: String,
+    @SerialName("is_vip") val isVip: Boolean
+)
 
-        // 2. Register Enterprise Custom Typography & Fonts
-        EnterpriseFontRegistrar.registerCustomFonts()
+// File: feature/user/data/remote/UserApiService.kt
+package com.enterprise.mobile.feature.user.data.remote
+
+import com.enterprise.mobile.feature.user.data.remote.dto.UserNetworkDto
+import retrofit2.Response
+import retrofit2.http.GET
+import retrofit2.http.Path
+
+interface UserApiService {
+    @GET("v1/users/{userId}")
+    suspend fun fetchUserProfile(@Path("userId") userId: String): Response<UserNetworkDto>
+}
+```
+
+  </TabItem>
+  <TabItem label="5. Data: Room Entity & DAO">
+
+```kotlin
+// File: feature/user/data/local/entity/UserEntity.kt
+package com.enterprise.mobile.feature.user.data.local.entity
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "users")
+data class UserEntity(
+    @PrimaryKey val id: String,
+    val fullName: String,
+    val email: String,
+    val isVip: Boolean,
+    val cachedAt: Long
+)
+
+// File: feature/user/data/local/dao/UserDao.kt
+package com.enterprise.mobile.feature.user.data.local.dao
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import com.enterprise.mobile.feature.user.data.local.entity.UserEntity
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface UserDao {
+    @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
+    suspend fun getUserById(userId: String): UserEntity?
+
+    @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
+    fun observeUserById(userId: String): Flow<UserEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUser(user: UserEntity)
+}
+```
+
+  </TabItem>
+  <TabItem label="6. Data: Repository Impl & Mapper">
+
+```kotlin
+// File: feature/user/data/mapper/UserMappers.kt
+package com.enterprise.mobile.feature.user.data.mapper
+
+import com.enterprise.mobile.feature.user.data.local.entity.UserEntity
+import com.enterprise.mobile.feature.user.data.remote.dto.UserNetworkDto
+import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+
+fun UserNetworkDto.toEntity(): UserEntity = UserEntity(
+    id = id,
+    fullName = fullName,
+    email = email,
+    isVip = isVip,
+    cachedAt = System.currentTimeMillis()
+)
+
+fun UserEntity.toDomain(): UserDomainModel = UserDomainModel(
+    id = id,
+    name = fullName,
+    email = email,
+    isVip = isVip,
+    lastSyncTimestamp = cachedAt
+)
+
+// File: feature/user/data/repository/UserRepositoryImpl.kt
+package com.enterprise.mobile.feature.user.data.repository
+
+import com.enterprise.mobile.feature.user.data.local.dao.UserDao
+import com.enterprise.mobile.feature.user.data.mapper.toDomain
+import com.enterprise.mobile.feature.user.data.mapper.toEntity
+import com.enterprise.mobile.feature.user.data.remote.UserApiService
+import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+import com.enterprise.mobile.feature.user.domain.repository.UserRepository
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class UserRepositoryImpl @Inject constructor(
+    private val apiService: UserApiService,
+    private val userDao: UserDao,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+) : UserRepository {
+
+    override suspend fun getUserProfile(userId: String): Result<UserDomainModel> =
+        withContext(ioDispatcher) {
+            try {
+                val response = apiService.fetchUserProfile(userId)
+                if (response.isSuccessful && response.body() != null) {
+                    val dto = response.body()!!
+                    val entity = dto.toEntity()
+                    userDao.insertUser(entity)
+                    Result.success(entity.toDomain())
+                } else {
+                    // Fallback to local cache if network call fails
+                    val cached = userDao.getUserById(userId)
+                    if (cached != null) {
+                        Result.success(cached.toDomain())
+                    } else {
+                        Result.failure(Exception("HTTP ${response.code()}: Unable to load profile."))
+                    }
+                }
+            } catch (e: Exception) {
+                // Offline fallback
+                val cached = userDao.getUserById(userId)
+                if (cached != null) {
+                    Result.success(cached.toDomain())
+                } else {
+                    Result.failure(e)
+                }
+            }
+        }
+
+    override fun observeUserProfile(userId: String): Flow<UserDomainModel?> =
+        userDao.observeUserById(userId).map { it?.toDomain() }
+}
+```
+
+  </TabItem>
+  <TabItem label="7. DI: Hilt Module">
+
+```kotlin
+// File: feature/user/di/UserFeatureModule.kt
+package com.enterprise.mobile.feature.user.di
+
+import com.enterprise.mobile.feature.user.data.repository.UserRepositoryImpl
+import com.enterprise.mobile.feature.user.domain.repository.UserRepository
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class UserFeatureModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindUserRepository(
+        impl: UserRepositoryImpl
+    ): UserRepository
+}
+```
+
+  </TabItem>
+  <TabItem label="8. Presentation: State & Events">
+
+```kotlin
+// File: feature/user/presentation/state/UserProfileUiState.kt
+package com.enterprise.mobile.feature.user.presentation.state
+
+import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+
+sealed interface UserProfileUiState {
+    data object Loading : UserProfileUiState
+    data class Success(val user: UserDomainModel) : UserProfileUiState
+    data class Error(val errorMessage: String) : UserProfileUiState
+}
+
+// File: feature/user/presentation/state/UserProfileUiEvent.kt
+package com.enterprise.mobile.feature.user.presentation.state
+
+sealed interface UserProfileUiEvent {
+    data class RefreshProfile(val userId: String) : UserProfileUiEvent
+}
+```
+
+  </TabItem>
+  <TabItem label="9. Presentation: ViewModel">
+
+```kotlin
+// File: feature/user/presentation/UserProfileViewModel.kt
+package com.enterprise.mobile.feature.user.presentation
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.enterprise.mobile.feature.user.domain.usecase.GetUserProfileUseCase
+import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiEvent
+import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class UserProfileViewModel @Inject constructor(
+    private val getUserProfileUseCase: GetUserProfileUseCase
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow<UserProfileUiState>(UserProfileUiState.Loading)
+    val uiState: StateFlow<UserProfileUiState> = _uiState.asStateFlow()
+
+    fun onEvent(event: UserProfileUiEvent) {
+        when (event) {
+            is UserProfileUiEvent.RefreshProfile -> fetchProfile(event.userId)
+        }
     }
 
-    var body: some Scene {
-        WindowGroup {
-            RootCoordinatorView()
-                .environment(flagManager)
-                .task {
-                    // 3. Fetch Unleash remote flags on launch
-                    await flagManager.syncFlags()
+    private fun fetchProfile(userId: String) {
+        viewModelScope.launch {
+            _uiState.value = UserProfileUiState.Loading
+            getUserProfileUseCase(userId)
+                .onSuccess { domainUser ->
+                    _uiState.value = UserProfileUiState.Success(user = domainUser)
+                }
+                .onFailure { error ->
+                    _uiState.value = UserProfileUiState.Error(
+                        errorMessage = error.localizedMessage ?: "Failed to retrieve user profile."
+                    )
                 }
         }
     }
@@ -322,37 +510,97 @@ struct EnterpriseApp: App {
 ```
 
   </TabItem>
-  <TabItem label="React Native (TypeScript)">
+  <TabItem label="10. Presentation: Compose Screen">
 
-```tsx
-// File: App.tsx
-import React, { useEffect } from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { initializeObservability } from '@enterprise/observability';
-import { UnleashProvider } from '@enterprise/feature-flags';
-import { EnterpriseThemeProvider } from '@enterprise/design-system';
-import { RootNavigator } from './src/navigation/RootNavigator';
+```kotlin
+// File: feature/user/presentation/ui/UserProfileScreen.kt
+package com.enterprise.mobile.feature.user.presentation.ui
 
-export const App: React.FC = () => {
-  useEffect(() => {
-    // 1. Initialize Datadog Telemetry & RUM
-    initializeObservability({
-      clientToken: process.env.DATADOG_CLIENT_TOKEN ?? '',
-      environment: __DEV__ ? 'development' : 'production',
-      serviceName: 'enterprise-mobile-rn',
-    });
-  }, []);
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+import com.enterprise.mobile.feature.user.presentation.UserProfileViewModel
+import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiEvent
+import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiState
 
-  return (
-    <SafeAreaProvider>
-      <EnterpriseThemeProvider mode="system">
-        <UnleashProvider>
-          <RootNavigator />
-        </UnleashProvider>
-      </EnterpriseThemeProvider>
-    </SafeAreaProvider>
-  );
-};
+@Composable
+fun UserProfileScreen(
+    userId: String,
+    viewModel: UserProfileViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(userId) {
+        viewModel.onEvent(UserProfileUiEvent.RefreshProfile(userId))
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("User Profile") }
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentAlignment = Alignment.Center
+        ) {
+            when (val state = uiState) {
+                is UserProfileUiState.Loading -> CircularProgressIndicator()
+                is UserProfileUiState.Success -> ProfileContentView(
+                    user = state.user,
+                    onRefresh = { viewModel.onEvent(UserProfileUiEvent.RefreshProfile(userId)) }
+                )
+                is UserProfileUiState.Error -> ErrorContentView(
+                    errorMessage = state.errorMessage,
+                    onRetry = { viewModel.onEvent(UserProfileUiEvent.RefreshProfile(userId)) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileContentView(user: UserDomainModel, onRefresh: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(text = user.name, style = MaterialTheme.typography.headlineMedium)
+        Text(text = user.email, style = MaterialTheme.typography.bodyLarge)
+        if (user.isVip) {
+            Badge { Text("VIP Account") }
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
+            Text("Refresh Profile")
+        }
+    }
+}
+
+@Composable
+private fun ErrorContentView(errorMessage: String, onRetry: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
+        Button(onClick = onRetry) {
+            Text("Retry")
+        }
+    }
+}
 ```
 
   </TabItem>
@@ -360,44 +608,83 @@ export const App: React.FC = () => {
 
 ---
 
-## 5. Mandatory Platform Violation Rules
+## 4. Internal Android Enterprise SDK Catalog
+
+Enterprise Android applications must consume internal SDKs from the private enterprise Maven repository (`maven.enterprise.internal/releases`). Never duplicate networking, security, or telemetry code.
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Artifact ID</th>
+        <th>Latest Release</th>
+        <th>Description &amp; Core Responsibility</th>
+        <th>Gradle Dependency</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>com.enterprise.mobile:auth</code></td>
+        <td><code>2.4.0</code></td>
+        <td>OAuth2, PKCE, SSO token refresh, and Android KeyStore hardware vault.</td>
+        <td><code>implementation("com.enterprise.mobile:auth:2.4.0")</code></td>
+      </tr>
+      <tr>
+        <td><code>com.enterprise.mobile:config</code></td>
+        <td><code>1.8.0</code></td>
+        <td>Unleash Edge Proxy client with offline MMKV fallback and 15s refresh.</td>
+        <td><code>implementation("com.enterprise.mobile:config:1.8.0")</code></td>
+      </tr>
+      <tr>
+        <td><code>com.enterprise.mobile:observability</code></td>
+        <td><code>3.1.2</code></td>
+        <td>Datadog RUM, distributed network tracing, and Crashlytics wrapper.</td>
+        <td><code>implementation("com.enterprise.mobile:observability:3.1.2")</code></td>
+      </tr>
+      <tr>
+        <td><code>com.enterprise.mobile:resilience</code></td>
+        <td><code>1.5.0</code></td>
+        <td>Circuit Breaker state machine (Closed, Open, Half-Open) with exponential backoff.</td>
+        <td><code>implementation("com.enterprise.mobile:resilience:1.5.0")</code></td>
+      </tr>
+      <tr>
+        <td><code>com.enterprise.mobile:design-tokens</code></td>
+        <td><code>2.0.1</code></td>
+        <td>Jetpack Compose theme tokens (Enterprise Green, Dark Gold, Surface palettes).</td>
+        <td><code>implementation("com.enterprise.mobile:design-tokens:2.0.1")</code></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 5. Architectural Anti-Patterns & Prohibitions
 
 <div class="portal-alert-box">
-  <div class="portal-alert-title">NON-NEGOTIABLE ARCHITECTURAL POLICIES</div>
-  <p>Pull Requests violating any of these four constraints will be automatically rejected by Danger CI:</p>
+  <div class="portal-alert-title">CRITICAL ANDROID VIOLATIONS</div>
+  <p>Pull Requests containing any of the following anti-patterns will be automatically blocked by Danger CI:</p>
   <ul>
-    <li><strong>Zero Unapproved Frameworks:</strong> Flutter, Xamarin, Cordova, and Ionic are strictly forbidden. Applications must select from the 3 Tier-1 stacks.</li>
-    <li><strong>Declarative UI Only:</strong> Legacy Android XML layouts and iOS UIKit Storyboards are deprecated. All new feature code must use Jetpack Compose, SwiftUI, or React Native.</li>
-    <li><strong>Strict Type Safety:</strong> Untyped JavaScript or blanket <code>Any</code> (Kotlin) / <code>AnyObject</code> (Swift) type escapes are forbidden. All data boundaries must have strict contracts.</li>
-    <li><strong>No Custom Core Re-inventions:</strong> Never write custom token stores, custom HTTP retry layers, or custom analytics pipelines. Use the approved <code>@enterprise/*</code>, SPM, and Maven internal SDKs.</li>
+    <li><strong>Passing Context to ViewModels:</strong> Never pass <code>Context</code>, <code>Activity</code>, or <code>View</code> references into ViewModels. This causes severe memory leaks. Use AndroidViewModel strictly when Application context is required.</li>
+    <li><strong>Exposing MutableStateFlow:</strong> ViewModels must always expose read-only <code>StateFlow&lt;UiState&gt;</code> via <code>_uiState.asStateFlow()</code>. UI composables must never mutate state directly.</li>
+    <li><strong>Missing collectAsStateWithLifecycle:</strong> Using standard <code>collectAsState()</code> leaks coroutine resources when the app goes into the background. Always use <code>collectAsStateWithLifecycle()</code>.</li>
+    <li><strong>Compose Imports in ViewModels:</strong> ViewModels must remain completely framework-agnostic regarding UI rendering. Zero <code>androidx.compose.*</code> imports are allowed inside ViewModels.</li>
+    <li><strong>Bypassing UseCases:</strong> ViewModels must never query repositories or Room DAOs directly. All data access must pass through a validated Use Case.</li>
   </ul>
 </div>
 
 ---
 
-## 6. Pre-Merge Platform Quality Gate
+## 6. Android PR Conformance Quality Gate
 
-<div class="portal-gates-container">
-  <div class="portal-gate-title">PLATFORM COMPLIANCE RELEASE PIPELINE</div>
-  <div class="portal-gates-flow">
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">1. Stack Gate</div>
-      <div class="portal-gate-sub">Tier-1 Approved Runtime</div>
-    </div>
-    <div class="portal-gate-arrow">&rarr;</div>
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">2. Core SDK Gate</div>
-      <div class="portal-gate-sub">Auth &amp; Unleash Config</div>
-    </div>
-    <div class="portal-gate-arrow">&rarr;</div>
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">3. Telemetry Gate</div>
-      <div class="portal-gate-sub">Datadog RUM &amp; Crashlytics</div>
-    </div>
-    <div class="portal-gate-arrow">&rarr;</div>
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">4. Danger CI Gate</div>
-      <div class="portal-gate-sub">PR Review Compliance</div>
-    </div>
-  </div>
+<div class="portal-checklist-box">
+  <div class="portal-checklist-title">PRE-MERGE ANDROID CONFORMANCE CHECKLIST</div>
+  <p>Ensure the following items pass before submitting code for review:</p>
+  <ul>
+    <li><strong>Layer Separation:</strong> Feature code follows <code>data/</code>, <code>domain/</code>, and <code>presentation/</code> sub-packages with single-responsibility files.</li>
+    <li><strong>Domain Purity:</strong> Domain UseCases and Models contain zero <code>android.*</code> package imports.</li>
+    <li><strong>Single Source of Truth:</strong> Repository manages Room caching with offline fallback on network 5xx/timeouts.</li>
+    <li><strong>Unit Test Coverage:</strong> 90%+ unit test coverage on ViewModels and UseCases using mock repositories and <code>StandardTestDispatcher</code>.</li>
+    <li><strong>Internal SDK Compliance:</strong> Consumes <code>com.enterprise.mobile:*</code> Maven dependencies rather than custom network/auth implementations.</li>
+  </ul>
 </div>
