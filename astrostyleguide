@@ -40,7 +40,7 @@ sidebar:
     --portal-gold: #143823;
     --portal-card-bg: #ffffff;
     --portal-card-border: #d8e5dc;
-    --portal-text-body: #1f2937;
+    --portal-text-body: #374151;
     --portal-text-muted: #4b5563;
     --portal-pill-bg: #f0f7f2;
     --portal-pill-border: #cfe0d4;
@@ -346,7 +346,7 @@ sidebar:
   }
   .portal-alert-box p {
     font-size: 0.86rem;
-    color: var(--portal-text-body);
+    color: var(--portal-text-muted);
     margin: 0 0 10px 0;
   }
   .portal-alert-box ul {
@@ -400,7 +400,7 @@ flowchart TD
     Start["New Engineer Joins Mobile Platform"] --> Step1["Step 1: Understand Ecosystem -> Platform Overview"]
     Step1 --> PersonaCheck{"Determine Developer Persona"}
     
-    PersonaCheck -- "Web / Backend Transitioning" --> NonMobile["Step 2A: Non-Mobile Engineer Track\n(Mental Models & Core Fundamentals)"]
+    PersonaCheck -- "Web / Backend Transitioning" --> NonMobile["Step 2A: Non-Mobile Engineer Track\n(Mental Models & Mobile Fundamentals)"]
     PersonaCheck -- "Experienced Mobile Engineer" --> MobileTrack["Step 2B: New Mobile Engineer Track\n(Monorepos, Conventions & SDKs)"]
     
     NonMobile --> Step3["Step 3: Framework Evaluation -> Tech Stack Selection"]
@@ -408,3 +408,208 @@ flowchart TD
     
     Step3 --> Step4["Step 4: Local Workstation -> Machine Setup"]
     Step4 --> Step5["Step 5: Code, Test & Submit First Pull Request"]
+
+    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
+    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
+    classDef terminal fill:#102619,stroke:#22c55e,stroke-width:2px,color:#22c55e;
+    class PersonaCheck highlight;
+    class Step5 terminal;
+```
+
+---
+
+<h2 class="portal-section-heading">Onboarding Navigation Directory</h2>
+<p class="portal-section-sub">Follow each dedicated guide in sequence. In-depth configuration and platform-specific instructions are maintained exclusively within each respective guide to prevent duplication:</p>
+
+<div class="portal-routes-grid">
+
+  <div class="portal-route-card">
+    <div>
+      <div class="portal-route-topbar">
+        <div class="portal-route-icon badge-green">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </div>
+        <span class="portal-step-pill">STEP 01</span>
+      </div>
+      <h3 class="portal-route-title">Platform Overview</h3>
+      <p class="portal-route-desc">
+        Understand the mobile engineering ecosystem: shared architectural layers, core foundational libraries, telemetry pipelines, and repository topology.
+      </p>
+      <div class="portal-route-topics">
+        <span>Architecture Layers</span>
+        <span>Shared SDKs</span>
+        <span>CI/CD Overview</span>
+      </div>
+    </div>
+    <div class="portal-route-action">
+      <a href="/mobile/onboarding/platform-overview/" class="portal-action-link">Open Platform Overview &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-route-card">
+    <div>
+      <div class="portal-route-topbar">
+        <div class="portal-route-icon badge-purple">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </div>
+        <span class="portal-step-pill">STEP 02A</span>
+      </div>
+      <h3 class="portal-route-title">Non-Mobile Engineer Track</h3>
+      <p class="portal-route-desc">
+        Designed specifically for web, frontend, and backend developers. Explains native view hierarchies, main thread constraints, and app lifecycles.
+      </p>
+      <div class="portal-route-topics">
+        <span>DOM vs Native Tree</span>
+        <span>Threading &amp; Locks</span>
+        <span>Memory &amp; Lifecycle</span>
+      </div>
+    </div>
+    <div class="portal-route-action">
+      <a href="/mobile/onboarding/non-mobile-dev-guide/" class="portal-action-link">Open Non-Mobile Track &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-route-card">
+    <div>
+      <div class="portal-route-topbar">
+        <div class="portal-route-icon badge-coral">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+            <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+          </svg>
+        </div>
+        <span class="portal-step-pill">STEP 02B</span>
+      </div>
+      <h3 class="portal-route-title">New Mobile Engineer Track</h3>
+      <p class="portal-route-desc">
+        Accelerated path for experienced mobile developers. Jump directly into our monorepo structures, internal package registries, and PR conventions.
+      </p>
+      <div class="portal-route-topics">
+        <span>Monorepo Structure</span>
+        <span>Private Registries</span>
+        <span>Review Standards</span>
+      </div>
+    </div>
+    <div class="portal-route-action">
+      <a href="/mobile/onboarding/new-mobile-engineer-track/" class="portal-action-link">Open Mobile Track &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-route-card">
+    <div>
+      <div class="portal-route-topbar">
+        <div class="portal-route-icon badge-amber">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+            <polyline points="2 17 12 22 22 17"/>
+            <polyline points="2 12 12 17 22 12"/>
+          </svg>
+        </div>
+        <span class="portal-step-pill">STEP 03</span>
+      </div>
+      <h3 class="portal-route-title">Tech Stack Selection</h3>
+      <p class="portal-route-desc">
+        Evaluate technical trade-offs between Jetpack Compose, SwiftUI, and React Native New Architecture using the platform decision matrix.
+      </p>
+      <div class="portal-route-topics">
+        <span>Native vs Hybrid</span>
+        <span>Decision Matrix</span>
+        <span>Hardware Features</span>
+      </div>
+    </div>
+    <div class="portal-route-action">
+      <a href="/mobile/onboarding/tech-stack-matrix/" class="portal-action-link">Open Tech Selection &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-route-card">
+    <div>
+      <div class="portal-route-topbar">
+        <div class="portal-route-icon badge-teal">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <span class="portal-step-pill">STEP 04</span>
+      </div>
+      <h3 class="portal-route-title">Machine Setup &amp; Workstation</h3>
+      <p class="portal-route-desc">
+        Automated scripts, Xcode and Android Studio versions, JDK 17 setup, simulator configurations, and terminal diagnostic CLI validation.
+      </p>
+      <div class="portal-route-topics">
+        <span>macOS Toolchains</span>
+        <span>Doctor CLI Check</span>
+        <span>Simulators &amp; Devices</span>
+      </div>
+    </div>
+    <div class="portal-route-action">
+      <a href="/mobile/onboarding/machine-setup/" class="portal-action-link">Open Machine Setup &rarr;</a>
+    </div>
+  </div>
+
+</div>
+
+---
+
+<h2 class="portal-section-heading">Initial Access Prerequisites</h2>
+<p class="portal-section-sub">Submit these baseline entitlement requests via the corporate self-service portal so credentials provision in the background while you review the guides:</p>
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Platform System</th>
+        <th>Entitlement Group</th>
+        <th>Required Purpose</th>
+        <th>Validation Command</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Enterprise GitHub</strong></td>
+        <td><code>org-mobile-engineering</code></td>
+        <td>Clone core repositories and templates</td>
+        <td><code>ssh -T git@git.enterprise.internal</code></td>
+      </tr>
+      <tr>
+        <td><strong>Artifact Registry</strong></td>
+        <td><code>pkg-mobile-artifacts-read</code></td>
+        <td>Pull shared Maven, CocoaPods &amp; npm packages</td>
+        <td><code>curl -I https://registry.enterprise.internal/health</code></td>
+      </tr>
+      <tr>
+        <td><strong>Bitrise CI / CD</strong></td>
+        <td><code>bitrise-mobile-engineers</code></td>
+        <td>Trigger builds and inspect PR status</td>
+        <td>Bitrise dashboard console login</td>
+      </tr>
+      <tr>
+        <td><strong>Figma Design System</strong></td>
+        <td><code>design-mobile-tokens</code></td>
+        <td>Access unified UI components and design specs</td>
+        <td>Figma workspace project access</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">FOUNDATIONAL PLATFORM GUARDRAILS</div>
+  <p>Keep these non-negotiable principles in mind as you progress through each track:</p>
+  <ul>
+    <li><strong>Strict Layered Separation:</strong> UI components must only observe ViewModel state; direct repository or network calls from view layers are strictly prohibited.</li>
+    <li><strong>Zero Plaintext Credentials:</strong> API secrets, auth tokens, and certificates must always reside in secure storage (KeyStore / Keychain), never in source control.</li>
+    <li><strong>Offline-First Resilience:</strong> All features touching network endpoints must implement caching and Circuit Breaker resilience.</li>
+    <li><strong>Automated Gate Compliance:</strong> Every pull request must pass Danger PR Bot static analysis and unit test suites prior to merge.</li>
+  </ul>
+</div>
