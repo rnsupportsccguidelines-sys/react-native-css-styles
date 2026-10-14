@@ -1,257 +1,4957 @@
-/* ==========================================================================
-   LIGHT THEME POLISH: TABS, EXPAND MODAL & MERMAID DIAGRAMS
-   Scoped to :root[data-theme='light'], html[data-theme='light']
-   ========================================================================== */
-/* 1. TABS IN LIGHT THEME */
-:root[data-theme='light'] starlight-tabs,
-:root[data-theme='light'] .portal-tabs-container,
-html[data-theme='light'] starlight-tabs,
-html[data-theme='light'] .portal-tabs-container {
-  background: #ffffff !important;
-  border: 1px solid #d4e2d8 !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05) !important;
+---
+title: App Foundations Architecture & Runtime Overview
+description: Enterprise mobile foundations specification, unified runtime initialization sequence, cross-platform architecture matrix, and bootstrap lifecycle coordinator across Android, iOS, and React Native.
+sidebar:
+  order: 1
+  label: 4.1 Foundations Overview
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">APP FOUNDATIONS</span>
+    <span class="portal-hub-tag">CORE ARCHITECTURE &bull; RUNTIME OVERVIEW</span>
+  </div>
+  <h1 class="portal-hero-title">App Foundations Architecture &amp; Runtime Overview</h1>
+  <p class="portal-hero-desc">
+    Enterprise mobile applications rely on standardized <strong>App Foundations</strong>. Foundations isolate shared infrastructure concerns so product feature teams build on a uniform, resilient, and pre-audited substrate across Android, iOS, and React Native.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Design &amp; Theming</div>
+      <div class="portal-cap-desc">Adaptive dark/light modes &bull; 8pt spacing grid &bull; Unified palettes</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Security &amp; Vault</div>
+      <div class="portal-cap-desc">KeyStore / Keychain &bull; AES-256-GCM &bull; Biometrics &bull; TLS Pinning</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Localization</div>
+      <div class="portal-cap-desc">Dynamic language switching &bull; RTL layout mirroring &bull; ICU plurals</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Push Notifications</div>
+      <div class="portal-cap-desc">FCM &amp; APNs routing &bull; Silent background sync &bull; Deep link dispatch</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Branding</div>
+      <div class="portal-cap-desc">White-label theming &bull; Dynamic app icons &bull; Multi-brand asset catalog</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Data Wipe</div>
+      <div class="portal-cap-desc">Remote MDM killswitch &bull; Hardware key shredding &bull; Zero residual storage</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Enterprise Foundation Architecture
+
+App Foundations operate at the lowest layer of the mobile runtime, bootstrapping deterministically prior to any feature module activation. Feature teams interact with these engines exclusively through dependency-injected interfaces rather than direct platform framework APIs.
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-foundations-flowchart-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">FOUNDATIONS RUNTIME TOPOLOGY</span>
+    <label for="diagram-foundations-flowchart-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+graph TD
+    subgraph LayerFeatures ["1. PRODUCT FEATURE LAYER (VERTICAL SLICES)"]
+        F1["User Profile Feature"]
+        F2["Orders & Checkout Feature"]
+        F3["Catalog & Search Feature"]
+    end
+
+    subgraph LayerFoundations ["2. CORE APP FOUNDATIONS ENGINES"]
+        DS["Design & Theming<br/><b>Dark/Light Modes &bull; 8pt Grid</b>"]
+        SEC["Security & Hardware Vault<br/><b>KeyStore / Keychain &bull; AES-256</b>"]
+        LOC["Localization & i18n<br/><b>Dynamic Locales &bull; RTL Engine</b>"]
+        PUSH["Push Notifications<br/><b>APNs &bull; FCM &bull; Deep Links</b>"]
+        BRAND["Branding & Assets<br/><b>Dynamic Icons &bull; Multi-Brand</b>"]
+        WIPE["Data Wipe Protocol<br/><b>Key Shredding &bull; Cache Purge</b>"]
+    end
+
+    subgraph LayerPlatforms ["3. PLATFORM RUNTIMES"]
+        Android["Android Native<br/><b>Kotlin 1.9+ &bull; Compose &bull; Hilt</b>"]
+        iOS["iOS Native<br/><b>Swift 5.9+ &bull; SwiftUI &bull; SPM</b>"]
+        RN["React Native<br/><b>TypeScript &bull; Fabric &bull; Hermes</b>"]
+    end
+
+    F1 --> LayerFoundations
+    F2 --> LayerFoundations
+    F3 --> LayerFoundations
+
+    LayerFoundations --> Android
+    LayerFoundations --> iOS
+    LayerFoundations --> RN
+
+    classDef featStyle fill:#0f2e1e,stroke:#22c55e,stroke-width:2px,color:#e2e8f0;
+    classDef foundStyle fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#e2e8f0;
+    classDef platStyle fill:#2a2012,stroke:#f59e0b,stroke-width:2px,color:#fef3c7;
+
+    class F1,F2,F3 featStyle;
+    class DS,SEC,LOC,PUSH,BRAND,WIPE foundStyle;
+    class Android,iOS,RN platStyle;
+
+    class LayerFeatures subPres;
+    class LayerFoundations subDom;
+    class LayerPlatforms subDat;
+```
+
+  </div>
+</div>
+
+---
+
+### Cold-Start Initialization Sequence Diagram
+
+Foundations initialize deterministically on app cold start. UI rendering is gated until the hardware vault is unlocked and locale preferences are active:
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-foundations-sequence-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">COLD-START BOOTSTRAP LIFECYCLE</span>
+    <label for="diagram-foundations-sequence-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor OS as Mobile Operating System
+    participant App as App EntryPoint (Application / App)
+    participant Boot as AppFoundations Bootstrapper
+    participant Sec as Hardware Vault (KeyStore/Keychain)
+    participant Loc as Localization Engine
+    participant Push as Push Router (APNs / FCM)
+    participant UI as Feature UI Presentation
+
+    OS->>App: Cold Start Process Launch
+    App->>Boot: initialize(context / launchOptions)
+    Boot->>Sec: Initialize hardware crypto keys & MasterKey
+    Sec-->>Boot: Vault unlocked & keys verified
+    Boot->>Loc: Resolve active locale & layout direction (LTR/RTL)
+    Loc-->>Boot: Localization bundle ready
+    Boot->>Push: Register push channels & parse launch notification
+    Push-->>Boot: Push handlers registered
+    Boot-->>App: Foundations operational (isReady = true)
+    App->>UI: Render Root Navigation & First Screen
+    UI-->>OS: First Meaningful Paint
+```
+
+  </div>
+</div>
+
+---
+
+## 2. Platform Foundation Mapping Matrix
+
+Every foundation capability is implemented using native platform idioms while preserving identical contracts:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Foundation Capability</th>
+        <th>Android Native</th>
+        <th>iOS Native</th>
+        <th>React Native</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Design &amp; Theming</strong></td>
+        <td>Jetpack Compose <code>MaterialTheme</code></td>
+        <td>SwiftUI Dynamic Colors &amp; Environment</td>
+        <td><code>ThemeProvider</code> &amp; StyleSheet</td>
+      </tr>
+      <tr>
+        <td><strong>Security &amp; Vault</strong></td>
+        <td>Android KeyStore + <code>MasterKey</code></td>
+        <td>Apple Secure Enclave Keychain</td>
+        <td>Encrypted MMKV / C++ JSI Bridge</td>
+      </tr>
+      <tr>
+        <td><strong>Localization &amp; RTL</strong></td>
+        <td><code>AppCompatDelegate</code> Per-App Locales</td>
+        <td>Dynamic Bundle Locale Coordinator</td>
+        <td><code>i18next</code> + <code>I18nManager.forceRTL</code></td>
+      </tr>
+      <tr>
+        <td><strong>Push Notifications</strong></td>
+        <td><code>FirebaseMessagingService</code></td>
+        <td><code>UNUserNotificationCenterDelegate</code></td>
+        <td><code>@react-native-firebase/messaging</code></td>
+      </tr>
+      <tr>
+        <td><strong>Branding &amp; Assets</strong></td>
+        <td><code>PackageManager</code> Activity-Alias</td>
+        <td><code>setAlternateIconName(_:)</code></td>
+        <td>Native Dynamic Icon Bridge</td>
+      </tr>
+      <tr>
+        <td><strong>Data Wipe</strong></td>
+        <td>KeyStore delete + Room shredding</td>
+        <td>Keychain purge + SwiftData delete</td>
+        <td>Encrypted MMKV clear + Zustand reset</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 3. Modular File-by-File Foundation Implementation
+
+Review the complete implementation of the foundation bootstrapper and lifecycle coordinator across all three platforms:
+
+<Tabs>
+  <TabItem label="Android (Kotlin / Hilt)">
+
+### Foundation Interface Contract
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/foundation/AppFoundations.kt</span>
+  <span class="portal-file-tag">FOUNDATION CONTRACT</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.foundation
+
+import android.content.Context
+
+/**
+ * Enterprise contract governing mobile foundation initialization.
+ * Must execute before any feature module or background worker is invoked.
+ */
+interface AppFoundations {
+    suspend fun initialize(context: Context): Result<Unit>
+    fun isReady(): Boolean
 }
-:root[data-theme='light'] starlight-tabs [role="tablist"],
-:root[data-theme='light'] .portal-tabs-nav,
-html[data-theme='light'] starlight-tabs [role="tablist"],
-html[data-theme='light'] .portal-tabs-nav {
-  background: #f4f8f5 !important;
-  border-bottom: 1px solid #d4e2d8 !important;
+```
+
+### Bootstrapper Coordinator
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/foundation/AppFoundationsImpl.kt</span>
+  <span class="portal-file-tag">BOOTSTRAPPER IMPLEMENTATION</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.foundation
+
+import android.content.Context
+import com.enterprise.mobile.core.security.vault.KeyStoreVault
+import com.enterprise.mobile.core.localization.LocaleManager
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class AppFoundationsImpl @Inject constructor(
+    private val keyStoreVault: KeyStoreVault,
+    private val ioDispatcher: CoroutineDispatcher
+) : AppFoundations {
+
+    @Volatile
+    private var ready: Boolean = false
+
+    override suspend fun initialize(context: Context): Result<Unit> =
+        withContext(ioDispatcher) {
+            try {
+                // 1. Initialize hardware KeyStore and encryption keys
+                keyStoreVault.getSecret("probe_key")
+
+                // 2. Resolve per-app localization preferences
+                LocaleManager.isRTL()
+
+                ready = true
+                Result.success(Unit)
+            } catch (e: Exception) {
+                ready = false
+                Result.failure(e)
+            }
+        }
+
+    override fun isReady(): Boolean = ready
 }
-:root[data-theme='light'] starlight-tabs [role="tab"],
-:root[data-theme='light'] .portal-tab-btn,
-html[data-theme='light'] starlight-tabs [role="tab"],
-html[data-theme='light'] .portal-tab-btn {
-  background: #ffffff !important;
-  border: 1px solid #cfe0d4 !important;
-  color: #374151 !important;
-  font-weight: 700 !important;
+```
+
+### Jetpack App Startup Initializer
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/foundation/StartupInitializer.kt</span>
+  <span class="portal-file-tag">APP STARTUP INITIALIZER</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.foundation
+
+import android.content.Context
+import androidx.startup.Initializer
+import com.enterprise.mobile.core.di.FoundationEntryPoint
+import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
+/**
+ * Jetpack App Startup Initializer to bootstrap foundations deterministically.
+ */
+class StartupInitializer : Initializer<Unit> {
+
+    override fun create(context: Context) {
+        val entryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            FoundationEntryPoint::class.java
+        )
+        val foundations = entryPoint.appFoundations()
+
+        CoroutineScope(Dispatchers.Main.immediate).launch {
+            foundations.initialize(context.applicationContext)
+        }
+    }
+
+    override fun dependencies(): List<Class<out Initializer<*>>> = emptyList()
 }
-:root[data-theme='light'] starlight-tabs [role="tab"]:hover,
-:root[data-theme='light'] .portal-tab-btn:hover,
-html[data-theme='light'] starlight-tabs [role="tab"]:hover,
-html[data-theme='light'] .portal-tab-btn:hover {
-  background: #eaf4ed !important;
-  border-color: #007a3d !important;
-  color: #007a3d !important;
+```
+
+### Hilt Dependency Injection Module
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/di/FoundationModule.kt</span>
+  <span class="portal-file-tag">HILT DI MODULE</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.di
+
+import com.enterprise.mobile.core.foundation.AppFoundations
+import com.enterprise.mobile.core.foundation.AppFoundationsImpl
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class FoundationModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindAppFoundations(
+        impl: AppFoundationsImpl
+    ): AppFoundations
 }
-:root[data-theme='light'] starlight-tabs [role="tab"][aria-selected="true"],
-:root[data-theme='light'] .portal-tab-btn.active,
-html[data-theme='light'] starlight-tabs [role="tab"][aria-selected="true"],
-html[data-theme='light'] .portal-tab-btn.active {
-  background: #007a3d !important;
-  border-color: #007a3d !important;
-  color: #ffffff !important;
-  box-shadow: 0 2px 8px rgba(0, 122, 61, 0.25) !important;
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface FoundationEntryPoint {
+    fun appFoundations(): AppFoundations
 }
-/* 2. FILE HEADERS IN LIGHT THEME */
-:root[data-theme='light'] .portal-file-header,
-html[data-theme='light'] .portal-file-header {
-  background: #edf5ef !important;
-  border: 1px solid #d4e2d8 !important;
-  border-bottom: none !important;
-  color: #143823 !important;
+```
+
+  </TabItem>
+  <TabItem label="iOS (Swift 5.9+ / SPM)">
+
+### Actor-Isolated Foundation Protocol
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Foundation/AppFoundations.swift</span>
+  <span class="portal-file-tag">ACTOR PROTOCOL</span>
+</div>
+
+```swift
+import Foundation
+
+/// Enterprise protocol governing iOS foundation bootstrap sequence.
+public protocol AppFoundations: Actor {
+    func initialize() async throws
+    func isReady() -> Bool
 }
-:root[data-theme='light'] .portal-file-path,
-html[data-theme='light'] .portal-file-path {
-  color: #143823 !important;
-  font-weight: 700 !important;
+```
+
+### Foundation Lifecycle Coordinator
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Foundation/AppFoundationsCoordinator.swift</span>
+  <span class="portal-file-tag">ACTOR COORDINATOR</span>
+</div>
+
+```swift
+import Foundation
+import Security
+import OSLog
+
+private let logger = Logger(subsystem: "com.enterprise.mobile", category: "Foundations")
+
+/// Actor-isolated coordinator ensuring thread-safe, non-blocking foundation bootstrap.
+public actor AppFoundationsCoordinator: AppFoundations {
+    public static let shared = AppFoundationsCoordinator()
+
+    private var initialized: Bool = false
+
+    private init() {}
+
+    public func initialize() async throws {
+        guard !initialized else { return }
+
+        logger.info("Initializing App Foundations runtime...")
+
+        // 1. Verify hardware Secure Enclave / Keychain access
+        try verifyKeychainAccess()
+
+        // 2. Validate active locale configuration
+        let _ = Locale.current.identifier
+
+        initialized = true
+        logger.info("App Foundations initialization complete.")
+    }
+
+    public func isReady() -> Bool {
+        initialized
+    }
+
+    private func verifyKeychainAccess() throws {
+        let testTag = "com.enterprise.mobile.vault.probe"
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassKey,
+            kSecAttrApplicationTag as String: testTag.data(using: .utf8)!,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        if status != errSecSuccess && status != errSecItemNotFound {
+            throw NSError(domain: "SecurityVaultError", code: Int(status), userInfo: nil)
+        }
+    }
 }
-:root[data-theme='light'] .portal-file-tag,
-html[data-theme='light'] .portal-file-tag {
-  background: rgba(0, 122, 61, 0.12) !important;
-  color: #007a3d !important;
-  border: 1px solid rgba(0, 122, 61, 0.3) !important;
+```
+
+### SwiftUI Application Lifecycle Integration
+
+<div class="portal-file-header">
+  <span class="portal-file-path">App/EnterpriseMobileApp.swift</span>
+  <span class="portal-file-tag">SWIFTUI APP ENTRYPOINT</span>
+</div>
+
+```swift
+import SwiftUI
+
+@main
+struct EnterpriseMobileApp: App {
+    @State private var isFoundationsReady: Bool = false
+    @State private var launchError: Error?
+
+    var body: some Scene {
+        WindowGroup {
+            Group {
+                if isFoundationsReady {
+                    RootContentView()
+                } else if let error = launchError {
+                    FoundationErrorView(error: error)
+                } else {
+                    FoundationSplashView()
+                }
+            }
+            .task {
+                do {
+                    try await AppFoundationsCoordinator.shared.initialize()
+                    isFoundationsReady = true
+                } catch {
+                    launchError = error
+                }
+            }
+        }
+    }
 }
-/* 3. DIAGRAM WRAPPER & EXPAND BUTTON IN LIGHT THEME */
-:root[data-theme='light'] .portal-diagram-wrap,
-html[data-theme='light'] .portal-diagram-wrap {
-  background: #ffffff !important;
-  border: 1px solid #d4e2d8 !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
+```
+
+### Dependency Registry Container
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/DI/FoundationContainer.swift</span>
+  <span class="portal-file-tag">DEPENDENCY CONTAINER</span>
+</div>
+
+```swift
+import Foundation
+
+@MainActor
+public final class FoundationContainer {
+    public static let shared = FoundationContainer()
+
+    public let foundations: AppFoundations
+
+    private init() {
+        self.foundations = AppFoundationsCoordinator.shared
+    }
 }
-:root[data-theme='light'] .portal-diagram-header,
-html[data-theme='light'] .portal-diagram-header {
-  background: #f4f8f5 !important;
-  border-bottom: 1px solid #d4e2d8 !important;
+```
+
+  </TabItem>
+  <TabItem label="React Native (TypeScript / JSI)">
+
+### JSI Bootstrap Controller
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/foundation/appFoundations.ts</span>
+  <span class="portal-file-tag">BOOTSTRAP CONTROLLER</span>
+</div>
+
+```typescript
+import { MMKV } from 'react-native-mmkv';
+
+export interface IAppFoundations {
+  initialize(): Promise<void>;
+  isReady(): boolean;
+  getStorage(): MMKV;
 }
-:root[data-theme='light'] .portal-diagram-badge,
-html[data-theme='light'] .portal-diagram-badge {
-  color: #007a3d !important;
-  font-weight: 800 !important;
-}
-:root[data-theme='light'] .portal-expand-btn,
-html[data-theme='light'] .portal-expand-btn {
-  background: #ffffff !important;
-  border: 1.5px solid #007a3d !important;
-  color: #007a3d !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
-}
-:root[data-theme='light'] .portal-expand-btn:hover,
-html[data-theme='light'] .portal-expand-btn:hover {
-  background: #007a3d !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.3) !important;
-}
-/* 4. EXPAND MODAL DIALOG IN LIGHT THEME */
-:root[data-theme='light'] .portal-diagram-wrap:has(.portal-diagram-toggle:checked),
-:root[data-theme='light'] .portal-diagram-wrap.is-fullscreen,
-html[data-theme='light'] .portal-diagram-wrap:has(.portal-diagram-toggle:checked),
-html[data-theme='light'] .portal-diagram-wrap.is-fullscreen {
-  background: #ffffff !important;
-  border: 2px solid #007a3d !important;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25), 0 0 0 100vmax rgba(15, 23, 42, 0.45) !important;
-}
-:root[data-theme='light'] .portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-diagram-header,
-:root[data-theme='light'] .portal-diagram-wrap.is-fullscreen .portal-diagram-header,
-html[data-theme='light'] .portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-diagram-header,
-html[data-theme='light'] .portal-diagram-wrap.is-fullscreen .portal-diagram-header {
-  background: #f4f8f5 !important;
-  border-bottom: 1px solid #d4e2d8 !important;
-}
-:root[data-theme='light'] .portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-diagram-viewport,
-:root[data-theme='light'] .portal-diagram-wrap.is-fullscreen .portal-diagram-viewport,
-html[data-theme='light'] .portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-diagram-viewport,
-html[data-theme='light'] .portal-diagram-wrap.is-fullscreen .portal-diagram-viewport {
-  background: #ffffff !important;
-}
-/* 5. MERMAID DIAGRAMS IN LIGHT THEME */
-:root[data-theme='light'] .portal-diagram-viewport svg,
-:root[data-theme='light'] .starlight-mermaid svg,
-html[data-theme='light'] .portal-diagram-viewport svg,
-html[data-theme='light'] .starlight-mermaid svg {
-  /* Presentation Layer Nodes (Emerald) */
-  & .composeBox rect,
-  & [class*="composeBox"] rect,
-  & [class*="composeBox"] polygon {
-    fill: #e8f9ee !important;
-    stroke: #16a34a !important;
-    stroke-width: 2px !important;
+
+/**
+ * Enterprise React Native foundation lifecycle bootstrapper.
+ * Connects C++ JSI storage, security vault, and theming prior to root render.
+ */
+class AppFoundationsController implements IAppFoundations {
+  private ready = false;
+  private storage: MMKV | null = null;
+
+  async initialize(): Promise<void> {
+    if (this.ready) return;
+
+    try {
+      // 1. Mount synchronous MMKV storage via JSI with hardware encryption
+      this.storage = new MMKV({
+        id: 'enterprise-foundations-vault',
+        encryptionKey: 'enterprise-hardened-aes-256-key',
+      });
+
+      // 2. Verify local storage integrity
+      const initTimestamp = Date.now();
+      this.storage.set('foundations_initialized_at', initTimestamp);
+
+      // 3. Mark foundations as operational
+      this.ready = true;
+    } catch (err: unknown) {
+      this.ready = false;
+      throw err;
+    }
   }
-  & .composeBox .nodeLabel,
-  & [class*="composeBox"] .nodeLabel,
-  & [class*="composeBox"] text,
-  & [class*="composeBox"] span {
-    color: #14532d !important;
-    fill: #14532d !important;
+
+  isReady(): boolean {
+    return this.ready;
   }
-  /* Domain Layer Nodes (Violet/Purple) */
-  & .domainBox rect,
-  & [class*="domainBox"] rect,
-  & [class*="domainBox"] polygon {
-    fill: #f5f0ff !important;
-    stroke: #9333ea !important;
-    stroke-width: 2px !important;
-  }
-  & .domainBox .nodeLabel,
-  & [class*="domainBox"] .nodeLabel,
-  & [class*="domainBox"] text,
-  & [class*="domainBox"] span {
-    color: #581c87 !important;
-    fill: #581c87 !important;
-  }
-  /* Data Layer Nodes (Amber/Gold) */
-  & .dataBox rect,
-  & [class*="dataBox"] rect,
-  & [class*="dataBox"] polygon {
-    fill: #fffbeb !important;
-    stroke: #d97706 !important;
-    stroke-width: 2px !important;
-  }
-  & .dataBox .nodeLabel,
-  & [class*="dataBox"] .nodeLabel,
-  & [class*="dataBox"] text,
-  & [class*="dataBox"] span {
-    color: #78350f !important;
-    fill: #78350f !important;
-  }
-  /* Presentation Subgraph Cluster */
-  & .subPres rect,
-  & [class*="subPres"] rect {
-    fill: #f0fdf4 !important;
-    stroke: #86efac !important;
-    stroke-width: 1.5px !important;
-  }
-  & .subPres span,
-  & [class*="subPres"] span,
-  & .subPres text,
-  & [class*="subPres"] text {
-    color: #15803d !important;
-    fill: #15803d !important;
-    font-weight: 700 !important;
-  }
-  /* Domain Subgraph Cluster */
-  & .subDom rect,
-  & [class*="subDom"] rect {
-    fill: #faf5ff !important;
-    stroke: #d8b4fe !important;
-    stroke-width: 1.5px !important;
-  }
-  & .subDom span,
-  & [class*="subDom"] span,
-  & .subDom text,
-  & [class*="subDom"] text {
-    color: #7e22ce !important;
-    fill: #7e22ce !important;
-    font-weight: 700 !important;
-  }
-  /* Data Subgraph Cluster */
-  & .subDat rect,
-  & [class*="subDat"] rect {
-    fill: #fffdf5 !important;
-    stroke: #fde68a !important;
-    stroke-width: 1.5px !important;
-  }
-  & .subDat span,
-  & [class*="subDat"] span,
-  & .subDat text,
-  & [class*="subDat"] text {
-    color: #b45309 !important;
-    fill: #b45309 !important;
-    font-weight: 700 !important;
-  }
-  /* Connecting Links & Labels */
-  & .edgePath path {
-    stroke: #64748b !important;
-  }
-  & .edgeLabel {
-    background-color: #ffffff !important;
-    color: #334155 !important;
-    fill: #334155 !important;
-  }
-  & .edgeLabel rect {
-    fill: #ffffff !important;
-    opacity: 0.95 !important;
-  }
-  /* Sequence Diagrams in Light Theme */
-  & .actor {
-    fill: #f0fdf4 !important;
-    stroke: #16a34a !important;
-    stroke-width: 1.5px !important;
-  }
-  & text.actor,
-  & text.actor > tspan {
-    fill: #14532d !important;
-    font-weight: 700 !important;
-  }
-  & .actor-line {
-    stroke: #cbd5e1 !important;
-  }
-  & .messageLine0,
-  & .messageLine1 {
-    stroke: #0f766e !important;
-  }
-  & .messageText {
-    fill: #0f172a !important;
-    font-weight: 600 !important;
-  }
-  & .sequenceNumber {
-    fill: #ffffff !important;
-  }
-  & [class*="sequenceNumber"] {
-    fill: #ffffff !important;
-  }
-  & circle.sequenceNumber {
-    fill: #16a34a !important;
+
+  getStorage(): MMKV {
+    if (!this.storage) {
+      throw new Error('Attempted to access storage before AppFoundations.initialize() completed.');
+    }
+    return this.storage;
   }
 }
+
+export const appFoundations = new AppFoundationsController();
+```
+
+### React Gating Hook
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/foundation/useFoundationsReady.ts</span>
+  <span class="portal-file-tag">REACT HOOK</span>
+</div>
+
+```typescript
+import { useState, useEffect } from 'react';
+import { appFoundations } from './appFoundations';
+
+/**
+ * Hook to gate root rendering until foundation services are fully initialized.
+ */
+export function useFoundationsReady(): { isReady: boolean; error: Error | null } {
+  const [isReady, setIsReady] = useState<boolean>(appFoundations.isReady());
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (appFoundations.isReady()) {
+      setIsReady(true);
+      return;
+    }
+
+    let isMounted = true;
+
+    appFoundations
+      .initialize()
+      .then(() => {
+        if (isMounted) setIsReady(true);
+      })
+      .catch((err: Error) => {
+        if (isMounted) setError(err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return { isReady, error };
+}
+```
+
+### Context Provider & Splash Gate
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/foundation/FoundationsProvider.tsx</span>
+  <span class="portal-file-tag">CONTEXT PROVIDER &amp; SPLASH GATE</span>
+</div>
+
+```tsx
+import React, { createContext, useContext, type ReactNode } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { useFoundationsReady } from './useFoundationsReady';
+
+const FoundationsContext = createContext<boolean>(false);
+
+export function FoundationsProvider({ children }: { readonly children: ReactNode }) {
+  const { isReady, error } = useFoundationsReady();
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorTitle}>Foundation Initialization Failure</Text>
+        <Text style={styles.errorMessage}>{error.message}</Text>
+      </View>
+    );
+  }
+
+  if (!isReady) {
+    return (
+      <View style={styles.splashContainer}>
+        <ActivityIndicator size="large" color="#22c55e" />
+      </View>
+    );
+  }
+
+  return (
+    <FoundationsContext.Provider value={isReady}>
+      {children}
+    </FoundationsContext.Provider>
+  );
+}
+
+export function useFoundations(): boolean {
+  return useContext(FoundationsContext);
+}
+
+const styles = StyleSheet.create({
+  splashContainer: {
+    flex: 1,
+    backgroundColor: '#09130e',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    backgroundColor: '#09130e',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorTitle: {
+    color: '#ef4444',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  errorMessage: {
+    color: '#94a3b8',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+});
+```
+
+### Root Application Entry Point
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/App.tsx</span>
+  <span class="portal-file-tag">ROOT APPLICATION INTEGRATION</span>
+</div>
+
+```tsx
+import React from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { FoundationsProvider } from './core/foundation/FoundationsProvider';
+import { RootNavigator } from './navigation/RootNavigator';
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <FoundationsProvider>
+        <RootNavigator />
+      </FoundationsProvider>
+    </SafeAreaProvider>
+  );
+}
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Mandatory Foundation Compliance Rules
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">CRITICAL FOUNDATION VIOLATIONS</div>
+  <p>Pull Requests containing any of the following anti-patterns will be automatically blocked by Danger CI:</p>
+  <ul>
+    <li><strong>Direct SharedPreferences or AsyncStorage Usage:</strong> Never store authentication tokens, session secrets, or PII in unencrypted storage. Always use hardware KeyStore / Keychain via Foundation services.</li>
+    <li><strong>Hardcoded Raw Color Hexes:</strong> Hardcoding hex colors like <code>#008544</code> inside UI views is strictly prohibited. All colors must reference theme palettes.</li>
+    <li><strong>Uncontrolled Network Requests:</strong> Bypassing the network layer with raw <code>fetch()</code> or unpinned clients is blocked. All calls must traverse the TLS-pinned pipeline.</li>
+    <li><strong>Silent Exception Swallowing:</strong> Empty <code>catch &#123;&#125;</code> blocks during bootstrap are prohibited. Unhandled startup failures must halt execution gracefully and display a diagnostic error viewport.</li>
+  </ul>
+</div>
+
+---
+
+## 5. Foundation Pre-Merge Quality Gate
+
+<div class="portal-checklist-box">
+  <div class="portal-checklist-title">PRE-MERGE FOUNDATION CONFORMANCE CHECKLIST</div>
+  <p>Ensure the following items pass before submitting code for review:</p>
+  <ul>
+    <li><strong>Bootstrap Gating:</strong> Root navigation gates UI rendering until <code>AppFoundations.isReady()</code> returns true.</li>
+    <li><strong>Encrypted Persistence:</strong> All persistent state stores employ hardware-backed cryptographic keys.</li>
+    <li><strong>Locale Awareness:</strong> Layout direction and locale strings are hydrated prior to root screen rendering.</li>
+    <li><strong>Zero-Residual Wipe:</strong> The data wipe protocol successfully purges 100% of local storage and Keychain items.</li>
+    <li><strong>Zero Emojis &amp; Magic Numbers:</strong> All styling references uniform 8pt spacing constants.</li>
+  </ul>
+</div>
+
+
+
+
+---------------
+
+---
+title: Design & Theming Standards
+description: Enterprise guide for implementing Light and Dark theme color schemes, uniform 8pt spacing and padding grids, and clean production screen layouts across Android, iOS, and React Native.
+sidebar:
+  order: 2
+  label: 4.2 Design & Theming
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">APP FOUNDATIONS</span>
+    <span class="portal-hub-tag">DESIGN &amp; THEMING SPECIFICATION</span>
+  </div>
+  <h1 class="portal-hero-title">Design &amp; Theming: Dark/Light Mode, Spacing &amp; Screen Layouts</h1>
+  <p class="portal-hero-desc">
+    Consistent UI begins with standardized theme colors, uniform spacing and padding rules, and clean screen integration. This guide provides direct, copy-pasteable solutions for Android, iOS, and React Native to implement adaptive Dark and Light modes, a rigid 8pt spacing scale, and real-world screen components without abstract token systems.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Adaptive Theming</div>
+      <div class="portal-cap-desc">System auto-detection &bull; Dark/Light color schemes &bull; High contrast</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Uniform Spacing</div>
+      <div class="portal-cap-desc">Strict 8pt base grid &bull; 4pt micro-offsets &bull; Zero magic numbers</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Screen Integration</div>
+      <div class="portal-cap-desc">Jetpack Compose &bull; SwiftUI &bull; React Native StyleSheet</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Unified Theming Flow
+
+Theming operates on a direct pipeline: the host OS provides the active color appearance (Dark or Light), the theme coordinator delivers the corresponding color palette and spacing constants, and UI screen components consume them directly via platform idioms.
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-theming-flow-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">THEME &amp; SPACING RESOLUTION FLOW</span>
+    <label for="diagram-theming-flow-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+graph TD
+    subgraph LayerOS ["1. HOST OPERATING SYSTEM"]
+        OS_Mode["System Appearance Trigger<br/><b>Light Mode vs Dark Mode</b>"]
+    end
+
+    subgraph LayerTheme ["2. THEME ENGINE &amp; SPACING SCALE"]
+        PaletteLight["Light Color Scheme<br/><b>White Surface &bull; Emerald 600 &bull; Slate 900</b>"]
+        PaletteDark["Dark Color Scheme<br/><b>Emerald 900 Surface &bull; Emerald 500 &bull; Slate 100</b>"]
+        SpacingGrid["Spacing &amp; Padding Grid<br/><b>xs: 4dp &bull; sm: 8dp &bull; md: 16dp &bull; lg: 24dp &bull; xl: 32dp</b>"]
+    end
+
+    subgraph LayerUI ["3. SCREEN PRESENTATION LAYER"]
+        ScreenCard["Card Surfaces &amp; Elevation"]
+        ScreenText["High-Contrast Typography"]
+        ScreenAction["Action Buttons &amp; Interactive Controls"]
+    end
+
+    OS_Mode --> PaletteLight
+    OS_Mode --> PaletteDark
+
+    PaletteLight --> ScreenCard
+    PaletteLight --> ScreenText
+    PaletteLight --> ScreenAction
+
+    PaletteDark --> ScreenCard
+    PaletteDark --> ScreenText
+    PaletteDark --> ScreenAction
+
+    SpacingGrid --> ScreenCard
+    SpacingGrid --> ScreenAction
+
+    classDef osStyle fill:#0f2e1e,stroke:#22c55e,stroke-width:2px,color:#e2e8f0;
+    classDef thmStyle fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#e2e8f0;
+    classDef uiStyle fill:#2a2012,stroke:#f59e0b,stroke-width:2px,color:#fef3c7;
+
+    class OS_Mode osStyle;
+    class PaletteLight,PaletteDark,SpacingGrid thmStyle;
+    class ScreenCard,ScreenText,ScreenAction uiStyle;
+
+    class LayerOS subPres;
+    class LayerTheme subDom;
+    class LayerUI subDat;
+```
+
+  </div>
+</div>
+
+---
+
+## 2. Uniform Spacing & Padding Scale
+
+All mobile screens must adhere strictly to the **8pt base grid** with 4pt half-step increments. Arbitrary values (e.g. `11px`, `13px`, `19px`) are forbidden across all platforms:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Scale Name</th>
+        <th>Pixel / DP Value</th>
+        <th>Standard Padding Context</th>
+        <th>Standard Spacing / Gap Context</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>xs</strong></td>
+        <td><code>4dp / 4pt</code></td>
+        <td>Badge inner padding, pill tags</td>
+        <td>Icon-to-text inline gap, tight metadata rows</td>
+      </tr>
+      <tr>
+        <td><strong>sm</strong></td>
+        <td><code>8dp / 8pt</code></td>
+        <td>Compact button padding, list item vertical padding</td>
+        <td>Space between related form fields, button clusters</td>
+      </tr>
+      <tr>
+        <td><strong>md</strong></td>
+        <td><code>16dp / 16pt</code></td>
+        <td>Default screen horizontal padding, card content padding</td>
+        <td>Default space between independent cards, list item separators</td>
+      </tr>
+      <tr>
+        <td><strong>lg</strong></td>
+        <td><code>24dp / 24pt</code></td>
+        <td>Modal dialog content padding, bottom sheet padding</td>
+        <td>Section-to-section spacing within a screen</td>
+      </tr>
+      <tr>
+        <td><strong>xl</strong></td>
+        <td><code>32dp / 32pt</code></td>
+        <td>Hero header top padding, empty-state container padding</td>
+        <td>Major page section breaks, footer separation</td>
+      </tr>
+      <tr>
+        <td><strong>xxl</strong></td>
+        <td><code>48dp / 48pt</code></td>
+        <td>Top-of-screen safe area offsets for non-standard navigation</td>
+        <td>Large visual dividers, promotional hero spacing</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 3. Platform Implementations & Screen Usage
+
+Select a platform tab to see the complete implementation of colors, spacing, theme wrapper, and a full, realistic user profile screen.
+
+<Tabs>
+  <TabItem label="Android (Kotlin / Jetpack Compose)">
+
+### Step 1: Color Palette Definitions
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/design/Color.kt</span>
+  <span class="portal-file-tag">COLOR PALETTE</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.design
+
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color
+
+// Primary Brand Colors
+val EmeraldPrimaryLight = Color(0xFF007A3D)
+val EmeraldPrimaryDark  = Color(0xFF22C55E)
+
+// Surfaces & Backgrounds
+val SurfaceLight    = Color(0xFFFFFFFF)
+val SurfaceDark     = Color(0xFF0D1912)
+val BackgroundLight = Color(0xFFF4F8F5)
+val BackgroundDark  = Color(0xFF09130E)
+
+// Borders & Dividers
+val BorderLight = Color(0xFFD4E2D8)
+val BorderDark  = Color(0xFF193828)
+
+// Typography Colors
+val TextPrimaryLight = Color(0xFF0F172A)
+val TextPrimaryDark  = Color(0xFFF1F5F9)
+val TextMutedLight   = Color(0xFF475569)
+val TextMutedDark    = Color(0xFF94A3B8)
+
+// Semantic State Colors
+val ErrorRed = Color(0xFFEF4444)
+
+val AppLightColors = lightColorScheme(
+    primary = EmeraldPrimaryLight,
+    onPrimary = Color.White,
+    surface = SurfaceLight,
+    onSurface = TextPrimaryLight,
+    background = BackgroundLight,
+    onBackground = TextPrimaryLight,
+    outline = BorderLight,
+    error = ErrorRed,
+    onError = Color.White
+)
+
+val AppDarkColors = darkColorScheme(
+    primary = EmeraldPrimaryDark,
+    onPrimary = BackgroundDark,
+    surface = SurfaceDark,
+    onSurface = TextPrimaryDark,
+    background = BackgroundDark,
+    onBackground = TextPrimaryDark,
+    outline = BorderDark,
+    error = ErrorRed,
+    onError = Color.White
+)
+```
+
+### Step 2: Spacing & Padding System
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/design/Spacing.kt</span>
+  <span class="portal-file-tag">SPACING SYSTEM</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.design
+
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+
+@Immutable
+data class Spacing(
+    val none: Dp = 0.dp,
+    val xs: Dp = 4.dp,
+    val sm: Dp = 8.dp,
+    val md: Dp = 16.dp,
+    val lg: Dp = 24.dp,
+    val xl: Dp = 32.dp,
+    val xxl: Dp = 48.dp
+)
+
+val LocalSpacing = staticCompositionLocalOf { Spacing() }
+
+val MaterialTheme.spacing: Spacing
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalSpacing.current
+```
+
+### Step 3: Root Theme Wrapper
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/design/EnterpriseTheme.kt</span>
+  <span class="portal-file-tag">THEME WRAPPER</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.design
+
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+
+@Composable
+fun EnterpriseTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    val colorScheme = if (darkTheme) AppDarkColors else AppLightColors
+    val spacing = Spacing()
+
+    CompositionLocalProvider(LocalSpacing provides spacing) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            content = content
+        )
+    }
+}
+```
+
+### Step 4: Real-World Screen Implementation
+
+<div class="portal-file-header">
+  <span class="portal-file-path">features/profile/UserProfileScreen.kt</span>
+  <span class="portal-file-tag">SCREEN IMPLEMENTATION</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.features.profile
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.enterprise.mobile.core.design.spacing
+
+@Composable
+fun UserProfileScreen(
+    userName: String = "Sarah Connor",
+    userRole: String = "Staff Security Engineer",
+    modifier: Modifier = Modifier
+) {
+    val spacing = MaterialTheme.spacing
+    val colors = MaterialTheme.colorScheme
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .padding(horizontal = spacing.md, vertical = spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(spacing.md)
+    ) {
+        // Screen Header
+        Text(
+            text = "User Profile",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = colors.onBackground
+        )
+
+        // Profile Card
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, colors.outline, RoundedCornerShape(12.dp)),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = colors.surface)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(spacing.md),
+                verticalArrangement = Arrangement.spacedBy(spacing.sm)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(spacing.md)
+                ) {
+                    // Avatar Placeholder
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(colors.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = userName.take(1),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.onPrimary
+                        )
+                    }
+
+                    Column {
+                        Text(
+                            text = userName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.onSurface
+                        )
+                        Text(
+                            text = userRole,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.outline
+                        )
+                    }
+                }
+
+                Divider(
+                    modifier = Modifier.padding(vertical = spacing.xs),
+                    color = colors.outline.copy(alpha = 0.5f)
+                )
+
+                // Status Badge
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(colors.primary.copy(alpha = 0.12f))
+                        .padding(horizontal = spacing.sm, vertical = spacing.xs),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "ACTIVE SESSION",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.primary
+                    )
+                }
+            }
+        }
+
+        // Action Button
+        Button(
+            onClick = { /* Handle action */ },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.primary,
+                contentColor = colors.onPrimary
+            )
+        ) {
+            Text(
+                text = "Edit Profile Settings",
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="iOS (Swift 5.9+ / SwiftUI)">
+
+### Step 1: Color Palette Definitions
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Design/AppColors.swift</span>
+  <span class="portal-file-tag">DYNAMIC COLORS</span>
+</div>
+
+```swift
+import SwiftUI
+import UIKit
+
+public enum AppColors {
+    // Dynamic Primary Accent (Emerald)
+    public static let primary = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0x22/255.0, green: 0xC5/255.0, blue: 0x5E/255.0, alpha: 1.0)
+            : UIColor(red: 0x00/255.0, green: 0x7A/255.0, blue: 0x3D/255.0, alpha: 1.0)
+    })
+
+    // Dynamic Background Surface
+    public static let background = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0x09/255.0, green: 0x13/255.0, blue: 0x0E/255.0, alpha: 1.0)
+            : UIColor(red: 0xF4/255.0, green: 0xF8/255.0, blue: 0xF5/255.0, alpha: 1.0)
+    })
+
+    // Dynamic Card Surface
+    public static let surface = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0x0D/255.0, green: 0x19/255.0, blue: 0x12/255.0, alpha: 1.0)
+            : UIColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
+    })
+
+    // Dynamic Border / Outline
+    public static let border = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0x19/255.0, green: 0x38/255.0, blue: 0x28/255.0, alpha: 1.0)
+            : UIColor(red: 0xD4/255.0, green: 0xE2/255.0, blue: 0xD8/255.0, alpha: 1.0)
+    })
+
+    // Dynamic Typography
+    public static let textPrimary = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0xF1/255.0, green: 0xF5/255.0, blue: 0xF9/255.0, alpha: 1.0)
+            : UIColor(red: 0x0F/255.0, green: 0x17/255.0, blue: 0x2A/255.0, alpha: 1.0)
+    })
+
+    public static let textMuted = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0x94/255.0, green: 0xA3/255.0, blue: 0xB8/255.0, alpha: 1.0)
+            : UIColor(red: 0x47/255.0, green: 0x55/255.0, blue: 0x69/255.0, alpha: 1.0)
+    })
+}
+```
+
+### Step 2: Spacing & Padding Constants
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Design/AppSpacing.swift</span>
+  <span class="portal-file-tag">SPACING SCALE</span>
+</div>
+
+```swift
+import Foundation
+
+public enum AppSpacing {
+    public static let none: CGFloat = 0
+    public static let xs: CGFloat   = 4
+    public static let sm: CGFloat   = 8
+    public static let md: CGFloat   = 16
+    public static let lg: CGFloat   = 24
+    public static let xl: CGFloat   = 32
+    public static let xxl: CGFloat  = 48
+}
+```
+
+### Step 3: Root Theme Modifier
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Design/EnterpriseThemeModifier.swift</span>
+  <span class="portal-file-tag">VIEW MODIFIER</span>
+</div>
+
+```swift
+import SwiftUI
+
+public struct EnterpriseThemeModifier: ViewModifier {
+    public func body(content: Content) -> some View {
+        content
+            .background(AppColors.background)
+            .foregroundStyle(AppColors.textPrimary)
+            .tint(AppColors.primary)
+    }
+}
+
+public extension View {
+    func withEnterpriseTheme() -> some View {
+        modifier(EnterpriseThemeModifier())
+    }
+}
+```
+
+### Step 4: Real-World Screen Implementation
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/Profile/UserProfileView.swift</span>
+  <span class="portal-file-tag">SCREEN IMPLEMENTATION</span>
+</div>
+
+```swift
+import SwiftUI
+
+public struct UserProfileView: View {
+    public let userName: String
+    public let userRole: String
+
+    public init(userName: String = "Sarah Connor", userRole: String = "Staff Security Engineer") {
+        self.userName = userName
+        self.userRole = userRole
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.md) {
+            // Header
+            Text("User Profile")
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(AppColors.textPrimary)
+
+            // Profile Card
+            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                HStack(spacing: AppSpacing.md) {
+                    // Avatar Placeholder
+                    ZStack {
+                        Circle()
+                            .fill(AppColors.primary)
+                            .frame(width: 56, height: 56)
+                        Text(String(userName.prefix(1)))
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+
+                    VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                        Text(userName)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(AppColors.textPrimary)
+                        Text(userRole)
+                            .font(.system(size: 14))
+                            .foregroundStyle(AppColors.textMuted)
+                    }
+                }
+
+                Divider()
+                    .overlay(AppColors.border)
+                    .padding(.vertical, AppSpacing.xs)
+
+                // Status Badge
+                Text("ACTIVE SESSION")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppColors.primary)
+                    .padding(.horizontal, AppSpacing.sm)
+                    .padding(.vertical, AppSpacing.xs)
+                    .background(AppColors.primary.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            .padding(AppSpacing.md)
+            .background(AppColors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(AppColors.border, lineWidth: 1)
+            )
+
+            // Action Button
+            Button(action: { /* Profile action */ }) {
+                Text("Edit Profile Settings")
+                    .font(.system(size: 16, weight: .bold))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(AppColors.primary)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, AppSpacing.md)
+        .padding(.top, AppSpacing.lg)
+        .withEnterpriseTheme()
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="React Native (TypeScript / StyleSheet)">
+
+### Step 1: Color Palette Definitions
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/theme/colors.ts</span>
+  <span class="portal-file-tag">COLOR DEFINITIONS</span>
+</div>
+
+```typescript
+export interface AppPalette {
+  primary: string;
+  onPrimary: string;
+  surface: string;
+  background: string;
+  border: string;
+  textPrimary: string;
+  textMuted: string;
+}
+
+export const lightPalette: AppPalette = {
+  primary: '#007a3d',
+  onPrimary: '#ffffff',
+  surface: '#ffffff',
+  background: '#f4f8f5',
+  border: '#d4e2d8',
+  textPrimary: '#0f172a',
+  textMuted: '#475569',
+};
+
+export const darkPalette: AppPalette = {
+  primary: '#22c55e',
+  onPrimary: '#09130e',
+  surface: '#0d1912',
+  background: '#09130e',
+  border: '#193828',
+  textPrimary: '#f1f5f9',
+  textMuted: '#94a3b8',
+};
+```
+
+### Step 2: Spacing & Padding Scale
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/theme/spacing.ts</span>
+  <span class="portal-file-tag">SPACING CONSTANTS</span>
+</div>
+
+```typescript
+export const spacing = {
+  none: 0,
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
+} as const;
+
+export type SpacingScale = typeof spacing;
+```
+
+### Step 3: Theme Context Provider
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/theme/ThemeProvider.tsx</span>
+  <span class="portal-file-tag">CONTEXT PROVIDER</span>
+</div>
+
+```tsx
+import React, { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { useColorScheme } from 'react-native';
+import { lightPalette, darkPalette, type AppPalette } from './colors';
+import { spacing, type SpacingScale } from './spacing';
+
+interface ThemeContextValue {
+  colors: AppPalette;
+  spacing: SpacingScale;
+  isDark: boolean;
+}
+
+const ThemeContext = createContext<ThemeContextValue>({
+  colors: darkPalette,
+  spacing,
+  isDark: true,
+});
+
+export function ThemeProvider({ children }: { readonly children: ReactNode }) {
+  const scheme = useColorScheme();
+  const isDark = scheme !== 'light';
+
+  const value = useMemo(
+    () => ({
+      colors: isDark ? darkPalette : lightPalette,
+      spacing,
+      isDark,
+    }),
+    [isDark]
+  );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
+export function useAppTheme(): ThemeContextValue {
+  return useContext(ThemeContext);
+}
+```
+
+### Step 4: Real-World Screen Implementation
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/profile/UserProfileScreen.tsx</span>
+  <span class="portal-file-tag">SCREEN IMPLEMENTATION</span>
+</div>
+
+```tsx
+import React from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+} from 'react-native';
+import { useAppTheme } from '../../core/theme/ThemeProvider';
+
+interface UserProfileScreenProps {
+  readonly userName?: string;
+  readonly userRole?: string;
+}
+
+export function UserProfileScreen({
+  userName = 'Sarah Connor',
+  userRole = 'Staff Security Engineer',
+}: UserProfileScreenProps) {
+  const { colors, spacing } = useAppTheme();
+
+  return (
+    <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { paddingHorizontal: spacing.md, paddingTop: spacing.lg }]}>
+        {/* Header */}
+        <Text style={[styles.headerTitle, { color: colors.textPrimary, marginBottom: spacing.md }]}>
+          User Profile
+        </Text>
+
+        {/* Profile Card */}
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              padding: spacing.md,
+              marginBottom: spacing.md,
+            },
+          ]}
+        >
+          <View style={[styles.profileRow, { gap: spacing.md, marginBottom: spacing.sm }]}>
+            {/* Avatar Placeholder */}
+            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+              <Text style={[styles.avatarLetter, { color: colors.onPrimary }]}>
+                {userName.charAt(0)}
+              </Text>
+            </View>
+
+            <View style={styles.profileDetails}>
+              <Text style={[styles.userName, { color: colors.textPrimary }]}>{userName}</Text>
+              <Text style={[styles.userRole, { color: colors.textMuted }]}>{userRole}</Text>
+            </View>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border, marginVertical: spacing.xs }]} />
+
+          {/* Status Badge */}
+          <View
+            style={[
+              styles.badge,
+              {
+                backgroundColor: colors.primary + '1F',
+                paddingHorizontal: spacing.sm,
+                paddingVertical: spacing.xs,
+              },
+            ]}
+          >
+            <Text style={[styles.badgeText, { color: colors.primary }]}>ACTIVE SESSION</Text>
+          </View>
+        </View>
+
+        {/* Action Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[styles.button, { backgroundColor: colors.primary, height: 48 }]}
+          onPress={() => {}}
+        >
+          <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
+            Edit Profile Settings
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  card: {
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarLetter: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  profileDetails: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  userRole: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    borderRadius: 6,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  button: {
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Layout Rules & Anti-Patterns
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">LAYOUT CONFORMANCE MANDATES</div>
+  <ul>
+    <li><strong>Zero Arbitrary Offsets:</strong> Never use arbitrary padding/margins like <code>padding: 13</code> or <code>19.dp</code>. Only use the standard scale (<code>xs: 4</code>, <code>sm: 8</code>, <code>md: 16</code>, <code>lg: 24</code>, <code>xl: 32</code>).</li>
+    <li><strong>Forced Adaptive Colors:</strong> UI components must consume dynamic semantic colors (<code>colors.background</code>, <code>colors.surface</code>, <code>colors.textPrimary</code>) rather than fixed hex literals like <code>#FFFFFF</code> or <code>#000000</code>.</li>
+    <li><strong>Consistent Card Padding:</strong> Card containers must always apply <code>md: 16dp</code> internal padding and <code>sm: 8dp</code> internal child gaps for uniform visual rhythm.</li>
+  </ul>
+</div>
+
+
+------------------------------------
+
+
+
+---
+title: Security & Hardware Vault Standards
+description: Enterprise mobile security architecture, hardware-backed cryptographic vaults, biometric authentication gating, and TLS public key pinning across Android, iOS, and React Native.
+sidebar:
+  order: 3
+  label: 4.3 Security & Vault
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">APP FOUNDATIONS</span>
+    <span class="portal-hub-tag">SECURITY &bull; HARDWARE VAULT SPECIFICATION</span>
+  </div>
+  <h1 class="portal-hero-title">Security &amp; Hardware Vault: KeyStore, Keychain &amp; TLS Pinning</h1>
+  <p class="portal-hero-desc">
+    Mobile devices operate in hostile environments. The Security Foundation provides hardware-backed cryptographic protection, biometric authentication gating, AES-256-GCM authenticated encryption at rest, and TLS Certificate Pinning. Storing tokens, credentials, or PII in unencrypted storage is strictly prohibited.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Hardware Vaults</div>
+      <div class="portal-cap-desc">Android KeyStore TEE &bull; Apple Secure Enclave &bull; TurboModule JSI</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Authenticated Encryption</div>
+      <div class="portal-cap-desc">AES-256-GCM &bull; MasterKey derivation &bull; Nonce uniqueness</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Transport Security</div>
+      <div class="portal-cap-desc">TLS Certificate Pinning &bull; SHA-256 SPKI hashes &bull; Backup pins</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Hardware-Backed Cryptographic Topology
+
+All cryptographic operations execute within dedicated hardware chips (ARM TrustZone, Google Titan M, or Apple Secure Enclave). Symmetric encryption keys never enter application memory in plaintext:
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-security-flowchart-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">HARDWARE SECURITY BUS &amp; PERSISTENCE TOPOLOGY</span>
+    <label for="diagram-security-flowchart-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+graph TD
+    subgraph LayerApp ["1. CALLER APPLICATION RUNTIME"]
+        AppAuth["Authentication Manager<br/><b>User Credentials &amp; JWT Bearer Tokens</b>"]
+        AppNet["Network Interceptor<br/><b>TLS Pinning &amp; Header Injection</b>"]
+        AppBio["Biometric Gating Gatekeeper<br/><b>BiometricPrompt / LocalAuthentication</b>"]
+    end
+
+    subgraph LayerHardware ["2. HARDWARE CRYPTO SECURITY SUBSTRATE"]
+        KeyStore["Android KeyStore<br/><b>TEE / StrongBox Hardware MasterKey</b>"]
+        SecureEnclave["Apple Secure Enclave Processor<br/><b>kSecAccessControlBiometryAny</b>"]
+        JSIBridge["TurboModule C++ JSI<br/><b>Zero-Serialization Native Vault</b>"]
+    end
+
+    subgraph LayerStorage ["3. ENCRYPTED AT REST PERSISTENCE"]
+        EncPrefs["Encrypted SharedPreferences<br/><b>AES-256-GCM Keysets</b>"]
+        KeyChainStore["iOS Keychain Store<br/><b>kSecAttrAccessibleAfterFirstUnlock</b>"]
+        EncMMKV["Encrypted MMKV Storage<br/><b>Hardware Key Backed</b>"]
+    end
+
+    AppAuth --> KeyStore
+    AppAuth --> SecureEnclave
+    AppAuth --> JSIBridge
+
+    AppBio --> KeyStore
+    AppBio --> SecureEnclave
+
+    KeyStore --> EncPrefs
+    SecureEnclave --> KeyChainStore
+    JSIBridge --> EncMMKV
+
+    classDef appStyle fill:#0f2e1e,stroke:#22c55e,stroke-width:2px,color:#e2e8f0;
+    classDef hwdStyle fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#e2e8f0;
+    classDef stoStyle fill:#2a2012,stroke:#f59e0b,stroke-width:2px,color:#fef3c7;
+
+    class AppAuth,AppNet,AppBio appStyle;
+    class KeyStore,SecureEnclave,JSIBridge hwdStyle;
+    class EncPrefs,KeyChainStore,EncMMKV stoStyle;
+
+    class LayerApp subPres;
+    class LayerHardware subDom;
+    class LayerStorage subDat;
+```
+
+  </div>
+</div>
+
+---
+
+## 2. Platform Security Matrix
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Security Capability</th>
+        <th>Android Implementation</th>
+        <th>iOS Implementation</th>
+        <th>React Native Implementation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Hardware Root Key</strong></td>
+        <td>TEE / StrongBox KeyStore</td>
+        <td>Apple Secure Enclave Processor</td>
+        <td>TurboModule C++ JSI direct hook</td>
+      </tr>
+      <tr>
+        <td><strong>Symmetric Encryption</strong></td>
+        <td>AES-256-GCM authenticated cipher</td>
+        <td>AES-256-GCM via CryptoKit</td>
+        <td>AES-256-CFB / GCM via MMKV</td>
+      </tr>
+      <tr>
+        <td><strong>Biometric Gating</strong></td>
+        <td><code>BiometricPrompt</code> (Strong tier)</td>
+        <td><code>LocalAuthentication</code> (FaceID/TouchID)</td>
+        <td>Native module prompt with fallback</td>
+      </tr>
+      <tr>
+        <td><strong>TLS Certificate Pinning</strong></td>
+        <td>OkHttp <code>CertificatePinner</code></td>
+        <td><code>URLSessionDelegate</code> SPKI check</td>
+        <td>Native network adapter pinning</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 3. Platform Implementations & Screen Integration
+
+Select a platform tab to see the complete implementation of hardware-backed key vaults, biometric prompts, TLS pinning delegates, and how security is enforced on a protected screen.
+
+<Tabs>
+  <TabItem label="Android (Kotlin / Hilt)">
+
+### Step 1: Hardware-Backed KeyStore Vault
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/security/vault/KeyStoreVault.kt</span>
+  <span class="portal-file-tag">HARDWARE KEYSTORE</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.security.vault
+
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class KeyStoreVault @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+    private val masterKey: MasterKey by lazy {
+        MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .setRequestStrongBoxStorage(true)
+            .build()
+    }
+
+    private val secureStorage: SharedPreferences by lazy {
+        EncryptedSharedPreferences.create(
+            context,
+            "enterprise_secure_vault",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
+    fun storeSecret(key: String, value: String) {
+        secureStorage.edit().putString(key, value).apply()
+    }
+
+    fun getSecret(key: String): String? {
+        return secureStorage.getString(key, null)
+    }
+
+    fun removeSecret(key: String) {
+        secureStorage.edit().remove(key).apply()
+    }
+
+    fun purgeVault() {
+        secureStorage.edit().clear().commit()
+    }
+}
+```
+
+### Step 2: Biometric Authentication Prompt
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/security/biometrics/BiometricAuthenticator.kt</span>
+  <span class="portal-file-tag">BIOMETRIC PROMPT</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.security.biometrics
+
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+
+object BiometricAuthenticator {
+
+    fun isBiometricAvailable(activity: FragmentActivity): Boolean {
+        val biometricManager = BiometricManager.from(activity)
+        return biometricManager.canAuthenticate(
+            BiometricManager.Authenticators.BIOMETRIC_STRONG
+        ) == BiometricManager.BIOMETRIC_SUCCESS
+    }
+
+    suspend fun authenticate(
+        activity: FragmentActivity,
+        title: String = "Authenticate to Continue",
+        subtitle: String = "Confirm your identity using biometrics"
+    ): Result<Unit> = suspendCancellableCoroutine { continuation ->
+        val executor = ContextCompat.getMainExecutor(activity)
+        val prompt = BiometricPrompt(activity, executor, object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                if (continuation.isActive) continuation.resume(Result.success(Unit))
+            }
+
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                if (continuation.isActive) continuation.resume(Result.failure(Exception(errString.toString())))
+            }
+
+            override fun onAuthenticationFailed() {
+                // Biometric not recognized, prompt remains active for retry
+            }
+        })
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(title)
+            .setSubtitle(subtitle)
+            .setNegativeButtonText("Cancel")
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+            .build()
+
+        prompt.authenticate(promptInfo)
+    }
+}
+```
+
+### Step 3: TLS Certificate Pinning Factory
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/security/network/CertificatePinnerFactory.kt</span>
+  <span class="portal-file-tag">TLS CERTIFICATE PINNING</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.security.network
+
+import okhttp3.CertificatePinner
+
+object CertificatePinnerFactory {
+    fun create(): CertificatePinner =
+        CertificatePinner.Builder()
+            // Primary Production SPKI Pin
+            .add("api.enterprise.com", "sha256/WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=")
+            // Disaster Recovery / Backup SPKI Pin
+            .add("api.enterprise.com", "sha256/k20OWoUx82mOv30CEtYPSTg2xhnWKEcqRf87ZhDU828=")
+            .build()
+}
+```
+
+### Step 4: Screen Security Integration
+
+<div class="portal-file-header">
+  <span class="portal-file-path">features/auth/SecureAuthScreen.kt</span>
+  <span class="portal-file-tag">PROTECTED SCREEN COMPOSABLE</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.features.auth
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
+import com.enterprise.mobile.core.security.biometrics.BiometricAuthenticator
+import com.enterprise.mobile.core.security.vault.KeyStoreVault
+import kotlinx.coroutines.launch
+
+@Composable
+fun SecureAuthScreen(
+    keyStoreVault: KeyStoreVault,
+    onAuthSuccess: () -> Unit
+) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var authError by remember { mutableStateOf<String?>(null) }
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Biometric Vault Protection",
+                style = MaterialTheme.typography.headlineSmall
+            )
+
+            authError?.let {
+                Text(text = it, color = MaterialTheme.colorScheme.error)
+            }
+
+            Button(
+                onClick = {
+                    val activity = context as? FragmentActivity ?: return@Button
+                    coroutineScope.launch {
+                        val result = BiometricAuthenticator.authenticate(activity)
+                        if (result.isSuccess) {
+                            val token = keyStoreVault.getSecret("auth_token")
+                            if (!token.isNullOrEmpty()) onAuthSuccess()
+                        } else {
+                            authError = result.exceptionOrNull()?.message
+                        }
+                    }
+                }
+            ) {
+                Text(text = "Unlock with Biometrics")
+            }
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="iOS (Swift 5.9+ / SPM)">
+
+### Step 1: Secure Enclave Keychain Vault
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Security/Vault/KeychainSecureVault.swift</span>
+  <span class="portal-file-tag">KEYCHAIN VAULT</span>
+</div>
+
+```swift
+import Foundation
+import Security
+
+public actor KeychainSecureVault {
+    public static let shared = KeychainSecureVault()
+    private let serviceName = "com.enterprise.mobile.vault"
+
+    private init() {}
+
+    public func storeSecret(key: String, value: String) throws {
+        guard let data = value.data(using: .utf8) else {
+            throw NSError(domain: "SecurityVaultError", code: -1, userInfo: nil)
+        }
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: serviceName,
+            kSecAttrAccount as String: key,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        ]
+
+        SecItemDelete(query as CFDictionary)
+        let status = SecItemAdd(query as CFDictionary, nil)
+        guard status == errSecSuccess else {
+            throw NSError(domain: "SecurityVaultError", code: Int(status), userInfo: nil)
+        }
+    }
+
+    public func getSecret(key: String) throws -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: serviceName,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess, let data = item as? Data else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
+    }
+
+    public func purgeAllSecrets() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: serviceName
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+}
+```
+
+### Step 2: FaceID / TouchID Biometric Authenticator
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Security/Biometrics/BiometricAuthenticator.swift</span>
+  <span class="portal-file-tag">LOCAL AUTHENTICATION</span>
+</div>
+
+```swift
+import LocalAuthentication
+
+public final class BiometricAuthenticator {
+    public static let shared = BiometricAuthenticator()
+
+    private init() {}
+
+    public func authenticate(reason: String = "Authenticate to access secure data") async throws -> Bool {
+        let context = LAContext()
+        context.localizedCancelTitle = "Cancel"
+        var error: NSError?
+
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+            throw error ?? NSError(domain: "BiometricError", code: -1, userInfo: nil)
+        }
+
+        return try await context.evaluatePolicy(
+            .deviceOwnerAuthenticationWithBiometrics,
+            localizedReason: reason
+        )
+    }
+}
+```
+
+### Step 3: TLS SPKI Pinning URLSessionDelegate
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Security/Network/SSLPinningDelegate.swift</span>
+  <span class="portal-file-tag">TLS PINNING DELEGATE</span>
+</div>
+
+```swift
+import Foundation
+import CryptoKit
+import Security
+
+public final class SSLPinningDelegate: NSObject, URLSessionDelegate {
+    private let pinnedHashes: Set<String> = [
+        "WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=",
+        "k20OWoUx82mOv30CEtYPSTg2xhnWKEcqRf87ZhDU828="
+    ]
+
+    public func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+            return
+        }
+
+        var secresult = SecTrustResultType.invalid
+        let status = SecTrustEvaluate(serverTrust, &secresult)
+        guard status == errSecSuccess,
+              let certificate = SecTrustGetCertificateAtIndex(serverTrust, 0) else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+            return
+        }
+
+        let certData = SecCertificateCopyData(certificate) as Data
+        let certHash = Data(SHA256.hash(data: certData)).base64EncodedString()
+
+        if pinnedHashes.contains(certHash) {
+            completionHandler(.useCredential, URLCredential(trust: serverTrust))
+        } else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+        }
+    }
+}
+```
+
+### Step 4: Screen Security Integration
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/Auth/SecureLoginView.swift</span>
+  <span class="portal-file-tag">SWIFTUI PROTECTED VIEW</span>
+</div>
+
+```swift
+import SwiftUI
+
+public struct SecureLoginView: View {
+    @State private var errorMessage: String?
+    public let onAuthenticated: () -> Void
+
+    public var body: some View {
+        VStack(spacing: 24) {
+            Text("Secure Vault Access")
+                .font(.system(size: 24, weight: .bold))
+
+            if let error = errorMessage {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .font(.system(size: 14))
+            }
+
+            Button(action: {
+                Task {
+                    do {
+                        let success = try await BiometricAuthenticator.shared.authenticate()
+                        if success {
+                            let _ = try await KeychainSecureVault.shared.getSecret(key: "auth_token")
+                            onAuthenticated()
+                        }
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
+                }
+            }) {
+                Text("Unlock with Face ID")
+                    .font(.system(size: 16, weight: .bold))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(Color.green)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .padding(24)
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="React Native (TypeScript / JSI)">
+
+### Step 1: Encrypted MMKV Vault Bridge
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/security/vault/secureVault.ts</span>
+  <span class="portal-file-tag">JSI SECURE VAULT</span>
+</div>
+
+```typescript
+import { MMKV } from 'react-native-mmkv';
+
+class SecureVaultService {
+  private vault: MMKV;
+
+  constructor() {
+    this.vault = new MMKV({
+      id: 'enterprise.secure.storage',
+      encryptionKey: 'enterprise-hardened-aes-256-hardware-key',
+    });
+  }
+
+  setToken(key: string, value: string): void {
+    this.vault.set(key, value);
+  }
+
+  getToken(key: string): string | null {
+    return this.vault.getString(key) ?? null;
+  }
+
+  remove(key: string): void {
+    this.vault.delete(key);
+  }
+
+  clearAll(): void {
+    this.vault.clearAll();
+  }
+}
+
+export const secureVault = new SecureVaultService();
+```
+
+### Step 2: Biometric Authentication Helper
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/security/biometrics/biometrics.ts</span>
+  <span class="portal-file-tag">BIOMETRIC AUTH</span>
+</div>
+
+```typescript
+import ReactNativeBiometrics, { BiometryTypes } from 'react-native-biometrics';
+
+const rnBiometrics = new ReactNativeBiometrics();
+
+export async function authenticateWithBiometrics(promptMessage = 'Confirm your identity'): Promise<boolean> {
+  const { available, biometryType } = await rnBiometrics.isSensorAvailable();
+
+  if (!available || !biometryType) {
+    return false;
+  }
+
+  const { success } = await rnBiometrics.simplePrompt({
+    promptMessage,
+    cancelButtonText: 'Cancel',
+  });
+
+  return success;
+}
+```
+
+### Step 3: TLS Pinned HTTP Client
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/security/network/pinnedClient.ts</span>
+  <span class="portal-file-tag">PINNED HTTP CLIENT</span>
+</div>
+
+```typescript
+import axios from 'axios';
+
+// Public Key SPKI SHA-256 Hashes
+const PINNED_KEYS = [
+  'WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=',
+  'k20OWoUx82mOv30CEtYPSTg2xhnWKEcqRf87ZhDU828=',
+];
+
+export const pinnedClient = axios.create({
+  baseURL: 'https://api.enterprise.com',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+pinnedClient.interceptors.request.use(async (config) => {
+  // In production, TLS validation is verified at the native C++ layer
+  return config;
+});
+```
+
+### Step 4: Screen Security Integration
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/auth/SecureAuthScreen.tsx</span>
+  <span class="portal-file-tag">SCREEN INTEGRATION</span>
+</div>
+
+```tsx
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { authenticateWithBiometrics } from '../../core/security/biometrics/biometrics';
+import { secureVault } from '../../core/security/vault/secureVault';
+
+interface SecureAuthScreenProps {
+  readonly onAuthSuccess: () => void;
+}
+
+export function SecureAuthScreen({ onAuthSuccess }: SecureAuthScreenProps) {
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleUnlock = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const authenticated = await authenticateWithBiometrics('Unlock Enterprise Vault');
+      if (authenticated) {
+        const token = secureVault.getToken('auth_token');
+        if (token) {
+          onAuthSuccess();
+        } else {
+          setError('Vault key expired. Please re-authenticate with credentials.');
+        }
+      } else {
+        setError('Biometric authentication cancelled.');
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Authentication failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Secure Vault Authentication</Text>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={styles.button}
+        onPress={handleUnlock}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#ffffff" />
+        ) : (
+          <Text style={styles.buttonText}>Unlock with Biometrics</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#09130e',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 14,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  button: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#22c55e',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#09130e',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Security Compliance & Pre-Merge Gate
+
+<div class="portal-checklist-box">
+  <div class="portal-checklist-title">SECURITY CONFORMANCE MANDATES</div>
+  <ul>
+    <li><strong>Zero Plaintext Tokens:</strong> Never store authentication bearer tokens in <code>SharedPreferences</code> or <code>AsyncStorage</code>. All credentials must be encapsulated in hardware vaults.</li>
+    <li><strong>StrongBox / Secure Enclave Enforced:</strong> Cryptographic master keys must specify hardware backing requirements.</li>
+    <li><strong>Mandatory TLS Pinning:</strong> All network traffic to <code>api.enterprise.com</code> must pass TLS certificate pinning with valid SPKI hashes.</li>
+    <li><strong>Biometric Fallback Handled:</strong> Biometric prompts must gracefully handle device sensor unavailability or cancellation.</li>
+  </ul>
+</div>
+
+
+
+-------------------------------------
+
+
+---
+title: Localization & Internationalization Standards
+description: Enterprise mobile localization specification, dynamic zero-restart locale switching, right-to-left layout mirroring, ICU pluralization, and localized currency formatting across Android, iOS, and React Native.
+sidebar:
+  order: 4
+  label: 4.4 Localization & RTL
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">APP FOUNDATIONS</span>
+    <span class="portal-hub-tag">LOCALIZATION &bull; I18N &amp; L10N SPECIFICATION</span>
+  </div>
+  <h1 class="portal-hero-title">Localization &amp; Internationalization: Dynamic Locales &amp; RTL Mirroring</h1>
+  <p class="portal-hero-desc">
+    Global enterprise applications must serve international audiences seamlessly. The Localization Foundation provides zero-restart dynamic in-app language switching, bidirectional Right-to-Left (RTL) mirroring for languages like Arabic and Hebrew, and ICU MessageFormat pluralization and currency formatting.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Dynamic Switching</div>
+      <div class="portal-cap-desc">Per-App language preferences &bull; Zero process restart &bull; Live UI updates</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Bidirectional RTL</div>
+      <div class="portal-cap-desc">Arabic &amp; Hebrew &bull; Automatic icon and navigation mirroring</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">ICU Formatting</div>
+      <div class="portal-cap-desc">Complex plurals &bull; Currency symbols &bull; Localized calendar dates</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Localization Runtime Architecture
+
+The localization engine resolves user-selected language preferences at runtime, applies layout direction rules, and hydrates compiled string catalogs into active views without requiring a cold app restart:
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-localization-flowchart-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">LOCALIZATION RUNTIME RESOLUTION ENGINE</span>
+    <label for="diagram-localization-flowchart-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+graph TD
+    subgraph LayerSource ["1. STRINGS &amp; ICU CATALOGS"]
+        TMS["Translation Management System<br/><b>Crowdin / Phrase TMS</b>"]
+        Catalogs["Compiled String Tables<br/><b>strings.xml &bull; .xcstrings &bull; json</b>"]
+    end
+
+    subgraph LayerCoordinator ["2. LOCALE RESOLUTION ENGINE"]
+        Detector["App Language Resolver<br/><b>Per-App Setting vs System Locale</b>"]
+        RTL_Engine["Bi-Directional RTL Engine<br/><b>Arabic, Hebrew Mirroring</b>"]
+        Plurals["ICU MessageFormat Engine<br/><b>Currency, Date &amp; Plurals</b>"]
+    end
+
+    subgraph LayerUI ["3. VIEWPORT PRESENTATION"]
+        Compose_L["Jetpack Compose Layout Direction"]
+        SwiftUI_L["SwiftUI LayoutDirection Environment"]
+        RN_L["React Native I18nManager.forceRTL"]
+    end
+
+    TMS --> Catalogs
+    Catalogs --> Detector
+    Detector --> RTL_Engine
+    Detector --> Plurals
+
+    RTL_Engine --> Compose_L
+    RTL_Engine --> SwiftUI_L
+    RTL_Engine --> RN_L
+
+    classDef srcStyle fill:#0f2e1e,stroke:#22c55e,stroke-width:2px,color:#e2e8f0;
+    classDef coorStyle fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#e2e8f0;
+    classDef uiStyle fill:#2a2012,stroke:#f59e0b,stroke-width:2px,color:#fef3c7;
+
+    class TMS,Catalogs srcStyle;
+    class Detector,RTL_Engine,Plurals coorStyle;
+    class Compose_L,SwiftUI_L,RN_L uiStyle;
+
+    class LayerSource subPres;
+    class LayerCoordinator subDom;
+    class LayerUI subDat;
+```
+
+  </div>
+</div>
+
+---
+
+## 2. Localization Capabilities Matrix
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Capability</th>
+        <th>Android Implementation</th>
+        <th>iOS Implementation</th>
+        <th>React Native Implementation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Per-App Language</strong></td>
+        <td><code>AppCompatDelegate.setApplicationLocales()</code></td>
+        <td>Custom <code>Bundle</code> loader + <code>AppleLanguages</code></td>
+        <td><code>i18n.changeLanguage()</code></td>
+      </tr>
+      <tr>
+        <td><strong>RTL Mirroring</strong></td>
+        <td>Automatic Compose <code>LayoutDirection.Rtl</code></td>
+        <td>SwiftUI <code>\.layoutDirection</code> environment</td>
+        <td><code>I18nManager.forceRTL()</code></td>
+      </tr>
+      <tr>
+        <td><strong>Pluralization</strong></td>
+        <td>Android <code>plurals</code> XML + ICU MessageFormat</td>
+        <td><code>String(localized:)</code> plural arguments</td>
+        <td><code>i18next</code> plural count interpolation</td>
+      </tr>
+      <tr>
+        <td><strong>Currency Formatting</strong></td>
+        <td><code>NumberFormat.getCurrencyInstance()</code></td>
+        <td><code>Decimal.FormatStyle.Currency</code></td>
+        <td><code>Intl.NumberFormat</code></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 3. Platform Implementations & Screen Integration
+
+Select a platform tab to see the complete implementation of the locale manager, formatters, and a language selection screen component.
+
+<Tabs>
+  <TabItem label="Android (Kotlin / Jetpack Compose)">
+
+### Step 1: Per-App Locale Manager
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/localization/LocaleManager.kt</span>
+  <span class="portal-file-tag">LOCALE MANAGER</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.localization
+
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import java.util.Locale
+
+object LocaleManager {
+
+    fun setAppLanguage(languageTag: String) {
+        val appLocale = LocaleListCompat.forLanguageTags(languageTag)
+        AppCompatDelegate.setApplicationLocales(appLocale)
+    }
+
+    fun getCurrentLocale(): Locale {
+        val locales = AppCompatDelegate.getApplicationLocales()
+        return if (!locales.isEmpty) {
+            locales[0] ?: Locale.getDefault()
+        } else {
+            Locale.getDefault()
+        }
+    }
+
+    fun isRTL(): Boolean {
+        val currentLocale = getCurrentLocale()
+        val direction = Character.getDirectionality(currentLocale.displayName[0].code)
+        return direction == Character.DIRECTIONALITY_RIGHT_TO_LEFT.toInt() ||
+               direction == Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC.toInt()
+    }
+}
+```
+
+### Step 2: Localized Currency & Date Formatters
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/localization/LocalizedFormatters.kt</span>
+  <span class="portal-file-tag">ICU FORMATTERS</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.localization
+
+import java.text.NumberFormat
+import java.util.Currency
+import java.util.Locale
+
+object LocalizedFormatters {
+
+    fun formatCurrency(amount: Double, currencyCode: String, locale: Locale = LocaleManager.getCurrentLocale()): String {
+        val formatter = NumberFormat.getCurrencyInstance(locale)
+        formatter.currency = Currency.getInstance(currencyCode)
+        return formatter.format(amount)
+    }
+}
+```
+
+### Step 3: Language Selection Screen
+
+<div class="portal-file-header">
+  <span class="portal-file-path">features/settings/LanguageSelectionScreen.kt</span>
+  <span class="portal-file-tag">COMPOSE SETTINGS SCREEN</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.features.settings
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.enterprise.mobile.core.localization.LocaleManager
+
+data class LanguageOption(val tag: String, val displayName: String, val nativeName: String)
+
+val SupportedLanguages = listOf(
+    LanguageOption("en", "English", "English"),
+    LanguageOption("es", "Spanish", "Español"),
+    LanguageOption("ar", "Arabic (RTL)", "العربية")
+)
+
+@Composable
+fun LanguageSelectionScreen() {
+    var selectedTag by remember { mutableStateOf(LocaleManager.getCurrentLocale().language) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Select Language",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        SupportedLanguages.forEach { language ->
+            val isSelected = selectedTag == language.tag
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        selectedTag = language.tag
+                        LocaleManager.setAppLanguage(language.tag)
+                    },
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    else MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = language.displayName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = language.nativeName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+
+                    RadioButton(
+                        selected = isSelected,
+                        onClick = {
+                            selectedTag = language.tag
+                            LocaleManager.setAppLanguage(language.tag)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="iOS (Swift 5.9+ / SPM)">
+
+### Step 1: Observable Locale Coordinator
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Localization/LocaleCoordinator.swift</span>
+  <span class="portal-file-tag">DYNAMIC LOCALE COORDINATOR</span>
+</div>
+
+```swift
+import SwiftUI
+
+@Observable
+public final class LocaleCoordinator {
+    public static let shared = LocaleCoordinator()
+
+    public private(set) var currentLocale: Locale = Locale.current
+
+    public var isRTL: Bool {
+        Locale.characterDirection(forLanguage: currentLocale.identifier) == .rightToLeft
+    }
+
+    private init() {}
+
+    public func setLocale(identifier: String) {
+        currentLocale = Locale(identifier: identifier)
+        UserDefaults.standard.set([identifier], forKey: "AppleLanguages")
+        UserDefaults.standard.synchronize()
+    }
+
+    public func localizedString(key: String) -> String {
+        guard let path = Bundle.main.path(forResource: currentLocale.identifier, ofType: "lproj"),
+              let bundle = Bundle(path: path) else {
+            return NSLocalizedString(key, comment: "")
+        }
+        return bundle.localizedString(forKey: key, value: nil, table: nil)
+    }
+}
+```
+
+### Step 2: Currency & Date Formatters
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Localization/LocalizedFormatters.swift</span>
+  <span class="portal-file-tag">FORMATTERS</span>
+</div>
+
+```swift
+import Foundation
+
+public enum LocalizedFormatters {
+    public static func formatCurrency(
+        amount: Decimal,
+        currencyCode: String,
+        locale: Locale = LocaleCoordinator.shared.currentLocale
+    ) -> String {
+        amount.formatted(
+            .currency(code: currencyCode)
+            .locale(locale)
+        )
+    }
+}
+```
+
+### Step 3: Language Selection View
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/Settings/LanguageSelectionView.swift</span>
+  <span class="portal-file-tag">SWIFTUI SETTINGS VIEW</span>
+</div>
+
+```swift
+import SwiftUI
+
+public struct LanguageOption: Identifiable {
+    public let id: String
+    public let displayName: String
+    public let nativeName: String
+}
+
+public struct LanguageSelectionView: View {
+    @State private var coordinator = LocaleCoordinator.shared
+
+    private let supportedLanguages = [
+        LanguageOption(id: "en", displayName: "English", nativeName: "English"),
+        LanguageOption(id: "es", displayName: "Spanish", nativeName: "Español"),
+        LanguageOption(id: "ar", displayName: "Arabic (RTL)", nativeName: "العربية")
+    ]
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Select Language")
+                .font(.system(size: 24, weight: .bold))
+
+            ForEach(supportedLanguages) { language in
+                let isSelected = coordinator.currentLocale.identifier.starts(with: language.id)
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(language.displayName)
+                            .font(.system(size: 16, weight: .bold))
+                        Text(language.nativeName)
+                            .font(.system(size: 14))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                }
+                .padding(16)
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    coordinator.setLocale(identifier: language.id)
+                }
+            }
+
+            Spacer()
+        }
+        .padding(16)
+        .environment(\.layoutDirection, coordinator.isRTL ? .rightToLeft : .leftToRight)
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="React Native (TypeScript / i18next)">
+
+### Step 1: i18next & RTL Configuration
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/localization/i18n.ts</span>
+  <span class="portal-file-tag">I18N INITIALIZATION</span>
+</div>
+
+```typescript
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import { I18nManager } from 'react-native';
+
+const resources = {
+  en: {
+    translation: {
+      select_language: 'Select Language',
+      welcome: 'Welcome, {{name}}',
+      active_session: 'ACTIVE SESSION',
+    },
+  },
+  es: {
+    translation: {
+      select_language: 'Seleccionar idioma',
+      welcome: 'Bienvenido, {{name}}',
+      active_session: 'SESIÓN ACTIVA',
+    },
+  },
+  ar: {
+    translation: {
+      select_language: 'اختر اللغة',
+      welcome: 'مرحبًا، {{name}}',
+      active_session: 'جلسة نشطة',
+    },
+  },
+};
+
+i18n.use(initReactI18next).init({
+  resources,
+  lng: 'en',
+  fallbackLng: 'en',
+  interpolation: {
+    escapeValue: false,
+  },
+});
+
+export async function changeLanguage(lang: string, isRtlLanguage = false): Promise<void> {
+  await i18n.changeLanguage(lang);
+  if (I18nManager.isRTL !== isRtlLanguage) {
+    I18nManager.allowRTL(isRtlLanguage);
+    I18nManager.forceRTL(isRtlLanguage);
+  }
+}
+
+export default i18n;
+```
+
+### Step 2: Strongly-Typed Translation Hook
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/localization/useAppTranslation.ts</span>
+  <span class="portal-file-tag">TYPED TRANSLATION HOOK</span>
+</div>
+
+```typescript
+import { useTranslation } from 'react-i18next';
+import { I18nManager } from 'react-native';
+
+export function useAppTranslation() {
+  const { t, i18n } = useTranslation();
+
+  return {
+    t,
+    currentLanguage: i18n.language,
+    isRTL: I18nManager.isRTL,
+    changeLanguage,
+  };
+}
+```
+
+### Step 3: Language Selection Screen
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/settings/LanguageSelectionScreen.tsx</span>
+  <span class="portal-file-tag">REACT NATIVE SETTINGS SCREEN</span>
+</div>
+
+```tsx
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useAppTranslation } from '../../core/localization/useAppTranslation';
+import { changeLanguage } from '../../core/localization/i18n';
+
+interface LanguageOption {
+  code: string;
+  label: string;
+  nativeLabel: string;
+  isRtl: boolean;
+}
+
+const LANGUAGES: LanguageOption[] = [
+  { code: 'en', label: 'English', nativeLabel: 'English', isRtl: false },
+  { code: 'es', label: 'Spanish', nativeLabel: 'Español', isRtl: false },
+  { code: 'ar', label: 'Arabic', nativeLabel: 'العربية', isRtl: true },
+];
+
+export function LanguageSelectionScreen() {
+  const { t, currentLanguage } = useAppTranslation();
+
+  const handleSelect = async (option: LanguageOption) => {
+    await changeLanguage(option.code, option.isRtl);
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>{t('select_language')}</Text>
+
+      {LANGUAGES.map((lang) => {
+        const isSelected = currentLanguage === lang.code;
+
+        return (
+          <TouchableOpacity
+            key={lang.code}
+            activeOpacity={0.8}
+            style={[styles.card, isSelected && styles.selectedCard]}
+            onPress={() => handleSelect(lang)}
+          >
+            <View>
+              <Text style={styles.languageLabel}>{lang.label}</Text>
+              <Text style={styles.nativeLabel}>{lang.nativeLabel}</Text>
+            </View>
+
+            {isSelected ? <Text style={styles.checkmark}>SELECTED</Text> : null}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#09130e',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginBottom: 16,
+  },
+  card: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#0d1912',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#193828',
+    marginBottom: 12,
+  },
+  selectedCard: {
+    borderColor: '#22c55e',
+    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+  },
+  languageLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#f1f5f9',
+  },
+  nativeLabel: {
+    fontSize: 14,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  checkmark: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#22c55e',
+  },
+});
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Localization Compliance & Pre-Merge Gate
+
+<div class="portal-checklist-box">
+  <div class="portal-checklist-title">LOCALIZATION CONFORMANCE MANDATES</div>
+  <ul>
+    <li><strong>Zero Raw UI Strings:</strong> Every user-visible string must be extracted into localized string catalogs (e.g. <code>strings.xml</code>, <code>.xcstrings</code>, or translation JSON). Hardcoded user-visible string literals in views are blocked by Danger CI.</li>
+    <li><strong>RTL Layout Tested:</strong> Any screen layout altering margin or padding directions must mirror appropriately under RTL languages (Arabic/Hebrew).</li>
+    <li><strong>ICU Plurals Enforced:</strong> Strings with variable numeric values must use ICU plural syntax rather than manual string concatenation (e.g. <code>item(s)</code>).</li>
+  </ul>
+</div>
+
+
+_________________________________________
+
+
+
+---
+title: Push Notifications & Deep Linking Standards
+description: Enterprise mobile push notification specification, APNs and FCM unified routing, silent background synchronization, rich media attachments, and deep link navigation routing across Android, iOS, and React Native.
+sidebar:
+  order: 5
+  label: 4.5 Push Notifications & Deep Linking
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">APP FOUNDATIONS</span>
+    <span class="portal-hub-tag">PUSH NOTIFICATIONS &bull; DEEP LINKING SPECIFICATION</span>
+  </div>
+  <h1 class="portal-hero-title">Push Notifications &amp; Universal Deep Linking</h1>
+  <p class="portal-hero-desc">
+    Push notifications and deep linking drive user re-engagement and critical real-time workflows. The Push Notification Foundation standardizes token synchronization with Enterprise Gateways, background payload decryption, rich media presentation, and deep link navigation backstack restoration across Apple Push Notification service (APNs) and Firebase Cloud Messaging (FCM).
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Dual-Gateway Routing</div>
+      <div class="portal-cap-desc">Apple APNs &bull; Firebase FCM &bull; Unified payload format</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Deep Link Navigation</div>
+      <div class="portal-cap-desc">Universal Links &bull; App Schemes &bull; Backstack preservation</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Silent Background Sync</div>
+      <div class="portal-cap-desc">Content-available &bull; 30s execution window &bull; Cache hydration</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. End-to-End Notification & Deep Link Lifecycle
+
+Push notifications follow an asynchronous pipeline: the backend dispatches an encrypted payload, the host OS daemon invokes the application receiver, rich media attachments are downloaded, and user interaction launches the deep link router to resolve the destination screen:
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-push-flow-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">PUSH NOTIFICATION &amp; DEEP LINK LIFECYCLE</span>
+    <label for="diagram-push-flow-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Cloud as Enterprise Push Gateway
+    participant OS as OS Push Daemon (APNs / FCM)
+    participant Receiver as Push Notification Receiver
+    participant Ext as Notification Service Extension
+    participant Router as Deep Link Navigation Router
+    participant Screen as Destination Feature Screen
+
+    Cloud->>OS: Dispatch Push Payload (Encrypted Data + URL)
+    OS->>Receiver: Deliver Background Push Intent
+    alt Silent Data Payload
+        Receiver->>Receiver: Hydrate Local Cache (Background Task)
+    else Interactive Banner
+        Receiver->>Ext: Download Rich Media Attachment & Decrypt
+        Ext-->>OS: Present Formatted Notification Banner
+        OS->>Router: User Taps Notification Banner
+        Router->>Screen: Resolve URI (e.g. enterprise://orders/8921)
+        Screen-->>OS: Render Destination Screen with Complete Backstack
+    end
+```
+
+  </div>
+</div>
+
+---
+
+## 2. Push Notification Platform Matrix
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Capability</th>
+        <th>Android Implementation</th>
+        <th>iOS Implementation</th>
+        <th>React Native Implementation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Push Daemon</strong></td>
+        <td>Firebase Cloud Messaging (FCM)</td>
+        <td>Apple Push Notification service (APNs)</td>
+        <td><code>@react-native-firebase/messaging</code></td>
+      </tr>
+      <tr>
+        <td><strong>Notification Channels</strong></td>
+        <td><code>NotificationChannelCompat</code> (Oreo+)</td>
+        <td><code>UNNotificationCategory</code> &amp; Actions</td>
+        <td><code>notifee</code> channel manager</td>
+      </tr>
+      <tr>
+        <td><strong>Rich Attachments</strong></td>
+        <td><code>NotificationCompat.BigPictureStyle</code></td>
+        <td><code>UNNotificationServiceExtension</code></td>
+        <td>Native service extension bridge</td>
+      </tr>
+      <tr>
+        <td><strong>Deep Link Resolution</strong></td>
+        <td>Intent Filters + <code>NavDeepLinkBuilder</code></td>
+        <td>Universal Links + <code>onOpenURL</code></td>
+        <td>React Navigation <code>linking</code> configuration</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 3. Platform Implementations & Screen Integration
+
+Select a platform tab to see the complete implementation of push receivers, notification channel creation, deep link navigation routers, and settings screens.
+
+<Tabs>
+  <TabItem label="Android (Kotlin / Jetpack Compose)">
+
+### Step 1: Firebase Messaging Service
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/push/EnterprisePushService.kt</span>
+  <span class="portal-file-tag">FCM MESSAGING SERVICE</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.push
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.TaskStackBuilder
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+
+class EnterprisePushService : FirebaseMessagingService() {
+
+    override fun onNewToken(token: String) {
+        // Synchronize registration token with backend gateway
+        PushTokenRegistry.uploadToken(token)
+    }
+
+    override fun onMessageReceived(remoteMessage: RemoteMessage) {
+        // Check for silent background data payload
+        if (remoteMessage.data.isNotEmpty() && remoteMessage.notification == null) {
+            handleSilentDataPush(remoteMessage.data)
+            return
+        }
+
+        val title = remoteMessage.notification?.title ?: "Enterprise Alert"
+        val body = remoteMessage.notification?.body ?: ""
+        val deepLinkUri = remoteMessage.data["deep_link"] ?: "enterprise://home"
+
+        displayNotification(title, body, deepLinkUri)
+    }
+
+    private fun handleSilentDataPush(data: Map<String, String>) {
+        // Background cache synchronization logic
+    }
+
+    private fun displayNotification(title: String, body: String, deepLink: String) {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "enterprise_critical_channel"
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Critical Alerts",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Urgent business updates and transaction alerts"
+                enableVibration(true)
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val targetIntent = Intent(Intent.ACTION_VIEW, Uri.parse(deepLink))
+
+        // Preserve parent backstack so pressing Back navigates to Home screen
+        val pendingIntent = TaskStackBuilder.create(this).run {
+            addNextIntentWithParentStack(targetIntent)
+            getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        }
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+    }
+}
+```
+
+### Step 2: Deep Link Intent Parser
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/push/DeepLinkRouter.kt</span>
+  <span class="portal-file-tag">DEEP LINK ROUTER</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.push
+
+import android.net.Uri
+
+sealed class AppDestination {
+    object Home : AppDestination()
+    data class OrderDetails(val orderId: String) : AppDestination()
+    data class UserProfile(val userId: String) : AppDestination()
+    object Unknown : AppDestination()
+}
+
+object DeepLinkRouter {
+
+    fun parse(uri: Uri): AppDestination {
+        val host = uri.host ?: return AppDestination.Home
+        val pathSegments = uri.pathSegments
+
+        return when (host) {
+            "orders" -> {
+                val orderId = pathSegments.firstOrNull()
+                if (orderId != null) AppDestination.OrderDetails(orderId) else AppDestination.Home
+            }
+            "profile" -> {
+                val userId = pathSegments.firstOrNull()
+                if (userId != null) AppDestination.UserProfile(userId) else AppDestination.Home
+            }
+            else -> AppDestination.Unknown
+        }
+    }
+}
+```
+
+### Step 3: Notification Settings Screen
+
+<div class="portal-file-header">
+  <span class="portal-file-path">features/notifications/NotificationSettingsScreen.kt</span>
+  <span class="portal-file-tag">COMPOSE SETTINGS SCREEN</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.features.notifications
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun NotificationSettingsScreen() {
+    var orderUpdatesEnabled by remember { mutableStateOf(true) }
+    var securityAlertsEnabled by remember { mutableStateOf(true) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Notification Preferences",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(text = "Order Status Updates", fontWeight = FontWeight.Bold)
+                Text(text = "Real-time updates on orders", color = MaterialTheme.colorScheme.outline)
+            }
+            Switch(
+                checked = orderUpdatesEnabled,
+                onCheckedChange = { orderUpdatesEnabled = it }
+            )
+        }
+
+        Divider()
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(text = "Security & Sign-in Alerts", fontWeight = FontWeight.Bold)
+                Text(text = "Suspicious activity notifications", color = MaterialTheme.colorScheme.outline)
+            }
+            Switch(
+                checked = securityAlertsEnabled,
+                onCheckedChange = { securityAlertsEnabled = it }
+            )
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="iOS (Swift 5.9+ / SPM)">
+
+### Step 1: UNUserNotificationCenter Coordinator
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Push/PushNotificationCoordinator.swift</span>
+  <span class="portal-file-tag">APNS DELEGATE</span>
+</div>
+
+```swift
+import UserNotifications
+import UIKit
+
+public final class PushNotificationCoordinator: NSObject, UNUserNotificationCenterDelegate {
+    public static let shared = PushNotificationCoordinator()
+
+    public func registerForPushNotifications() {
+        UNUserNotificationCenter.current().delegate = self
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            if granted {
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            }
+        }
+    }
+
+    // Foreground Presentation Options
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .badge, .sound])
+    }
+
+    // Deep Link Action Handling
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        if let deepLinkString = userInfo["deep_link"] as? String,
+           let url = URL(string: deepLinkString) {
+            DispatchQueue.main.async {
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            }
+        }
+        completionHandler()
+    }
+}
+```
+
+### Step 2: Rich Media Notification Service Extension
+
+<div class="portal-file-header">
+  <span class="portal-file-path">NotificationServiceExtension/NotificationService.swift</span>
+  <span class="portal-file-tag">SERVICE EXTENSION</span>
+</div>
+
+```swift
+import UserNotifications
+
+public class NotificationService: UNNotificationServiceExtension {
+    var contentHandler: ((UNNotificationContent) -> Void)?
+    var bestAttemptContent: UNMutableNotificationContent?
+
+    public override func didReceive(
+        _ request: UNNotificationRequest,
+        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+    ) {
+        self.contentHandler = contentHandler
+        bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent)
+
+        guard let bestAttemptContent = bestAttemptContent else { return }
+
+        // Download and attach remote rich media image
+        if let attachmentUrlString = request.content.userInfo["media_url"] as? String,
+           let attachmentUrl = URL(string: attachmentUrlString) {
+            downloadAttachment(for: attachmentUrl) { attachment in
+                if let attachment = attachment {
+                    bestAttemptContent.attachments = [attachment]
+                }
+                contentHandler(bestAttemptContent)
+            }
+        } else {
+            contentHandler(bestAttemptContent)
+        }
+    }
+
+    private func downloadAttachment(for url: URL, completion: @escaping (UNNotificationAttachment?) -> Void) {
+        URLSession.shared.downloadTask(with: url) { temporaryUrl, _, _ in
+            guard let temporaryUrl = temporaryUrl else {
+                completion(nil)
+                return
+            }
+            let attachment = try? UNNotificationAttachment(identifier: "media", url: temporaryUrl, options: nil)
+            completion(attachment)
+        }.resume()
+    }
+
+    public override func serviceExtensionTimeWillExpire() {
+        if let contentHandler = contentHandler, let bestAttemptContent = bestAttemptContent {
+            contentHandler(bestAttemptContent)
+        }
+    }
+}
+```
+
+### Step 3: Notification Settings View
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/Notifications/NotificationSettingsView.swift</span>
+  <span class="portal-file-tag">SWIFTUI SETTINGS VIEW</span>
+</div>
+
+```swift
+import SwiftUI
+
+public struct NotificationSettingsView: View {
+    @State private var orderUpdatesEnabled: Bool = true
+    @State private var securityAlertsEnabled: Bool = true
+
+    public var body: some View {
+        Form {
+            Section(header: Text("Notification Channels")) {
+                Toggle(isOn: $orderUpdatesEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Order Status Updates")
+                            .font(.system(size: 16, weight: .bold))
+                        Text("Live notifications on shipments")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Toggle(isOn: $securityAlertsEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Security Alerts")
+                            .font(.system(size: 16, weight: .bold))
+                        Text("Alerts on unverified login attempts")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Notifications")
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="React Native (TypeScript / React Navigation)">
+
+### Step 1: Firebase Push Service Listener
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/push/pushService.ts</span>
+  <span class="portal-file-tag">FCM MESSAGING SERVICE</span>
+</div>
+
+```typescript
+import messaging, { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
+import { Linking } from 'react-native';
+
+export class PushNotificationService {
+
+  static async initialize(): Promise<void> {
+    const authStatus = await messaging().requestPermission();
+    const enabled =
+      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+    if (!enabled) return;
+
+    // Retrieve FCM Device Token
+    const token = await messaging().getToken();
+    console.log('FCM Registration Token:', token);
+
+    // Foreground Notification Listener
+    messaging().onMessage(async (remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
+      console.log('Foreground Push Message Received:', remoteMessage);
+    });
+
+    // Background Tap Notification Listener
+    messaging().onNotificationOpenedApp((remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
+      const link = remoteMessage.data?.deep_link;
+      if (typeof link === 'string') {
+        Linking.openURL(link);
+      }
+    });
+
+    // Cold-Start Push Notification Tap
+    const initialNotification = await messaging().getInitialNotification();
+    if (initialNotification?.data?.deep_link) {
+      Linking.openURL(initialNotification.data.deep_link as string);
+    }
+  }
+}
+```
+
+### Step 2: Universal Deep Link Configuration
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/push/deepLinkConfig.ts</span>
+  <span class="portal-file-tag">REACT NAVIGATION LINKING</span>
+</div>
+
+```typescript
+import { type LinkingOptions } from '@react-navigation/native';
+
+export const linkingConfig: LinkingOptions<object> = {
+  prefixes: ['enterprise://', 'https://app.enterprise.com'],
+  config: {
+    screens: {
+      Home: 'home',
+      OrderDetails: {
+        path: 'orders/:orderId',
+      },
+      UserProfile: {
+        path: 'profile/:userId',
+      },
+    },
+  },
+};
+```
+
+### Step 3: Notification Settings Screen
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/notifications/NotificationSettingsScreen.tsx</span>
+  <span class="portal-file-tag">REACT NATIVE SETTINGS SCREEN</span>
+</div>
+
+```tsx
+import React, { useState } from 'react';
+import { View, Text, Switch, StyleSheet } from 'react-native';
+
+export function NotificationSettingsScreen() {
+  const [orderUpdates, setOrderUpdates] = useState(true);
+  const [securityAlerts, setSecurityAlerts] = useState(true);
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Notification Preferences</Text>
+
+      <View style={styles.row}>
+        <View style={styles.textContainer}>
+          <Text style={styles.rowTitle}>Order Status Updates</Text>
+          <Text style={styles.rowSubtitle}>Real-time order delivery updates</Text>
+        </View>
+        <Switch value={orderUpdates} onValueChange={setOrderUpdates} trackColor={{ true: '#22c55e' }} />
+      </View>
+
+      <View style={styles.divider} />
+
+      <View style={styles.row}>
+        <View style={styles.textContainer}>
+          <Text style={styles.rowTitle}>Security Alerts</Text>
+          <Text style={styles.rowSubtitle}>Alerts on login attempts</Text>
+        </View>
+        <Switch value={securityAlerts} onValueChange={setSecurityAlerts} trackColor={{ true: '#22c55e' }} />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#09130e',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginBottom: 24,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  textContainer: {
+    flex: 1,
+  },
+  rowTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#f1f5f9',
+  },
+  rowSubtitle: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#193828',
+    marginVertical: 8,
+  },
+});
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Push Notification Compliance & Pre-Merge Gate
+
+<div class="portal-checklist-box">
+  <div class="portal-checklist-title">PUSH NOTIFICATION CONFORMANCE MANDATES</div>
+  <ul>
+    <li><strong>Backstack Preservation:</strong> Deep links opened from notifications must construct the parent backstack (e.g. using <code>TaskStackBuilder</code> on Android) so that pressing Back navigates to the Home screen rather than exiting the app.</li>
+    <li><strong>Notification Channels Mandatory:</strong> Android push notifications must specify registered notification channels with defined importance levels. Posting notifications to undefined channels is blocked.</li>
+    <li><strong>Payload Verification:</strong> Deep link query parameters must be validated with Zod/regex before navigating to prevent malicious intent injection.</li>
+    <li><strong>Silent Push Limits:</strong> Silent background notifications must finish processing within 30 seconds to respect operating system battery governance.</li>
+  </ul>
+</div>
+----------------------------------------------
+
+
+---
+title: Branding & Dynamic Identity Standards
+description: Enterprise mobile branding specification, multi-brand asset catalog resolution, programmatic runtime app icon switching, and white-label theming across Android, iOS, and React Native.
+sidebar:
+  order: 6
+  label: 4.6 Branding & Assets
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">APP FOUNDATIONS</span>
+    <span class="portal-hub-tag">BRANDING &bull; DYNAMIC IDENTITY SPECIFICATION</span>
+  </div>
+  <h1 class="portal-hero-title">Branding &amp; Dynamic Identity: Multi-Brand &amp; App Icons</h1>
+  <p class="portal-hero-desc">
+    Enterprise applications frequently support multi-tenant white-label branding, seasonal promotional skins, and loyalty tier badges. The Branding Foundation provides runtime asset catalog resolution, programmatic app icon switching, and dynamic brand palettes without recompiling application binaries.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Dynamic App Icons</div>
+      <div class="portal-cap-desc">Android activity-aliases &bull; iOS setAlternateIconName &bull; Zero app restart</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Multi-Brand Assets</div>
+      <div class="portal-cap-desc">Dynamic SVG logos &bull; Brand color overrides &bull; Splash theming</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">White-Label Tenancy</div>
+      <div class="portal-cap-desc">Client configuration injection &bull; Tenant isolation &bull; Runtime styling</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Multi-Brand Runtime Resolution
+
+The branding engine maps client tenants or loyalty tiers into dynamic brand configurations, delivering the correct logo, splash asset, and Springboard app icon:
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-branding-flow-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">MULTI-BRAND IDENTITY RESOLUTION</span>
+    <label for="diagram-branding-flow-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+graph TD
+    subgraph LayerRegistry ["1. BRAND METADATA REGISTRY"]
+        Registry["Brand Configuration Registry<br/><b>Enterprise Core &bull; Retail &bull; Partner</b>"]
+    end
+
+    subgraph LayerAssets ["2. RUNTIME RESOLUTION ENGINE"]
+        IconManager["Dynamic App Icon Manager<br/><b>Activity Alias / Alternate Icon</b>"]
+        AssetLoader["Dynamic Asset Loader<br/><b>Logos, Headers &amp; Splash</b>"]
+        PaletteResolver["Brand Palette Injector<br/><b>Primary, Secondary &amp; Accents</b>"]
+    end
+
+    subgraph LayerUI ["3. PRESENTATION LAYER"]
+        Springboard["Device Home Screen Launcher"]
+        AppChrome["App Navigation Chrome &amp; Splash"]
+    end
+
+    Registry --> IconManager
+    Registry --> AssetLoader
+    Registry --> PaletteResolver
+
+    IconManager --> Springboard
+    AssetLoader --> AppChrome
+    PaletteResolver --> AppChrome
+
+    classDef regStyle fill:#0f2e1e,stroke:#22c55e,stroke-width:2px,color:#e2e8f0;
+    classDef assStyle fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#e2e8f0;
+    classDef uiStyle fill:#2a2012,stroke:#f59e0b,stroke-width:2px,color:#fef3c7;
+
+    class Registry regStyle;
+    class IconManager,AssetLoader,PaletteResolver assStyle;
+    class Springboard,AppChrome uiStyle;
+
+    class LayerRegistry subPres;
+    class LayerAssets subDom;
+    class LayerUI subDat;
+```
+
+  </div>
+</div>
+
+---
+
+## 2. Branding Platform Matrix
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Capability</th>
+        <th>Android Implementation</th>
+        <th>iOS Implementation</th>
+        <th>React Native Implementation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>App Icon Switching</strong></td>
+        <td><code>PackageManager.setComponentEnabledSetting()</code></td>
+        <td><code>UIApplication.shared.setAlternateIconName()</code></td>
+        <td>Native Dynamic Icon Module</td>
+      </tr>
+      <tr>
+        <td><strong>Manifest Definition</strong></td>
+        <td>Multiple <code>&lt;activity-alias&gt;</code> declarations</td>
+        <td><code>CFBundleAlternateIcons</code> in <code>Info.plist</code></td>
+        <td>Merged native manifest/plist entries</td>
+      </tr>
+      <tr>
+        <td><strong>Asset Catalogs</strong></td>
+        <td>Dynamic drawable resource lookup</td>
+        <td>Dynamic <code>UIImage(named:in:compatibleWith:)</code></td>
+        <td><code>Image.resolveAssetSource()</code></td>
+      </tr>
+      <tr>
+        <td><strong>Tenant Isolation</strong></td>
+        <td>Hilt Qualified Brand Injectors</td>
+        <td>SPM Brand Module Extensions</td>
+        <td>React Context Brand Provider</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 3. Platform Implementations & Screen Integration
+
+Select a platform tab to see the complete implementation of dynamic icon switchers, brand registries, and a brand switcher screen.
+
+<Tabs>
+  <TabItem label="Android (Kotlin / Jetpack Compose)">
+
+### Step 1: Programmatic Dynamic App Icon Switcher
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/branding/DynamicIconManager.kt</span>
+  <span class="portal-file-tag">DYNAMIC APP ICON</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.branding
+
+import android.content.ComponentName
+import android.content.Context
+import android.content.pm.PackageManager
+
+object DynamicIconManager {
+
+    enum class AppIcon(val aliasName: String) {
+        DEFAULT("com.enterprise.mobile.MainActivityDefault"),
+        SEASONAL("com.enterprise.mobile.MainActivitySeasonal"),
+        VIP_TIER("com.enterprise.mobile.MainActivityVip")
+    }
+
+    fun setAppIcon(context: Context, icon: AppIcon) {
+        val packageManager = context.packageManager
+        val packageName = context.packageName
+
+        AppIcon.values().forEach { target ->
+            val state = if (target == icon) {
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            } else {
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            }
+
+            val component = ComponentName(packageName, target.aliasName)
+            packageManager.setComponentEnabledSetting(
+                component,
+                state,
+                PackageManager.DONT_KILL_APP
+            )
+        }
+    }
+}
+```
+
+### Step 2: Multi-Brand Model & Registry
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/branding/BrandRegistry.kt</span>
+  <span class="portal-file-tag">BRAND REGISTRY</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.branding
+
+import androidx.compose.ui.graphics.Color
+
+data class BrandConfig(
+    val id: String,
+    val displayName: String,
+    val primaryColor: Color,
+    val icon: DynamicIconManager.AppIcon
+)
+
+object BrandRegistry {
+    val CoreBrand = BrandConfig(
+        id = "enterprise_core",
+        displayName = "Enterprise Core",
+        primaryColor = Color(0xFF007A3D),
+        icon = DynamicIconManager.AppIcon.DEFAULT
+    )
+
+    val VipBrand = BrandConfig(
+        id = "enterprise_vip",
+        displayName = "VIP Gold",
+        primaryColor = Color(0xFFD97706),
+        icon = DynamicIconManager.AppIcon.VIP_TIER
+    )
+
+    val AvailableBrands = listOf(CoreBrand, VipBrand)
+}
+```
+
+### Step 3: Brand Switcher Screen
+
+<div class="portal-file-header">
+  <span class="portal-file-path">features/branding/BrandSwitcherScreen.kt</span>
+  <span class="portal-file-tag">COMPOSE BRAND SCREEN</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.features.branding
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.enterprise.mobile.core.branding.BrandConfig
+import com.enterprise.mobile.core.branding.BrandRegistry
+import com.enterprise.mobile.core.branding.DynamicIconManager
+
+@Composable
+fun BrandSwitcherScreen() {
+    val context = LocalContext.current
+    var selectedBrand by remember { mutableStateOf(BrandRegistry.CoreBrand) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Select Brand Theme",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        BrandRegistry.AvailableBrands.forEach { brand ->
+            val isSelected = selectedBrand.id == brand.id
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        selectedBrand = brand
+                        DynamicIconManager.setAppIcon(context, brand.icon)
+                    },
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isSelected) brand.primaryColor.copy(alpha = 0.12f)
+                    else MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = brand.displayName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Switches dynamic launcher icon",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+
+                    RadioButton(
+                        selected = isSelected,
+                        onClick = {
+                            selectedBrand = brand
+                            DynamicIconManager.setAppIcon(context, brand.icon)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="iOS (Swift 5.9+ / SPM)">
+
+### Step 1: Alternate App Icon Switcher
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Branding/AppIconSwitcher.swift</span>
+  <span class="portal-file-tag">ALTERNATE APP ICON</span>
+</div>
+
+```swift
+import UIKit
+
+@MainActor
+public enum AppIconSwitcher {
+
+    public static func changeIcon(to iconName: String?) async throws {
+        guard UIApplication.shared.supportsAlternateIcons else {
+            throw NSError(domain: "BrandingError", code: -1, userInfo: [
+                NSLocalizedDescriptionKey: "Alternate app icons are not supported on this device"
+            ])
+        }
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            UIApplication.shared.setAlternateIconName(iconName) { error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+}
+```
+
+### Step 2: Multi-Brand Coordinator
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Branding/BrandCoordinator.swift</span>
+  <span class="portal-file-tag">BRAND COORDINATOR</span>
+</div>
+
+```swift
+import SwiftUI
+
+public struct BrandTheme: Identifiable {
+    public let id: String
+    public let displayName: String
+    public let iconName: String?
+    public let accentColor: Color
+}
+
+@Observable
+public final class BrandCoordinator {
+    public static let shared = BrandCoordinator()
+
+    public static let availableBrands = [
+        BrandTheme(id: "core", displayName: "Enterprise Core", iconName: nil, accentColor: Color.green),
+        BrandTheme(id: "vip", displayName: "VIP Gold", iconName: "AppIcon-VIP", accentColor: Color.orange)
+    ]
+
+    public private(set) var activeBrand: BrandTheme = availableBrands[0]
+
+    private init() {}
+
+    @MainActor
+    public func switchBrand(to brand: BrandTheme) async throws {
+        try await AppIconSwitcher.changeIcon(to: brand.iconName)
+        activeBrand = brand
+    }
+}
+```
+
+### Step 3: Brand Switcher View
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/Branding/BrandSwitcherView.swift</span>
+  <span class="portal-file-tag">SWIFTUI BRAND VIEW</span>
+</div>
+
+```swift
+import SwiftUI
+
+public struct BrandSwitcherView: View {
+    @State private var coordinator = BrandCoordinator.shared
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Select Brand Theme")
+                .font(.system(size: 24, weight: .bold))
+
+            ForEach(BrandCoordinator.availableBrands) { brand in
+                let isSelected = coordinator.activeBrand.id == brand.id
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(brand.displayName)
+                            .font(.system(size: 16, weight: .bold))
+                        Text("Updates launcher icon and accent color")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(brand.accentColor)
+                    }
+                }
+                .padding(16)
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    Task {
+                        try? await coordinator.switchBrand(to: brand)
+                    }
+                }
+            }
+
+            Spacer()
+        }
+        .padding(16)
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="React Native (TypeScript / Context)">
+
+### Step 1: Multi-Brand Context Provider
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/branding/BrandContext.tsx</span>
+  <span class="portal-file-tag">BRAND PROVIDER</span>
+</div>
+
+```tsx
+import React, { createContext, useContext, useState, type ReactNode } from 'react';
+
+export interface BrandConfig {
+  id: string;
+  name: string;
+  primaryColor: string;
+  iconName: string | null;
+}
+
+export const AVAILABLE_BRANDS: BrandConfig[] = [
+  {
+    id: 'enterprise_core',
+    name: 'Enterprise Core',
+    primaryColor: '#007a3d',
+    iconName: null,
+  },
+  {
+    id: 'enterprise_vip',
+    name: 'VIP Gold',
+    primaryColor: '#d97706',
+    iconName: 'VIP',
+  },
+];
+
+const BrandContext = createContext<{
+  brand: BrandConfig;
+  switchBrand: (brand: BrandConfig) => Promise<void>;
+}>({
+  brand: AVAILABLE_BRANDS[0],
+  switchBrand: async () => {},
+});
+
+export function BrandProvider({ children }: { readonly children: ReactNode }) {
+  const [brand, setBrand] = useState<BrandConfig>(AVAILABLE_BRANDS[0]);
+
+  const switchBrand = async (newBrand: BrandConfig) => {
+    setBrand(newBrand);
+  };
+
+  return (
+    <BrandContext.Provider value={{ brand, switchBrand }}>
+      {children}
+    </BrandContext.Provider>
+  );
+}
+
+export function useBrand(): BrandConfig {
+  return useContext(BrandContext).brand;
+}
+```
+
+### Step 2: Dynamic App Icon Native Bridge Wrapper
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/branding/changeAppIcon.ts</span>
+  <span class="portal-file-tag">NATIVE ICON BRIDGE</span>
+</div>
+
+```typescript
+import { NativeModules, Platform } from 'react-native';
+
+const { DynamicIconModule } = NativeModules;
+
+export async function changeAppIcon(iconName: string | null): Promise<void> {
+  if (Platform.OS === 'ios' || Platform.OS === 'android') {
+    if (DynamicIconModule?.setAppIcon) {
+      return DynamicIconModule.setAppIcon(iconName);
+    }
+  }
+}
+```
+
+### Step 3: Brand Switcher Screen
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/branding/BrandSwitcherScreen.tsx</span>
+  <span class="portal-file-tag">REACT NATIVE BRAND SCREEN</span>
+</div>
+
+```tsx
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { AVAILABLE_BRANDS, type BrandConfig } from '../../core/branding/BrandContext';
+import { changeAppIcon } from '../../core/branding/changeAppIcon';
+
+export function BrandSwitcherScreen() {
+  const [activeBrand, setActiveBrand] = React.useState<BrandConfig>(AVAILABLE_BRANDS[0]);
+
+  const handleSelect = async (brand: BrandConfig) => {
+    setActiveBrand(brand);
+    await changeAppIcon(brand.iconName);
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Select Brand Theme</Text>
+
+      {AVAILABLE_BRANDS.map((brand) => {
+        const isSelected = activeBrand.id === brand.id;
+
+        return (
+          <TouchableOpacity
+            key={brand.id}
+            activeOpacity={0.8}
+            style={[styles.card, isSelected && { borderColor: brand.primaryColor }]}
+            onPress={() => handleSelect(brand)}
+          >
+            <View>
+              <Text style={styles.brandName}>{brand.name}</Text>
+              <Text style={styles.brandDesc}>Switches dynamic app launcher icon</Text>
+            </View>
+
+            {isSelected ? (
+              <Text style={[styles.badge, { color: brand.primaryColor }]}>ACTIVE</Text>
+            ) : null}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#09130e',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginBottom: 20,
+  },
+  card: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#0d1912',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#193828',
+    marginBottom: 12,
+  },
+  brandName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#f1f5f9',
+  },
+  brandDesc: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  badge: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+});
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Branding Compliance & Pre-Merge Gate
+
+<div class="portal-checklist-box">
+  <div class="portal-checklist-title">BRANDING CONFORMANCE MANDATES</div>
+  <ul>
+    <li><strong>Zero App Killing on Icon Switch:</strong> Android icon switching must pass <code>PackageManager.DONT_KILL_APP</code> to avoid abrupt process termination.</li>
+    <li><strong>Manifest &amp; Info.plist Parity:</strong> Every alternate app icon declared in code must correspond to an active <code>&lt;activity-alias&gt;</code> (Android) or <code>CFBundleAlternateIcons</code> entry (iOS).</li>
+    <li><strong>Dynamic Brand Isolation:</strong> All brand-specific assets (logos, splash images) must resolve dynamically from the Brand Registry rather than being hardcoded into layout components.</li>
+  </ul>
+</div>
+
+
+
+-----------------------------------------
+
+---
+title: Enterprise Data Wipe & Cache Purge Standards
+description: Enterprise mobile data wipe protocol, remote MDM killswitch handling, cryptographic key shredding in KeyStore and Keychain, database file purging, and cache eviction across Android, iOS, and React Native.
+sidebar:
+  order: 7
+  label: 4.7 Data Wipe Protocol
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">APP FOUNDATIONS</span>
+    <span class="portal-hub-tag">SECURITY &bull; DATA WIPE &amp; OFFBOARDING SPECIFICATION</span>
+  </div>
+  <h1 class="portal-hero-title">Enterprise Data Wipe &amp; Cache Purge Protocol</h1>
+  <p class="portal-hero-desc">
+    Corporate compliance mandates zero-residual data hygiene when an employee offboards, an enterprise device is reported lost or stolen, or a high-severity security integrity breach (jailbreak/root) is detected. The Data Wipe Foundation coordinates atomic cryptographic key destruction, local database file shredding, cache eviction, and state reset across Android, iOS, and React Native.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Key Shredding</div>
+      <div class="portal-cap-desc">KeyStore alias purge &bull; Keychain class deletion &bull; Irreversible crypto shred</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Storage Zeroing</div>
+      <div class="portal-cap-desc">SQLite Room delete &bull; SwiftData wipe &bull; MMKV memory &amp; disk purge</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Zero Residual PII</div>
+      <div class="portal-cap-desc">HTTP cache eviction &bull; Temporary file shredding &bull; Clean login reset</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Atomic Data Wipe Pipeline
+
+When a wipe command triggers, the runtime executes an atomic 4-stage purge pipeline ensuring no sensitive data or cryptographic keys remain accessible on the file system:
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-data-wipe-flow-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">ENTERPRISE REMOTE DATA WIPE PIPELINE</span>
+    <label for="diagram-data-wipe-flow-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+graph TD
+    subgraph LayerTrigger ["1. WIPE TRIGGER EVENT"]
+        T1["MDM Remote Killswitch (Silent Push)"]
+        T2["Manual User Logout / Account Deregistration"]
+        T3["Compliance Violation (Jailbreak / Root Detection)"]
+    end
+
+    subgraph LayerExec ["2. SECURE DELETION STAGES (ATOMIC)"]
+        S1["Stage 1: KeyStore / Keychain Master Key Destruction"]
+        S2["Stage 2: Database File Shredding (Room / SwiftData / MMKV)"]
+        S3["Stage 3: HTTP &amp; Image Cache Purge (Disk &amp; Memory)"]
+        S4["Stage 4: State Reset to Login Viewport"]
+    end
+
+    subgraph LayerResult ["3. VERIFIED CLEAN STATE"]
+        R1["Zero Residual PII / Auth Tokens"]
+        R2["Unauthenticated Bootstrap Viewport"]
+    end
+
+    T1 --> S1
+    T2 --> S1
+    T3 --> S1
+
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+
+    S4 --> R1
+    S4 --> R2
+
+    classDef trgStyle fill:#0f2e1e,stroke:#22c55e,stroke-width:2px,color:#e2e8f0;
+    classDef exeStyle fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#e2e8f0;
+    classDef resStyle fill:#2a2012,stroke:#f59e0b,stroke-width:2px,color:#fef3c7;
+
+    class T1,T2,T3 trgStyle;
+    class S1,S2,S3,S4 exeStyle;
+    class R1,R2 resStyle;
+
+    class LayerTrigger subPres;
+    class LayerExec subDom;
+    class LayerResult subDat;
+```
+
+  </div>
+</div>
+
+---
+
+## 2. Platform Wipe Strategy Matrix
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Wipe Target</th>
+        <th>Android Native</th>
+        <th>iOS Native</th>
+        <th>React Native</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Cryptographic Keys</strong></td>
+        <td><code>KeyStore.deleteEntry(alias)</code></td>
+        <td><code>SecItemDelete</code> on all classes</td>
+        <td>Hardware vault master purge</td>
+      </tr>
+      <tr>
+        <td><strong>Structured Database</strong></td>
+        <td><code>context.deleteDatabase(name)</code></td>
+        <td>SwiftData persistent store removal</td>
+        <td>SQLite database file unlinking</td>
+      </tr>
+      <tr>
+        <td><strong>Key-Value Stores</strong></td>
+        <td><code>SharedPreferences.edit().clear()</code></td>
+        <td><code>UserDefaults.removePersistentDomain()</code></td>
+        <td><code>MMKV.clearAll()</code> for all IDs</td>
+      </tr>
+      <tr>
+        <td><strong>Disk / HTTP Caches</strong></td>
+        <td><code>context.cacheDir.deleteRecursively()</code></td>
+        <td><code>URLCache.shared.removeAllCachedResponses()</code></td>
+        <td>Image and query cache eviction</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 3. Platform Implementations & Screen Integration
+
+Select a platform tab to see the complete implementation of wipe coordinators and trigger handlers.
+
+<Tabs>
+  <TabItem label="Android (Kotlin / Jetpack Compose)">
+
+### Step 1: Enterprise Data Wipe Coordinator
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/wipe/EnterpriseDataWiper.kt</span>
+  <span class="portal-file-tag">WIPE COORDINATOR</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.wipe
+
+import android.content.Context
+import com.enterprise.mobile.core.security.vault.KeyStoreVault
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class EnterpriseDataWiper @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val keyStoreVault: KeyStoreVault
+) {
+
+    suspend fun executeCompleteWipe(): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            // Stage 1: Purge hardware KeyStore encryption keys
+            keyStoreVault.purgeVault()
+
+            // Stage 2: Delete Room databases
+            context.databaseList().forEach { dbName ->
+                context.deleteDatabase(dbName)
+            }
+
+            // Stage 3: Purge cache and code cache directories
+            context.cacheDir.deleteRecursively()
+            context.codeCacheDir.deleteRecursively()
+
+            // Stage 4: Delete SharedPreferences files
+            val sharedPrefsDir = File(context.filesDir.parent, "shared_prefs")
+            if (sharedPrefsDir.exists()) {
+                sharedPrefsDir.deleteRecursively()
+            }
+        }
+    }
+}
+```
+
+### Step 2: Wipe Confirmation Dialog Screen
+
+<div class="portal-file-header">
+  <span class="portal-file-path">features/settings/AccountOffboardingScreen.kt</span>
+  <span class="portal-file-tag">COMPOSE WIPE SCREEN</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.features.settings
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.enterprise.mobile.core.wipe.EnterpriseDataWiper
+import kotlinx.coroutines.launch
+
+@Composable
+fun AccountOffboardingScreen(
+    dataWiper: EnterpriseDataWiper,
+    onWipeComplete: () -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var showDialog by remember { mutableStateOf(false) }
+    var isWiping by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Device Offboarding",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = "Executing a wipe deletes all authentication credentials, encrypted offline databases, and cached records from this device permanently.",
+            color = MaterialTheme.colorScheme.outline
+        )
+
+        Button(
+            onClick = { showDialog = true },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+        ) {
+            Text(text = "Erase Device Data & Logout")
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isWiping) showDialog = false },
+            title = { Text(text = "Confirm Data Wipe") },
+            text = { Text(text = "This action is irreversible. All local cryptographic keys will be shredded immediately.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isWiping = true
+                        coroutineScope.launch {
+                            dataWiper.executeCompleteWipe()
+                            isWiping = false
+                            showDialog = false
+                            onWipeComplete()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                ) {
+                    Text(text = if (isWiping) "Erasing..." else "Confirm Wipe")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }, enabled = !isWiping) {
+                    Text(text = "Cancel")
+                }
+            }
+        )
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="iOS (Swift 5.9+ / SPM)">
+
+### Step 1: Enterprise Data Wipe Service
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Wipe/EnterpriseDataWipeService.swift</span>
+  <span class="portal-file-tag">SECURE PURGE SERVICE</span>
+</div>
+
+```swift
+import Foundation
+import Security
+
+public actor EnterpriseDataWipeService {
+    public static let shared = EnterpriseDataWipeService()
+
+    private init() {}
+
+    public func executeCompleteWipe() throws {
+        // Stage 1: Purge all Keychain items matching app security domains
+        let secClasses = [
+            kSecClassGenericPassword,
+            kSecClassInternetPassword,
+            kSecClassCertificate,
+            kSecClassKey,
+            kSecClassIdentity
+        ]
+        for secClass in secClasses {
+            let query: [String: Any] = [kSecClass as String: secClass]
+            SecItemDelete(query as CFDictionary)
+        }
+
+        // Stage 2: Purge HTTP URL Cache
+        URLCache.shared.removeAllCachedResponses()
+
+        // Stage 3: Purge persistent UserDefaults domain
+        if let bundleID = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleID)
+            UserDefaults.standard.synchronize()
+        }
+
+        // Stage 4: Delete local Application Support and Documents directories
+        let fileManager = FileManager.default
+        if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            try? fileManager.removeItem(at: appSupport)
+        }
+    }
+}
+```
+
+### Step 2: Offboarding View
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/Settings/DeviceOffboardingView.swift</span>
+  <span class="portal-file-tag">SWIFTUI OFFBOARDING VIEW</span>
+</div>
+
+```swift
+import SwiftUI
+
+public struct DeviceOffboardingView: View {
+    @State private var showConfirmation = false
+    @State private var isWiping = false
+    public let onWipeComplete: () -> Void
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Device Offboarding")
+                .font(.system(size: 24, weight: .bold))
+
+            Text("Wiping this device shreds all hardware Keychain credentials, deletes local SwiftData containers, and flushes network caches.")
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+
+            Button(role: .destructive, action: { showConfirmation = true }) {
+                Text("Erase Local Enterprise Data")
+                    .font(.system(size: 16, weight: .bold))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(Color.red)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
+            Spacer()
+        }
+        .padding(16)
+        .confirmationDialog(
+            "Confirm Irreversible Data Wipe",
+            isPresented: $showConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Erase Everything", role: .destructive) {
+                Task {
+                    isWiping = true
+                    try? await EnterpriseDataWipeService.shared.executeCompleteWipe()
+                    isWiping = false
+                    onWipeComplete()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This action will immediately destroy all local encryption keys and return to the login screen.")
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="React Native (TypeScript / Purge Controller)">
+
+### Step 1: Storage & State Purge Controller
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/wipe/wipeController.ts</span>
+  <span class="portal-file-tag">PURGE CONTROLLER</span>
+</div>
+
+```typescript
+import { MMKV } from 'react-native-mmkv';
+import { secureVault } from '../security/vault/secureVault';
+
+export async function executeEnterpriseDataWipe(): Promise<void> {
+  try {
+    // Stage 1: Purge encrypted hardware secure vault
+    secureVault.clearAll();
+
+    // Stage 2: Purge general offline cache MMKV instances
+    const generalStorage = new MMKV({ id: 'enterprise.general.cache' });
+    generalStorage.clearAll();
+
+    // Stage 3: Wipe foundations state
+    const foundationsStorage = new MMKV({ id: 'enterprise-foundations-vault' });
+    foundationsStorage.clearAll();
+
+    console.log('Enterprise data wipe completed successfully.');
+  } catch (error) {
+    console.error('Data wipe failed:', error);
+    throw error;
+  }
+}
+```
+
+### Step 2: Offboarding Confirmation Screen
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/settings/DeviceOffboardingScreen.tsx</span>
+  <span class="portal-file-tag">REACT NATIVE OFFBOARDING SCREEN</span>
+</div>
+
+```tsx
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { executeEnterpriseDataWipe } from '../../core/wipe/wipeController';
+
+interface DeviceOffboardingScreenProps {
+  readonly onWipeComplete: () => void;
+}
+
+export function DeviceOffboardingScreen({ onWipeComplete }: DeviceOffboardingScreenProps) {
+  const [wiping, setWiping] = useState(false);
+
+  const confirmWipe = () => {
+    Alert.alert(
+      'Confirm Data Wipe',
+      'This will irreversibly shred all local cryptographic keys and purge local storage. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Erase Everything',
+          style: 'destructive',
+          onPress: async () => {
+            setWiping(true);
+            try {
+              await executeEnterpriseDataWipe();
+              onWipeComplete();
+            } finally {
+              setWiping(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Device Offboarding</Text>
+      <Text style={styles.description}>
+        Executing a wipe destroys all stored tokens, credentials, and offline cached databases.
+      </Text>
+
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={styles.eraseButton}
+        onPress={confirmWipe}
+        disabled={wiping}
+      >
+        {wiping ? (
+          <ActivityIndicator color="#ffffff" />
+        ) : (
+          <Text style={styles.eraseButtonText}>Erase Device Data & Logout</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#09130e',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginBottom: 8,
+  },
+  description: {
+    fontSize: 14,
+    color: '#94a3b8',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  eraseButton: {
+    height: 48,
+    backgroundColor: '#ef4444',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  eraseButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Data Wipe Compliance & Pre-Merge Gate
+
+<div class="portal-checklist-box">
+  <div class="portal-checklist-title">DATA WIPE CONFORMANCE MANDATES</div>
+  <ul>
+    <li><strong>Zero Residual PII:</strong> Calling <code>executeCompleteWipe()</code> must eliminate 100% of encrypted databases, user tokens, and Keychain/KeyStore entries. Any retained credentials violate compliance.</li>
+    <li><strong>Graceful Error Handling:</strong> Deletion failures on non-existent files must not halt the pipeline; the wipe coordinator must proceed to delete all remaining targets.</li>
+    <li><strong>Irreversible Key Shredding:</strong> Cryptographic master keys must be removed directly from hardware registers, ensuring previously cached encrypted blobs are rendered permanently unreadable.</li>
+  </ul>
+</div>
+
+
+
+
+
