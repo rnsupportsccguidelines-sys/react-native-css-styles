@@ -109,20 +109,27 @@ h3:not(.portal-card-title):not(.portal-route-title) {
 }
 
 /* --------------------------------------------------------------------------
-   4. HERO ORIENTATION & TOPOLOGY CARDS (Used on all 3 pages)
+   4. HERO ORIENTATION & TOPOLOGY CARDS
    -------------------------------------------------------------------------- */
 .portal-hero-card {
   background: var(--portal-card-bg) !important;
   border: 1px solid var(--portal-card-border) !important;
   border-radius: 12px !important;
-  padding: 20px 24px !important;
+  padding: 18px 22px !important;
   margin: 16px 0 28px 0 !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
   width: 100% !important;
   box-sizing: border-box !important;
+}
+
+/* When hero has an icon (horizontal alignment on portal-overview.mdx) */
+.portal-hero-card.portal-hero-row,
+.portal-hero-row,
+.portal-hero-card:has(.portal-hero-icon) {
   display: flex !important;
-  flex-direction: column !important;
-  gap: 12px !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 16px !important;
 }
 
 .portal-hero-topbar {
@@ -168,8 +175,8 @@ h3:not(.portal-card-title):not(.portal-route-title) {
 }
 
 .portal-hero-icon {
-  width: 28px !important;
-  height: 28px !important;
+  width: 32px !important;
+  height: 32px !important;
   flex-shrink: 0 !important;
   display: flex !important;
   align-items: center !important;
@@ -255,13 +262,33 @@ svg[id^="mermaid"] {
 .portal-grid {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
-  gap: 18px !important;
+  gap: 16px !important;
   margin: 16px 0 36px 0 !important;
   width: 100% !important;
   box-sizing: border-box !important;
 }
-@media (max-width: 1100px) { .portal-grid { grid-template-columns: repeat(2, 1fr) !important; } }
-@media (max-width: 700px) { .portal-grid { grid-template-columns: 1fr !important; } }
+@media (max-width: 1160px) { .portal-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+@media (max-width: 680px)  { .portal-grid { grid-template-columns: 1fr !important; } }
+
+.portal-grid .portal-card {
+  background: var(--portal-card-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 12px !important;
+  padding: 18px 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
+  box-sizing: border-box !important;
+  height: 100% !important;
+}
+
+.portal-grid .portal-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: var(--portal-accent) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+}
 
 .portal-pills {
   display: grid !important;
@@ -278,8 +305,8 @@ svg[id^="mermaid"] {
   padding: 8px 10px !important;
   color: var(--portal-pill-text) !important;
   text-decoration: none !important;
-  font-size: 0.78rem !important;
-  font-weight: 500 !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
   text-align: center !important;
   white-space: nowrap !important;
   overflow: hidden !important;
@@ -290,7 +317,7 @@ svg[id^="mermaid"] {
 
 .portal-pill-link:hover,
 .sl-markdown-content .portal-pill-link:hover {
-  background: var(--portal-accent) !important;
+  background: var(--portal-pill-hover) !important;
   border-color: var(--portal-accent) !important;
   color: #ffffff !important;
 }
@@ -299,15 +326,16 @@ svg[id^="mermaid"] {
   display: flex !important;
   justify-content: flex-end !important;
   align-items: center !important;
-  padding-top: 10px !important;
+  padding-top: 12px !important;
   border-top: 1px solid var(--portal-card-border) !important;
+  margin-top: auto !important; /* Locks footer to the bottom of all cards */
 }
 
 .portal-view-link,
 .sl-markdown-content .portal-view-link {
   color: var(--portal-accent) !important;
   font-size: 0.82rem !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   text-decoration: none !important;
   display: inline-flex !important;
   align-items: center !important;
@@ -318,7 +346,7 @@ svg[id^="mermaid"] {
 .portal-view-link:hover,
 .sl-markdown-content .portal-view-link:hover {
   color: var(--portal-accent-hover) !important;
-  transform: translateX(2px) !important;
+  transform: translateX(3px) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -419,24 +447,28 @@ svg[id^="mermaid"] {
   letter-spacing: 0.05em !important;
 }
 
-/* Card Titles */
+/* Card Titles with consistent min-height for perfect row alignment */
 .sl-markdown-content .portal-card-title,
 .sl-markdown-content .portal-route-title,
 .portal-card-title,
 .portal-route-title {
-  font-size: 1.1rem !important;
+  font-size: 1.08rem !important;
   font-weight: 700 !important;
   color: var(--portal-gold) !important;
   margin: 0 0 6px 0 !important;
   line-height: 1.35 !important;
+  min-height: 44px !important;
+  display: flex !important;
+  align-items: center !important;
 }
 
 .portal-card-desc,
 .portal-route-desc {
-  font-size: 0.88rem !important;
-  color: var(--portal-text-body) !important;
+  font-size: 0.86rem !important;
+  color: var(--portal-text-muted) !important;
   line-height: 1.45 !important;
-  margin: 0 0 12px 0 !important;
+  margin: 0 0 14px 0 !important;
+  min-height: 42px !important;
 }
 
 /* Card and Route Pills */
@@ -467,7 +499,7 @@ svg[id^="mermaid"] {
   border-top: 1px solid var(--portal-card-border) !important;
   display: flex !important;
   justify-content: flex-end !important;
-  margin-top: 8px !important;
+  margin-top: auto !important;
 }
 
 .portal-card-link,
