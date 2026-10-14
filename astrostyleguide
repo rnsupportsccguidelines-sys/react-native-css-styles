@@ -3,7 +3,7 @@ title: Native Android Standards & MVVM Clean Architecture
 description: Enterprise Android engineering specifications, Jetpack Compose declarative UI standards, Kotlin Coroutines/Flow, Hilt dependency injection, and modular file-by-file MVVM implementation.
 sidebar:
   order: 2
-  label: Android Standards
+  label: 3.1 Android Standards
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
@@ -91,6 +91,16 @@ app/src/main/java/com/enterprise/mobile/
 
 ### Layered Architecture Flowchart
 
+<div class="portal-diagram-wrap">
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">CLEAN ARCHITECTURE FLOW</span>
+    <button type="button" class="portal-expand-btn" onclick="diagramFullscreen(this)" title="Toggle Fullscreen">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <span>Expand Diagram</span>
+    </button>
+  </div>
+  <div class="portal-diagram-viewport">
+
 ```mermaid
 graph TD
     subgraph LayerPresentation ["1. PRESENTATION LAYER (JETPACK COMPOSE)"]
@@ -142,9 +152,22 @@ graph TD
     class LayerData subDat;
 ```
 
+  </div>
+</div>
+
 ---
 
 ### Unidirectional Data Flow (UDF) Sequence Diagram
+
+<div class="portal-diagram-wrap">
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">UDF SEQUENCE FLOW</span>
+    <button type="button" class="portal-expand-btn" onclick="diagramFullscreen(this)" title="Toggle Fullscreen">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <span>Expand Diagram</span>
+    </button>
+  </div>
+  <div class="portal-diagram-viewport">
 
 ```mermaid
 sequenceDiagram
@@ -177,6 +200,9 @@ sequenceDiagram
     VM-->>Compose: Recomposes Screen with updated data
     Compose-->>User: Displays user name, email & verified badge
 ```
+
+  </div>
+</div>
 
 ---
 
@@ -877,3 +903,60 @@ Enterprise Android applications must consume internal SDKs from the private ente
     <li><strong>Internal SDK Compliance:</strong> Consumes <code>com.enterprise.mobile:*</code> Maven dependencies rather than custom network/auth implementations.</li>
   </ul>
 </div>
+
+<script is:inline>
+  function diagramFullscreen(btn) {
+    const wrap = btn.closest('.portal-diagram-wrap');
+    if (!wrap) return;
+    wrap.classList.toggle('is-fullscreen');
+    const isFull = wrap.classList.contains('is-fullscreen');
+    if (isFull) {
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> <span>Close Fullscreen</span>';
+    } else {
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg> <span>Expand Diagram</span>';
+    }
+    document.body.style.overflow = isFull ? 'hidden' : '';
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.portal-diagram-wrap.is-fullscreen').forEach(wrap => {
+        wrap.classList.remove('is-fullscreen');
+        const btn = wrap.querySelector('.portal-expand-btn');
+        if (btn) {
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg> <span>Expand Diagram</span>';
+        }
+        document.body.style.overflow = '';
+      });
+    }
+  });
+
+  function autoAttachDiagramControls() {
+    document.querySelectorAll('.mermaid, .starlight-mermaid, pre.mermaid').forEach(el => {
+      let wrap = el.closest('.portal-diagram-wrap');
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.className = 'portal-diagram-wrap';
+        el.parentNode.insertBefore(wrap, el);
+        
+        const header = document.createElement('div');
+        header.className = 'portal-diagram-header';
+        header.innerHTML = '<span class="portal-diagram-badge">ARCHITECTURE &amp; FLOW VIEW</span><button type="button" class="portal-expand-btn" onclick="diagramFullscreen(this)" title="Toggle Fullscreen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg> <span>Expand Diagram</span></button>';
+        
+        const viewport = document.createElement('div');
+        viewport.className = 'portal-diagram-viewport';
+        viewport.appendChild(el);
+        
+        wrap.appendChild(header);
+        wrap.appendChild(viewport);
+      }
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoAttachDiagramControls);
+  } else {
+    autoAttachDiagramControls();
+  }
+  setTimeout(autoAttachDiagramControls, 600);
+  setTimeout(autoAttachDiagramControls, 1800);
+</script>
