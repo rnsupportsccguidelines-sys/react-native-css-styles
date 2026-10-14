@@ -1,133 +1,92 @@
 ---
-title: Feature Flags & Remote Configuration (Unleash)
-description: Enterprise mobile specification for runtime feature toggling, staged percentage rollouts, and instant kill switches using Unleash Proxy Client.
+title: Offline Synchronization & Storage Standards
+description: Enterprise mobile specification for offline-first data architectures, local storage tiering, Outbox sync queues, and conflict resolution protocols.
 sidebar:
-  order: 3
-  label: Feature Flags
+  order: 4
+  label: Offline & Storage
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">[RELEASE GOVERNANCE]</span>
-    <span class="portal-hub-tag">MODULE 02.3: UNLEASH RUNTIME CONFIGURATION</span>
+    <span class="portal-badge-hub">[DATA PERSISTENCE]</span>
+    <span class="portal-hub-tag">MODULE 02.4: OFFLINE-FIRST ARCHITECTURE</span>
   </div>
-  <div class="portal-hero-title">Feature Flags &amp; Remote Configuration: Unleash Proxy Architecture</div>
+  <div class="portal-hero-title">Offline Synchronization &amp; Storage Standards: The Outbox Architecture</div>
   <div class="portal-hero-desc">
-    The enterprise runtime configuration standard for mobile applications powered by <code>unleash-proxy-client</code>. Decouples binary app releases from feature launches, enables progressive percentage rollouts with user stickiness, and delivers zero-binary-update emergency kill switches that propagate in under 60 seconds without waiting for 48–72 hour App Store review queues.
+    The enterprise persistence standard for mobile applications. Mandates an offline-first data lifecycle where network disconnections are treated as a standard runtime state rather than an error condition. UI views read synchronously from local encrypted storage, and client mutations are guaranteed through an idempotent, durable Outbox synchronization queue.
   </div>
 
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Edge Proxy Evaluation</div>
-      <div class="portal-cap-desc">Clients connect strictly to Unleash Proxy edges for sub-5ms cached evaluation</div>
+      <div class="portal-cap-title">Durable Outbox Queue</div>
+      <div class="portal-cap-desc">Mutations written locally with idempotent UUIDs before network dispatch</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Context-Aware Targeting</div>
-      <div class="portal-cap-desc">Dynamic segmentation by <code>userId</code>, <code>appVersion</code>, platform, and geography</div>
+      <div class="portal-cap-title">Storage Tiering</div>
+      <div class="portal-cap-desc">Tencent MMKV for key-value; Room/CoreData for relational entities</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Emergency Kill Switch</div>
-      <div class="portal-cap-desc">Instant production shutdown bypassing App Store / Play Store review cycles</div>
+      <div class="portal-cap-title">Conflict Resolution</div>
+      <div class="portal-cap-desc">Server-authoritative reconciliation and monotonic Last-Write-Wins (LWW)</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Offline Resilience</div>
-      <div class="portal-cap-desc">Encrypted local persistence ensures flags evaluate when the radio is disconnected</div>
+      <div class="portal-cap-title">Automated Migrations</div>
+      <div class="portal-cap-desc">Mandatory migration test suites enforcing zero data loss during app upgrades</div>
     </div>
   </div>
 </div>
 
-## The Mobile Problem: Store Review & Rollout Risk
+## The "Zero-Spinner" Mobile Philosophy
 
-Traditional mobile deployment couples compiled binary distribution with feature enablement. This introduces severe operational vulnerabilities:
-* **Store Review Latency:** An emergency production bug fix takes 24 to 72 hours for Apple App Store and Google Play review approval.
-* **Slow User Adoption:** Even after an emergency binary is approved, users take days or weeks to download updates, leaving millions on compromised versions.
-* **Binary Blast Radius:** Launching a feature to 100% of users on day one risks cascading backend outages or catastrophic client crashes.
+Traditional mobile architectures follow a **Network-First** approach: when a user opens a screen, a loading spinner displays while waiting for an HTTP response. If the network is slow or disconnected, the user stares at a spinner or an error screen.
 
-The enterprise mandates **Unleash Proxy Client** to decouple deployment from release. Code is shipped dark in standard sprint binaries and enabled dynamically at runtime.
-
----
-
-## Unleash Mobile Edge Proxy Topology
-
-Mobile clients must **never** connect directly to the core Unleash Server instance. Instead, all mobile applications communicate exclusively with the **Unleash Edge / Unleash Proxy**:
-
-```mermaid
-flowchart TD
-    subgraph Clients["Mobile Client Tier (unleash-proxy-client)"]
-        RN["React Native App\n(unleash-proxy-client)"]
-        Android["Android Native App\n(Unleash Android Proxy SDK)"]
-        iOS["iOS Native App\n(UnleashProxyClientSwift)"]
-    end
-
-    subgraph Edge["Enterprise Edge Layer"]
-        Proxy["Unleash Proxy / Unleash Edge\n• Evaluates client context\n• Enforces read-only client keys\n• Shields core from mobile traffic\n• Sub-5ms response cache"]
-    end
-
-    subgraph Core["Central Platform Core"]
-        AdminServer["Unleash Enterprise Management Server\n• Strategy configuration & targeting\n• Audit logs & RBAC permissions\n• Datadog webhook notifications"]
-        Postgres[(Unleash PostgreSQL\nConfiguration DB)]
-    end
-
-    RN -->|"Polls /proxy (15s)"| Proxy
-    Android -->|"Polls /proxy (15s)"| Proxy
-    iOS -->|"Polls /proxy (15s)"| Proxy
-    Proxy -->|"Syncs state / API"| AdminServer
-    AdminServer --> Postgres
-
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class Clients,Edge,Core highlight;
-    class RN,Android,iOS,Proxy,AdminServer,Postgres nodeBox;
-```
-
-### Why Unleash Proxy is Mandatory for Mobile:
-1. **Security Isolation:** Mobile client binaries are publicly distributed and can be reverse engineered. The Unleash Proxy uses low-privilege **Client Keys** that can only evaluate flags for a specific environment, preventing exposure of Admin API tokens.
-2. **DDoS Protection:** Millions of mobile devices polling for feature flags would overwhelm the primary management database. Unleash Proxy caches evaluated payloads in memory at the edge.
-3. **Payload Compression:** The proxy evaluates context on the server side and returns only the boolean states and variants relevant to that specific device, keeping network payloads under 2KB.
+Enterprise mobile applications must strictly adhere to the **Zero-Spinner Philosophy**:
+1. **Instant Render from Local Storage:** All screens render immediately (<16ms) using cached data from the local database on app cold-start.
+2. **Background Reconciliation:** Network requests run asynchronously in the background. When fresh data arrives, reactive data streams (`StateFlow`, `ObservableObject`, or reactive hooks) automatically update the UI without layout jitter.
+3. **Optimistic UI Updates:** User mutations (e.g., submitting an inspection, updating an inventory count) apply to the local UI immediately and are written to an offline **Outbox Queue**.
 
 ---
 
-## Standard Configuration Parameters
+## Tiered Local Storage Matrix
 
-Enterprise mobile applications must initialize `unleash-proxy-client` using these standardized settings:
+Every data element stored on a device must be categorized into one of four storage tiers to balance performance, relational querying, and hardware-backed security:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Parameter</th>
-        <th>Standard Value</th>
-        <th>Operational Rationale</th>
+        <th>Storage Tier</th>
+        <th>Standard Technology</th>
+        <th>Target Data Types</th>
+        <th>Security &amp; Performance SLA</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><code>url</code></td>
-        <td><code>https://flags.enterprise.internal/proxy</code></td>
-        <td>Enterprise edge proxy endpoint routing through corporate CDN.</td>
+        <td><strong>Tier 1: Hardware Secrets</strong></td>
+        <td>Android KeyStore / iOS Keychain</td>
+        <td>OAuth refresh tokens, JWTs, cryptographic keys, biometric salt.</td>
+        <td>Hardware Secure Enclave backed. Zero plain-text exposure in memory dumps.</td>
       </tr>
       <tr>
-        <td><code>clientKey</code></td>
-        <td>Resolved via BuildConfig / Environment</td>
-        <td>Environment-scoped client token (e.g., <code>mobile:production.xxx</code>). Never hardcode admin secrets.</td>
+        <td><strong>Tier 2: Fast Key-Value</strong></td>
+        <td>Tencent MMKV (Encrypted)</td>
+        <td>User preferences, active session state, feature flag caches, UI flags.</td>
+        <td>Synchronous C++ <code>mmap</code> access. Sub-1ms read/write latency.</td>
       </tr>
       <tr>
-        <td><code>refreshInterval</code></td>
-        <td><code>15 seconds</code> (Foreground)</td>
-        <td>Balances flag freshness with radio battery consumption. Polling is automatically stopped when app backgrounds.</td>
+        <td><strong>Tier 3: Relational Entities</strong></td>
+        <td>Room SQLite (Android) / CoreData or SwiftData (iOS) / WatermelonDB (RN)</td>
+        <td>Orders, inventory catalogs, draft inspection forms, historical transactions.</td>
+        <td>ACID compliant. Multi-table joins, indexing, and reactive live query streams.</td>
       </tr>
       <tr>
-        <td><code>appName</code></td>
-        <td>Standardized app identifier</td>
-        <td>Used by Unleash strategies to scope toggles per application binary.</td>
-      </tr>
-      <tr>
-        <td><code>storageProvider</code></td>
-        <td>MMKV / Encrypted Storage</td>
-        <td>Synchronous encrypted cache ensuring zero-latency startup evaluation when offline.</td>
+        <td><strong>Tier 4: Large Binary Files</strong></td>
+        <td>Encrypted File Storage (App Sandbox)</td>
+        <td>Downloaded PDF reports, photo attachments, offline map tiles, media assets.</td>
+        <td>Encrypted at rest via OS-level File Protection (NSFileProtectionComplete).</td>
       </tr>
     </tbody>
   </table>
@@ -135,185 +94,317 @@ Enterprise mobile applications must initialize `unleash-proxy-client` using thes
 
 ---
 
-## Multi-Platform Implementation with Unleash
+## The Outbox Synchronization Pattern
 
-Every application repository must wrap the Unleash Proxy Client in a clean, type-safe architecture layer with synchronous local caching:
+To guarantee that user mutations are never lost when operating in poor connectivity environments (warehouses, agricultural fields, elevators), applications must decouple user actions from network availability using the **Outbox Pattern**:
+
+```mermaid
+flowchart TD
+    subgraph Client["1. Mobile Client Execution"]
+        UI["User Action\n(e.g., Submit Order)"]
+        LocalDB["Local Entity Store\n(Room / CoreData / WatermelonDB)"]
+        OutboxQueue["Durable Outbox Queue\n(Idempotency Key + Payload + Status)"]
+
+        UI -->|"1. Optimistic write"| LocalDB
+        UI -->|"2. Enqueue mutation"| OutboxQueue
+        LocalDB -->|"3. Instant render"| UI
+    end
+
+    subgraph SyncWorker["2. Background Synchronization Engine"]
+        Scheduler["Background Task Scheduler\n(WorkManager / BGAppRefresh / NetInfo)"]
+        Batcher["Outbox Drainer\n(Reads 'PENDING' records ordered by timestamp)"]
+        Scheduler -->|"Radio connected & unmetered"| Batcher
+        OutboxQueue -.->|"Pulls pending items"| Batcher
+    end
+
+    subgraph Backend["3. Enterprise Cloud Core"]
+        Gateway["Enterprise API Gateway\n(Validates Idempotency-Key header)"]
+        Microservice["Backend Service & Database"]
+
+        Batcher -->|"HTTP POST /mutations\nX-Idempotency-Key: UUID"| Gateway
+        Gateway -->|"Idempotent transaction"| Microservice
+        Microservice -->>|"200 OK (Authoritative state)"| Batcher
+        Batcher -->|"Mark 'SYNCED' / Prune"| OutboxQueue
+    end
+
+    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
+    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
+    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
+    class Client,SyncWorker,Backend highlight;
+    class UI,LocalDB,OutboxQueue,Scheduler,Batcher,Gateway,Microservice nodeBox;
+```
+
+### The Outbox Lifecycle
+1. **Atomic Local Commit:** When the user taps "Submit", the mutation is written to the local relational database (so the UI updates immediately) and appended to the `outbox_mutations` table in a single local database transaction.
+2. **Idempotency Guarantee:** Every outbox record generates a client-side UUID (`idempotency_key`). When the background worker transmits the payload to the server, this key is sent in the `X-Idempotency-Key` header, preventing duplicate transactions if the network drops before receiving the response.
+3. **Queue Draining:** When the device regains cellular or Wi-Fi connectivity, the background sync worker drains pending records in sequential FIFO order.
+4. **Pruning:** Once the backend returns a 200/201 confirmation, the outbox record status is updated to `SYNCED` and scheduled for cleanup.
+
+---
+
+## Conflict Resolution Protocols
+
+When data is modified on a mobile device while offline while simultaneously changing on the server, the synchronization engine must resolve discrepancies without corrupting business state:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Resolution Strategy</th>
+        <th>Applicable Domain</th>
+        <th>Resolution Mechanism</th>
+        <th>Mitigation for Lost Updates</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Server-Authoritative (Strict)</strong></td>
+        <td>Financial balances, inventory counts, order statuses.</td>
+        <td>Server rejects conflicting client mutation (HTTP 409 Conflict). Client rolls back local optimistic state and alerts user.</td>
+        <td>Full audit log of rejected mutation saved locally for user review.</td>
+      </tr>
+      <tr>
+        <td><strong>2. Last-Write-Wins (LWW)</strong></td>
+        <td>User profile info, notification preferences, draft notes.</td>
+        <td>Compares monotonic server timestamps (<code>updated_at</code>). The mutation with the latest timestamp overwrites prior state.</td>
+        <td>Requires synchronized NTP server timestamps; never rely on mobile device local clock.</td>
+      </tr>
+      <tr>
+        <td><strong>3. Field-Level Merge</strong></td>
+        <td>Complex forms, inspection reports, multi-section surveys.</td>
+        <td>Patches only the dirty fields modified locally. Unmodified fields retain server-authoritative values.</td>
+        <td>Reduces conflict probability from whole-record collisions down to individual field overlaps.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## Multi-Platform Implementation
+
+Observe the complete implementation of offline storage and outbox synchronization across all three mobile development platforms:
 
 <Tabs syncKey="mobile-platform">
 <TabItem label="React Native (TypeScript)">
 
-Using `unleash-proxy-client` with Tencent MMKV for instant synchronous startup reads:
+Using **Tencent MMKV** for fast key-value caching and a durable Outbox Queue with automatic network restoration listeners:
 
-#### 1. Unleash Service Initialization (`src/core/flags/UnleashService.ts`)
+#### 1. MMKV Secure Storage Adapter (`src/core/storage/SecureStorage.ts`)
 ```typescript
-import { UnleashClient } from 'unleash-proxy-client';
 import { MMKV } from 'react-native-mmkv';
-import { AppState, AppStateStatus } from 'react-native';
 
-const storage = new MMKV({ id: 'enterprise-feature-flags' });
+// Initialized with hardware-backed encryption key from Keychain/KeyStore
+export const secureStorage = new MMKV({
+  id: 'enterprise-secure-storage',
+  encryptionKey: 'resolved-from-hardware-keychain',
+});
 
-export class UnleashService {
-  private static instance: UnleashClient | null = null;
-
-  static initialize(userId: string, appVersion: string): UnleashClient {
-    if (!this.instance) {
-      this.instance = new UnleashClient({
-        url: 'https://flags.enterprise.internal/proxy',
-        clientKey: process.env.EXPO_PUBLIC_UNLEASH_CLIENT_KEY ?? '',
-        appName: 'enterprise-mobile-app',
-        refreshInterval: 15,
-        storageProvider: {
-          save: (name: string, data: any) => storage.set(name, JSON.stringify(data)),
-          get: (name: string) => {
-            const data = storage.getString(name);
-            return data ? JSON.parse(data) : undefined;
-          },
-        },
-        context: {
-          userId,
-          appName: 'enterprise-mobile-app',
-          environment: __DEV__ ? 'development' : 'production',
-          properties: {
-            appVersion,
-            platform: 'react-native',
-          },
-        },
-      });
-
-      // Pause polling in background to prevent battery drain
-      AppState.addEventListener('change', (state: AppStateStatus) => {
-        if (state === 'active') {
-          this.instance?.start();
-        } else {
-          this.instance?.stop();
-        }
-      });
-
-      this.instance.start();
-    }
-    return this.instance;
-  }
-
-  static isEnabled(flagName: string, defaultValue = false): boolean {
-    if (!this.instance) return defaultValue;
-    return this.instance.isEnabled(flagName);
-  }
-}
+export const StorageService = {
+  setString: (key: string, value: string) => secureStorage.set(key, value),
+  getString: (key: string): string | undefined => secureStorage.getString(key),
+  setObject: <T>(key: string, value: T) => secureStorage.set(key, JSON.stringify(value)),
+  getObject: <T>(key: string): T | null => {
+    const raw = secureStorage.getString(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  },
+  delete: (key: string) => secureStorage.delete(key),
+};
 ```
 
-#### 2. Declarative Hook & Component Gate (`src/presentation/flags/useFeatureFlag.ts`)
+#### 2. Durable Outbox Sync Queue (`src/core/sync/OutboxManager.ts`)
 ```typescript
-import { useState, useEffect } from 'react';
-import { UnleashService } from '../../core/flags/UnleashService';
+import NetInfo from '@react-native-community/netinfo';
+import { StorageService } from '../storage/SecureStorage';
 
-export function useFeatureFlag(flagName: string, defaultValue = false): boolean {
-  const [enabled, setEnabled] = useState(() => UnleashService.isEnabled(flagName, defaultValue));
-
-  useEffect(() => {
-    // Re-evaluate flag state when local storage updates or proxy polls
-    const interval = setInterval(() => {
-      const current = UnleashService.isEnabled(flagName, defaultValue);
-      setEnabled((prev) => (prev !== current ? current : prev));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [flagName, defaultValue]);
-
-  return enabled;
+export interface OutboxMutation {
+  id: string; // Idempotency UUID
+  endpoint: string;
+  payload: Record<string, unknown>;
+  createdAt: number;
+  retryCount: number;
 }
 
-// UI Gating Component
-export function FeatureGate({
-  flag,
-  fallback = null,
-  children,
-}: {
-  flag: string;
-  fallback?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  const isEnabled = useFeatureFlag(flag);
-  return isEnabled ? <>{children}</> : <>{fallback}</>;
+export class OutboxManager {
+  private static QUEUE_KEY = 'offline_outbox_queue';
+  private static isDraining = false;
+
+  static enqueue(endpoint: string, payload: Record<string, unknown>): string {
+    const queue = StorageService.getObject<OutboxMutation[]>(this.QUEUE_KEY) ?? [];
+    const mutation: OutboxMutation = {
+      id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      endpoint,
+      payload,
+      createdAt: Date.now(),
+      retryCount: 0,
+    };
+
+    queue.push(mutation);
+    StorageService.setObject(this.QUEUE_KEY, queue);
+
+    // Trigger immediate drain if connected
+    this.drain();
+    return mutation.id;
+  }
+
+  static async drain(): Promise<void> {
+    if (this.isDraining) return;
+    const net = await NetInfo.fetch();
+    if (!net.isConnected || !net.isInternetReachable) return;
+
+    this.isDraining = true;
+    const queue = StorageService.getObject<OutboxMutation[]>(this.QUEUE_KEY) ?? [];
+    const remaining: OutboxMutation[] = [];
+
+    for (const item of queue) {
+      try {
+        const response = await fetch(item.endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Idempotency-Key': item.id,
+          },
+          body: JSON.stringify(item.payload),
+        });
+
+        if (!response.ok && response.status < 500) {
+          // Client error (4xx) - cannot be retried, discard with logging
+          console.error(`[Outbox] Dropping non-retryable mutation: ${item.id}`, response.status);
+          continue;
+        }
+
+        if (!response.ok) {
+          throw new Error(`Server returned status: ${response.status}`);
+        }
+      } catch (error) {
+        item.retryCount += 1;
+        remaining.push(item);
+      }
+    }
+
+    StorageService.setObject(this.QUEUE_KEY, remaining);
+    this.isDraining = false;
+  }
 }
+
+// Auto-drain when connection is restored
+NetInfo.addEventListener((state) => {
+  if (state.isConnected && state.isInternetReachable) {
+    OutboxManager.drain();
+  }
+});
 ```
 </TabItem>
 
 <TabItem label="Android (Kotlin)">
 
-Using the official Unleash Android Proxy SDK (`io.getunleash:unleash-android-proxy-sdk`) with Jetpack Compose:
+Using **Room SQLite** for relational data persistence and **WorkManager** with network constraints for guaranteed background syncing:
 
-#### 1. Unleash Manager (`com.enterprise.mobile.core.flags.UnleashManager.kt`)
+#### 1. Outbox Entity & DAO (`com.enterprise.mobile.data.local.OutboxDao.kt`)
 ```kotlin
-package com.enterprise.mobile.core.flags
+package com.enterprise.mobile.data.local
 
-import android.content.Context
-import io.getunleash.UnleashClient
-import io.getunleash.UnleashConfig
-import io.getunleash.UnleashContext
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import javax.inject.Inject
-import javax.inject.Singleton
+import androidx.room.*
+import kotlinx.coroutines.flow.Flow
 
-@Singleton
-class UnleashManager @Inject constructor(
-    private val context: Context
-) {
-    private var unleashClient: UnleashClient? = null
-    private val _flagsUpdated = MutableStateFlow(System.currentTimeMillis())
-    val flagsUpdated: StateFlow<Long> = _flagsUpdated.asStateFlow()
+@Entity(tableName = "outbox_mutations")
+data class OutboxEntity(
+    @PrimaryKey val id: String, // Idempotency UUID
+    val endpoint: String,
+    val payloadJson: String,
+    val createdAt: Long = System.currentTimeMillis(),
+    val retryCount: Int = 0,
+    val status: String = "PENDING"
+)
 
-    fun initialize(userId: String, appVersion: String) {
-        val config = UnleashConfig.newBuilder()
-            .appName("enterprise-android-app")
-            .unleashAPI("https://flags.enterprise.internal/proxy")
-            .customHttpHeader("Authorization", "mobile:production.android_key")
-            .fetchTogglesInterval(15)
-            .build()
+@Dao
+interface OutboxDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(mutation: OutboxEntity)
 
-        val unleashContext = UnleashContext.newBuilder()
-            .userId(userId)
-            .appName("enterprise-android-app")
-            .addProperty("appVersion", appVersion)
-            .addProperty("platform", "android")
-            .build()
+    @Query("SELECT * FROM outbox_mutations WHERE status = 'PENDING' ORDER BY createdAt ASC")
+    suspend fun getPendingMutations(): List<OutboxEntity>
 
-        unleashClient = UnleashClient(config, context, unleashContext)
-        unleashClient?.addStatusListener {
-            _flagsUpdated.value = System.currentTimeMillis()
-        }
-    }
+    @Query("UPDATE outbox_mutations SET status = 'SYNCED' WHERE id = :id")
+    suspend fun markSynced(id: String)
 
-    fun isEnabled(flagKey: String, defaultValue: Boolean = false): Boolean {
-        return unleashClient?.isEnabled(flagKey) ?: defaultValue
-    }
+    @Query("DELETE FROM outbox_mutations WHERE status = 'SYNCED'")
+    suspend fun pruneSynced()
+
+    @Query("SELECT COUNT(*) FROM outbox_mutations WHERE status = 'PENDING'")
+    fun observePendingCount(): Flow<Int>
 }
 ```
 
-#### 2. Jetpack Compose Feature Gate (`FeatureGate.kt`)
+#### 2. Background Sync Worker (`OutboxSyncWorker.kt`)
 ```kotlin
-package com.enterprise.mobile.presentation.components
+package com.enterprise.mobile.data.sync
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import com.enterprise.mobile.core.flags.UnleashManager
+import android.content.Context
+import androidx.work.*
+import com.enterprise.mobile.data.local.OutboxDao
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
-@Composable
-fun FeatureGate(
-    flagKey: String,
-    unleashManager: UnleashManager,
-    fallback: @Composable () -> Unit = {},
-    content: @Composable () -> Unit
-) {
-    val lastUpdate by unleashManager.flagsUpdated.collectAsState()
-    val isEnabled = unleashManager.isEnabled(flagKey, defaultValue = false)
+class OutboxSyncWorker(
+    appContext: Context,
+    workerParams: WorkerParameters,
+    private val outboxDao: OutboxDao,
+    private val httpClient: OkHttpClient
+) : CoroutineWorker(appContext, workerParams) {
 
-    if (isEnabled) {
-        content()
-    } else {
-        fallback()
+    override suspend fun doWork(): Result {
+        val pending = outboxDao.getPendingMutations()
+        if (pending.isEmpty()) return Result.success()
+
+        val jsonMedia = "application/json; charset=utf-8".toMediaType()
+
+        for (mutation in pending) {
+            val request = Request.Builder()
+                .url(mutation.endpoint)
+                .header("X-Idempotency-Key", mutation.id)
+                .post(mutation.payloadJson.toRequestBody(jsonMedia))
+                .build()
+
+            try {
+                httpClient.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        outboxDao.markSynced(mutation.id)
+                    } else if (response.code in 400..499) {
+                        // Drop unrecoverable 4xx errors
+                        outboxDao.markSynced(mutation.id)
+                    } else {
+                        return Result.retry()
+                    }
+                }
+            } catch (e: Exception) {
+                return Result.retry()
+            }
+        }
+
+        outboxDao.pruneSynced()
+        return Result.success()
+    }
+
+    companion object {
+        fun schedule(context: Context) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val syncRequest = OneTimeWorkRequestBuilder<OutboxSyncWorker>()
+                .setConstraints(constraints)
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, java.util.concurrent.TimeUnit.SECONDS)
+                .build()
+
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "OutboxSyncWork",
+                ExistingWorkPolicy.KEEP,
+                syncRequest
+            )
+        }
     }
 }
 ```
@@ -321,79 +412,95 @@ fun FeatureGate(
 
 <TabItem label="iOS (Swift)">
 
-Using `UnleashProxyClientSwift` via Swift Package Manager with SwiftUI:
+Using **Swift concurrency actors** to manage thread-safe outbox operations and **BackgroundTasks** (`BGAppRefreshTask`) for reliable offline draining:
 
-#### 1. Unleash Service Manager (`UnleashManager.swift`)
+#### 1. Outbox Actor Manager (`OutboxManager.swift`)
 ```swift
 import Foundation
-import UnleashProxyClientSwift
+import BackgroundTasks
 
-@MainActor
-public final class UnleashManager: ObservableObject {
-    public static let shared = UnleashManager()
-    
-    @Published public private(set) var lastUpdated: Date = Date()
-    private var client: UnleashClient?
+public struct OutboxRecord: Codable, Identifiable {
+    public let id: String // Idempotency UUID
+    public let endpoint: URL
+    public let payload: Data
+    public let createdAt: Date
+    public var retryCount: Int
+}
+
+public actor OutboxManager {
+    public static let shared = OutboxManager()
+    private let storageKey = "enterprise.outbox.records"
+    private var isDraining = false
 
     private init() {}
 
-    public func initialize(userId: String, appVersion: String) {
-        let unleashClient = UnleashClient(
-            unleashUrl: "https://flags.enterprise.internal/proxy",
-            clientKey: "mobile:production.ios_key",
-            refreshInterval: 15,
-            appName: "enterprise-ios-app",
-            context: [
-                "userId": userId,
-                "appVersion": appVersion,
-                "platform": "ios"
-            ]
+    public func enqueue(endpoint: URL, payload: Data) throws -> String {
+        let idempotencyId = UUID().uuidString
+        let record = OutboxRecord(
+            id: idempotencyId,
+            endpoint: endpoint,
+            payload: payload,
+            createdAt: Date(),
+            retryCount: 0
         )
 
-        unleashClient.subscribe(name: "ready") { [weak self] in
-            Task { @MainActor in self?.lastUpdated = Date() }
-        }
+        var records = loadRecords()
+        records.append(record)
+        saveRecords(records)
 
-        unleashClient.subscribe(name: "update") { [weak self] in
-            Task { @MainActor in self?.lastUpdated = Date() }
-        }
-
-        unleashClient.start()
-        self.client = unleashClient
+        Task { await drain() }
+        return idempotencyId
     }
 
-    public func isEnabled(_ flagName: String, defaultValue: Boolean = false) -> Bool {
-        return client?.isEnabled(name: flagName) ?? defaultValue
-    }
-}
-```
+    public func drain() async {
+        guard !isDraining else { return }
+        isDraining = true
+        defer { isDraining = false }
 
-#### 2. SwiftUI View Extension (`View+FeatureGate.swift`)
-```swift
-import SwiftUI
+        var records = loadRecords()
+        var remaining: [OutboxRecord] = []
 
-public extension View {
-    @ViewBuilder
-    func featureGate(
-        _ flagName: String,
-        fallback: (() -> some View)? = nil
-    ) -> some View {
-        if UnleashManager.shared.isEnabled(flagName) {
-            self
-        } else if let fallbackView = fallback {
-            fallbackView()
-        }
-    }
-}
+        for var record in records {
+            var request = URLRequest(url: record.endpoint)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(record.id, forHTTPHeaderField: "X-Idempotency-Key")
+            request.httpBody = record.payload
 
-// Example Screen Usage:
-struct CheckoutView: View {
-    var body: some View {
-        VStack {
-            NewCheckoutForm()
-                .featureGate("mobile.checkout.v2_redesign") {
-                    LegacyCheckoutForm()
+            do {
+                let (_, response) = try await URLSession.shared.data(for: request)
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    remaining.append(record)
+                    continue
                 }
+
+                if (200...299).contains(httpResponse.statusCode) || (400...499).contains(httpResponse.statusCode) {
+                    // Success or non-retryable 4xx client error: resolve mutation
+                    continue
+                } else {
+                    record.retryCount += 1
+                    remaining.append(record)
+                }
+            } catch {
+                record.retryCount += 1
+                remaining.append(record)
+            }
+        }
+
+        saveRecords(remaining)
+    }
+
+    private func loadRecords() -> [OutboxRecord] {
+        guard let data = UserDefaults.standard.data(forKey: storageKey),
+              let list = try? JSONDecoder().decode([OutboxRecord].self, from: data) else {
+            return []
+        }
+        return list
+    }
+
+    private func saveRecords(_ records: [OutboxRecord]) {
+        if let data = try? JSONEncoder().encode(records) {
+            UserDefaults.standard.set(data, forKey: storageKey)
         }
     }
 }
@@ -403,104 +510,37 @@ struct CheckoutView: View {
 
 ---
 
-## Staged Rollout Strategy in Unleash
+## Database Schema Versioning & Migration Standards
 
-Enterprise features roll out through four strictly monitored rings using **Gradual Rollout Strategy** with **User ID Stickiness** to guarantee consistent user experience:
+Mobile application updates must never crash or wipe local user data due to unhandled SQLite/database schema mutations:
 
 ```mermaid
 flowchart LR
-    Ring0["Ring 0: Dogfood\n(100% Internal Staff)\n• isInternalUser == true\n• QA & E2E Validation"] --> Ring1
-    Ring1["Ring 1: Canary\n(5% User Rollout)\n• Stickiness: userId\n• Datadog Crash Watch"] --> Ring2
-    Ring2["Ring 2: Ramp\n(25% User Rollout)\n• Performance Audits\n• API Latency Check"] --> Ring3
-    Ring3["Ring 3: Broad\n(50% Geographic)\n• Regional Verification\n• Conversion Metrics"] --> Ring4
-    Ring4["Ring 4: Full GA\n(100% All Users)\n• Flag Retirement Plan\n• 30-Day TTL Activated"]
+    V1["Database Schema V1\n(Shipped in App v1.0)"] -->|"Migration 1 -> 2\n(Add nullable column)"| V2
+    V2["Database Schema V2\n(Shipped in App v1.2)"] -->|"Migration 2 -> 3\n(Create new table & index)"| V3
+    V3["Database Schema V3\n(Shipped in App v2.0)"]
 
     classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef ring fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    class Ring0,Ring1,Ring2,Ring3,Ring4 ring;
+    classDef step fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
+    class V1,V2,V3 step;
 ```
 
-### Unleash Strategy Configuration
-* **Stickiness (`stickiness: userId`):** Guarantees that once a user is allocated to the new feature variant, they remain on that variant across app restarts and network reconnections. Never use `random` stickiness on mobile apps.
-* **Gradual Percentage:** Staged at `5%` &rarr; `25%` &rarr; `50%` &rarr; `100%`. Each stage requires a 24-hour observation window in Datadog before expanding.
-
----
-
-## Emergency Kill-Switch Protocol
-
-If an unexpected exception spike or backend latency surge is detected, the feature can be globally deactivated in under 60 seconds without an app store submission:
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Ops as Mobile Ops Engineer
-    participant Unleash as Unleash Console
-    participant Proxy as Unleash Proxy Edge
-    participant App as Mobile App (unleash-proxy-client)
-
-    Ops->>Unleash: Toggle Flag OFF in Production
-    Unleash->>Proxy: Webhook syncs state (Instant)
-    App->>Proxy: Polling query /proxy (within 15s)
-    Proxy-->>App: Returns toggle payload (flag: false)
-    App->>App: Re-evaluates UI & falls back to legacy path
-```
-
-1. **Step 1: Detection:** Datadog Mobile RUM triggers a P1 alert (Crash-free users drop below 99.8% or API 5xx rate exceeds 1%).
-2. **Step 2: Deactivation:** Engineer toggles the flag to **OFF** in the Unleash Admin Console.
-3. **Step 3: Edge Propagation:** Unleash Edge/Proxy updates immediately via push or within 15 seconds.
-4. **Step 4: Client Fast-Fail:** Active client applications fetch the updated state on the next 15s poll or upon foregrounding, immediately swapping back to the stable legacy code path.
-
----
-
-## Flag Hygiene & Retirement Policy
-
-Feature flags must not remain in the codebase indefinitely. Stale flags increase code complexity, inflate test matrices, and create tech debt:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Flag Category</th>
-        <th>Maximum Lifespan (TTL)</th>
-        <th>Owner Responsibility</th>
-        <th>Retirement Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Release Flags</strong></td>
-        <td><code>30 days</code> post-100% GA</td>
-        <td>Feature Squad Lead</td>
-        <td>Delete flag check, remove legacy fallback code, archive flag in Unleash.</td>
-      </tr>
-      <tr>
-        <td><strong>Kill Switches</strong></td>
-        <td>Permanent (Reviewed Semi-Annually)</td>
-        <td>Platform Engineering</td>
-        <td>Audit annually; test fallback functionality in staging chaos drills.</td>
-      </tr>
-      <tr>
-        <td><strong>Experiment Flags</strong></td>
-        <td><code>14 days</code> post-test conclusion</td>
-        <td>Data / Product Squad</td>
-        <td>Merge winning experiment variant; purge losing branch.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+### Mandatory Migration Rules:
+1. **Never Use Destructive Fallbacks in Production:** Android's `.fallbackToDestructiveMigration()` and iOS CoreData `NSMigratePersistentStoresAutomaticallyOption` without model versioning are strictly prohibited in release builds.
+2. **Nullable Columns for Schema Expansion:** All new columns added to existing tables must either be `NULLABLE` or specify a safe default value (`DEFAULT 0`, `DEFAULT ''`).
+3. **Mandatory Automated Migration Tests:** Every schema modification PR must include an automated unit test verifying that database files from version $N-1$ upgrade successfully to version $N$ with existing sample records intact.
 
 ---
 
 ## Architectural Non-Negotiables & Prohibitions
 
 <div class="portal-alert-box">
-  <div class="portal-alert-title">UNLEASH ARCHITECTURAL ENFORCEMENTS</div>
+  <div class="portal-alert-title">DATA PERSISTENCE BOUNDARY RULES</div>
   <ul>
-    <li><strong>1. No Direct Core Connections:</strong> Mobile binaries must NEVER connect directly to the core Unleash Server. All traffic must route through the Unleash Proxy. PRs containing core Unleash admin URLs are blocked by CI.</li>
-    <li><strong>2. No Blocking App Launch:</strong> Never block app cold-start waiting for an Unleash HTTP response. Always initialize with synchronous cached values from local storage (MMKV / EncryptedSharedPreferences / Keychain).</li>
-    <li><strong>3. Mandatory Fallback Defaults:</strong> Every <code>isEnabled()</code> call must specify an explicit, safe fallback boolean to ensure graceful degradation when offline.</li>
-    <li><strong>4. Stickiness Must Be Set to `userId`:</strong> Never use <code>random</code> stickiness in mobile rollouts, as user state would flip between app restarts.</li>
-    <li><strong>5. Standardized Flag Naming:</strong> Flags must follow the strict schema: <code>mobile.[platform].[domain].[feature_name]</code> (e.g., <code>mobile.all.checkout.one_click_pay</code>).</li>
+    <li><strong>1. No Main Thread Database I/O:</strong> Never execute SQLite queries, CoreData fetches, or disk writes on the UI main thread. All database interactions must execute on background threads (<code>Dispatchers.IO</code> in Kotlin, background Swift actors, or asynchronous threads).</li>
+    <li><strong>2. Plain-Text Secrets Prohibited:</strong> Sensitive customer tokens, passwords, and private API keys must never be stored in plain SQLite columns or standard UserDefaults/SharedPreferences. Secrets belong exclusively in Android KeyStore or iOS Keychain.</li>
+    <li><strong>3. Idempotency Keys Required on Mutations:</strong> Every mutating outbox record must include a unique client-generated UUID sent via the <code>X-Idempotency-Key</code> header to prevent duplicate charges or orders during flaky cellular reconnects.</li>
+    <li><strong>4. Mandatory Eviction Policy for Caches:</strong> Unconstrained local caching leads to app bloating and OS storage purges. All cached entity tables must implement time-to-live (TTL) pruning or LRU (Least Recently Used) eviction rules.</li>
   </ul>
 </div>
 
@@ -509,13 +549,13 @@ Feature flags must not remain in the codebase indefinitely. Stale flags increase
 ## Architecture Review Board (ARB) Checklist
 
 <div class="portal-checklist-box">
-  <div class="portal-checklist-title">PR FEATURE FLAG CONFORMANCE CHECKLIST</div>
-  <p>Verify these criteria before opening a PR introducing a new Unleash feature flag:</p>
+  <div class="portal-checklist-title">PR PERSISTENCE CONFORMANCE CHECKLIST</div>
+  <p>Verify that your data persistence and sync implementation satisfies enterprise baselines before merging:</p>
   <ul>
-    <li><strong>Unleash Proxy Verified:</strong> Target URL points to the authorized enterprise edge proxy.</li>
-    <li><strong>Local Cache Configured:</strong> Synchronous MMKV/local storage adapter registered to prevent cold-start UI flickering.</li>
-    <li><strong>Safe Defaults Declared:</strong> Fallback parameters guarantee functional offline execution.</li>
-    <li><strong>Lifecycle Ticket Attached:</strong> A Jira technical debt task is scheduled to remove the flag within 30 days of 100% rollout.</li>
-    <li><strong>Stickiness Validated:</strong> Strategy configured with <code>userId</code> stickiness in Unleash Console.</li>
+    <li><strong>Airplane Mode Tested:</strong> Verified that the application launches, renders data, and allows mutation queuing while device radio is completely disabled.</li>
+    <li><strong>Idempotency Header Included:</strong> Outbox synchronization passes a unique client UUID in the <code>X-Idempotency-Key</code> header.</li>
+    <li><strong>Thread Dispatching Verified:</strong> All Room DAO or CoreData operations are dispatched outside the UI main thread.</li>
+    <li><strong>Migration Test Suite Added:</strong> Schema version increments are validated by an automated unit test migration harness.</li>
+    <li><strong>Secrets Segregated:</strong> Authentication tokens are stored strictly in hardware-backed storage (Keychain / KeyStore).</li>
   </ul>
 </div>
