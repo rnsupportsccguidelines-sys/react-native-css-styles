@@ -1,111 +1,1739 @@
-/* ==========================================================================
-   MODAL DIALOG MODE (LIKE SDK MASTER CATALOG)
-   Side menu stays visible in background; diagram opens as a centered modal.
-   ========================================================================== */
-/* 1. Prevent background page scroll while modal is open */
-html:has(.portal-diagram-toggle:checked),
-body:has(.portal-diagram-toggle:checked) {
-  overflow: hidden !important;
+---
+title: Native iOS Standards & MVVM Clean Architecture
+description: Enterprise iOS engineering specifications, SwiftUI declarative UI standards, Swift 5.9+ @Observable macro, Swift Concurrency (async/await, Actor isolation), Swift Package Manager (SPM), and modular file-by-file MVVM implementation.
+sidebar:
+  order: 3
+  label: 3.2 iOS Standards
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">TIER-1 RUNTIME</span>
+    <span class="portal-hub-tag">PLATFORM SPECIFICATION &bull; SWIFTUI &amp; SWIFT 5.9+</span>
+  </div>
+  <h1 class="portal-hero-title">Native iOS Standards &amp; MVVM Clean Architecture</h1>
+  <p class="portal-hero-desc">
+    All enterprise iOS applications must strictly enforce <strong>Modular Clean Architecture</strong> with <strong>Unidirectional Data Flow (UDF)</strong>. ViewModels manage observation state streams via the modern Swift Observation framework, Use Cases enforce pure business domain rules without framework coupling, and Repositories govern offline persistence and resilient network synchronization.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Language &amp; Concurrency</div>
+      <div class="portal-cap-desc">Swift 5.9+ &bull; Swift 6 Strict Concurrency &bull; async/await &bull; Actors</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">UI &amp; State</div>
+      <div class="portal-cap-desc">SwiftUI &bull; @Observable Macro &bull; @MainActor UI Threading</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Dependency Injection</div>
+      <div class="portal-cap-desc">Protocol-Oriented Contracts &bull; Factory &bull; SPM Packages</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Persistence &amp; Security</div>
+      <div class="portal-cap-desc">SwiftData &bull; Keychain Hardware Vault &bull; URLSession &bull; SSL Pinning</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Modular Directory & Package Layout
+
+Enterprise iOS applications organize code by **feature vertical slices**, strictly enforcing layer isolation. Code must never be organized into generic monolithic folders.
+
+```text
+EnterpriseApp/
+├── Core/                                   # Shared enterprise infrastructure
+│   ├── Network/                            # URLSession client, interceptors & SSL pinning
+│   ├── Security/                           # Keychain hardware vault & Secure Enclave auth
+│   ├── Persistence/                        # SwiftData ModelContainer & schema migrations
+│   └── UI/Theme/                           # Enterprise design tokens (Colors, Typography, Spacing)
+│
+├── DI/                                     # Global singleton dependency injection
+│   └── AppContainer.swift                  # Root container wiring shared infrastructure
+│
+└── Features/User/                          # USER FEATURE MODULE (Vertical Slice)
+    ├── Data/                               # Data Layer: Single Source of Truth
+    │   ├── Remote/
+    │   │   ├── DTO/UserNetworkDTO.swift    # Codable API serialization model
+    │   │   └── UserEndpoint.swift          # URLRequest builder & HTTP endpoint contract
+    │   ├── Local/
+    │   │   ├── Model/UserPersistentModel.swift # SwiftData @Model schema
+    │   │   └── Storage/UserLocalStore.swift    # SwiftData Actor / query operations
+    │   ├── Mapper/UserMappers.swift        # Bidirectional DTO <-> Persistent <-> Domain mappers
+    │   └── Repository/UserRepositoryImpl.swift # Repository implementation (Cache + Network)
+    │
+    ├── Domain/                             # Pure Domain Layer: Zero UIKit / SwiftUI APIs
+    │   ├── Model/UserDomainModel.swift     # Sendable immutable Swift business model
+    │   ├── Repository/UserRepository.swift # Protocol boundary contract
+    │   └── UseCase/GetUserProfileUseCase.swift # Single-purpose business use case
+    │
+    ├── DI/                                 # Feature-scoped Dependency Injection
+    │   └── UserFeatureContainer.swift      # Resolves repository interfaces to implementations
+    │
+    └── Presentation/                       # UI Layer: SwiftUI + @Observable ViewModels
+        ├── State/
+        │   ├── UserProfileUIState.swift    # Value-type enum representing screen states
+        │   └── UserProfileUIIntent.swift   # User actions & screen interaction intents
+        ├── ViewModel/
+        │   └── UserProfileViewModel.swift  # @Observable @MainActor ViewModel
+        └── Views/
+            ├── UserProfileView.swift       # Stateless Screen Composable with Navigation
+            └── Components/ProfileHeaderView.swift # Reusable atomic SwiftUI components
+```
+
+---
+
+## 2. Clean Architecture & Data Flow
+
+### Layered Architecture Flowchart
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-ios-flowchart-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">CLEAN ARCHITECTURE FLOW</span>
+    <label for="diagram-ios-flowchart-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+graph TD
+    subgraph LayerPresentation ["1. PRESENTATION LAYER (SWIFTUI & OBSERVATION)"]
+        View["SwiftUI View<br/><b>struct UserProfileView</b>"]
+        VM["Feature ViewModel<br/><b>@Observable @MainActor</b>"]
+        State["UI State Property<br/><b>var uiState: UserProfileUIState</b>"]
+        Intent["User Action Intent<br/><b>enum UserProfileUIIntent</b>"]
+    end
+
+    subgraph LayerDomain ["2. DOMAIN LAYER (PURE SWIFT / SENDABLE)"]
+        UC["Business Use Case<br/><b>struct GetUserProfileUseCase</b>"]
+        Model["Domain Model<br/><b>struct UserDomainModel: Sendable</b>"]
+        RepoContract["Repository Protocol<br/><b>protocol UserRepository: Sendable</b>"]
+    end
+
+    subgraph LayerData ["3. DATA LAYER (SINGLE SOURCE OF TRUTH)"]
+        RepoImpl["Repository Actor / Class<br/><b>final class UserRepositoryImpl</b>"]
+        LocalDS["Local SwiftData Model<br/><b>@Model class UserPersistentModel</b>"]
+        RemoteDS["Remote HTTP Endpoint<br/><b>URLSession &amp; UserEndpoint</b>"]
+    end
+
+    View -->|"1. User taps refresh"| Intent
+    Intent -->|"2. send(intent)"| VM
+    VM -->|"3. await execute(params)"| UC
+    UC -->|"4. execute query"| RepoContract
+    RepoContract -.->|"resolves via DI"| RepoImpl
+    RepoImpl -->|"5a. Query local SwiftData"| LocalDS
+    RepoImpl -->|"5b. Fetch fresh REST API"| RemoteDS
+    RepoImpl -->|"6. Map to Domain &amp; Persist"| Model
+    Model -->|"7. Result.success(model)"| UC
+    UC -->|"8. Return domain model"| VM
+    VM -->|"9. Mutate @Observable state"| State
+    State -->|"10. Automatic view re-render"| View
+
+    classDef composeBox fill:#0f2e1e,stroke:#22c55e,stroke-width:2px,color:#e2e8f0;
+    classDef domainBox fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#e2e8f0;
+    classDef dataBox fill:#2a2012,stroke:#f59e0b,stroke-width:2px,color:#fef3c7;
+
+    classDef subPres fill:#091910,stroke:#22c55e,stroke-width:1.5px,color:#4ade80;
+    classDef subDom fill:#191226,stroke:#a855f7,stroke-width:1.5px,color:#c084fc;
+    classDef subDat fill:#1a170c,stroke:#f59e0b,stroke-width:1.5px,color:#fcd34d;
+
+    class View,VM,State,Intent composeBox;
+    class UC,Model,RepoContract domainBox;
+    class RepoImpl,LocalDS,RemoteDS dataBox;
+
+    class LayerPresentation subPres;
+    class LayerDomain subDom;
+    class LayerData subDat;
+```
+
+  </div>
+</div>
+
+---
+
+### Swift Concurrency & Unidirectional Data Flow (UDF) Sequence Diagram
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-ios-sequence-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">UDF CONCURRENCY FLOW</span>
+    <label for="diagram-ios-sequence-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Mobile User
+    participant View as SwiftUI View
+    participant VM as @MainActor UserProfileViewModel
+    participant UC as GetUserProfileUseCase
+    participant Repo as UserRepositoryImpl
+    participant LocalDB as SwiftData ModelContext
+    participant RemoteAPI as URLSession HTTPS Endpoint
+
+    User->>View: Taps "Refresh Profile"
+    View->>VM: send(.refreshProfile(userId))
+    VM->>VM: uiState = .loading
+    VM-->>View: Renders ProgressView()
+    VM->>UC: await execute(userId: userId)
+    UC->>Repo: await fetchUserProfile(userId: userId)
+
+    Repo->>LocalDB: Fetch cached UserPersistentModel
+    LocalDB-->>Repo: Return cached model (fast emit)
+
+    Repo->>RemoteAPI: GET /v1/users/{userId}
+    RemoteAPI-->>Repo: 200 OK (UserNetworkDTO)
+    Repo->>LocalDB: Upsert UserPersistentModel
+    Repo-->>UC: Return UserDomainModel
+    UC-->>VM: Return domain model
+    VM->>VM: uiState = .success(user)
+    VM-->>View: Automatic view re-render with updated data
+    View-->>User: Displays user profile, email & verified badge
+```
+
+  </div>
+</div>
+
+---
+
+## 3. Modular File-by-File MVVM Implementation
+
+Enterprise standards require each class, struct, and protocol to reside in its own dedicated, single-responsibility file. Review the complete implementation below, structured across its respective clean architecture packages:
+
+<Tabs>
+  <TabItem label="Domain Layer (Pure Swift / Sendable)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/User/Domain/Model/UserDomainModel.swift</span>
+  <span class="portal-file-tag">DOMAIN MODEL</span>
+</div>
+
+```swift
+import Foundation
+
+/// Pure, immutable business domain entity.
+/// Conforms to Sendable for strict Swift concurrency safety across actor boundaries.
+/// Zero SwiftUI or UIKit dependencies.
+public struct UserDomainModel: Sendable, Identifiable, Hashable {
+    public let id: String
+    public let name: String
+    public let email: String
+    public let isVip: Boolean
+    public let lastSyncTimestamp: Date
+
+    public init(
+        id: String,
+        name: String,
+        email: String,
+        isVip: Boolean,
+        lastSyncTimestamp: Date
+    ) {
+        self.id = id
+        self.name = name
+        self.email = email
+        self.isVip = isVip
+        self.lastSyncTimestamp = lastSyncTimestamp
+    }
 }
-/* 2. Elevate main frame so modal floats in front of the side menu without hiding it */
-:root:has(.portal-diagram-toggle:checked) .page,
-:root:has(.portal-diagram-toggle:checked) .main-frame,
-:root:has(.portal-diagram-toggle:checked) .main-pane {
-  isolation: auto !important;
-  z-index: 999999 !important;
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/User/Domain/Repository/UserRepository.swift</span>
+  <span class="portal-file-tag">REPOSITORY PROTOCOL</span>
+</div>
+
+```swift
+import Foundation
+
+/// Boundary contract defining user data operations.
+/// The domain layer owns this protocol; the data layer implements it.
+public protocol UserRepository: Sendable {
+    /// Retrieves user profile by ID, executing local cache lookup with network fallback.
+    func fetchUserProfile(userId: String) async throws -> UserDomainModel
+
+    /// Observes real-time persistent user changes using Swift AsyncStream.
+    func observeUserProfile(userId: String) -> AsyncStream<UserDomainModel?>
 }
-/* 3. Centered Modal Dialog Card with dimmed backdrop */
-.portal-diagram-wrap:has(.portal-diagram-toggle:checked),
-.portal-diagram-wrap.is-fullscreen {
-  position: fixed !important;
-  inset: 0 !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  margin: auto !important;
-  width: 92vw !important;
-  max-width: 1250px !important;
-  height: 88vh !important;
-  max-height: 88vh !important;
-  z-index: 2147483647 !important;
-  background: #0d1912 !important;
-  border: 1.5px solid var(--portal-accent, #22c55e) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 0 100vmax rgba(0, 0, 0, 0.75) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/User/Domain/UseCase/GetUserProfileUseCase.swift</span>
+  <span class="portal-file-tag">BUSINESS USE CASE</span>
+</div>
+
+```swift
+import Foundation
+
+/// Single-responsibility use case enforcing business validation.
+/// Completely decoupled from UI and transport mechanisms.
+public struct GetUserProfileUseCase: Sendable {
+    private let userRepository: UserRepository
+
+    public init(userRepository: UserRepository) {
+        self.userRepository = userRepository
+    }
+
+    public func execute(userId: String) async throws -> UserDomainModel {
+        let trimmedId = userId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedId.isEmpty else {
+            throw UserDomainError.invalidUserId("User ID must not be empty or blank.")
+        }
+        return try await userRepository.fetchUserProfile(userId: trimmedId)
+    }
 }
-/* 4. Modal Header with Title Badge and Close Button */
-.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-diagram-header,
-.portal-diagram-wrap.is-fullscreen .portal-diagram-header {
-  position: sticky !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 10 !important;
-  background: #08130e !important;
-  padding: 14px 22px !important;
-  border-bottom: 1px solid var(--portal-card-border, #1f3b2c) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  flex-shrink: 0 !important;
+
+public enum UserDomainError: LocalizedError, Sendable {
+    case invalidUserId(String)
+    case userNotFound(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidUserId(let message): return message
+        case .userNotFound(let id): return "User profile not found for identifier: \(id)"
+        }
+    }
 }
-/* 5. Solid Red Close Button at top-right of the modal */
-.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-expand-btn,
-.portal-diagram-wrap.is-fullscreen .portal-expand-btn {
-  background: #ef4444 !important;
-  border: 2px solid #ffffff !important;
-  color: #ffffff !important;
-  font-size: 0.88rem !important;
-  font-weight: 800 !important;
-  padding: 8px 18px !important;
-  border-radius: 8px !important;
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.6) !important;
-  cursor: pointer !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  z-index: 11 !important;
+```
+
+  </TabItem>
+  <TabItem label="Data Layer (SwiftData + URLSession)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/User/Data/Remote/DTO/UserNetworkDTO.swift</span>
+  <span class="portal-file-tag">CODABLE DTO</span>
+</div>
+
+```swift
+import Foundation
+
+/// Network data transfer object matching backend JSON serialization.
+/// Defensive default values prevent decoding failure if non-critical fields are absent.
+public struct UserNetworkDTO: Codable, Sendable {
+    public let id: String
+    public let fullName: String
+    public let email: String
+    public let isVip: Boolean
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case fullName = "full_name"
+        case email
+        case isVip = "is_vip"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.fullName = try container.decodeIfPresent(String.self, forKey: .fullName) ?? ""
+        self.email = try container.decodeIfPresent(String.self, forKey: .email) ?? ""
+        self.isVip = try container.decodeIfPresent(Boolean.self, forKey: .isVip) ?? false
+    }
 }
-.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-expand-btn:hover,
-.portal-diagram-wrap.is-fullscreen .portal-expand-btn:hover {
-  background: #dc2626 !important;
-  border-color: #ffffff !important;
-  color: #ffffff !important;
-  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.8) !important;
-  transform: scale(1.04) !important;
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/User/Data/Remote/UserEndpoint.swift</span>
+  <span class="portal-file-tag">REST ENDPOINT</span>
+</div>
+
+```swift
+import Foundation
+
+/// Type-safe HTTP endpoint builder conforming to internal network standards.
+public struct UserEndpoint: Sendable {
+    public static func userProfileRequest(userId: String, baseURL: URL) -> URLRequest {
+        let endpointURL = baseURL.appendingPathComponent("v1/users/\(userId)")
+        var request = URLRequest(url: endpointURL)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 15.0
+        return request
+    }
 }
-/* 6. Switch button text and icon to "Close Fullscreen" */
-.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-icon-expand,
-.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-text-expand {
-  display: none !important;
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/User/Data/Local/Model/UserPersistentModel.swift</span>
+  <span class="portal-file-tag">SWIFTDATA SCHEMA</span>
+</div>
+
+```swift
+import Foundation
+import SwiftData
+
+/// SwiftData persistent schema representing local cached user records.
+/// Unique constraint on identifier guarantees idempotency during bulk sync.
+@Model
+public final class UserPersistentModel {
+    @Attribute(.unique) public var id: String
+    public var fullName: String
+    public var email: String
+    public var isVip: Boolean
+    public var cachedAt: Date
+
+    public init(
+        id: String,
+        fullName: String,
+        email: String,
+        isVip: Boolean,
+        cachedAt: Date = Date()
+    ) {
+        self.id = id
+        self.fullName = fullName
+        self.email = email
+        self.isVip = isVip
+        self.cachedAt = cachedAt
+    }
 }
-.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-icon-close,
-.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-text-close {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/User/Data/Mapper/UserMappers.swift</span>
+  <span class="portal-file-tag">MAPPING EXTENSIONS</span>
+</div>
+
+```swift
+import Foundation
+
+public extension UserNetworkDTO {
+    func toPersistentModel() -> UserPersistentModel {
+        UserPersistentModel(
+            id: id,
+            fullName: fullName,
+            email: email,
+            isVip: isVip,
+            cachedAt: Date()
+        )
+    }
+
+    func toDomainModel() -> UserDomainModel {
+        UserDomainModel(
+            id: id,
+            name: fullName,
+            email: email,
+            isVip: isVip,
+            lastSyncTimestamp: Date()
+        )
+    }
 }
-/* 7. Scaled Diagram Viewport inside the Modal */
-.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-diagram-viewport,
-.portal-diagram-wrap.is-fullscreen .portal-diagram-viewport {
-  flex: 1 !important;
-  height: calc(88vh - 65px) !important;
-  max-height: calc(88vh - 65px) !important;
-  padding: 30px 24px !important;
-  overflow: auto !important;
+
+public extension UserPersistentModel {
+    func toDomainModel() -> UserDomainModel {
+        UserDomainModel(
+            id: id,
+            name: fullName,
+            email: email,
+            isVip: isVip,
+            lastSyncTimestamp: cachedAt
+        )
+    }
 }
-.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-diagram-viewport svg,
-.portal-diagram-wrap.is-fullscreen .portal-diagram-viewport svg {
-  max-width: 88vw !important;
-  max-height: 75vh !important;
-  width: auto !important;
-  height: auto !important;
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/User/Data/Repository/UserRepositoryImpl.swift</span>
+  <span class="portal-file-tag">REPOSITORY IMPLEMENTATION</span>
+</div>
+
+```swift
+import Foundation
+import SwiftData
+
+/// Actor-isolated repository managing persistence synchronization and network fallback.
+public final class UserRepositoryImpl: UserRepository, @unchecked Sendable {
+    private let session: URLSession
+    private let baseURL: URL
+    private let modelContainer: ModelContainer
+
+    public init(
+        session: URLSession = .shared,
+        baseURL: URL,
+        modelContainer: ModelContainer
+    ) {
+        self.session = session
+        self.baseURL = baseURL
+        self.modelContainer = modelContainer
+    }
+
+    public func fetchUserProfile(userId: String) async throws -> UserDomainModel {
+        // 1. Check for Task cooperative cancellation
+        try Task.checkCancellation()
+
+        let context = ModelContext(modelContainer)
+
+        // 2. Network-first fetch with offline database fallback
+        do {
+            let request = UserEndpoint.userProfileRequest(userId: userId, baseURL: baseURL)
+            let (data, response) = try await session.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                throw URLError(.badServerResponse)
+            }
+
+            let dto = try JSONDecoder().decode(UserNetworkDTO.self, from: data)
+
+            // Cache entity into SwiftData
+            let persistent = dto.toPersistentModel()
+            context.insert(persistent)
+            try context.save()
+
+            return dto.toDomainModel()
+        } catch {
+            // Rethrow cooperative cancellation immediately
+            if error is CancellationError { throw error }
+
+            // 3. Fallback to cached SwiftData record on network failure
+            let descriptor = FetchDescriptor<UserPersistentModel>(
+                predicate: #Predicate { $0.id == userId }
+            )
+
+            if let cached = try? context.fetch(descriptor).first {
+                return cached.toDomainModel()
+            }
+
+            throw error
+        }
+    }
+
+    public func observeUserProfile(userId: String) -> AsyncStream<UserDomainModel?> {
+        AsyncStream { continuation in
+            let context = ModelContext(modelContainer)
+            let descriptor = FetchDescriptor<UserPersistentModel>(
+                predicate: #Predicate { $0.id == userId }
+            )
+
+            if let cached = try? context.fetch(descriptor).first {
+                continuation.yield(cached.toDomainModel())
+            }
+
+            continuation.onTermination = { _ in }
+        }
+    }
 }
+```
+
+  </TabItem>
+  <TabItem label="Presentation Layer (SwiftUI + @Observable)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/User/Presentation/State/UserProfileUIState.swift</span>
+  <span class="portal-file-tag">UI STATE ENUM</span>
+</div>
+
+```swift
+import Foundation
+
+/// Value-type UI state representing explicit screen rendering states.
+public enum UserProfileUIState: Sendable, Equatable {
+    case idle
+    case loading
+    case success(UserDomainModel)
+    case error(String)
+}
+
+/// User actions and interaction intents dispatched from SwiftUI views.
+public enum UserProfileUIIntent: Sendable {
+    case refreshProfile(String)
+}
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/User/Presentation/ViewModel/UserProfileViewModel.swift</span>
+  <span class="portal-file-tag">@OBSERVABLE VIEWMODEL</span>
+</div>
+
+```swift
+import Foundation
+import Observation
+
+/// Modern Swift 5.9+ @Observable ViewModel isolated to the Main Actor.
+/// Eliminates @Published and ObservableObject boilerplate.
+@Observable
+@MainActor
+public final class UserProfileViewModel {
+    public private(set) var uiState: UserProfileUIState = .idle
+    private let getUserProfileUseCase: GetUserProfileUseCase
+    private var activeTask: Task<Void, Never>?
+
+    public init(getUserProfileUseCase: GetUserProfileUseCase) {
+        self.getUserProfileUseCase = getUserProfileUseCase
+    }
+
+    public func send(_ intent: UserProfileUIIntent) {
+        switch intent {
+        case .refreshProfile(let userId):
+            fetchProfile(userId: userId)
+        }
+    }
+
+    private func fetchProfile(userId: String) {
+        activeTask?.cancel()
+
+        activeTask = Task { [weak self] in
+            guard let self else { return }
+            self.uiState = .loading
+
+            do {
+                let domainUser = try await self.getUserProfileUseCase.execute(userId: userId)
+                guard !Task.isCancelled else { return }
+                self.uiState = .success(domainUser)
+            } catch {
+                guard !Task.isCancelled else { return }
+                self.uiState = .error(error.localizedDescription)
+            }
+        }
+    }
+
+    deinit {
+        activeTask?.cancel()
+    }
+}
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/User/Presentation/Views/UserProfileView.swift</span>
+  <span class="portal-file-tag">SWIFTUI SCREEN</span>
+</div>
+
+```swift
+import SwiftUI
+
+/// Stateful Screen Container: wires ViewModel lifecycle and intent dispatch.
+public struct UserProfileRoute: View {
+    let userId: String
+    @State private var viewModel: UserProfileViewModel
+
+    public init(userId: String, viewModel: UserProfileViewModel) {
+        self.userId = userId
+        self._viewModel = State(initialValue: viewModel)
+    }
+
+    public var body: some View {
+        UserProfileView(
+            uiState: viewModel.uiState,
+            onRefresh: { viewModel.send(.refreshProfile(userId)) }
+        )
+        .task {
+            viewModel.send(.refreshProfile(userId))
+        }
+    }
+}
+
+/// Stateless Content View: pure UI renderer receiving immutable state and emitting closures.
+/// Enables rapid SwiftUI previews and deterministic UI testing.
+public struct UserProfileView: View {
+    let uiState: UserProfileUIState
+    let onRefresh: () -> Void
+
+    public init(uiState: UserProfileUIState, onRefresh: @escaping () -> Void) {
+        self.uiState = uiState
+        self.onRefresh = onRefresh
+    }
+
+    public var body: some View {
+        NavigationStack {
+            ZStack {
+                switch uiState {
+                case .idle, .loading:
+                    ProgressView("Loading Profile...")
+                        .progressViewStyle(.circular)
+
+                case .success(let user):
+                    ProfileContent(user: user, onRefresh: onRefresh)
+
+                case .error(let message):
+                    ErrorContent(message: message, onRetry: onRefresh)
+                }
+            }
+            .navigationTitle("User Profile")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+private struct ProfileContent: View {
+    let user: UserDomainModel
+    let onRefresh: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(user.name)
+                .font(.title)
+                .fontWeight(.bold)
+
+            Text(user.email)
+                .font(.body)
+                .foregroundStyle(.secondary)
+
+            if user.isVip {
+                Text("VIP Account")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.green.opacity(0.15))
+                    .foregroundStyle(.green)
+                    .clipShape(Capsule())
+            }
+
+            Spacer()
+
+            Button(action: onRefresh) {
+                Text("Refresh Profile")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+        }
+        .padding(24)
+    }
+}
+
+private struct ErrorContent: View {
+    let message: String
+    let onRetry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text(message)
+                .font(.body)
+                .foregroundStyle(.red)
+                .multilineTextAlignment(.center)
+
+            Button("Retry", action: onRetry)
+                .buttonStyle(.bordered)
+        }
+        .padding(24)
+    }
+}
+
+#Preview("Profile - Success State") {
+    UserProfileView(
+        uiState: .success(
+            UserDomainModel(
+                id: "USR-202",
+                name: "Sophia Vance",
+                email: "sophia.vance@enterprise.internal",
+                isVip: true,
+                lastSyncTimestamp: Date()
+            )
+        ),
+        onRefresh: {}
+    )
+}
+```
+
+  </TabItem>
+  <TabItem label="Dependency Injection (Swift Package Manager)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/User/DI/UserContainer.swift</span>
+  <span class="portal-file-tag">DI FACTORY</span>
+</div>
+
+```swift
+import Foundation
+import SwiftData
+
+/// Dependency Injection Container conforming to Enterprise DI specifications.
+@MainActor
+public final class UserContainer {
+    public static let shared = UserContainer()
+
+    private let modelContainer: ModelContainer
+
+    private init() {
+        do {
+            let schema = Schema([UserPersistentModel.self])
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+            self.modelContainer = try ModelContainer(for: schema, configurations: [config])
+        } catch {
+            fatalError("Failed to initialize SwiftData ModelContainer: \(error)")
+        }
+    }
+
+    public func makeUserRepository() -> UserRepository {
+        UserRepositoryImpl(
+            session: .shared,
+            baseURL: URL(string: "https://api.enterprise.internal")!,
+            modelContainer: modelContainer
+        )
+    }
+
+    public func makeGetUserProfileUseCase() -> GetUserProfileUseCase {
+        GetUserProfileUseCase(userRepository: makeUserRepository())
+    }
+
+    public func makeUserProfileViewModel() -> UserProfileViewModel {
+        UserProfileViewModel(getUserProfileUseCase: makeGetUserProfileUseCase())
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Internal iOS Enterprise SDK Catalog
+
+Enterprise iOS applications must consume internal SDKs via the private Git SPM registry (`git.enterprise.internal/mobile/ios-*`). Never duplicate authentication, security, or network client implementations.
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Package Name</th>
+        <th>Latest Release</th>
+        <th>Description &amp; Core Responsibility</th>
+        <th>SPM Dependency Declaration</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>EnterpriseAuth</code></td>
+        <td><code>2.4.0</code></td>
+        <td>OAuth2, PKCE, SSO token refresh, and Keychain hardware vault.</td>
+        <td><code>.package(url: "https://git.enterprise.internal/mobile/ios-auth.git", exact: "2.4.0")</code></td>
+      </tr>
+      <tr>
+        <td><code>EnterpriseConfig</code></td>
+        <td><code>1.8.0</code></td>
+        <td>Unleash Edge Proxy client with offline fallback and 15s refresh.</td>
+        <td><code>.package(url: "https://git.enterprise.internal/mobile/ios-config.git", exact: "1.8.0")</code></td>
+      </tr>
+      <tr>
+        <td><code>EnterpriseObservability</code></td>
+        <td><code>3.1.2</code></td>
+        <td>Datadog RUM, distributed network tracing, and Crashlytics wrapper.</td>
+        <td><code>.package(url: "https://git.enterprise.internal/mobile/ios-observability.git", exact: "3.1.2")</code></td>
+      </tr>
+      <tr>
+        <td><code>EnterpriseResilience</code></td>
+        <td><code>1.5.0</code></td>
+        <td>Circuit Breaker state machine (Closed, Open, Half-Open) with exponential backoff.</td>
+        <td><code>.package(url: "https://git.enterprise.internal/mobile/ios-resilience.git", exact: "1.5.0")</code></td>
+      </tr>
+      <tr>
+        <td><code>EnterpriseDesignTokens</code></td>
+        <td><code>2.0.1</code></td>
+        <td>SwiftUI Theme Tokens (Enterprise Green, Dark Gold, Surface palettes).</td>
+        <td><code>.package(url: "https://git.enterprise.internal/mobile/ios-design-tokens.git", exact: "2.0.1")</code></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 5. Architectural Anti-Patterns & Prohibitions
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">CRITICAL IOS VIOLATIONS</div>
+  <p>Pull Requests containing any of the following anti-patterns will be automatically blocked by Danger CI:</p>
+  <ul>
+    <li><strong>Retain Cycles in Closures:</strong> Never capture <code>self</code> strongly in asynchronous Tasks or network completion handlers. Always use <code>[weak self]</code>.</li>
+    <li><strong>Mutating UI Outside @MainActor:</strong> ViewModels and state publishers must be explicitly marked <code>@MainActor</code> to prevent background-thread UI mutations.</li>
+    <li><strong>Legacy ObservableObject in iOS 17+:</strong> Do not use deprecated <code>ObservableObject</code> and <code>@Published</code> for new code. All ViewModels must use the Swift 5.9+ <code>@Observable</code> macro.</li>
+    <li><strong>Direct SwiftData Queries in Views:</strong> Views must never query <code>ModelContext</code> or perform database fetch descriptors directly. All data access must pass through a Use Case and ViewModel.</li>
+    <li><strong>Force Unwrapping:</strong> Force unwrapping with <code>!</code> or <code>try!</code> is strictly prohibited in production code and will fail linting gates.</li>
+  </ul>
+</div>
+
+---
+
+## 6. iOS PR Conformance Quality Gate
+
+<div class="portal-checklist-box">
+  <div class="portal-checklist-title">PRE-MERGE IOS CONFORMANCE CHECKLIST</div>
+  <p>Ensure the following items pass before submitting code for review:</p>
+  <ul>
+    <li><strong>Layer Separation:</strong> Feature code strictly organized into <code>Data/</code>, <code>Domain/</code>, and <code>Presentation/</code> folders.</li>
+    <li><strong>Domain Purity:</strong> Domain UseCases and Models contain zero <code>SwiftUI</code> or <code>UIKit</code> framework imports.</li>
+    <li><strong>Thread Safety:</strong> All models crossing concurrency boundaries conform to <code>Sendable</code>.</li>
+    <li><strong>Unit Test Coverage:</strong> 90%+ unit test coverage on ViewModels and UseCases using mock repositories.</li>
+    <li><strong>Internal SDK Compliance:</strong> Consumes <code>Enterprise*</code> SPM packages rather than custom networking or authentication implementations.</li>
+  </ul>
+</div>
+
+
+
+
+
+
+
+--------------------------
+
+
+
+
+---
+title: Cross-Platform React Native Standards & Architecture
+description: Enterprise React Native engineering specifications, New Architecture (Fabric & TurboModules), Hermes JSI engine, TypeScript strict mode, Zustand/TanStack Query UDF state management, MMKV offline persistence, and modular file-by-file Clean Architecture implementation.
+sidebar:
+  order: 4
+  label: 3.3 React Native Standards
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">TIER-1 RUNTIME</span>
+    <span class="portal-hub-tag">PLATFORM SPECIFICATION &bull; REACT NATIVE &amp; TYPESCRIPT</span>
+  </div>
+  <h1 class="portal-hero-title">Cross-Platform React Native Standards &amp; Architecture</h1>
+  <p class="portal-hero-desc">
+    React Native is the primary multi-platform development standard across core enterprise products. All enterprise React Native codebases must strictly enforce the <strong>New Architecture</strong> (Fabric renderer, TurboModules, and Bridgeless mode), strict-mode TypeScript, <strong>Modular Clean Architecture</strong> with <strong>Unidirectional Data Flow (UDF)</strong>, and C++ JSI-backed storage engines.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Runtime &amp; Engine</div>
+      <div class="portal-cap-desc">React Native 0.74+ &bull; Hermes JSI &bull; Fabric &bull; TurboModules</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Language &amp; Type System</div>
+      <div class="portal-cap-desc">TypeScript 5.4+ Strict &bull; Zero Any &bull; Discriminated Unions</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">State Management</div>
+      <div class="portal-cap-desc">Zustand &bull; TanStack Query v5 &bull; Unidirectional Data Flow</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Storage &amp; Security</div>
+      <div class="portal-cap-desc">react-native-mmkv (C++ JSI) &bull; Hardware KeyStore / Keychain</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Modular Directory & Feature Vertical Slice Layout
+
+Enterprise React Native applications organize code by **feature vertical slices**, strictly enforcing layer isolation. Code must never be organized into generic monolithic folders such as `components/`, `screens/`, or `services/`.
+
+```text
+src/
+├── core/                                   # Shared enterprise infrastructure
+│   ├── network/                            # Axios/Fetch client, interceptors & SSL pinning
+│   ├── security/                           # Hardware Keychain / KeyStore JSI bridge
+│   ├── storage/                            # MMKV root configuration & encryption keys
+│   └── theme/                              # Enterprise design tokens (Colors, Typography, Spacing)
+│
+├── di/                                     # Global inversion-of-control container
+│   └── serviceContainer.ts                 # Service locator wiring shared infrastructure
+│
+└── features/user/                          # USER FEATURE MODULE (Vertical Slice)
+    ├── data/                               # Data Layer: Single Source of Truth
+    │   ├── remote/
+    │   │   ├── dto/UserNetworkDTO.ts       # Zod-validated API serialization contract
+    │   │   └── userApiService.ts           # HTTP transport & endpoint definition
+    │   ├── local/
+    │   │   ├── model/UserStorageEntity.ts  # MMKV binary schema & serialized record
+    │   │   └── userStorage.ts              # MMKV JSI synchronous cache adapter
+    │   ├── mapper/userMappers.ts           # Bidirectional DTO <-> Storage <-> Domain mappers
+    │   └── repository/UserRepositoryImpl.ts# Repository implementation (Cache + Remote Sync)
+    │
+    ├── domain/                             # Pure Domain Layer: Zero React or React Native APIs
+    │   ├── model/UserDomainModel.ts        # Immutable, frozen TypeScript business entity
+    │   ├── repository/UserRepository.ts    # Repository interface boundary contract
+    │   └── usecase/getUserProfileUseCase.ts# Single-purpose business use case
+    │
+    ├── di/                                 # Feature-scoped Dependency Injection
+    │   └── userContainer.ts                # Assembles repository, use cases, and store
+    │
+    └── presentation/                       # UI Layer: React Native + Zustand Store
+        ├── state/
+        │   ├── userProfileState.ts         # Discriminated union UI state model
+        │   └── userProfileIntent.ts        # Screen intent actions dispatched from UI
+        ├── store/
+        │   └── useUserProfileStore.ts      # Zustand store governing state reduction
+        ├── hooks/
+        │   └── useUserProfile.ts           # Controller hook orchestrating use cases & store
+        └── views/
+            ├── UserProfileRoute.tsx        # Stateful Container Screen (navigation & params)
+            ├── UserProfileView.tsx         # Stateless Presentational Screen (React.memo)
+            └── components/ProfileCard.tsx  # Atomic design system composable
+```
+
+---
+
+## 2. Clean Architecture & Data Flow
+
+### Layered Architecture Flowchart
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-rn-flowchart-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">CLEAN ARCHITECTURE FLOW</span>
+    <label for="diagram-rn-flowchart-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+graph TD
+    subgraph LayerPresentation ["1. PRESENTATION LAYER (REACT NATIVE & ZUSTAND)"]
+        View["React Native Screen<br/><b>UserProfileView (React.memo)</b>"]
+        Hook["Controller Hook<br/><b>useUserProfile()</b>"]
+        Store["Zustand Store<br/><b>useUserProfileStore</b>"]
+        State["UI State Contract<br/><b>UserProfileUIState</b>"]
+    end
+
+    subgraph LayerDomain ["2. DOMAIN LAYER (PURE TYPESCRIPT)"]
+        UC["Business Use Case<br/><b>GetUserProfileUseCase</b>"]
+        Model["Domain Model<br/><b>UserDomainModel (Readonly)</b>"]
+        RepoContract["Repository Interface<br/><b>interface IUserRepository</b>"]
+    end
+
+    subgraph LayerData ["3. DATA LAYER (SINGLE SOURCE OF TRUTH)"]
+        RepoImpl["Repository Class<br/><b>UserRepositoryImpl</b>"]
+        LocalDS["Local JSI Cache<br/><b>react-native-mmkv</b>"]
+        RemoteDS["Remote HTTP Endpoint<br/><b>Axios &amp; userApiService</b>"]
+    end
+
+    View -->|"1. User taps refresh"| Hook
+    Hook -->|"2. execute(userId)"| UC
+    UC -->|"3. execute query"| RepoContract
+    RepoContract -.->|"binds via DI"| RepoImpl
+    RepoImpl -->|"4a. Read fast local cache"| LocalDS
+    RepoImpl -->|"4b. Fetch fresh REST API"| RemoteDS
+    RepoImpl -->|"5. Map to Domain &amp; Persist"| Model
+    Model -->|"6. Return domain model"| UC
+    UC -->|"7. Deliver validated entity"| Hook
+    Hook -->|"8. Dispatch action to store"| Store
+    Store -->|"9. Emit immutable state"| State
+    State -->|"10. Trigger deterministic re-render"| View
+
+    classDef composeBox fill:#0f2e1e,stroke:#22c55e,stroke-width:2px,color:#e2e8f0;
+    classDef domainBox fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#e2e8f0;
+    classDef dataBox fill:#2a2012,stroke:#f59e0b,stroke-width:2px,color:#fef3c7;
+
+    classDef subPres fill:#091910,stroke:#22c55e,stroke-width:1.5px,color:#4ade80;
+    classDef subDom fill:#191226,stroke:#a855f7,stroke-width:1.5px,color:#c084fc;
+    classDef subDat fill:#1a170c,stroke:#f59e0b,stroke-width:1.5px,color:#fcd34d;
+
+    class View,Hook,Store,State composeBox;
+    class UC,Model,RepoContract domainBox;
+    class RepoImpl,LocalDS,RemoteDS dataBox;
+
+    class LayerPresentation subPres;
+    class LayerDomain subDom;
+    class LayerData subDat;
+```
+
+  </div>
+</div>
+
+---
+
+### Unidirectional Data Flow (UDF) Sequence Diagram
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-rn-sequence-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">UDF CONCURRENCY FLOW</span>
+    <label for="diagram-rn-sequence-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Mobile User
+    participant View as React Native View
+    participant Hook as useUserProfile() Hook
+    participant Store as Zustand Store
+    participant UC as GetUserProfileUseCase
+    participant Repo as UserRepositoryImpl
+    participant LocalCache as MMKV Storage (C++ JSI)
+    participant RemoteAPI as Axios HTTPS Client
+
+    User->>View: Taps "Refresh Profile"
+    View->>Hook: refreshProfile(userId)
+    Hook->>Store: setStatus("loading")
+    Store-->>View: Re-renders ActivityIndicator
+    Hook->>UC: execute(userId)
+    UC->>Repo: fetchUserProfile(userId)
+
+    Repo->>LocalCache: mmkv.getString(userId)
+    LocalCache-->>Repo: Return cached JSON (sub-millisecond)
+
+    Repo->>RemoteAPI: GET /v1/users/{userId}
+    RemoteAPI-->>Repo: 200 OK (UserNetworkDTO)
+    Repo->>LocalCache: mmkv.set(userId, serializedEntity)
+    Repo-->>UC: Return UserDomainModel
+    UC-->>Hook: Return domain entity
+    Hook->>Store: setSuccess(user)
+    Store-->>View: Re-renders Screen with updated profile
+    View-->>User: Displays user profile, email & VIP badge
+```
+
+  </div>
+</div>
+
+---
+
+## 3. Modular File-by-File Clean Architecture Implementation
+
+Enterprise standards require each TypeScript class, interface, and component to reside in its own dedicated, single-responsibility file. Review the complete implementation below, structured across its respective clean architecture packages:
+
+<Tabs>
+  <TabItem label="Domain Layer (Pure TypeScript)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/domain/model/UserDomainModel.ts</span>
+  <span class="portal-file-tag">DOMAIN MODEL</span>
+</div>
+
+```typescript
+/**
+ * Pure, immutable business domain entity.
+ * Frozen with Readonly to prevent accidental mutations.
+ * Zero React, React Native, or platform dependencies.
+ */
+export interface UserDomainModel {
+  readonly id: string;
+  readonly name: string;
+  readonly email: string;
+  readonly isVip: boolean;
+  readonly lastSyncTimestamp: number;
+}
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/domain/repository/UserRepository.ts</span>
+  <span class="portal-file-tag">REPOSITORY INTERFACE</span>
+</div>
+
+```typescript
+import type { UserDomainModel } from '../model/UserDomainModel';
+
+/**
+ * Boundary contract defining user data operations.
+ * The domain layer owns this interface; the data layer implements it.
+ */
+export interface IUserRepository {
+  fetchUserProfile(userId: string): Promise<UserDomainModel>;
+  getCachedUserProfile(userId: string): Promise<UserDomainModel | null>;
+  clearUserProfile(userId: string): Promise<void>;
+}
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/domain/usecase/getUserProfileUseCase.ts</span>
+  <span class="portal-file-tag">BUSINESS USE CASE</span>
+</div>
+
+```typescript
+import type { UserDomainModel } from '../model/UserDomainModel';
+import type { IUserRepository } from '../repository/UserRepository';
+
+export class InvalidUserIdError extends Error {
+  constructor(message = 'User ID must not be empty or blank.') {
+    super(message);
+    this.name = 'InvalidUserIdError';
+  }
+}
+
+/**
+ * Single-responsibility use case enforcing business validation.
+ * Completely decoupled from React hooks and network clients.
+ */
+export class GetUserProfileUseCase {
+  constructor(private readonly userRepository: IUserRepository) {}
+
+  async execute(userId: string): Promise<UserDomainModel> {
+    const trimmedId = userId.trim();
+    if (!trimmedId) {
+      throw new InvalidUserIdError();
+    }
+    return this.userRepository.fetchUserProfile(trimmedId);
+  }
+}
+```
+
+  </TabItem>
+  <TabItem label="Data Layer (MMKV + Axios)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/data/remote/dto/UserNetworkDTO.ts</span>
+  <span class="portal-file-tag">ZOD SCHEMA &amp; DTO</span>
+</div>
+
+```typescript
+import { z } from 'zod';
+
+/**
+ * Zod runtime validation schema matching backend REST payload.
+ * Validates payload structure at the API boundary, guaranteeing runtime type safety.
+ */
+export const UserNetworkDTOSchema = z.object({
+  id: z.string().min(1),
+  full_name: z.string().default(''),
+  email: z.string().email(),
+  is_vip: z.boolean().default(false),
+});
+
+export type UserNetworkDTO = z.infer<typeof UserNetworkDTOSchema>;
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/data/remote/userApiService.ts</span>
+  <span class="portal-file-tag">API TRANSPORT</span>
+</div>
+
+```typescript
+import axios, { type AxiosInstance } from 'axios';
+import { UserNetworkDTOSchema, type UserNetworkDTO } from './dto/UserNetworkDTO';
+
+export interface IUserApiService {
+  getUserById(userId: string): Promise<UserNetworkDTO>;
+}
+
+export class UserApiService implements IUserApiService {
+  constructor(
+    private readonly httpClient: AxiosInstance = axios.create({
+      baseURL: 'https://api.enterprise.internal',
+      timeout: 15000,
+      headers: { 'Accept': 'application/json' },
+    })
+  ) {}
+
+  async getUserById(userId: string): Promise<UserNetworkDTO> {
+    const response = await this.httpClient.get(`/v1/users/${encodeURIComponent(userId)}`);
+    // Parse runtime payload with Zod
+    return UserNetworkDTOSchema.parse(response.data);
+  }
+}
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/data/local/userStorage.ts</span>
+  <span class="portal-file-tag">MMKV CACHE ADAPTER</span>
+</div>
+
+```typescript
+import { MMKV } from 'react-native-mmkv';
+import type { UserDomainModel } from '../../domain/model/UserDomainModel';
+
+export interface IUserStorage {
+  getUser(userId: string): UserDomainModel | null;
+  saveUser(user: UserDomainModel): void;
+  removeUser(userId: string): void;
+}
+
+/**
+ * Synchronous local cache powered by Tencent MMKV with C++ JSI bindings.
+ * Operates up to 30x faster than legacy AsyncStorage.
+ */
+export class UserStorage implements IUserStorage {
+  private readonly storage: MMKV;
+
+  constructor() {
+    this.storage = new MMKV({
+      id: 'enterprise-user-cache',
+      encryptionKey: 'enterprise-secure-mmkv-key',
+    });
+  }
+
+  getUser(userId: string): UserDomainModel | null {
+    const raw = this.storage.getString(`user_${userId}`);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as UserDomainModel;
+    } catch {
+      return null;
+    }
+  }
+
+  saveUser(user: UserDomainModel): void {
+    this.storage.set(`user_${user.id}`, JSON.stringify(user));
+  }
+
+  removeUser(userId: string): void {
+    this.storage.delete(`user_${userId}`);
+  }
+}
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/data/mapper/userMappers.ts</span>
+  <span class="portal-file-tag">OBJECT MAPPERS</span>
+</div>
+
+```typescript
+import type { UserNetworkDTO } from '../remote/dto/UserNetworkDTO';
+import type { UserDomainModel } from '../../domain/model/UserDomainModel';
+
+export const UserMappers = {
+  toDomain(dto: UserNetworkDTO): UserDomainModel {
+    return Object.freeze({
+      id: dto.id,
+      name: dto.full_name,
+      email: dto.email,
+      isVip: dto.is_vip,
+      lastSyncTimestamp: Date.now(),
+    });
+  },
+};
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/data/repository/UserRepositoryImpl.ts</span>
+  <span class="portal-file-tag">REPOSITORY IMPLEMENTATION</span>
+</div>
+
+```typescript
+import type { IUserRepository } from '../../domain/repository/UserRepository';
+import type { UserDomainModel } from '../../domain/model/UserDomainModel';
+import type { IUserApiService } from '../remote/userApiService';
+import type { IUserStorage } from '../local/userStorage';
+import { UserMappers } from '../mapper/userMappers';
+
+export class UserRepositoryImpl implements IUserRepository {
+  constructor(
+    private readonly apiService: IUserApiService,
+    private readonly storage: IUserStorage
+  ) {}
+
+  async fetchUserProfile(userId: string): Promise<UserDomainModel> {
+    try {
+      // 1. Fetch fresh payload from Remote REST API
+      const dto = await this.apiService.getUserById(userId);
+      const domainModel = UserMappers.toDomain(dto);
+
+      // 2. Persist into fast local MMKV storage
+      this.storage.saveUser(domainModel);
+
+      return domainModel;
+    } catch (networkError) {
+      // 3. Fallback to cached MMKV record on network failure
+      const cached = this.storage.getUser(userId);
+      if (cached) {
+        return cached;
+      }
+      throw networkError;
+    }
+  }
+
+  async getCachedUserProfile(userId: string): Promise<UserDomainModel | null> {
+    return this.storage.getUser(userId);
+  }
+
+  async clearUserProfile(userId: string): Promise<void> {
+    this.storage.removeUser(userId);
+  }
+}
+```
+
+  </TabItem>
+  <TabItem label="Presentation Layer (React Native + Zustand)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/presentation/state/userProfileState.ts</span>
+  <span class="portal-file-tag">UI STATE DISCRIMINATED UNION</span>
+</div>
+
+```typescript
+import type { UserDomainModel } from '../../domain/model/UserDomainModel';
+
+/**
+ * Discriminated union enforcing exhaustive pattern matching in UI views.
+ * Eliminates impossible states (e.g. loading = true AND user != null).
+ */
+export type UserProfileUIState =
+  | { readonly status: 'idle' }
+  | { readonly status: 'loading' }
+  | { readonly status: 'success'; readonly user: UserDomainModel }
+  | { readonly status: 'error'; readonly errorMessage: string };
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/presentation/store/useUserProfileStore.ts</span>
+  <span class="portal-file-tag">ZUSTAND STORE</span>
+</div>
+
+```typescript
+import { create } from 'zustand';
+import type { UserProfileUIState } from '../state/userProfileState';
+import type { UserDomainModel } from '../../domain/model/UserDomainModel';
+
+interface UserProfileStore {
+  uiState: UserProfileUIState;
+  setLoading: () => void;
+  setSuccess: (user: UserDomainModel) => void;
+  setError: (errorMessage: string) => void;
+  reset: () => void;
+}
+
+export const useUserProfileStore = create<UserProfileStore>((set) => ({
+  uiState: { status: 'idle' },
+  setLoading: () => set({ uiState: { status: 'loading' } }),
+  setSuccess: (user) => set({ uiState: { status: 'success', user } }),
+  setError: (errorMessage) => set({ uiState: { status: 'error', errorMessage } }),
+  reset: () => set({ uiState: { status: 'idle' } }),
+}));
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/presentation/hooks/useUserProfile.ts</span>
+  <span class="portal-file-tag">CONTROLLER HOOK</span>
+</div>
+
+```typescript
+import { useCallback, useEffect } from 'react';
+import { useUserProfileStore } from '../store/useUserProfileStore';
+import { userContainer } from '../../di/userContainer';
+
+export function useUserProfile(userId: string) {
+  const uiState = useUserProfileStore((state) => state.uiState);
+  const setLoading = useUserProfileStore((state) => state.setLoading);
+  const setSuccess = useUserProfileStore((state) => state.setSuccess);
+  const setError = useUserProfileStore((state) => state.setError);
+
+  const fetchProfile = useCallback(async () => {
+    if (!userId) return;
+
+    setLoading();
+    try {
+      const useCase = userContainer.resolveGetUserProfileUseCase();
+      const domainUser = await useCase.execute(userId);
+      setSuccess(domainUser);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      setError(message);
+    }
+  }, [userId, setLoading, setSuccess, setError]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  return {
+    uiState,
+    refreshProfile: fetchProfile,
+  };
+}
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/presentation/views/UserProfileView.tsx</span>
+  <span class="portal-file-tag">STATELESS PRESENTATION COMPONENT</span>
+</div>
+
+```tsx
+import React, { memo } from 'react';
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+} from 'react-native';
+import type { UserProfileUIState } from '../state/userProfileState';
+
+interface UserProfileViewProps {
+  readonly uiState: UserProfileUIState;
+  readonly onRefresh: () => void;
+}
+
+/**
+ * Pure Presentational Screen: Wrapped with React.memo for high-performance rendering.
+ * Does not manage state or trigger asynchronous side effects directly.
+ */
+export const UserProfileView = memo<UserProfileViewProps>(({ uiState, onRefresh }) => {
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>User Profile</Text>
+        </View>
+
+        {uiState.status === 'loading' && (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#22c55e" />
+            <Text style={styles.loadingText}>Loading profile...</Text>
+          </View>
+        )}
+
+        {uiState.status === 'success' && (
+          <View style={styles.contentContainer}>
+            <View style={styles.card}>
+              <Text style={styles.nameText}>{uiState.user.name}</Text>
+              <Text style={styles.emailText}>{uiState.user.email}</Text>
+              {uiState.user.isVip && (
+                <View style={styles.vipBadge}>
+                  <Text style={styles.vipBadgeText}>VIP Account</Text>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity style={styles.refreshButton} onPress={onRefresh} activeOpacity={0.8}>
+              <Text style={styles.refreshButtonText}>Refresh Profile</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {uiState.status === 'error' && (
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorText}>{uiState.errorMessage}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={onRefresh} activeOpacity={0.8}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+});
+
+UserProfileView.displayName = 'UserProfileView';
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#09130e' },
+  container: { flex: 1, padding: 20 },
+  header: { marginBottom: 24 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#f3d17b' },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  loadingText: { color: '#cbd5e1', fontSize: 14 },
+  contentContainer: { flex: 1, justifyContent: 'space-between' },
+  card: {
+    backgroundColor: '#13251c',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1f3b2c',
+    padding: 20,
+    gap: 8,
+  },
+  nameText: { fontSize: 22, fontWeight: '700', color: '#e2e8f0' },
+  emailText: { fontSize: 15, color: '#9ca3af' },
+  vipBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.35)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 8,
+  },
+  vipBadgeText: { color: '#22c55e', fontSize: 12, fontWeight: '700' },
+  refreshButton: {
+    backgroundColor: '#22c55e',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  refreshButtonText: { color: '#09130e', fontSize: 16, fontWeight: '700' },
+  errorText: { color: '#ef4444', fontSize: 15, textAlign: 'center' },
+  retryButton: {
+    backgroundColor: '#1f3b2c',
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  retryButtonText: { color: '#e2e8f0', fontWeight: '600' },
+});
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/presentation/views/UserProfileRoute.tsx</span>
+  <span class="portal-file-tag">STATEFUL ROUTE CONTAINER</span>
+</div>
+
+```tsx
+import React from 'react';
+import { UserProfileView } from './UserProfileView';
+import { useUserProfile } from '../hooks/useUserProfile';
+
+interface UserProfileRouteProps {
+  route: {
+    params: {
+      userId: string;
+    };
+  };
+}
+
+/**
+ * Stateful Container Component: Extract navigation route params,
+ * connects the controller hook, and delegates UI rendering to UserProfileView.
+ */
+export function UserProfileRoute({ route }: UserProfileRouteProps) {
+  const { userId } = route.params;
+  const { uiState, refreshProfile } = useUserProfile(userId);
+
+  return <UserProfileView uiState={uiState} onRefresh={refreshProfile} />;
+}
+```
+
+  </TabItem>
+  <TabItem label="Dependency Injection (IoC Container)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/user/di/userContainer.ts</span>
+  <span class="portal-file-tag">SERVICE LOCATOR CONTAINER</span>
+</div>
+
+```typescript
+import { UserApiService, type IUserApiService } from '../data/remote/userApiService';
+import { UserStorage, type IUserStorage } from '../data/local/userStorage';
+import { UserRepositoryImpl } from '../data/repository/UserRepositoryImpl';
+import type { IUserRepository } from '../domain/repository/UserRepository';
+import { GetUserProfileUseCase } from '../domain/usecase/getUserProfileUseCase';
+
+/**
+ * Inversion of Control (IoC) Service Locator.
+ * Assembles clean architecture dependencies without manual wiring in components.
+ */
+class UserContainer {
+  private apiService: IUserApiService | null = null;
+  private storage: IUserStorage | null = null;
+  private userRepository: IUserRepository | null = null;
+
+  resolveApiService(): IUserApiService {
+    if (!this.apiService) {
+      this.apiService = new UserApiService();
+    }
+    return this.apiService;
+  }
+
+  resolveStorage(): IUserStorage {
+    if (!this.storage) {
+      this.storage = new UserStorage();
+    }
+    return this.storage;
+  }
+
+  resolveUserRepository(): IUserRepository {
+    if (!this.userRepository) {
+      this.userRepository = new UserRepositoryImpl(
+        this.resolveApiService(),
+        this.resolveStorage()
+      );
+    }
+    return this.userRepository;
+  }
+
+  resolveGetUserProfileUseCase(): GetUserProfileUseCase {
+    return new GetUserProfileUseCase(this.resolveUserRepository());
+  }
+}
+
+export const userContainer = new UserContainer();
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Internal React Native Enterprise SDK Catalog
+
+Enterprise React Native applications must consume internal SDKs via the private NPM registry (`npm.enterprise.internal`). Never create custom re-implementations of authentication, encryption, or telemetry logic.
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>NPM Package</th>
+        <th>Latest Release</th>
+        <th>Description &amp; Core Responsibility</th>
+        <th>Yarn / NPM Installation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>@enterprise/react-native-auth</code></td>
+        <td><code>2.4.0</code></td>
+        <td>OAuth2 PKCE, SSO token refresh, iOS Keychain &amp; Android KeyStore JSI bridge.</td>
+        <td><code>yarn add @enterprise/react-native-auth@2.4.0</code></td>
+      </tr>
+      <tr>
+        <td><code>@enterprise/react-native-config</code></td>
+        <td><code>1.8.0</code></td>
+        <td>Unleash Edge Proxy client with offline MMKV fallback and 15s cache polling.</td>
+        <td><code>yarn add @enterprise/react-native-config@1.8.0</code></td>
+      </tr>
+      <tr>
+        <td><code>@enterprise/react-native-observability</code></td>
+        <td><code>3.1.2</code></td>
+        <td>Datadog RUM bridge, network tracing interceptors, and Crashlytics wrapper.</td>
+        <td><code>yarn add @enterprise/react-native-observability@3.1.2</code></td>
+      </tr>
+      <tr>
+        <td><code>@enterprise/react-native-resilience</code></td>
+        <td><code>1.5.0</code></td>
+        <td>Circuit Breaker state machine (Closed, Open, Half-Open) with exponential backoff.</td>
+        <td><code>yarn add @enterprise/react-native-resilience@1.5.0</code></td>
+      </tr>
+      <tr>
+        <td><code>@enterprise/react-native-design-tokens</code></td>
+        <td><code>2.0.1</code></td>
+        <td>Enterprise theme tokens (BrandGreen, DarkGold, Surface palettes, typography).</td>
+        <td><code>yarn add @enterprise/react-native-design-tokens@2.0.1</code></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 5. Architectural Anti-Patterns & Prohibitions
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">CRITICAL REACT NATIVE VIOLATIONS</div>
+  <p>Pull Requests containing any of the following anti-patterns will be automatically blocked by Danger CI:</p>
+  <ul>
+    <li><strong>Unencrypted AsyncStorage for Sensitive Tokens:</strong> Never store authentication tokens, session secrets, or PII in standard <code>AsyncStorage</code>. Always use <code>@enterprise/react-native-auth</code> backed by hardware KeyStore / Keychain.</li>
+    <li><strong>Inline Function Allocations in List Render Items:</strong> Passing arrow functions or non-memoized objects to <code>renderItem</code> inside <code>FlashList</code> or <code>FlatList</code> causes bridge flooding and severe dropped frames. Always use <code>useCallback</code> and <code>useMemo</code>.</li>
+    <li><strong>Bypassing Clean Architecture Layers:</strong> Components must never query Axios or MMKV directly. All reads and writes must pass through a custom hook and use case.</li>
+    <li><strong>Direct State Mutation:</strong> Mutating Zustand or React state objects directly bypasses equality checks and breaks Unidirectional Data Flow. Always return fresh immutable objects.</li>
+    <li><strong>Catching and Swallowing Errors Silently:</strong> Silent <code>catch &#123;&#125;</code> blocks prevent distributed network traces from reporting failures to Datadog RUM. Always log or propagate unhandled errors.</li>
+  </ul>
+</div>
+
+---
+
+## 6. React Native PR Conformance Quality Gate
+
+<div class="portal-checklist-box">
+  <div class="portal-checklist-title">PRE-MERGE REACT NATIVE CONFORMANCE CHECKLIST</div>
+  <p>Ensure the following items pass before submitting code for review:</p>
+  <ul>
+    <li><strong>New Architecture Compatibility:</strong> All libraries compile with Fabric renderer and TurboModules enabled without legacy bridge warnings.</li>
+    <li><strong>Layer Separation:</strong> Feature code follows <code>data/</code>, <code>domain/</code>, and <code>presentation/</code> sub-packages with single-responsibility files.</li>
+    <li><strong>Domain Purity:</strong> Domain UseCases and Models contain zero <code>react</code> or <code>react-native</code> framework imports.</li>
+    <li><strong>TypeScript Strict Mode:</strong> Compiles with zero <code>any</code> declarations, passing <code>tsc --noEmit</code> with strict null checks.</li>
+    <li><strong>Unit Test Coverage:</strong> 90%+ unit test coverage on custom hooks, Zustand stores, and use cases using Jest and React Native Testing Library.</li>
+    <li><strong>Internal SDK Compliance:</strong> Consumes <code>@enterprise/react-native-*</code> packages rather than custom networking or security implementations.</li>
+  </ul>
+</div>
