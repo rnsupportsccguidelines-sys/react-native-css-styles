@@ -49,7 +49,7 @@ Enterprise mobile projects must strictly select one of the three Tier-1 approved
     <div>
       <div class="portal-card-topbar">
         <div class="portal-card-icon badge-green">
-          <svg viewBox="0 0 24 24" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
             <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.4147 13.8533 8.125 12 8.125c-1.8533 0-3.5902.2897-5.1368.8247L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/>
           </svg>
         </div>
@@ -67,11 +67,8 @@ Enterprise mobile projects must strictly select one of the three Tier-1 approved
         <span>Room DB</span>
       </div>
     </div>
-    <div class="portal-card-foot">
-      <a href="/mobile-draft/03-platforms-sdks/02-android-standards/" class="portal-card-link">
-        View Android Standards
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
+    <div class="portal-card-action">
+      <a href="/mobile-draft/03-platforms-sdks/02-android-standards/" class="portal-card-link">View Android Standards &rarr;</a>
     </div>
   </div>
 
@@ -80,7 +77,7 @@ Enterprise mobile projects must strictly select one of the three Tier-1 approved
     <div>
       <div class="portal-card-topbar">
         <div class="portal-card-icon badge-purple">
-          <svg viewBox="0 0 24 24" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
             <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 1.01-2.87-.9.04-2.03.62-2.67 1.37-.56.65-.98 1.7-1.03 2.76 1.02.08 2.08-.51 2.69-1.26z"/>
           </svg>
         </div>
@@ -98,11 +95,8 @@ Enterprise mobile projects must strictly select one of the three Tier-1 approved
         <span>Keychain Vault</span>
       </div>
     </div>
-    <div class="portal-card-foot">
-      <a href="/mobile-draft/03-platforms-sdks/03-ios-standards/" class="portal-card-link">
-        View iOS Standards
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
+    <div class="portal-card-action">
+      <a href="/mobile-draft/03-platforms-sdks/03-ios-standards/" class="portal-card-link">View iOS Standards &rarr;</a>
     </div>
   </div>
 
@@ -111,7 +105,7 @@ Enterprise mobile projects must strictly select one of the three Tier-1 approved
     <div>
       <div class="portal-card-topbar">
         <div class="portal-card-icon badge-teal">
-          <svg viewBox="0 0 24 24" fill="currentColor">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
             <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.2c3.08 0 5.6 2.52 5.6 5.6 0 1.25-.41 2.4-1.11 3.33l-1.42-1.42a3.57 3.57 0 00.53-1.91 3.6 3.6 0 10-3.6 3.6c.7 0 1.35-.2 1.91-.53l1.42 1.42A5.56 5.56 0 0112 15.4c-3.08 0-5.6-2.52-5.6-5.6S8.92 4.2 12 4.2zm0 15.6c-4.3 0-7.8-3.5-7.8-7.8 0-1.8.61-3.46 1.64-4.78l1.43 1.43A5.76 5.76 0 006.2 12c0 3.2 2.6 5.8 5.8 5.8 1.4 0 2.68-.5 3.67-1.33l1.43 1.43C15.78 19.06 13.98 19.8 12 19.8z"/>
           </svg>
         </div>
@@ -130,11 +124,8 @@ Enterprise mobile projects must strictly select one of the three Tier-1 approved
         <span>React Navigation 6</span>
       </div>
     </div>
-    <div class="portal-card-foot">
-      <a href="/mobile-draft/03-platforms-sdks/04-react-native-standards/" class="portal-card-link">
-        View React Native Standards
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
+    <div class="portal-card-action">
+      <a href="/mobile-draft/03-platforms-sdks/04-react-native-standards/" class="portal-card-link">View React Native Standards &rarr;</a>
     </div>
   </div>
 </div>
@@ -150,9 +141,18 @@ Choosing between Native Android, Native iOS, and React Native must be guided by 
     <thead>
       <tr>
         <th>Decision Criteria</th>
-        <th>Native Android (Kotlin)</th>
-        <th>Native iOS (Swift)</th>
-        <th>React Native (TypeScript)</th>
+        <th>
+          Native Android<br/>
+          <span style="font-size: 0.72rem; font-weight: 500; text-transform: none; opacity: 0.85;">Kotlin &bull; Gradle / Maven</span>
+        </th>
+        <th>
+          Native iOS<br/>
+          <span style="font-size: 0.72rem; font-weight: 500; text-transform: none; opacity: 0.85;">Swift &bull; SPM / CocoaPods</span>
+        </th>
+        <th>
+          React Native<br/>
+          <span style="font-size: 0.72rem; font-weight: 500; text-transform: none; opacity: 0.85;">TypeScript &bull; npm / yarn</span>
+        </th>
       </tr>
     </thead>
     <tbody>
@@ -193,7 +193,7 @@ Choosing between Native Android, Native iOS, and React Native must be guided by 
         <td>WatermelonDB / MMKV Storage</td>
       </tr>
       <tr>
-        <td><strong>Internal SDK Artifact</strong></td>
+        <td><strong>Internal SDK Package</strong></td>
         <td><code>com.enterprise.mobile:*</code> (Maven)</td>
         <td><code>Enterprise*</code> (SPM / CocoaPods)</td>
         <td><code>@enterprise/*</code> (Internal NPM)</td>
