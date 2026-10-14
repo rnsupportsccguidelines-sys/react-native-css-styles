@@ -1,830 +1,403 @@
-/* ==========================================================================
-   ENTERPRISE MOBILE ENGINEERING PORTAL - MASTER STYLESHEET
-   Scoped strictly to Mobile Documentation (/mobile-draft/ routes)
-   Prevents leaking styles to other teams' documentation sections
-   ========================================================================== */
-
-/* 1. FULL-WIDTH CANVAS & STARLIGHT TOC PRESERVATION (SCOPED TO MOBILE-DRAFT) */
-:root:has(a[aria-current="page"][href*="mobile-draft"]),
-:root:has([class*="portal-"]),
-html.mobile-draft-docs,
-body.mobile-draft-docs {
-  --sl-content-width: 100% !important;
-  --sl-content-pad-x: 1.25rem !important;
-}
-
-:root:has(a[aria-current="page"][href*="mobile-draft"]) .content-panel,
-:root:has(a[aria-current="page"][href*="mobile-draft"]) .sl-markdown-content,
-:root:has([class*="portal-"]) .content-panel,
-:root:has([class*="portal-"]) .sl-markdown-content,
-.mobile-draft-docs .content-panel,
-.mobile-draft-docs .sl-markdown-content {
-  max-width: 100% !important;
-  width: 100% !important;
-}
-
-/* 2. DUAL THEME TOKENS (SCOPED TO MOBILE-DRAFT) */
-:root:has(a[aria-current="page"][href*="mobile-draft"]),
-:root:has([class*="portal-"]),
-:root[data-theme='dark']:has(a[aria-current="page"][href*="mobile-draft"]),
-:root[data-theme='dark']:has([class*="portal-"]),
-html.mobile-draft-docs,
-body.mobile-draft-docs {
-  --sl-color-bg: #0d1912;
-  --sl-color-bg-nav: #09130e;
-  --sl-color-bg-sidebar: #09130e;
-  --sl-color-bg-inline-code: #13251c;
-  --sl-color-border: #1f3b2c;
-  --sl-color-text: #e2e8f0;
-  --sl-color-text-accent: #22c55e;
-  --portal-gold: #f3d17b;
-  --portal-card-bg: #13251c;
-  --portal-card-border: #1f3b2c;
-  --portal-text-body: #cbd5e1;
-  --portal-text-muted: #9ca3af;
-  --portal-pill-bg: #1a2e23;
-  --portal-pill-border: rgba(255, 255, 255, 0.12);
-  --portal-pill-text: #e2e8f0;
-  --portal-pill-hover: #233e2f;
-  --portal-accent: #22c55e;
-  --portal-accent-hover: #4ade80;
-}
-
-:root[data-theme='light']:has(a[aria-current="page"][href*="mobile-draft"]),
-:root[data-theme='light']:has([class*="portal-"]),
-html[data-theme='light'].mobile-draft-docs,
-body[data-theme='light'].mobile-draft-docs {
-  --sl-color-bg: #f8faf8;
-  --sl-color-bg-nav: #ffffff;
-  --sl-color-bg-sidebar: #f2f6f3;
-  --sl-color-bg-inline-code: #edf4ee;
-  --sl-color-border: #d4e2d8;
-  --sl-color-text: #111827;
-  --sl-color-text-accent: #007a3d;
-  --portal-gold: #143823;
-  --portal-card-bg: #ffffff;
-  --portal-card-border: #d8e5dc;
-  --portal-text-body: #1f2937;
-  --portal-text-muted: #4b5563;
-  --portal-pill-bg: #f0f7f2;
-  --portal-pill-border: #cfe0d4;
-  --portal-pill-text: #133824;
-  --portal-pill-hover: #e1efe5;
-  --portal-accent: #007a3d;
-  --portal-accent-hover: #005a2b;
-}
-
-/* 3. TYPOGRAPHY & TOC HEADINGS (SCOPED TO MOBILE-DRAFT) */
-:root[data-theme='dark']:has(a[aria-current="page"][href*="mobile-draft"]) #_top,
-:root[data-theme='dark']:has(a[aria-current="page"][href*="mobile-draft"]) h1,
-:root[data-theme='dark']:has([class*="portal-"]) #_top,
-:root[data-theme='dark']:has([class*="portal-"]) h1,
-.mobile-draft-docs h1 {
-  color: #f3d17b !important;
-}
-
-:root[data-theme='light']:has(a[aria-current="page"][href*="mobile-draft"]) #_top,
-:root[data-theme='light']:has(a[aria-current="page"][href*="mobile-draft"]) h1,
-:root[data-theme='light']:has([class*="portal-"]) #_top,
-:root[data-theme='light']:has([class*="portal-"]) h1,
-html[data-theme='light'] .mobile-draft-docs h1 {
-  color: #143823 !important;
-}
-
-:root:has(a[aria-current="page"][href*="mobile-draft"]) .sl-markdown-content h2:not(.portal-card-title):not(.portal-route-title),
-:root:has([class*="portal-"]) .sl-markdown-content h2:not(.portal-card-title):not(.portal-route-title),
-.mobile-draft-docs h2:not(.portal-card-title):not(.portal-route-title) {
-  font-size: 1.35rem !important;
-  font-weight: 800 !important;
-  margin: 36px 0 8px 0 !important;
-  border-bottom: none !important;
-}
-
-:root[data-theme='dark']:has(a[aria-current="page"][href*="mobile-draft"]) h2:not(.portal-card-title):not(.portal-route-title),
-:root[data-theme='dark']:has([class*="portal-"]) h2:not(.portal-card-title):not(.portal-route-title) {
-  color: #f3d17b !important;
-}
-
-:root[data-theme='light']:has(a[aria-current="page"][href*="mobile-draft"]) h2:not(.portal-card-title):not(.portal-route-title),
-:root[data-theme='light']:has([class*="portal-"]) h2:not(.portal-card-title):not(.portal-route-title) {
-  color: #143823 !important;
-}
-
-:root:has(a[aria-current="page"][href*="mobile-draft"]) .sl-markdown-content h3:not(.portal-card-title):not(.portal-route-title),
-:root:has([class*="portal-"]) .sl-markdown-content h3:not(.portal-card-title):not(.portal-route-title),
-.mobile-draft-docs h3:not(.portal-card-title):not(.portal-route-title) {
-  font-size: 1.08rem !important;
-  font-weight: 700 !important;
-  margin: 24px 0 6px 0 !important;
-}
-
-:root[data-theme='dark']:has(a[aria-current="page"][href*="mobile-draft"]) h3:not(.portal-card-title):not(.portal-route-title),
-:root[data-theme='dark']:has([class*="portal-"]) h3:not(.portal-card-title):not(.portal-route-title) {
-  color: #e2e8f0 !important;
-}
-
-:root[data-theme='light']:has(a[aria-current="page"][href*="mobile-draft"]) h3:not(.portal-card-title):not(.portal-route-title),
-:root[data-theme='light']:has([class*="portal-"]) h3:not(.portal-card-title):not(.portal-route-title) {
-  color: #143823 !important;
-}
-
-.portal-section-sub {
-  font-size: 0.92rem;
-  color: var(--portal-text-muted);
-  margin: 0 0 18px 0;
-  line-height: 1.5;
-}
-
-/* 4. HERO ORIENTATION & TOPOLOGY CARDS */
-.portal-hero-card {
-  background: var(--portal-card-bg) !important;
-  border: 1px solid var(--portal-card-border) !important;
-  border-radius: 12px !important;
-  padding: 18px 22px !important;
-  margin: 16px 0 28px 0 !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.portal-hero-card.portal-hero-row,
-.portal-hero-row,
-.portal-hero-card:has(.portal-hero-icon) {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: flex-start !important;
-  gap: 16px !important;
-}
-
-.portal-hero-topbar {
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  flex-wrap: wrap !important;
-  gap: 12px !important;
-  margin-bottom: 4px !important;
-}
-
-.portal-badge-hub {
-  background: rgba(34, 197, 94, 0.15) !important;
-  color: var(--portal-accent) !important;
-  border: 1px solid rgba(34, 197, 94, 0.35) !important;
-  font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  padding: 3px 10px !important;
-  border-radius: 4px !important;
-  letter-spacing: 0.06em !important;
-}
-
-.portal-hub-tag {
-  font-size: 0.78rem !important;
-  font-weight: 700 !important;
-  color: var(--portal-accent) !important;
-  letter-spacing: 0.05em !important;
-}
-
-.portal-hero-title {
-  font-size: 1.35rem !important;
-  font-weight: 800 !important;
-  color: var(--portal-gold) !important;
-  margin: 0 0 4px 0 !important;
-  line-height: 1.3 !important;
-}
-
-.portal-hero-desc {
-  font-size: 0.94rem !important;
-  color: var(--portal-text-body) !important;
-  line-height: 1.55 !important;
-  margin: 0 0 12px 0 !important;
-}
-
-.portal-hero-icon {
-  width: 32px !important;
-  height: 32px !important;
-  flex-shrink: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: var(--portal-accent) !important;
-  margin-top: 3px !important;
-}
-.portal-hero-icon svg { width: 26px !important; height: 26px !important; }
-
-.portal-hero-sub {
-  font-size: 0.88rem !important;
-  color: var(--portal-text-muted) !important;
-  margin: 0 !important;
-}
-
-.portal-caps-bar {
-  display: grid !important;
-  grid-template-columns: repeat(4, 1fr) !important;
-  gap: 12px !important;
-  padding-top: 14px !important;
-  border-top: 1px solid var(--portal-card-border) !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-@media (max-width: 900px) { .portal-caps-bar { grid-template-columns: repeat(2, 1fr) !important; } }
-@media (max-width: 520px) { .portal-caps-bar { grid-template-columns: 1fr !important; } }
-
-.portal-cap-item {
-  background: var(--portal-pill-bg) !important;
-  border: 1px solid var(--portal-card-border) !important;
-  border-radius: 8px !important;
-  padding: 10px 12px !important;
-  box-sizing: border-box !important;
-}
-
-.portal-cap-title {
-  font-size: 0.85rem !important;
-  font-weight: 700 !important;
-  color: var(--portal-gold) !important;
-  margin-bottom: 3px !important;
-}
-
-.portal-cap-desc {
-  font-size: 0.78rem !important;
-  color: var(--portal-text-body) !important;
-  line-height: 1.4 !important;
-}
-
-/* 5. MERMAID DIAGRAM RESPONSIVE CLAMPING (SCOPED TO MOBILE-DRAFT) */
-:root:has(a[aria-current="page"][href*="mobile-draft"]) .starlight-mermaid,
-:root:has([class*="portal-"]) .starlight-mermaid,
-:root:has([class*="portal-"]) pre.mermaid,
-:root:has([class*="portal-"]) .mermaid,
-:root:has([class*="portal-"]) div.mermaid,
-.mobile-draft-docs .starlight-mermaid,
-.mobile-draft-docs pre.mermaid,
-.mobile-draft-docs .mermaid {
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  width: 100% !important;
-  margin: 16px 0 28px 0 !important;
-  padding: 16px 10px !important;
-  overflow-x: auto !important;
-  background: transparent !important;
-  box-sizing: border-box !important;
-}
-
-:root:has(a[aria-current="page"][href*="mobile-draft"]) .starlight-mermaid svg,
-:root:has([class*="portal-"]) .starlight-mermaid svg,
-:root:has([class*="portal-"]) pre.mermaid svg,
-:root:has([class*="portal-"]) .mermaid svg,
-:root:has([class*="portal-"]) svg[id^="mermaid"],
-.mobile-draft-docs .starlight-mermaid svg,
-.mobile-draft-docs svg[id^="mermaid"] {
-  display: block !important;
-  margin: 0 auto !important;
-  width: auto !important;
-  max-width: 100% !important;
-  height: auto !important;
-}
-
-/* 6. RESPONSIVE CARDS GRIDS */
-.portal-grid {
-  display: grid !important;
-  grid-template-columns: repeat(3, 1fr) !important;
-  gap: 16px !important;
-  margin: 16px 0 36px 0 !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-@media (max-width: 1160px) { .portal-grid { grid-template-columns: repeat(2, 1fr) !important; } }
-@media (max-width: 680px)  { .portal-grid { grid-template-columns: 1fr !important; } }
-
-.portal-cards-grid,
-.portal-routes-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
-  gap: 16px !important;
-  margin: 16px 0 28px 0 !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-@media (max-width: 768px) {
-  .portal-cards-grid,
-  .portal-routes-grid { grid-template-columns: 1fr !important; }
-}
-
-.portal-card,
-.portal-route-card {
-  background: var(--portal-card-bg) !important;
-  border: 1px solid var(--portal-card-border) !important;
-  border-radius: 12px !important;
-  padding: 18px 20px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: space-between !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
-  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
-  box-sizing: border-box !important;
-  height: 100% !important;
-}
-
-.portal-card:hover,
-.portal-route-card:hover {
-  transform: translateY(-2px) !important;
-  border-color: var(--portal-accent) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
-}
-
-.portal-card-full,
-.portal-route-card-full {
-  grid-column: span 2 !important;
-}
-@media (max-width: 768px) {
-  .portal-card-full,
-  .portal-route-card-full { grid-column: span 1 !important; }
-}
-
-/* 7. SHARED BADGE COLORS & SIZES */
-.portal-icon-badge,
-.portal-card-icon,
-.portal-route-icon {
-  width: 36px !important;
-  height: 36px !important;
-  border-radius: 6px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: #ffffff !important;
-  flex-shrink: 0 !important;
-}
-
-.portal-icon-badge svg,
-.portal-card-icon svg,
-.portal-route-icon svg {
-  width: 18px !important;
-  height: 18px !important;
-}
-
-.badge-green  { background: #22c55e !important; }
-.badge-purple { background: #8b5cf6 !important; }
-.badge-coral  { background: #f87171 !important; }
-.badge-rose   { background: #f43f5e !important; }
-.badge-amber  { background: #f59e0b !important; }
-.badge-teal   { background: #06b6d4 !important; }
-.badge-blue   { background: #3b82f6 !important; }
-
-/* 8. PAGE 1: GETTING STARTED / OVERVIEW HUB (.portal-grid .portal-card) - CONFIRMED WORKING */
-.portal-grid .portal-card > div {
-  display: grid !important;
-  grid-template-columns: 36px 1fr !important;
-  column-gap: 14px !important;
-  row-gap: 4px !important;
-  width: 100% !important;
-}
-
-.portal-grid .portal-icon-badge {
-  grid-column: 1 !important;
-  grid-row: 1 !important;
-  margin: 0 !important;
-  align-self: center !important;
-}
-
-.portal-grid .portal-card-title,
-.portal-grid h2.portal-card-title,
-.sl-markdown-content .portal-grid .portal-card-title,
-.sl-markdown-content .portal-grid h2.portal-card-title {
-  grid-column: 2 !important;
-  grid-row: 1 !important;
-  font-size: 1.08rem !important;
-  font-weight: 700 !important;
-  color: var(--portal-gold) !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  align-self: center !important;
-  line-height: 1.3 !important;
-}
-
-.portal-grid .portal-card-desc,
-.portal-grid p.portal-card-desc,
-.sl-markdown-content .portal-grid .portal-card-desc,
-.sl-markdown-content .portal-grid p.portal-card-desc {
-  grid-column: 2 / -1 !important;
-  grid-row: 2 !important;
-  font-size: 0.88rem !important;
-  color: var(--portal-text-body) !important;
-  line-height: 1.45 !important;
-  margin: 4px 0 14px 0 !important;
-  padding: 0 !important;
-}
-
-.portal-grid .portal-pills {
-  grid-column: 1 / -1 !important;
-  grid-row: 3 !important;
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 8px 10px !important;
-  margin-bottom: 16px !important;
-  width: 100% !important;
-}
-
-/* 9. PAGE 2: WELCOME & QUICK START (.portal-routes-grid .portal-route-card) - BULLETPROOF FLEX */
-.portal-routes-grid .portal-route-card > div,
-.portal-route-card > div {
-  display: flex !important;
-  flex-direction: column !important;
-  width: 100% !important;
-}
-
-.portal-route-topbar {
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
-  margin-bottom: 12px !important;
-  width: 100% !important;
-}
-
-.portal-route-icon,
-.portal-route-card .portal-route-icon {
-  width: 36px !important;
-  height: 36px !important;
-  border-radius: 6px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: #ffffff !important;
-  flex-shrink: 0 !important;
-}
-
-.portal-route-title,
-h3.portal-route-title,
-.sl-markdown-content h3.portal-route-title,
-.sl-markdown-content .portal-route-title {
-  font-size: 1.1rem !important;
-  font-weight: 700 !important;
-  color: var(--portal-gold) !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: 1.35 !important;
-  flex: 1 1 auto !important;
-}
-
-.portal-tag-pill,
-.portal-route-card .portal-tag-pill {
-  margin-left: auto !important;
-  font-size: 0.72rem !important;
-  font-weight: 700 !important;
-  color: var(--portal-accent) !important;
-  background: rgba(34, 197, 94, 0.12) !important;
-  border: 1px solid rgba(34, 197, 94, 0.3) !important;
-  padding: 3px 8px !important;
-  border-radius: 4px !important;
-  letter-spacing: 0.05em !important;
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
-}
-
-.portal-route-desc,
-p.portal-route-desc,
-.sl-markdown-content p.portal-route-desc,
-.sl-markdown-content .portal-route-desc {
-  font-size: 0.88rem !important;
-  color: var(--portal-text-body) !important;
-  line-height: 1.55 !important;
-  margin: 0 0 14px 0 !important;
-  padding: 0 !important;
-  width: 100% !important;
-}
-
-.portal-route-pills,
-.sl-markdown-content .portal-route-pills {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 8px !important;
-  margin: 0 0 16px 0 !important;
-  padding: 0 !important;
-  width: 100% !important;
-}
-
-.portal-route-pills span,
-.sl-markdown-content .portal-route-pills span {
-  font-size: 0.74rem !important;
-  background: var(--portal-pill-bg) !important;
-  border: 1px solid var(--portal-pill-border) !important;
-  padding: 4px 10px !important;
-  border-radius: 6px !important;
-  color: var(--portal-pill-text) !important;
-  font-weight: 600 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  line-height: 1.4 !important;
-  white-space: nowrap !important;
-}
-
-/* 10. PAGE 3: PLATFORM OVERVIEW (.portal-cards-grid .portal-card) - BULLETPROOF FLEX */
-.portal-cards-grid .portal-card > div {
-  display: flex !important;
-  flex-direction: column !important;
-  width: 100% !important;
-}
-
-.portal-card-topbar {
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
-  margin-bottom: 12px !important;
-  width: 100% !important;
-}
-
-.portal-cards-grid .portal-card-icon {
-  width: 36px !important;
-  height: 36px !important;
-  border-radius: 6px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: #ffffff !important;
-  flex-shrink: 0 !important;
-}
-
-.portal-cards-grid .portal-card-title,
-.portal-cards-grid h3.portal-card-title,
-.sl-markdown-content .portal-cards-grid h3.portal-card-title,
-.sl-markdown-content .portal-cards-grid .portal-card-title {
-  font-size: 1.1rem !important;
-  font-weight: 700 !important;
-  color: var(--portal-gold) !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: 1.35 !important;
-  flex: 1 1 auto !important;
-}
-
-.portal-cards-grid .portal-tag-pill {
-  margin-left: auto !important;
-  font-size: 0.72rem !important;
-  font-weight: 700 !important;
-  color: var(--portal-accent) !important;
-  background: rgba(34, 197, 94, 0.12) !important;
-  border: 1px solid rgba(34, 197, 94, 0.3) !important;
-  padding: 3px 8px !important;
-  border-radius: 4px !important;
-  letter-spacing: 0.05em !important;
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
-}
-
-.portal-cards-grid .portal-card-desc,
-.portal-cards-grid p.portal-card-desc,
-.sl-markdown-content .portal-cards-grid p.portal-card-desc,
-.sl-markdown-content .portal-cards-grid .portal-card-desc {
-  font-size: 0.88rem !important;
-  color: var(--portal-text-body) !important;
-  line-height: 1.55 !important;
-  margin: 0 0 14px 0 !important;
-  padding: 0 !important;
-  width: 100% !important;
-}
-
-.portal-card-pills,
-.sl-markdown-content .portal-card-pills {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 8px !important;
-  margin: 0 0 16px 0 !important;
-  padding: 0 !important;
-  width: 100% !important;
-}
-
-.portal-card-pills span,
-.sl-markdown-content .portal-card-pills span {
-  font-size: 0.74rem !important;
-  background: var(--portal-pill-bg) !important;
-  border: 1px solid var(--portal-pill-border) !important;
-  padding: 4px 10px !important;
-  border-radius: 6px !important;
-  color: var(--portal-pill-text) !important;
-  font-weight: 600 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  line-height: 1.4 !important;
-  white-space: nowrap !important;
-}
-
-/* 11. PILL LINKS (INTERACTIVE BADGES) */
-.portal-pill-link,
-.sl-markdown-content .portal-pill-link {
-  background: var(--portal-pill-bg) !important;
-  border: 1px solid var(--portal-pill-border) !important;
-  border-radius: 6px !important;
-  padding: 8px 10px !important;
-  color: var(--portal-pill-text) !important;
-  text-decoration: none !important;
-  font-size: 0.76rem !important;
-  font-weight: 600 !important;
-  text-align: center !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  display: block !important;
-  transition: all 0.15s ease !important;
-}
-
-.portal-pill-link:hover,
-.sl-markdown-content .portal-pill-link:hover {
-  background: var(--portal-pill-hover) !important;
-  border-color: var(--portal-accent) !important;
-  color: #ffffff !important;
-}
-
-/* 12. CARD FOOTER ACTIONS */
-.portal-card-foot,
-.portal-card-action,
-.portal-route-action {
-  padding-top: 10px !important;
-  border-top: 1px solid var(--portal-card-border) !important;
-  display: flex !important;
-  justify-content: flex-end !important;
-  align-items: center !important;
-  margin-top: auto !important;
-}
-
-.portal-view-link,
-.portal-card-link,
-.portal-route-link,
-.sl-markdown-content .portal-view-link,
-.sl-markdown-content .portal-card-link,
-.sl-markdown-content .portal-route-link {
-  color: var(--portal-accent) !important;
-  font-size: 0.84rem !important;
-  font-weight: 700 !important;
-  text-decoration: none !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  transition: transform 0.15s ease, color 0.15s ease !important;
-}
-
-.portal-view-link:hover,
-.portal-card-link:hover,
-.portal-route-link:hover,
-.sl-markdown-content .portal-view-link:hover,
-.sl-markdown-content .portal-card-link:hover,
-.sl-markdown-content .portal-route-link:hover {
-  color: var(--portal-accent-hover) !important;
-  transform: translateX(2px) !important;
-}
-
-/* 13. RELEASE GATES SEQUENTIAL BAR */
-.portal-gates-container {
-  background: var(--portal-card-bg) !important;
-  border: 1px solid var(--portal-card-border) !important;
-  border-radius: 12px !important;
-  padding: 18px 20px !important;
-  margin: 16px 0 28px 0 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.portal-gates-flow {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  flex-wrap: wrap !important;
-  gap: 8px !important;
-  margin: 12px 0 !important;
-}
-
-.portal-gate-node {
-  background: var(--portal-pill-bg) !important;
-  border: 1px solid var(--portal-card-border) !important;
-  border-radius: 8px !important;
-  padding: 8px 12px !important;
-  text-align: center !important;
-  flex: 1 !important;
-  min-width: 120px !important;
-}
-
-.portal-gate-title {
-  font-size: 0.82rem !important;
-  font-weight: 700 !important;
-  color: var(--portal-gold) !important;
-}
-
-.portal-gate-sub {
-  font-size: 0.72rem !important;
-  color: var(--portal-text-muted) !important;
-  margin-top: 2px !important;
-}
-
-.portal-gate-arrow {
-  color: var(--portal-accent) !important;
-  font-weight: 800 !important;
-  font-size: 1rem !important;
-}
-
-/* 14. TABLE STYLING */
-.portal-table-wrap {
-  overflow-x: auto !important;
-  border: 1px solid var(--portal-card-border) !important;
-  border-radius: 8px !important;
-  margin: 20px 0 28px 0 !important;
-  width: 100% !important;
-  background: var(--portal-card-bg) !important;
-  box-sizing: border-box !important;
-}
-
-.portal-table,
-.sl-markdown-content table.portal-table {
-  width: 100% !important;
-  border-collapse: collapse !important;
-  font-size: 0.85rem !important;
-  text-align: left !important;
-  margin: 0 !important;
-  display: table !important;
-}
-
-.portal-table th,
-.sl-markdown-content table.portal-table th {
-  background: var(--portal-pill-bg) !important;
-  color: var(--portal-gold) !important;
-  font-weight: 700 !important;
-  padding: 10px 14px !important;
-  border-bottom: 1px solid var(--portal-card-border) !important;
-  border-top: none !important;
-  border-left: none !important;
-  border-right: none !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
-  font-size: 0.75rem !important;
-}
-
-.portal-table td,
-.sl-markdown-content table.portal-table td {
-  padding: 11px 14px !important;
-  border-bottom: 1px solid var(--portal-card-border) !important;
-  border-top: none !important;
-  border-left: none !important;
-  border-right: none !important;
-  color: var(--portal-text-body) !important;
-  font-size: 0.85rem !important;
-}
-
-.portal-table tr:last-child td,
-.sl-markdown-content table.portal-table tr:last-child td {
-  border-bottom: none !important;
-}
-
-.portal-table td code,
-.sl-markdown-content table.portal-table td code {
-  background: var(--portal-pill-bg) !important;
-  border: 1px solid var(--portal-card-border) !important;
-  padding: 2px 6px !important;
-  border-radius: 4px !important;
-  color: var(--portal-accent) !important;
-  font-size: 0.78rem !important;
-}
-
-/* 15. CHECKLIST & ALERT BOXES */
-.portal-checklist-box,
-.portal-alert-box {
-  background: var(--portal-pill-bg) !important;
-  border: 1px solid var(--portal-card-border) !important;
-  border-left: 4px solid var(--portal-accent) !important;
-  border-radius: 8px !important;
-  padding: 18px 20px !important;
-  margin: 28px 0 20px 0 !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.portal-checklist-title,
-.portal-alert-title {
-  font-size: 0.88rem !important;
-  font-weight: 800 !important;
-  color: var(--portal-gold) !important;
-  letter-spacing: 0.04em !important;
-  margin-bottom: 8px !important;
-}
-
-.portal-checklist-box p,
-.portal-alert-box p {
-  font-size: 0.86rem !important;
-  color: var(--portal-text-body) !important;
-  margin: 0 0 10px 0 !important;
-}
-
-.portal-checklist-box ul,
-.portal-alert-box ul {
-  margin: 0 !important;
-  padding-left: 20px !important;
-}
-
-.portal-checklist-box li,
-.portal-alert-box li {
-  font-size: 0.85rem !important;
-  color: var(--portal-text-body) !important;
-  margin-bottom: 6px !important;
-  line-height: 1.5 !important;
-}
-
-.portal-checklist-box li strong,
-.portal-alert-box li strong {
-  color: var(--portal-accent) !important;
-}
+---
+title: Development Platforms & Internal SDKs
+description: Official Enterprise mobile engineering platforms, Tier-1 framework specifications, and shared SDK ecosystem for Android, iOS, and React Native.
+sidebar:
+  order: 1
+  label: 3.0 Platforms Overview
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">ENTERPRISE PLATFORM HUB</span>
+    <span class="portal-hub-tag">MODULE 3.0: PLATFORMS &amp; SDKs</span>
+  </div>
+  <h1 class="portal-hero-title">Development Platforms &amp; Shared SDK Ecosystem</h1>
+  <p class="portal-hero-desc">
+    All enterprise mobile applications are built strictly upon audited <strong>Tier-1 runtime frameworks</strong>, governed by uniform architectural standards and powered by a centralized catalog of internal enterprise SDKs.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Native Android</div>
+      <div class="portal-cap-desc">Kotlin 1.9+ &bull; Jetpack Compose &bull; Hilt DI &bull; Room DB</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Native iOS</div>
+      <div class="portal-cap-desc">Swift 5.9+ &bull; SwiftUI &bull; Concurrency &bull; Keychain</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">React Native</div>
+      <div class="portal-cap-desc">RN 0.73+ &bull; TypeScript 5 &bull; Hermes &bull; MMKV</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Prohibited Stacks</div>
+      <div class="portal-cap-desc">Zero Flutter, Xamarin, or Ionic (Architecture Violation)</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Tier-1 Approved Mobile Stacks
+
+Enterprise mobile projects must strictly select one of the three Tier-1 approved runtime frameworks based on hardware integration depth, performance constraints, and platform scope.
+
+<div class="portal-cards-grid">
+  <!-- Android Card -->
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-green">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.4147 13.8533 8.125 12 8.125c-1.8533 0-3.5902.2897-5.1368.8247L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Native Android</h3>
+        <span class="portal-tag-pill">TIER-1 RUNTIME</span>
+      </div>
+      <p class="portal-card-desc">
+        Engineered for hardware-intensive workflows, offline background sync daemons, Bluetooth peripherals, and deep Android OS integration.
+      </p>
+      <div class="portal-card-pills">
+        <span>Kotlin 1.9+</span>
+        <span>Jetpack Compose</span>
+        <span>Hilt DI</span>
+        <span>Coroutines &amp; Flow</span>
+        <span>Room DB</span>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="/mobile-draft/03-platforms-sdks/02-android-standards/" class="portal-card-link">
+        View Android Standards
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- iOS Card -->
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-purple">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 1.01-2.87-.9.04-2.03.62-2.67 1.37-.56.65-.98 1.7-1.03 2.76 1.02.08 2.08-.51 2.69-1.26z"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Native iOS</h3>
+        <span class="portal-tag-pill">TIER-1 RUNTIME</span>
+      </div>
+      <p class="portal-card-desc">
+        Optimized for the Apple ecosystem, WidgetKit extensions, Apple Pay, secure FaceID / TouchID biometric vaults, and low-power CoreLocation.
+      </p>
+      <div class="portal-card-pills">
+        <span>Swift 5.9+</span>
+        <span>SwiftUI</span>
+        <span>@Observable</span>
+        <span>Swift Concurrency</span>
+        <span>Keychain Vault</span>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="/mobile-draft/03-platforms-sdks/03-ios-standards/" class="portal-card-link">
+        View iOS Standards
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- React Native Card -->
+  <div class="portal-card portal-card-full">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-teal">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.2c3.08 0 5.6 2.52 5.6 5.6 0 1.25-.41 2.4-1.11 3.33l-1.42-1.42a3.57 3.57 0 00.53-1.91 3.6 3.6 0 10-3.6 3.6c.7 0 1.35-.2 1.91-.53l1.42 1.42A5.56 5.56 0 0112 15.4c-3.08 0-5.6-2.52-5.6-5.6S8.92 4.2 12 4.2zm0 15.6c-4.3 0-7.8-3.5-7.8-7.8 0-1.8.61-3.46 1.64-4.78l1.43 1.43A5.76 5.76 0 006.2 12c0 3.2 2.6 5.8 5.8 5.8 1.4 0 2.68-.5 3.67-1.33l1.43 1.43C15.78 19.06 13.98 19.8 12 19.8z"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">React Native (Cross-Platform)</h3>
+        <span class="portal-tag-pill">TIER-1 RUNTIME</span>
+      </div>
+      <p class="portal-card-desc">
+        The default enterprise choice for multi-platform business apps requiring 90%+ shared code velocity, unified UI consistency, rapid feature delivery, and shared enterprise logic across platforms.
+      </p>
+      <div class="portal-card-pills">
+        <span>React Native 0.73+</span>
+        <span>TypeScript 5.x</span>
+        <span>Hermes Engine</span>
+        <span>Zustand State</span>
+        <span>MMKV Fast Storage</span>
+        <span>React Navigation 6</span>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="/mobile-draft/03-platforms-sdks/04-react-native-standards/" class="portal-card-link">
+        View React Native Standards
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+---
+
+## 2. Technology Selection Decision Matrix
+
+Choosing between Native Android, Native iOS, and React Native must be guided by technical constraints rather than individual developer preference.
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Decision Criteria</th>
+        <th>Native Android (Kotlin)</th>
+        <th>Native iOS (Swift)</th>
+        <th>React Native (TypeScript)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Primary Use Case</strong></td>
+        <td>Hardware peripherals, background sync daemons, ruggedized Android devices.</td>
+        <td>Consumer flagship iOS apps, Apple Pay, WidgetKit, Apple Watch extensions.</td>
+        <td>Cross-platform business apps, rapid MVP iteration, shared web/mobile domain logic.</td>
+      </tr>
+      <tr>
+        <td><strong>UI Framework</strong></td>
+        <td>Jetpack Compose (Declarative)</td>
+        <td>SwiftUI (Declarative)</td>
+        <td>React Native JSX + StyleSheet</td>
+      </tr>
+      <tr>
+        <td><strong>State Architecture</strong></td>
+        <td><code>StateFlow</code> + ViewModel</td>
+        <td><code>@Observable</code> ViewModel</td>
+        <td>Custom Hooks + Zustand Store</td>
+      </tr>
+      <tr>
+        <td><strong>Asynchronous Model</strong></td>
+        <td>Kotlin Coroutines &amp; Flow</td>
+        <td>Swift Concurrency (<code>async/await</code>)</td>
+        <td>JavaScript Promises &amp; async/await</td>
+      </tr>
+      <tr>
+        <td><strong>Dependency Injection</strong></td>
+        <td>Hilt / Dagger</td>
+        <td>Swift Protocol DI / Factory</td>
+        <td>React Context / Dependency Container</td>
+      </tr>
+      <tr>
+        <td><strong>Local Database</strong></td>
+        <td>Room (SQLite) + SQLCipher</td>
+        <td>SwiftData / CoreData + Keychain</td>
+        <td>WatermelonDB / MMKV Storage</td>
+      </tr>
+      <tr>
+        <td><strong>Internal SDK Artifact</strong></td>
+        <td><code>com.enterprise.mobile:*</code> (Maven)</td>
+        <td><code>Enterprise*</code> (SPM / CocoaPods)</td>
+        <td><code>@enterprise/*</code> (Internal NPM)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 3. Shared Enterprise SDK Architecture
+
+Regardless of the selected Tier-1 platform, all mobile applications interface with the same enterprise infrastructure via platform-native internal SDK wrappers.
+
+```mermaid
+graph TD
+    subgraph Apps ["Enterprise Mobile Application Layer"]
+        AppAndroid["Android App (Kotlin)"]
+        AppIOS["iOS App (Swift)"]
+        AppRN["React Native App (TS)"]
+    end
+
+    subgraph SDKs ["Centralized Enterprise Shared SDK Layer"]
+        AuthSDK["Enterprise Auth SDK<br/>(OAuth2 / PKCE / Secure Storage)"]
+        ConfigSDK["Enterprise Config SDK<br/>(Unleash Proxy Feature Flags)"]
+        ObsSDK["Enterprise Telemetry SDK<br/>(Datadog RUM &amp; Distributed Tracing)"]
+        ResilienceSDK["Enterprise Resilience SDK<br/>(Circuit Breaker &amp; Offline Outbox)"]
+        DesignSDK["Enterprise Design System<br/>(Brand Tokens &amp; Accessible Components)"]
+    end
+
+    subgraph Infrastructure ["Enterprise Cloud Infrastructure"]
+        AuthServer["Enterprise Identity Provider (Okta / Azure AD)"]
+        EdgeProxy["Unleash Feature Flag Edge Proxy"]
+        DatadogEndpoint["Datadog Telemetry Intake"]
+        APIGateway["Enterprise Core API Gateway"]
+    end
+
+    AppAndroid --> SDKs
+    AppIOS --> SDKs
+    AppRN --> SDKs
+
+    AuthSDK --> AuthServer
+    ConfigSDK --> EdgeProxy
+    ObsSDK --> DatadogEndpoint
+    ResilienceSDK --> APIGateway
+```
+
+---
+
+## 4. Standard Shared SDK Initialization Entry Point
+
+Every enterprise mobile application must bootstrap core shared SDKs (Observability, Remote Config, and Telemetry) during early application startup.
+
+<Tabs>
+  <TabItem label="Android (Kotlin / Hilt)">
+
+```kotlin
+// File: Application.kt
+package com.enterprise.mobile
+
+import android.app.Application
+import com.enterprise.mobile.core.config.AppConfigProvider
+import com.enterprise.mobile.core.observability.EnterpriseObservability
+import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
+
+@HiltAndroidApp
+class EnterpriseApplication : Application() {
+
+    @Inject lateinit var appConfigProvider: AppConfigProvider
+    @Inject lateinit var observability: EnterpriseObservability
+
+    override fun onCreate() {
+        super.onCreate()
+
+        // 1. Initialize Datadog Telemetry & RUM
+        observability.initialize(
+            context = this,
+            clientToken = BuildConfig.DATADOG_CLIENT_TOKEN,
+            environment = BuildConfig.BUILD_TYPE,
+            appVariant = "enterprise-android"
+        )
+
+        // 2. Bootstrap Unleash Remote Configuration Edge Client
+        appConfigProvider.bootstrap(this)
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="iOS (Swift / SwiftUI)">
+
+```swift
+// File: EnterpriseApp.swift
+import SwiftUI
+import EnterpriseObservability
+import EnterpriseConfig
+
+@main
+struct EnterpriseApp: App {
+    @State private var flagManager = RemoteConfigManager.shared
+
+    init() {
+        // 1. Initialize Enterprise Datadog Telemetry & RUM
+        EnterpriseObservability.initialize(
+            clientToken: AppEnvironment.datadogClientToken,
+            environment: AppEnvironment.currentEnv,
+            serviceName: "enterprise-ios"
+        )
+
+        // 2. Register Enterprise Custom Typography & Fonts
+        EnterpriseFontRegistrar.registerCustomFonts()
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            RootCoordinatorView()
+                .environment(flagManager)
+                .task {
+                    // 3. Fetch Unleash remote flags on launch
+                    await flagManager.syncFlags()
+                }
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="React Native (TypeScript)">
+
+```tsx
+// File: App.tsx
+import React, { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { initializeObservability } from '@enterprise/observability';
+import { UnleashProvider } from '@enterprise/feature-flags';
+import { EnterpriseThemeProvider } from '@enterprise/design-system';
+import { RootNavigator } from './src/navigation/RootNavigator';
+
+export const App: React.FC = () => {
+  useEffect(() => {
+    // 1. Initialize Datadog Telemetry & RUM
+    initializeObservability({
+      clientToken: process.env.DATADOG_CLIENT_TOKEN ?? '',
+      environment: __DEV__ ? 'development' : 'production',
+      serviceName: 'enterprise-mobile-rn',
+    });
+  }, []);
+
+  return (
+    <SafeAreaProvider>
+      <EnterpriseThemeProvider mode="system">
+        <UnleashProvider>
+          <RootNavigator />
+        </UnleashProvider>
+      </EnterpriseThemeProvider>
+    </SafeAreaProvider>
+  );
+};
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 5. Mandatory Platform Violation Rules
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">NON-NEGOTIABLE ARCHITECTURAL POLICIES</div>
+  <p>Pull Requests violating any of these four constraints will be automatically rejected by Danger CI:</p>
+  <ul>
+    <li><strong>Zero Unapproved Frameworks:</strong> Flutter, Xamarin, Cordova, and Ionic are strictly forbidden. Applications must select from the 3 Tier-1 stacks.</li>
+    <li><strong>Declarative UI Only:</strong> Legacy Android XML layouts and iOS UIKit Storyboards are deprecated. All new feature code must use Jetpack Compose, SwiftUI, or React Native.</li>
+    <li><strong>Strict Type Safety:</strong> Untyped JavaScript or blanket <code>Any</code> (Kotlin) / <code>AnyObject</code> (Swift) type escapes are forbidden. All data boundaries must have strict contracts.</li>
+    <li><strong>No Custom Core Re-inventions:</strong> Never write custom token stores, custom HTTP retry layers, or custom analytics pipelines. Use the approved <code>@enterprise/*</code>, SPM, and Maven internal SDKs.</li>
+  </ul>
+</div>
+
+---
+
+## 6. Pre-Merge Platform Quality Gate
+
+<div class="portal-gates-container">
+  <div class="portal-gate-title">PLATFORM COMPLIANCE RELEASE PIPELINE</div>
+  <div class="portal-gates-flow">
+    <div class="portal-gate-node">
+      <div class="portal-gate-title">1. Stack Gate</div>
+      <div class="portal-gate-sub">Tier-1 Approved Runtime</div>
+    </div>
+    <div class="portal-gate-arrow">&rarr;</div>
+    <div class="portal-gate-node">
+      <div class="portal-gate-title">2. Core SDK Gate</div>
+      <div class="portal-gate-sub">Auth &amp; Unleash Config</div>
+    </div>
+    <div class="portal-gate-arrow">&rarr;</div>
+    <div class="portal-gate-node">
+      <div class="portal-gate-title">3. Telemetry Gate</div>
+      <div class="portal-gate-sub">Datadog RUM &amp; Crashlytics</div>
+    </div>
+    <div class="portal-gate-arrow">&rarr;</div>
+    <div class="portal-gate-node">
+      <div class="portal-gate-title">4. Danger CI Gate</div>
+      <div class="portal-gate-sub">PR Review Compliance</div>
+    </div>
+  </div>
+</div>
