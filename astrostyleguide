@@ -1,426 +1,415 @@
 ---
-title: Tech Stack Selection Matrix
-description: Architectural decision matrix and evaluation criteria for selecting React Native vs. Native Android (Compose) vs. Native iOS (SwiftUI) across enterprise mobile projects.
+title: Machine Setup & Workstation Guide
+description: Step-by-step MacBook workstation setup guide for Android Native, iOS Native, and React Native engineering teams.
 sidebar:
-  order: 5
-  label: Tech Stack Matrix
+  order: 6
+  label: Machine Setup (MacBook)
 ---
 
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">[PLATFORM GOVERNANCE]</span>
-    <span class="portal-hub-tag">ARCHITECTURE SELECTION MATRIX</span>
+    <span class="portal-badge-hub">[WORKSTATION BOOTSTRAP]</span>
+    <span class="portal-hub-tag">MACBOOK (APPLE SILICON &amp; INTEL)</span>
   </div>
-  <div class="portal-hero-title">Mobile Tech Stack Selection Matrix</div>
+  <div class="portal-hero-title">Enterprise Mobile Workstation Setup Guide</div>
   <div class="portal-hero-desc">
-    Official architectural evaluation matrix for enterprise mobile engineering. Defines objective criteria for selecting between React Native (New Architecture), Native Android (Kotlin &amp; Jetpack Compose), and Native iOS (Swift &amp; SwiftUI). React Native is the standard enterprise recommendation for 80%+ of business applications to maximize velocity and code reuse.
+    Step-by-step workstation configuration for engineers on corporate MacBooks (Apple Silicon M1/M2/M3/M4 or Intel). Follow the common baseline prerequisites, then select your platform tab below for comprehensive terminal commands, environment variables, simulator configurations, and Doctor CLI validation.
   </div>
 
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Enterprise Recommendation</div>
-      <div class="portal-cap-desc">React Native is the default for 80%+ of cross-platform business apps</div>
+      <div class="portal-cap-title">Hardware Target</div>
+      <div class="portal-cap-desc">macOS Sonoma (14.5+) or macOS Sequoia (15.x) on Apple Silicon / Intel</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Native Android</div>
-      <div class="portal-cap-desc">Reserved for rugged hardware, USB/OTG, Bluetooth serial &amp; offline background daemons</div>
+      <div class="portal-cap-title">Android Toolchain</div>
+      <div class="portal-cap-desc">OpenJDK 17, Android Studio Koala/Ladybug, Android SDK 34/35 &amp; AVD</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Native iOS</div>
-      <div class="portal-cap-desc">Reserved for Metal GPU shaders, CoreML on-device inference &amp; Apple Secure Enclave</div>
+      <div class="portal-cap-title">iOS Toolchain</div>
+      <div class="portal-cap-desc">Xcode 16.x, Command Line Tools, CocoaPods &amp; iOS Simulator</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Architecture Review</div>
-      <div class="portal-cap-desc">Mandatory sign-off before committing project repositories</div>
+      <div class="portal-cap-title">React Native</div>
+      <div class="portal-cap-desc">Node.js 20 LTS (via FNM), Watchman &amp; unified dual-platform toolchain</div>
     </div>
   </div>
 </div>
 
-## Architectural Decision Framework
+## Common MacBook Baseline Prerequisites
 
-Use this structured decision tree to determine the optimal mobile technology stack for your application:
+Before installing platform-specific SDKs, execute these three foundational configuration steps on your MacBook:
 
-```mermaid
-flowchart TD
-    Start["New Enterprise Mobile Project"] --> Q1{"Does the app require custom Bluetooth Classic,\nUSB-OTG hardware, or Metal shaders?"}
+### 1. Install Homebrew (Package Manager)
 
-    Q1 -->|"Yes"| Hardware["Select Native Platform"]
-    Hardware --> AndroidNative["Native Android\n(Kotlin / Compose)\nFor rugged scanners & Bluetooth serial"]
-    Hardware --> IOSNative["Native iOS\n(Swift / SwiftUI)\nFor Apple ecosystem & CoreML"]
+Homebrew is required to manage command-line developer utilities on macOS:
 
-    Q1 -->|"No"| Q2{"Is the app targeted exclusively at\na single platform (e.g. iPad-only)?"}
+```bash
+# Install Homebrew
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-    Q2 -->|"Yes"| SinglePlatform["Platform-Specific Native\n(SwiftUI or Jetpack Compose)"]
-    Q2 -->|"No"| ReactDefault["ENTERPRISE DEFAULT RECOMMENDED:\nReact Native (New Architecture)\n90%+ Shared TypeScript Codebase"]
+# For Apple Silicon MacBooks (M1/M2/M3/M4), add Homebrew to your shell environment:
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv)"
 
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class Start highlight;
-    class ReactDefault highlight;
-    class Q1,Q2,Hardware,SinglePlatform nodeBox;
-    class AndroidNative,IOSNative nodeBox;
+# Verify Homebrew installation
+brew --version
+```
+
+### 2. Install Enterprise Proxy Certificates
+
+Corporate MacBooks route network traffic through internal SSL proxies. Install the enterprise root certificate into your macOS System Keychain so package managers (curl, git, npm, Gradle) trust internal endpoints:
+
+```bash
+# Download and trust the Enterprise Root CA in your macOS System Keychain
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain \
+  /Library/Application\ Support/Enterprise/Certs/EnterpriseRootCA.crt
+
+# Verify certificate is trusted
+security find-certificate -c "Enterprise Root CA" /Library/Keychains/System.keychain
+```
+
+### 3. Generate SSH Key for Enterprise GitHub
+
+```bash
+# Generate a modern ed25519 SSH key
+ssh-keygen -t ed25519 -C "your_username@enterprise.com" -f ~/.ssh/id_ed25519_enterprise
+
+# Configure SSH agent to automatically load keys from macOS Keychain
+cat << 'EOF' >> ~/.ssh/config
+Host github.enterprise.com
+  IdentityFile ~/.ssh/id_ed25519_enterprise
+  AddKeysToAgent yes
+  UseKeychain yes
+EOF
+
+# Add key to Keychain and test connection
+ssh-add --apple-use-keychain ~/.ssh/id_ed25519_enterprise
+ssh -T git@github.enterprise.com
 ```
 
 ---
 
-## Comprehensive Platform Evaluation Matrix
+## Platform-Specific Installation Instructions
 
-Compare the technical trade-offs across all three tier-1 supported stacks:
+Select your primary development platform tab below to configure your MacBook toolchain:
 
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Evaluation Dimension</th>
-        <th>React Native (New Architecture)</th>
-        <th>Native Android (Kotlin / Compose)</th>
-        <th>Native iOS (Swift / SwiftUI)</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Enterprise Recommendation</strong></td>
-        <td><strong>Default Recommended (80%+ Apps)</strong></td>
-        <td>Hardware &amp; Rugged Scenarios</td>
-        <td>Flagship Apple Ecosystem</td>
-      </tr>
-      <tr>
-        <td><strong>Code Reuse</strong></td>
-        <td>90%–95% shared logic, UI, and test suites across iOS &amp; Android.</td>
-        <td>0% (Android only). Dual team required for iOS.</td>
-        <td>0% (iOS only). Dual team required for Android.</td>
-      </tr>
-      <tr>
-        <td><strong>Time to Market</strong></td>
-        <td>Fastest delivery velocity. Single sprint backlog and shared components.</td>
-        <td>Moderate. Requires dedicated native Android specialists.</td>
-        <td>Moderate. Requires dedicated native iOS specialists.</td>
-      </tr>
-      <tr>
-        <td><strong>UI Engine</strong></td>
-        <td>Fabric C++ Native Renderer with Yoga Flexbox layout.</td>
-        <td>Jetpack Compose declarative layout engine.</td>
-        <td>SwiftUI declarative layout engine.</td>
-      </tr>
-      <tr>
-        <td><strong>Hardware &amp; Bluetooth</strong></td>
-        <td>High-level BLE via TurboModules. Custom C++ native bindings.</td>
-        <td>Direct access to Android OS APIs, Bluetooth Classic, USB/OTG, and NDK.</td>
-        <td>Direct access to CoreBluetooth, ExternalAccessory, and Metal.</td>
-      </tr>
-      <tr>
-        <td><strong>Runtime &amp; Startup</strong></td>
-        <td>Near-native cold boot via Hermes bytecode pre-compilation.</td>
-        <td>Native ART runtime ahead-of-time (AOT) compilation.</td>
-        <td>Native binary compiled directly to ARM64 machine instructions.</td>
-      </tr>
-      <tr>
-        <td><strong>Design System Mirroring</strong></td>
-        <td>Native JSX design tokens from <code>@enterprise/ui-tokens</code>.</td>
-        <td>Composable design tokens via Material 3 theme wrapper.</td>
-        <td>SwiftUI Color/Typography tokens via asset catalog.</td>
-      </tr>
-      <tr>
-        <td><strong>CI/CD Complexity</strong></td>
-        <td>Single Bitrise pipeline building both <code>.aab</code> and <code>.ipa</code>.</td>
-        <td>Gradle runner building <code>.aab</code>.</td>
-        <td>macOS runner building signed <code>.ipa</code>.</td>
-      </tr>
-    </tbody>
-  </table>
+<Tabs>
+  <TabItem label="Android (Kotlin / Compose)">
+
+### Step 1: Install OpenJDK 17
+
+Android Gradle Plugin 8.x requires Java 17. Install OpenJDK 17 via Homebrew:
+
+```bash
+# Install OpenJDK 17
+brew install openjdk@17
+
+# Create a symlink so macOS system Java wrapper recognizes OpenJDK 17
+sudo ln -sfn /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-17.jdk
+
+# Verify Java version
+java -version
+# Expected: openjdk version "17.0.x"
+```
+
+### Step 2: Install Android Studio
+
+Download and install **Android Studio (Koala or Ladybug release)** optimized for Apple Silicon (`.dmg (Mac with Apple chip)`):
+
+```bash
+# Optional: Install via Homebrew Cask
+brew install --cask android-studio
+```
+
+Launch Android Studio and complete the **Setup Wizard**:
+* Choose **Standard** setup type.
+* Agree to license agreements for `android-sdk-license` and `intel-android-extra-license`.
+
+### Step 3: Install Required SDK Components
+
+In Android Studio, open **Settings / Preferences &rarr; Languages & Frameworks &rarr; Android SDK**:
+
+1. Under **SDK Platforms**, check:
+   * **Android 14.0 (UpsideDownCake) - API Level 34**
+   * **Android 15.0 (VanillaIceCream) - API Level 35**
+2. Under **SDK Tools**, check:
+   * **Android SDK Build-Tools 34.0.0**
+   * **Android SDK Command-line Tools (latest)**
+   * **Android SDK Platform-Tools**
+   * **Android Emulator**
+3. Click **Apply** to install the selected packages.
+
+### Step 4: Configure `~/.zshrc` Environment Variables
+
+Add Android SDK paths to your `~/.zshrc` file:
+
+```bash
+# Open ~/.zshrc in your editor
+cat << 'EOF' >> ~/.zshrc
+
+# Java Home (OpenJDK 17)
+export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+
+# Android SDK Environment Variables
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$PATH:$ANDROID_HOME/emulator"
+export PATH="$PATH:$ANDROID_HOME/platform-tools"
+export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
+export PATH="$PATH:$ANDROID_HOME/tools"
+export PATH="$PATH:$ANDROID_HOME/tools/bin"
+
+EOF
+
+# Reload shell configuration
+source ~/.zshrc
+```
+
+### Step 5: Verify Android CLI & Create an AVD Emulator
+
+Verify that `adb` and the emulator binaries are globally accessible in your terminal:
+
+```bash
+# 1. Verify adb is active
+adb version
+
+# 2. Install Google Play system image for ARM64 (Apple Silicon)
+sdkmanager "system-images;android-34;google_apis;arm64-v8a"
+
+# 3. Create a Pixel 8 virtual device
+avdmanager create avd \
+  -n "Pixel_8_API_34" \
+  -k "system-images;android-34;google_apis;arm64-v8a" \
+  -d "pixel_8"
+
+# 4. Launch the Android Emulator from terminal
+emulator -avd Pixel_8_API_34 -netdelay none -netspeed full &
+```
+
+  </TabItem>
+
+  <TabItem label="iOS (Swift / SwiftUI)">
+
+### Step 1: Install Xcode from the Mac App Store
+
+1. Open the macOS **App Store** and search for **Xcode**.
+2. Install the latest official release (Xcode 16.x).
+3. Open Xcode once to complete initial system component installations.
+
+### Step 2: Configure Xcode Command Line Tools
+
+Ensure your terminal uses the full Xcode developer tools directory rather than standalone command-line tools:
+
+```bash
+# Point active developer directory to Xcode.app
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+# Verify active developer path
+xcode-select -p
+# Expected: /Applications/Xcode.app/Contents/Developer
+```
+
+### Step 3: Accept Xcode License Agreement & Download Platforms
+
+```bash
+# Accept Xcode license agreement
+sudo xcodebuild -license accept
+
+# Pre-install iOS Simulator runtime platform
+sudo xcodebuild -downloadPlatform iOS
+
+# First-time launch setup
+sudo xcodebuild -runFirstLaunch
+```
+
+### Step 4: Install CocoaPods Package Manager
+
+Install CocoaPods for projects requiring third-party Objective-C/Swift pods:
+
+```bash
+# Install CocoaPods via Homebrew (recommended on Apple Silicon)
+brew install cocoapods
+
+# Verify CocoaPods installation
+pod --version
+```
+
+### Step 5: Configure Apple Developer Account in Xcode
+
+1. Open Xcode and navigate to **Settings &rarr; Accounts** (`Cmd + ,`).
+2. Click **+ &rarr; Apple ID** and authenticate with your corporate enterprise Apple credentials.
+3. Select your team: **Enterprise Mobile Engineering Team**.
+4. Click **Download Manual Profiles** to sync enterprise provisioning profiles into your local keychain.
+
+### Step 6: Launch and Verify iOS Simulator via CLI
+
+You can boot simulators directly from your terminal:
+
+```bash
+# List all available iOS device simulators
+xcrun simctl list devices available | grep "iPhone"
+
+# Boot an iPhone 15 Pro simulator
+xcrun simctl boot "iPhone 15 Pro"
+
+# Open the macOS Simulator graphical interface
+open -a Simulator
+```
+
+  </TabItem>
+
+  <TabItem label="React Native (Cross-Platform)">
+
+### Step 1: Install Node.js 20 LTS via FNM (Fast Node Manager)
+
+We recommend **FNM** over NVM because it is built in Rust, loads 40x faster, and handles shell integration seamlessly:
+
+```bash
+# Install FNM and Watchman file observer
+brew install fnm watchman
+
+# Configure FNM in ~/.zshrc
+echo 'eval "$(fnm env --use-on-cd)"' >> ~/.zshrc
+source ~/.zshrc
+
+# Install and activate Node.js 20 LTS
+fnm install 20
+fnm use 20
+fnm default 20
+
+# Verify versions
+node -v   # Expected: v20.x.x
+npm -v    # Expected: 10.x.x
+```
+
+### Step 2: Unified Toolchain Setup (Android & iOS Combined)
+
+React Native projects compile to both platforms. Ensure you complete:
+1. **Android Setup:** OpenJDK 17, `ANDROID_HOME`, and `platform-tools` (from the Android Tab).
+2. **iOS Setup:** Xcode 16, Command Line Tools, and CocoaPods (from the iOS Tab).
+
+Add the combined environment block to your `~/.zshrc`:
+
+```bash
+cat << 'EOF' >> ~/.zshrc
+
+# Java 17 for React Native Android compilation
+export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+
+# Android SDK
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$PATH:$ANDROID_HOME/emulator"
+export PATH="$PATH:$ANDROID_HOME/platform-tools"
+export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
+
+# CocoaPods & Homebrew paths
+export PATH="/opt/homebrew/bin:$PATH"
+
+EOF
+
+source ~/.zshrc
+```
+
+### Step 3: Run the Enterprise Doctor Diagnostic CLI
+
+Run the automated Doctor toolchain checker to verify your dual-platform setup:
+
+```bash
+# Execute workstation check
+npx @enterprise/doctor-cli check
+
+# Expected validation output:
+# [PASS] Node.js 20.x detected
+# [PASS] Watchman 2024.x detected
+# [PASS] Xcode Command Line Tools (/Applications/Xcode.app)
+# [PASS] CocoaPods installed
+# [PASS] OpenJDK 17 installed
+# [PASS] ANDROID_HOME configured
+# [PASS] adb connected to local platform-tools
+```
+
+### Step 4: Boot Your First Starter Application
+
+```bash
+# Clone the enterprise React Native starter repository
+git clone git@github.enterprise.com:mobile-starters/react-native-starter.git my-app
+cd my-app
+
+# Install project dependencies
+npm install
+
+# Install iOS CocoaPod native dependencies
+cd ios && pod install && cd ..
+
+# Boot the app on iOS Simulator
+npm run ios
+
+# Boot the app on Android Emulator (ensure AVD is started)
+npm run android
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## Universal Workstation Verification
+
+Regardless of which platform tab you configured, run the enterprise Doctor CLI to produce your final system health report:
+
+```bash
+npx @enterprise/doctor-cli check --verbose
+```
+
+```
+============================================================
+       ENTERPRISE MOBILE WORKSTATION HEALTH REPORT
+============================================================
+ [OK] Operating System: macOS 15.0.1 (Apple M3 Max)
+ [OK] Terminal Shell: zsh 5.9
+ [OK] Homebrew: 4.4.2 (/opt/homebrew/bin/brew)
+ [OK] Enterprise Root Certificate: Installed in System Keychain
+ [OK] OpenJDK: 17.0.12 (/Library/Java/JavaVirtualMachines/openjdk-17.jdk)
+ [OK] Android SDK: 34.0.0 (/Users/developer/Library/Android/sdk)
+ [OK] Android Debug Bridge: 1.0.41 (Version 35.0.2)
+ [OK] Xcode: 16.0 (Build 16A242d)
+ [OK] CocoaPods: 1.15.2
+ [OK] Node.js: v20.18.0
+ [OK] Watchman: 2024.10.07.00
+------------------------------------------------------------
+ RESULT: 11 Passed, 0 Failed, 0 Warnings
+ Workstation is fully certified for Enterprise Mobile Engineering.
+============================================================
+```
+
+---
+
+## Apple Silicon MacBook Troubleshooting
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">M-SERIES (ARM64) MACBOOK TIPS</div>
+  <ul>
+    <li><strong>Android Emulator Acceleration:</strong> On Apple Silicon (M1/M2/M3/M4), do <em>not</em> attempt to install Intel HAXM. The Android Emulator uses Apple's native Hypervisor.framework out of the box. Always select the <code>arm64-v8a</code> ABI system image.</li>
+    <li><strong>Homebrew Binary Path:</strong> Homebrew installs to <code>/opt/homebrew/bin</code> on Apple Silicon and <code>/usr/local/bin</code> on Intel. Never copy `~/.zshrc` files from an Intel Mac without adjusting paths.</li>
+    <li><strong>Rosetta 2 for Legacy Pods:</strong> If an older third-party pod fails with an architecture compilation error, install Rosetta 2: <code>softwareupdate --install-rosetta --agree-to-license</code>.</li>
+    <li><strong>Node.js Architecture Mismatch:</strong> If you see `mach-o file, but is an incompatible architecture`, verify that your Node binary is native ARM64: <code>node -p "process.arch"</code> should return <code>arm64</code>.</li>
+  </ul>
 </div>
 
 ---
 
-## Detailed Stack Profiles
-
-<div class="portal-cards-grid">
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-blue">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="16 18 22 12 16 6"/>
-            <polyline points="8 6 2 12 8 18"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">React Native (New Architecture)</h3>
-        <span class="portal-tag-pill">RECOMMENDED (80% OF APPS)</span>
-      </div>
-      <p class="portal-card-desc">
-        The default enterprise choice for field operations, logistics workflows, customer portals, and internal employee tools. Delivers native 60fps performance through Fabric and C++ TurboModules with 90%+ code reuse.
-      </p>
-      <div class="portal-card-pills">
-        <span>TypeScript 5.x</span>
-        <span>Fabric Renderer</span>
-        <span>Hermes Engine</span>
-        <span>Shared CI/CD</span>
-      </div>
-    </div>
-    <div class="portal-card-action">
-      <a href="/mobile/development/react-native/" class="portal-card-link">View React Native Guide &rarr;</a>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-green">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="7" height="7"/>
-            <rect x="14" y="3" width="7" height="7"/>
-            <rect x="14" y="14" width="7" height="7"/>
-            <rect x="3" y="14" width="7" height="7"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Native Android (Kotlin / Compose)</h3>
-        <span class="portal-tag-pill">HARDWARE &amp; RUGGED</span>
-      </div>
-      <p class="portal-card-desc">
-        Selected when applications interface directly with specialized warehouse hardware (Zebra, Honeywell rugged scanners), custom serial Bluetooth devices, continuous GPS background workers, or Android OS services.
-      </p>
-      <div class="portal-card-pills">
-        <span>Kotlin 2.0</span>
-        <span>Jetpack Compose</span>
-        <span>Hardware Serial</span>
-        <span>NDK / C++</span>
-      </div>
-    </div>
-    <div class="portal-card-action">
-      <a href="/mobile/development/android/" class="portal-card-link">View Android Guide &rarr;</a>
-    </div>
-  </div>
-
-  <div class="portal-card portal-card-full">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-coral">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
-            <path d="M12 6v6l4 2"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Native iOS (Swift / SwiftUI)</h3>
-        <span class="portal-tag-pill">FLAGSHIP &amp; ENCLAVE</span>
-      </div>
-      <p class="portal-card-desc">
-        Selected for flagship Apple-exclusive enterprise deployments (iPad executive dashboards, retail kiosk systems) requiring custom Metal GPU rendering, on-device CoreML neural inference, or hardware-bound Apple Secure Enclave operations.
-      </p>
-      <div class="portal-card-pills">
-        <span>Swift 6</span>
-        <span>SwiftUI</span>
-        <span>Metal GPU</span>
-        <span>Apple Enclave</span>
-      </div>
-    </div>
-    <div class="portal-card-action">
-      <a href="/mobile/development/ios/" class="portal-card-link">View iOS Guide &rarr;</a>
-    </div>
-  </div>
-
-</div>
-
----
-
-## Code Comparison: UI State & Data Fetching
-
-To evaluate the developer experience across stacks, compare this standard enterprise pattern—fetching an order list with loading states and pull-to-refresh:
-
-### 1. React Native (TypeScript + React Hooks)
-
-```typescript
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
-import { useOrdersQuery } from '@enterprise/orders-sdk';
-
-export function OrderListScreen() {
-  const { data: orders, isLoading, isError, refetch } = useOrdersQuery();
-  const [refreshing, setRefreshing] = useState(false);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  };
-
-  if (isLoading && !refreshing) {
-    return <ActivityIndicator size="large" color="#22c55e" style={styles.center} />;
-  }
-
-  if (isError) {
-    return <Text style={styles.errorText}>Unable to load enterprise orders.</Text>;
-  }
-
-  return (
-    <View style={styles.container}>
-      <FlatList
-        data={orders}
-        keyExtractor={item => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22c55e" />}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.title}>{item.orderNumber}</Text>
-            <Text style={styles.status}>{item.status}</Text>
-          </View>
-        )}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0d1912', padding: 16 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  card: { padding: 14, backgroundColor: '#13251c', borderRadius: 8, marginBottom: 10, borderColor: '#1f3b2c', borderWidth: 1 },
-  title: { color: '#f3d17b', fontWeight: '700', fontSize: 16 },
-  status: { color: '#cbd5e1', marginTop: 4, fontSize: 14 },
-  errorText: { color: '#ef4444', textAlign: 'center', marginTop: 40 },
-});
-```
-
-### 2. Native Android (Kotlin + Jetpack Compose)
-
-```kotlin
-package com.enterprise.mobile.feature.orders
-
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-
-@Composable
-fun OrderListScreen(
-    viewModel: OrdersViewModel = viewModel()
-) {
-    val uiState by viewModel.uiState.collectAsState()
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF0D1912))
-            .padding(16.dp)
-    ) {
-        when (val state = uiState) {
-            is OrderUiState.Loading -> {
-                CircularProgressIndicator(
-                    color = Color(0xFF22C55E),
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
-            is OrderUiState.Error -> {
-                Text(
-                    text = state.message,
-                    color = Color(0xFFEF4444),
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
-            is OrderUiState.Success -> {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(state.orders) { order ->
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF13251C)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Text(order.orderNumber, color = Color(0xFFF3D17B), style = MaterialTheme.typography.titleMedium)
-                                Text(order.status, color = Color(0xFFCBD5E1), style = MaterialTheme.typography.bodyMedium)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-```
-
-### 3. Native iOS (Swift + SwiftUI)
-
-```swift
-import SwiftUI
-
-struct OrderListView: View {
-    @StateObject private var viewModel = OrdersViewModel()
-
-    var body: some View {
-        ZStack {
-            Color(red: 13/255, green: 25/255, blue: 18/255)
-                .ignoresSafeArea()
-
-            switch viewModel.state {
-            case .loading:
-                ProgressView()
-                    .tint(Color(red: 34/255, green: 197/255, blue: 94/255))
-            case .error(let message):
-                Text(message)
-                    .foregroundColor(.red)
-            case .success(let orders):
-                List(orders) { order in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(order.orderNumber)
-                            .font(.headline)
-                            .foregroundColor(Color(red: 243/255, green: 209/255, blue: 123/255))
-                        Text(order.status)
-                            .font(.subheadline)
-                            .foregroundColor(Color(red: 203/255, green: 213/255, blue: 225/255))
-                    }
-                    .listRowBackground(Color(red: 19/255, green: 37/255, blue: 28/255))
-                }
-                .scrollContentBackground(.hidden)
-                .refreshable {
-                    await viewModel.loadOrders()
-                }
-            }
-        }
-        .task {
-            await viewModel.loadOrders()
-        }
-    }
-}
-```
-
----
-
-## When to Use the Native Escape Hatch (TurboModules)
-
-Choosing **React Native** does not lock you out of native device capabilities. When high-performance hardware drivers or proprietary native SDKs are required, write a lightweight **TurboModule** in C++ or Swift/Kotlin rather than rewriting the application:
-
-```typescript
-// Specifying a Type-Safe TurboModule in React Native (TypeScript Spec)
-import type { TurboModule } from 'react-native';
-import { TurboModuleRegistry } from 'react-native';
-
-export interface Spec extends TurboModule {
-  // Direct C++ JSI call into native hardware driver without JSON bridge serialization
-  scanBarcodeHardware(timeoutMs: number): Promise<string>;
-  getBatteryHealth(): Promise<number>;
-}
-
-export default TurboModuleRegistry.getEnforcing<Spec>('EnterpriseHardwareScanner');
-```
-
----
-
-## Architecture Review Board (ARB) Sign-Off Checklist
+## What You Should Understand Before Moving On
 
 <div class="portal-checklist-box">
-  <div class="portal-checklist-title">ARB EVALUATION CHECKLIST</div>
-  <p>Verify that your proposed stack selection satisfies all enterprise governance criteria before repository initialization:</p>
+  <div class="portal-checklist-title">COMPLETION CHECKLIST</div>
+  <p>Confirm your MacBook workstation meets the baseline development standard:</p>
   <ul>
-    <li><strong>Cross-Platform Default:</strong> If proposing a Native-only stack instead of React Native, have you documented the hard technical blocker (e.g. Bluetooth Classic serial or Metal shaders)?</li>
-    <li><strong>Team Resourcing:</strong> If selecting separate native iOS and Android stacks, do you have funding and headcount for two distinct engineering teams?</li>
-    <li><strong>Design System Support:</strong> Does the chosen framework mirror the enterprise token system from <code>@enterprise/ui-tokens</code>?</li>
-    <li><strong>CI/CD Enrollment:</strong> Is the repository configured with the standardized Bitrise automated pipeline template?</li>
-    <li><strong>Security Sign-Off:</strong> Does the data model comply with the enterprise encryption-at-rest and Remote Data Wipe protocols?</li>
+    <li><strong>Doctor Pass:</strong> Successful execution of <code>npx @enterprise/doctor-cli check</code> with 0 errors.</li>
+    <li><strong>Simulator Readiness:</strong> Ability to launch both iOS Simulator and Android Emulator without UI freezing.</li>
+    <li><strong>Shell Configured:</strong> <code>~/.zshrc</code> contains valid <code>JAVA_HOME</code> and <code>ANDROID_HOME</code> environment exports.</li>
+    <li><strong>Git &amp; Certificates:</strong> SSH authentication verified for <code>git@github.enterprise.com</code> and enterprise proxy CA cert installed in Keychain.</li>
   </ul>
 </div>
