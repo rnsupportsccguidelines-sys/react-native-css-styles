@@ -8,6 +8,22 @@ sidebar:
 
 <style>{`
   /* --------------------------------------------------------------------------
+     Full-Width Layout Expansion (Removes Artificial Left/Right Padding)
+     -------------------------------------------------------------------------- */
+  :root {
+    --sl-content-width: 100% !important;
+    --sl-content-pad-x: 1.25rem !important;
+  }
+  main,
+  .main-pane,
+  .content-panel,
+  .sl-container,
+  .sl-markdown-content {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* --------------------------------------------------------------------------
      High-Contrast Dual-Theme Tokens (Enterprise Dark Green & Crisp Light)
      -------------------------------------------------------------------------- */
   :root[data-theme='dark'] {
@@ -40,7 +56,7 @@ sidebar:
     --portal-gold: #143823;
     --portal-card-bg: #ffffff;
     --portal-card-border: #d8e5dc;
-    --portal-text-body: #374151;
+    --portal-text-body: #1f2937;
     --portal-text-muted: #4b5563;
     --portal-pill-bg: #f0f7f2;
     --portal-pill-border: #cfe0d4;
@@ -54,14 +70,16 @@ sidebar:
   :root[data-theme='dark'] #_top, :root[data-theme='dark'] h1 { color: #f3d17b !important; }
   :root[data-theme='light'] #_top, :root[data-theme='light'] h1 { color: #143823 !important; }
 
-  /* Hero Orientation Card */
+  /* Hero Orientation Card (Full width, compact padding) */
   .portal-hero-card {
     background: var(--portal-card-bg);
     border: 1px solid var(--portal-card-border);
     border-radius: 12px;
-    padding: 24px 28px;
-    margin: 20px 0 32px 0;
+    padding: 20px 24px;
+    margin: 16px 0 28px 0;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    box-sizing: border-box;
   }
   .portal-hero-topbar {
     display: flex;
@@ -69,7 +87,7 @@ sidebar:
     align-items: center;
     flex-wrap: wrap;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
   .portal-badge-hub {
     background: rgba(34, 197, 94, 0.15);
@@ -77,7 +95,7 @@ sidebar:
     border: 1px solid rgba(34, 197, 94, 0.35);
     font-size: 0.75rem;
     font-weight: 700;
-    padding: 4px 10px;
+    padding: 3px 10px;
     border-radius: 4px;
     letter-spacing: 0.06em;
   }
@@ -88,26 +106,27 @@ sidebar:
     letter-spacing: 0.05em;
   }
   .portal-hero-title {
-    font-size: 1.4rem;
+    font-size: 1.35rem;
     font-weight: 800;
     color: var(--portal-gold);
-    margin: 0 0 10px 0;
+    margin: 0 0 8px 0;
     line-height: 1.3;
   }
   .portal-hero-desc {
-    font-size: 0.95rem;
+    font-size: 0.94rem;
     color: var(--portal-text-body);
-    line-height: 1.6;
-    margin: 0 0 20px 0;
+    line-height: 1.55;
+    margin: 0 0 16px 0;
   }
 
-  /* Capabilities Bar */
+  /* Capabilities Bar (Full width 4 columns) */
   .portal-caps-bar {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-    padding-top: 18px;
+    gap: 12px;
+    padding-top: 16px;
     border-top: 1px solid var(--portal-card-border);
+    width: 100%;
   }
   @media (max-width: 900px) {
     .portal-caps-bar { grid-template-columns: repeat(2, 1fr); }
@@ -119,47 +138,51 @@ sidebar:
     background: var(--portal-pill-bg);
     border: 1px solid var(--portal-card-border);
     border-radius: 8px;
-    padding: 12px 14px;
+    padding: 10px 12px;
   }
   .portal-cap-title {
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     font-weight: 700;
     color: var(--portal-gold);
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
   .portal-cap-desc {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     color: var(--portal-text-body);
-    line-height: 1.45;
+    line-height: 1.4;
   }
 
-  /* Section Title */
+  /* Section Titles */
   .portal-section-heading {
-    font-size: 1.45rem;
+    font-size: 1.35rem;
     font-weight: 800;
     color: var(--portal-gold);
-    margin: 36px 0 6px 0;
+    margin: 32px 0 6px 0;
   }
   .portal-section-sub {
-    font-size: 0.92rem;
+    font-size: 0.9rem;
     color: var(--portal-text-muted);
-    margin: 0 0 20px 0;
+    margin: 0 0 16px 0;
   }
 
-  /* Center-align Mermaid Flowchart Container & SVG */
+  /* Full-width responsive Mermaid flowchart container */
   .starlight-mermaid,
   pre.mermaid,
   .mermaid,
   div.mermaid {
     display: flex !important;
-    flex-direction: column !important;
     justify-content: center !important;
     align-items: center !important;
-    text-align: center !important;
     width: 100% !important;
-    margin: 24px auto 36px auto !important;
+    max-width: 100% !important;
+    margin: 16px 0 28px 0 !important;
+    padding: 14px 10px !important;
     overflow-x: auto !important;
-    background: transparent !important;
+    background: var(--portal-card-bg) !important;
+    border: 1px solid var(--portal-card-border) !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
   }
 
   .starlight-mermaid svg,
@@ -167,55 +190,68 @@ sidebar:
   .mermaid svg,
   svg[id^="mermaid"] {
     display: block !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
+    width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
+    margin: 0 auto !important;
   }
 
-  /* Routes Grid */
+  /* --------------------------------------------------------------------------
+     2-Column Wide Routes Grid (Full Width, Compact Box Height)
+     -------------------------------------------------------------------------- */
   .portal-routes-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-    margin: 20px 0 36px 0;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin: 16px 0 32px 0;
+    width: 100%;
+    box-sizing: border-box;
   }
-  @media (max-width: 1080px) {
-    .portal-routes-grid { grid-template-columns: repeat(2, 1fr); }
-  }
-  @media (max-width: 680px) {
-    .portal-routes-grid { grid-template-columns: 1fr; }
+  @media (max-width: 768px) {
+    .portal-routes-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   .portal-route-card {
     background: var(--portal-card-bg);
     border: 1px solid var(--portal-card-border);
     border-radius: 12px;
-    padding: 22px;
+    padding: 16px 20px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    box-sizing: border-box;
   }
   .portal-route-card:hover {
     transform: translateY(-2px);
     border-color: var(--portal-accent);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Card 5 spans full width across 2 columns */
+  .portal-route-card-full {
+    grid-column: span 2;
+  }
+  @media (max-width: 768px) {
+    .portal-route-card-full {
+      grid-column: span 1;
+    }
   }
 
   .portal-route-topbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
   }
 
-  /* Top-Left Solid Color Square Badge */
   .portal-route-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -233,44 +269,43 @@ sidebar:
     color: var(--portal-accent);
     background: rgba(34, 197, 94, 0.12);
     border: 1px solid rgba(34, 197, 94, 0.3);
-    padding: 3px 8px;
+    padding: 2px 8px;
     border-radius: 4px;
     letter-spacing: 0.05em;
   }
 
   .portal-route-title {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--portal-gold);
-    margin: 0 0 8px 0;
-    line-height: 1.35;
+    margin: 0 0 6px 0;
+    line-height: 1.3;
   }
   .portal-route-desc {
     font-size: 0.88rem;
     color: var(--portal-text-body);
-    line-height: 1.5;
-    margin: 0 0 16px 0;
-    min-height: 48px;
+    line-height: 1.45;
+    margin: 0 0 12px 0;
   }
 
   .portal-route-topics {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 18px;
+    margin-bottom: 12px;
   }
   .portal-route-topics span {
     font-size: 0.74rem;
     background: var(--portal-pill-bg);
     border: 1px solid var(--portal-pill-border);
-    padding: 4px 10px;
+    padding: 3px 8px;
     border-radius: 6px;
     color: var(--portal-pill-text);
     font-weight: 600;
   }
 
   .portal-route-action {
-    padding-top: 12px;
+    padding-top: 10px;
     border-top: 1px solid var(--portal-card-border);
     display: flex;
     justify-content: flex-end;
@@ -290,12 +325,14 @@ sidebar:
     transform: translateX(2px);
   }
 
-  /* Table */
+  /* Table (Full width) */
   .portal-table-wrap {
     overflow-x: auto;
     border: 1px solid var(--portal-card-border);
     border-radius: 8px;
-    margin: 16px 0 36px 0;
+    margin: 16px 0 32px 0;
+    width: 100%;
+    box-sizing: border-box;
   }
   .portal-table {
     width: 100%;
@@ -314,7 +351,7 @@ sidebar:
     font-size: 0.74rem;
   }
   .portal-table td {
-    padding: 11px 14px;
+    padding: 10px 14px;
     border-bottom: 1px solid var(--portal-card-border);
     color: var(--portal-text-body);
   }
@@ -328,25 +365,27 @@ sidebar:
     font-size: 0.78rem;
   }
 
-  /* Guardrails Alert Box */
+  /* Guardrails Alert Box (Full width) */
   .portal-alert-box {
     background: var(--portal-pill-bg);
     border: 1px solid var(--portal-card-border);
     border-left: 4px solid var(--portal-accent);
     border-radius: 8px;
-    padding: 20px;
-    margin-top: 36px;
+    padding: 18px 20px;
+    margin-top: 32px;
+    width: 100%;
+    box-sizing: border-box;
   }
   .portal-alert-title {
     font-size: 0.88rem;
     font-weight: 800;
     color: var(--portal-gold);
     letter-spacing: 0.04em;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
   .portal-alert-box p {
     font-size: 0.86rem;
-    color: var(--portal-text-muted);
+    color: var(--portal-text-body);
     margin: 0 0 10px 0;
   }
   .portal-alert-box ul {
@@ -356,7 +395,7 @@ sidebar:
   .portal-alert-box li {
     font-size: 0.84rem;
     color: var(--portal-text-body);
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     line-height: 1.5;
   }
   .portal-alert-box li strong { color: var(--portal-accent); }
@@ -396,30 +435,27 @@ sidebar:
 <p class="portal-section-sub">Follow this sequential roadmap to navigate through the foundational guides in this section:</p>
 
 ```mermaid
-flowchart TD
-    Start["New Engineer Joins Mobile Platform"] --> Step1["Step 1: Understand Ecosystem -> Platform Overview"]
-    Step1 --> PersonaCheck{"Determine Developer Persona"}
-    
-    PersonaCheck -- "Web / Backend Transitioning" --> NonMobile["Step 2A: Non-Mobile Engineer Track\n(Mental Models & Mobile Fundamentals)"]
-    PersonaCheck -- "Experienced Mobile Engineer" --> MobileTrack["Step 2B: New Mobile Engineer Track\n(Monorepos, Conventions & SDKs)"]
-    
-    NonMobile --> Step3["Step 3: Framework Evaluation -> Tech Stack Selection"]
-    MobileTrack --> Step3
-    
-    Step3 --> Step4["Step 4: Local Workstation -> Machine Setup"]
-    Step4 --> Step5["Step 5: Code, Test & Submit First Pull Request"]
+flowchart LR
+    Start["1. Join Platform"] --> Step1["2. Platform Overview"]
+    Step1 --> Persona{"Persona Check"}
+    Persona -->|Web / Backend| TrackA["3A. Non-Mobile Track"]
+    Persona -->|Experienced| TrackB["3B. Mobile Track"]
+    TrackA --> Step3["4. Tech Selection"]
+    TrackB --> Step3
+    Step3 --> Step4["5. Machine Setup"]
+    Step4 --> Step5["6. Submit PR"]
 
     classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
     classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
     classDef terminal fill:#102619,stroke:#22c55e,stroke-width:2px,color:#22c55e;
-    class PersonaCheck highlight;
+    class Persona highlight;
     class Step5 terminal;
 ```
 
 ---
 
 <h2 class="portal-section-heading">Onboarding Navigation Directory</h2>
-<p class="portal-section-sub">Follow each dedicated guide in sequence. In-depth configuration and platform-specific instructions are maintained exclusively within each respective guide to prevent duplication:</p>
+<p class="portal-section-sub">Select each dedicated guide in sequence. In-depth configuration and platform-specific instructions are maintained exclusively within each respective guide to prevent duplication:</p>
 
 <div class="portal-routes-grid">
 
@@ -530,7 +566,7 @@ flowchart TD
     </div>
   </div>
 
-  <div class="portal-route-card">
+  <div class="portal-route-card portal-route-card-full">
     <div>
       <div class="portal-route-topbar">
         <div class="portal-route-icon badge-teal">
