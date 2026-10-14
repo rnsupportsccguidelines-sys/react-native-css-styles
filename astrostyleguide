@@ -1,334 +1,389 @@
 ---
-title: New Mobile Engineer Track
-description: Accelerated onboarding fast-track for experienced iOS, Android, and React Native developers joining enterprise mobile engineering.
+title: Tech Stack Selection Matrix
+description: Architectural decision matrix and evaluation criteria for selecting React Native vs. Native Android (Compose) vs. Native iOS (SwiftUI) across enterprise mobile projects.
 sidebar:
-  order: 4
-  label: Mobile Native Track
+  order: 5
+  label: Tech Stack Matrix
 ---
 
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">[ACCELERATED TRACK]</span>
-    <span class="portal-hub-tag">PRODUCTION READINESS FAST-PATH</span>
+    <span class="portal-badge-hub">[PLATFORM GOVERNANCE]</span>
+    <span class="portal-hub-tag">ARCHITECTURE SELECTION MATRIX</span>
   </div>
-  <div class="portal-hero-title">New Mobile Engineer Track: Experienced Developer Guide</div>
+  <div class="portal-hero-title">Mobile Tech Stack Selection Matrix</div>
   <div class="portal-hero-desc">
-    An accelerated onboarding path for experienced native iOS, native Android, and React Native engineers. Skip the generic mobile fundamentals and focus directly on enterprise repository topologies, internal private artifact registries, architectural conventions, Danger PR automated inspections, and Bitrise CI/CD release trains.
+    Official architectural evaluation matrix for enterprise mobile engineering. Defines objective criteria for selecting between React Native (New Architecture), Native Android (Kotlin &amp; Jetpack Compose), and Native iOS (Swift &amp; SwiftUI). React Native is the standard enterprise recommendation for 80%+ of business applications to maximize velocity and code reuse.
   </div>
 
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">5-Phase Fast Track</div>
-      <div class="portal-cap-desc">Access, starter templates, clean architecture, PR verification &amp; team sync</div>
+      <div class="portal-cap-title">Enterprise Recommendation</div>
+      <div class="portal-cap-desc">React Native is the default for 80%+ of cross-platform business apps</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Private Registries</div>
-      <div class="portal-cap-desc">Configuring internal Maven, CocoaPods &amp; npm credentials</div>
+      <div class="portal-cap-title">Native Android</div>
+      <div class="portal-cap-desc">Reserved for rugged hardware, USB/OTG, Bluetooth serial &amp; offline background daemons</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Core SDK Bootstrap</div>
-      <div class="portal-cap-desc">One-line initialization for SSO Auth, Datadog RUM &amp; Circuit Breaker</div>
+      <div class="portal-cap-title">Native iOS</div>
+      <div class="portal-cap-desc">Reserved for Metal GPU shaders, CoreML on-device inference &amp; Apple Secure Enclave</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Quality Gates</div>
-      <div class="portal-cap-desc">Danger PR Bot, Sauce Labs device cloud &amp; branch policies</div>
+      <div class="portal-cap-title">Architecture Review</div>
+      <div class="portal-cap-desc">Mandatory sign-off before committing project repositories</div>
     </div>
   </div>
 </div>
 
-## 5-Phase Fast-Track Onboarding Flow
+## Architectural Decision Framework
 
-Experienced mobile engineers should progress through the following 5 phases to submit their first production-ready pull request within their first week:
+Use this structured decision tree to determine the optimal mobile technology stack for your application:
 
 ```mermaid
 flowchart TD
-    subgraph Setup["Phase 1 & 2: Environment & Repository"]
-        P1["Phase 1: Access & Setup\n(Git, Stores, CI/CD & Doctor CLI)"]
-        P2["Phase 2: Starter Template\n(Clone Repo, Sync Dependencies & Boot Simulator)"]
-        P1 --> P2
-    end
+    Start["New Enterprise Mobile Project"] --> Q1{"Does the app require custom Bluetooth Classic,\nUSB-OTG hardware, or Metal shaders?"}
 
-    subgraph Build["Phase 3 & 4: Architecture & Quality"]
-        P3["Phase 3: Clean Architecture\n(4-Layer Standard & AI IDE Rules)"]
-        P4["Phase 4: PR & Quality Gate\n(Branching, Danger Checks & Unit Tests)"]
-        P2 --> P3
-        P3 --> P4
-    end
+    Q1 -->|"Yes"| Hardware["Select Native Platform"]
+    Hardware --> AndroidNative["Native Android\n(Kotlin / Compose)\nFor rugged scanners & Bluetooth serial"]
+    Hardware --> IOSNative["Native iOS\n(Swift / SwiftUI)\nFor Apple ecosystem & CoreML"]
 
-    subgraph Deploy["Phase 5: Release & Support"]
-        P5["Phase 5: Release Train & Sync\n(Internal Distribution & Teams Support)"]
-        P4 --> P5
-    end
+    Q1 -->|"No"| Q2{"Is the app targeted exclusively at\na single platform (e.g. iPad-only)?"}
+
+    Q2 -->|"Yes"| SinglePlatform["Platform-Specific Native\n(SwiftUI or Jetpack Compose)"]
+    Q2 -->|"No"| ReactDefault["ENTERPRISE DEFAULT RECOMMENDED:\nReact Native (New Architecture)\n90%+ Shared TypeScript Codebase"]
 
     classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
     classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
     classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class Setup,Build,Deploy highlight;
-    class P1,P2,P3,P4,P5 nodeBox;
+    class Start highlight;
+    class ReactDefault highlight;
+    class Q1,Q2,Hardware,SinglePlatform nodeBox;
+    class AndroidNative,IOSNative nodeBox;
 ```
 
 ---
 
-## Phase 1: Access Provisioning & Workstation Setup
+## Comprehensive Platform Evaluation Matrix
 
-Before writing code, verify you have been granted read/write access to the core enterprise mobile platforms:
+Compare the technical trade-offs across all three tier-1 supported stacks:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>System / Service</th>
-        <th>Required Group Access</th>
-        <th>Verification Command / Action</th>
+        <th>Evaluation Dimension</th>
+        <th>React Native (New Architecture)</th>
+        <th>Native Android (Kotlin / Compose)</th>
+        <th>Native iOS (Swift / SwiftUI)</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>Enterprise GitHub</strong></td>
-        <td><code>org-mobile-engineering</code></td>
-        <td><code>ssh -T git@github.enterprise.com</code></td>
+        <td><strong>Enterprise Recommendation</strong></td>
+        <td><strong>Default Recommended (80%+ Apps)</strong></td>
+        <td>Hardware &amp; Rugged Scenarios</td>
+        <td>Flagship Apple Ecosystem</td>
       </tr>
       <tr>
-        <td><strong>Artifact Registry</strong></td>
-        <td><code>mobile-pkg-readers</code></td>
-        <td><code>curl -I https://registry.enterprise.internal/health</code></td>
+        <td><strong>Code Reuse</strong></td>
+        <td>90%–95% shared logic, UI, and test suites across iOS &amp; Android.</td>
+        <td>0% (Android only). Dual team required for iOS.</td>
+        <td>0% (iOS only). Dual team required for Android.</td>
       </tr>
       <tr>
-        <td><strong>Bitrise CI / CD</strong></td>
-        <td><code>bitrise-mobile-engineers</code></td>
-        <td>Log in to Bitrise Console via enterprise SSO</td>
+        <td><strong>Time to Market</strong></td>
+        <td>Fastest delivery velocity. Single sprint backlog and shared components.</td>
+        <td>Moderate. Requires dedicated native Android specialists.</td>
+        <td>Moderate. Requires dedicated native iOS specialists.</td>
       </tr>
       <tr>
-        <td><strong>Apple Developer Portal</strong></td>
-        <td><code>App Store Connect Team Member</code></td>
-        <td>Verify certificate profile in Xcode &rarr; Accounts</td>
+        <td><strong>UI Engine</strong></td>
+        <td>Fabric C++ Native Renderer with Yoga Flexbox layout.</td>
+        <td>Jetpack Compose declarative layout engine.</td>
+        <td>SwiftUI declarative layout engine.</td>
       </tr>
       <tr>
-        <td><strong>Google Play Console</strong></td>
-        <td><code>Internal Release Track Access</code></td>
-        <td>Verify access to organizational dashboard</td>
+        <td><strong>Hardware &amp; Bluetooth</strong></td>
+        <td>High-level BLE via TurboModules. Custom C++ native bindings.</td>
+        <td>Direct access to Android OS APIs, Bluetooth Classic, USB/OTG, and NDK.</td>
+        <td>Direct access to CoreBluetooth, ExternalAccessory, and Metal.</td>
       </tr>
       <tr>
-        <td><strong>Sauce Labs Device Cloud</strong></td>
-        <td><code>qa-device-cloud-users</code></td>
-        <td>Verify SSO login at <code>saucelabs.enterprise.internal</code></td>
+        <td><strong>Runtime &amp; Startup</strong></td>
+        <td>Near-native cold boot via Hermes bytecode pre-compilation.</td>
+        <td>Native ART runtime ahead-of-time (AOT) compilation.</td>
+        <td>Native binary compiled directly to ARM64 machine instructions.</td>
+      </tr>
+      <tr>
+        <td><strong>Design System Mirroring</strong></td>
+        <td>Native JSX design tokens from <code>@enterprise/ui-tokens</code>.</td>
+        <td>Composable design tokens via Material 3 theme wrapper.</td>
+        <td>SwiftUI Color/Typography tokens via asset catalog.</td>
+      </tr>
+      <tr>
+        <td><strong>CI/CD Complexity</strong></td>
+        <td>Single Bitrise pipeline building both <code>.aab</code> and <code>.ipa</code>.</td>
+        <td>Gradle runner building <code>.aab</code>.</td>
+        <td>macOS runner building signed <code>.ipa</code>.</td>
       </tr>
     </tbody>
   </table>
 </div>
 
-### Running the Workstation Verification Script
+---
 
-Run the automated Doctor diagnostic utility in your terminal to validate compilers, SDK paths, and proxy certificates:
+## Detailed Stack Profiles
 
-```bash
-# Run the enterprise toolchain diagnostic CLI
-npx @enterprise/doctor-cli check --verbose
+<div class="portal-cards-grid">
 
-# Sample green validation report:
-# [PASS] macOS Sonoma 14.5+ or macOS Sequoia 15.x
-# [PASS] Xcode 16.x & Command Line Tools (/Applications/Xcode.app)
-# [PASS] Android Studio Jellyfish / Koala (ANDROID_HOME set)
-# [PASS] Java OpenJDK 17.0.x (JAVA_HOME set)
-# [PASS] Node.js 20.x LTS & npm 10.x
-# [PASS] CocoaPods 1.15.x / Swift Package Manager
-# [PASS] Enterprise Root CA Certificates Installed in Keychain
-```
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-blue">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">React Native (New Architecture)</h3>
+        <span class="portal-tag-pill">RECOMMENDED (80% OF APPS)</span>
+      </div>
+      <p class="portal-card-desc">
+        The default enterprise choice for field operations, logistics workflows, customer portals, and internal employee tools. Delivers native 60fps performance through Fabric and C++ TurboModules with 90%+ code reuse.
+      </p>
+      <div class="portal-card-pills">
+        <span>TypeScript 5.x</span>
+        <span>Fabric Renderer</span>
+        <span>Hermes Engine</span>
+        <span>Shared CI/CD</span>
+      </div>
+    </div>
+    <div class="portal-card-action">
+      <a href="/mobile/development/react-native/" class="portal-card-link">View React Native Guide &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-green">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Native Android (Kotlin / Compose)</h3>
+        <span class="portal-tag-pill">HARDWARE &amp; RUGGED</span>
+      </div>
+      <p class="portal-card-desc">
+        Selected when applications interface directly with specialized warehouse hardware (Zebra, Honeywell rugged scanners), custom serial Bluetooth devices, continuous GPS background workers, or Android OS services.
+      </p>
+      <div class="portal-card-pills">
+        <span>Kotlin 2.0</span>
+        <span>Jetpack Compose</span>
+        <span>Hardware Serial</span>
+        <span>NDK / C++</span>
+      </div>
+    </div>
+    <div class="portal-card-action">
+      <a href="/mobile/development/android/" class="portal-card-link">View Android Guide &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card portal-card-full">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-coral">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Native iOS (Swift / SwiftUI)</h3>
+        <span class="portal-tag-pill">FLAGSHIP &amp; ENCLAVE</span>
+      </div>
+      <p class="portal-card-desc">
+        Selected for flagship Apple-exclusive enterprise deployments (iPad executive dashboards, retail kiosk systems) requiring custom Metal GPU rendering, on-device CoreML neural inference, or hardware-bound Apple Secure Enclave operations.
+      </p>
+      <div class="portal-card-pills">
+        <span>Swift 6</span>
+        <span>SwiftUI</span>
+        <span>Metal GPU</span>
+        <span>Apple Enclave</span>
+      </div>
+    </div>
+    <div class="portal-card-action">
+      <a href="/mobile/development/ios/" class="portal-card-link">View iOS Guide &rarr;</a>
+    </div>
+  </div>
+
+</div>
 
 ---
 
-## Phase 2: Private Artifact Registry Configuration
+## Code Comparison: UI State & Data Fetching
 
-All internal SDKs—including `@enterprise/identity-sso`, `@enterprise/resilience-sdk`, and the `@enterprise/ui-tokens` design system—are published to private enterprise registries. Configure your package managers before building.
+To evaluate the developer experience across stacks, compare this standard enterprise pattern—fetching an order list with loading states and pull-to-refresh:
 
-### 1. npm Registry Configuration (`.npmrc`)
+### 1. React Native (TypeScript + React Hooks)
 
-Add the scoped registry URL and authentication token to your user home `~/.npmrc` or project-level `.npmrc`:
+```typescript
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
+import { useOrdersQuery } from '@enterprise/orders-sdk';
 
-```ini
-# Scope enterprise packages to private registry
-@enterprise:registry=https://registry.enterprise.internal/repository/npm-hosted/
-//registry.enterprise.internal/repository/npm-hosted/:_authToken=${ENTERPRISE_NPM_TOKEN}
-always-auth=true
+export function OrderListScreen() {
+  const { data: orders, isLoading, isError, refetch } = useOrdersQuery();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
+
+  if (isLoading && !refreshing) {
+    return <ActivityIndicator size="large" color="#22c55e" style={styles.center} />;
+  }
+
+  if (isError) {
+    return <Text style={styles.errorText}>Unable to load enterprise orders.</Text>;
+  }
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={orders}
+        keyExtractor={item => item.id}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22c55e" />}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <Text style={styles.title}>{item.orderNumber}</Text>
+            <Text style={styles.status}>{item.status}</Text>
+          </View>
+        )}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0d1912', padding: 16 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  card: { padding: 14, backgroundColor: '#13251c', borderRadius: 8, marginBottom: 10, borderColor: '#1f3b2c', borderWidth: 1 },
+  title: { color: '#f3d17b', fontWeight: '700', fontSize: 16 },
+  status: { color: '#cbd5e1', marginTop: 4, fontSize: 14 },
+  errorText: { color: '#ef4444', textAlign: 'center', marginTop: 40 },
+});
 ```
 
-### 2. Android Gradle Registry Configuration (`settings.gradle.kts`)
-
-Configure Gradle to authenticate with the internal Maven repository:
+### 2. Native Android (Kotlin + Jetpack Compose)
 
 ```kotlin
-// settings.gradle.kts
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-        maven {
-            url = uri("https://registry.enterprise.internal/repository/maven-releases/")
-            credentials {
-                username = System.getenv("ENTERPRISE_MAVEN_USER") ?: ""
-                password = System.getenv("ENTERPRISE_MAVEN_TOKEN") ?: ""
+package com.enterprise.mobile.feature.orders
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+@Composable
+fun OrderListScreen(
+    viewModel: OrdersViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0D1912))
+            .padding(16.dp)
+    ) {
+        when (val state = uiState) {
+            is OrderUiState.Loading -> {
+                CircularProgressIndicator(
+                    color = Color(0xFF22C55E),
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+            is OrderUiState.Error -> {
+                Text(
+                    text = state.message,
+                    color = Color(0xFFEF4444),
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+            is OrderUiState.Success -> {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(state.orders) { order ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF13251C)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text(order.orderNumber, color = Color(0xFFF3D17B), style = MaterialTheme.typography.titleMedium)
+                                Text(order.status, color = Color(0xFFCBD5E1), style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 ```
 
-### 3. iOS CocoaPods Configuration (`Podfile`)
-
-Point your project `Podfile` to the private Specs repository:
-
-```ruby
-# Podfile
-platform :ios, '16.0'
-use_frameworks!
-
-# Public CocoaPods CDN
-source 'https://cdn.cocoapods.org/'
-
-# Enterprise Private Specs Repository
-source 'git@github.enterprise.com:mobile-infra/cocoapods-specs.git'
-
-target 'EnterpriseApp' do
-  pod 'EnterpriseIdentity', '~> 2.4.0'
-  pod 'EnterpriseResilience', '~> 1.8.0'
-  pod 'DatadogRUM', '~> 2.12.0'
-end
-```
-
----
-
-## Phase 3: Core Architecture & SDK Bootstrap
-
-Enterprise applications adhere to a strict **4-Layer Clean Architecture**:
-
-```mermaid
-flowchart TD
-    subgraph Arch["4-Layer Clean Architecture Standard"]
-        UI["1. Presentation Layer\n(SwiftUI / Compose / React Native UI Components)"]
-        Domain["2. Domain Layer\n(Use Cases, Business Rules & Pure Models)"]
-        Data["3. Data Layer\n(Repository Pattern & Offline Cache / Room / SQLite)"]
-        Core["4. Infrastructure & Shared SDKs\n(Enterprise Auth SSO, Circuit Breaker, Datadog RUM)"]
-
-        UI --> Domain
-        Domain --> Data
-        Data --> Core
-    end
-
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class Arch highlight;
-    class UI,Domain,Data,Core nodeBox;
-```
-
-### Initializing Core SDKs in Your App Entry Point
-
-Bootstrap Identity, Telemetry, and Resilience at application startup:
-
-#### React Native Entry Point (`App.tsx`)
-
-```typescript
-import React, { useEffect } from 'react';
-import { SafeAreaView, StatusBar, Text } from 'react-native';
-import { initializeEnterpriseAuth } from '@enterprise/identity-sso';
-import { initializeDatadogRUM } from '@enterprise/telemetry';
-
-export default function App() {
-  useEffect(() => {
-    // 1. Initialize Datadog Real User Monitoring
-    initializeDatadogRUM({
-      clientToken: 'pub_rum_prod_token_sample',
-      applicationId: 'app_id_guid_enterprise',
-      env: 'production',
-      trackUserInteractions: true,
-      trackFrustrations: true,
-    });
-
-    // 2. Initialize Single Sign-On (SSO) OAuth2 Configuration
-    initializeEnterpriseAuth({
-      clientId: 'mobile-client-01',
-      issuer: 'https://sso.enterprise.internal/oauth2/v1',
-      redirectUrl: 'com.enterprise.app://oauthredirect',
-      scopes: ['openid', 'profile', 'email', 'offline_access'],
-    });
-  }, []);
-
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0d1912' }}>
-      <StatusBar barStyle="light-content" />
-      <Text style={{ color: '#e2e8f0', padding: 20 }}>Enterprise Mobile Application Initialized</Text>
-    </SafeAreaView>
-  );
-}
-```
-
-#### Android Native Entry Point (`MainApplication.kt`)
-
-```kotlin
-package com.enterprise.mobile
-
-import android.app.Application
-import com.enterprise.identity.EnterpriseAuth
-import com.enterprise.telemetry.EnterpriseDatadogConfig
-import com.enterprise.telemetry.EnterpriseTelemetry
-
-class MainApplication : Application() {
-
-    override fun onCreate() {
-        super.onCreate()
-
-        // 1. Initialize Enterprise Telemetry & RUM
-        EnterpriseTelemetry.initialize(
-            this,
-            EnterpriseDatadogConfig(
-                clientToken = "pub_rum_prod_token_sample",
-                applicationId = "app_id_guid_enterprise",
-                environment = "production",
-                trackErrors = true
-            )
-        )
-
-        // 2. Initialize Enterprise SSO Auth Session
-        EnterpriseAuth.initialize(
-            context = this,
-            clientId = "mobile-android-client-01",
-            discoveryUri = "https://sso.enterprise.internal/.well-known/openid-configuration"
-        )
-    }
-}
-```
-
-#### iOS Native Entry Point (`EnterpriseApp.swift`)
+### 3. Native iOS (Swift + SwiftUI)
 
 ```swift
 import SwiftUI
-import EnterpriseIdentity
-import EnterpriseTelemetry
 
-@main
-struct EnterpriseApp: App {
+struct OrderListView: View {
+    @StateObject private var viewModel = OrdersViewModel()
 
-    init() {
-        // 1. Initialize Datadog RUM Telemetry
-        EnterpriseTelemetry.start(
-            applicationId: "app_id_guid_enterprise",
-            clientToken: "pub_rum_prod_token_sample",
-            env: "production"
-        )
+    var body: some View {
+        ZStack {
+            Color(red: 13/255, green: 25/255, blue: 18/255)
+                .ignoresSafeArea()
 
-        // 2. Initialize SSO Authentication Configuration
-        EnterpriseAuth.configure(
-            issuer: "https://sso.enterprise.internal/oauth2/v1",
-            clientId: "mobile-ios-client-01",
-            redirectURI: "com.enterprise.app://oauthredirect"
-        )
-    }
-
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
+            switch viewModel.state {
+            case .loading:
+                ProgressView()
+                    .tint(Color(red: 34/255, green: 197/255, blue: 94/255))
+            case .error(let message):
+                Text(message)
+                    .foregroundColor(.red)
+            case .success(let orders):
+                List(orders) { order in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(order.orderNumber)
+                            .font(.headline)
+                            .foregroundColor(Color(red: 243/255, green: 209/255, blue: 123/255))
+                        Text(order.status)
+                            .font(.subheadline)
+                            .foregroundColor(Color(red: 203/255, green: 213/255, blue: 225/255))
+                    }
+                    .listRowBackground(Color(red: 19/255, green: 37/255, blue: 28/255))
+                }
+                .scrollContentBackground(.hidden)
+                .refreshable {
+                    await viewModel.loadOrders()
+                }
+            }
+        }
+        .task {
+            await viewModel.loadOrders()
         }
     }
 }
@@ -336,128 +391,36 @@ struct EnterpriseApp: App {
 
 ---
 
-## Phase 4: PR Quality Gates & CI/CD Automation
+## When to Use the Native Escape Hatch (TurboModules)
 
-Every pull request triggers Bitrise cloud runners that execute automated static analysis and device regression.
-
-### Automated PR Workflow Flowchart
-
-```mermaid
-flowchart TD
-    subgraph PR["PR Submission & Bot Checks"]
-        Commit["1. Conventional Commit Push\n(feat: add offline sync)"]
-        DangerBot["2. Danger PR Bot Inspection\n(Changelog & Size Delta Check)"]
-        Commit --> DangerBot
-    end
-
-    subgraph CI["Automated CI Verification"]
-        UnitTests["3. Parallel Unit Tests\n(Minimum 80% Coverage Gate)"]
-        SauceCloud["4. Sauce Labs Physical Devices\n(Automated Smoke Regression)"]
-        NowSec["5. NowSecure SAST/DAST\n(Vulnerability Security Scan)"]
-        DangerBot --> UnitTests
-        UnitTests --> SauceCloud
-        SauceCloud --> NowSec
-    end
-
-    subgraph Approval["Release Approval"]
-        MergeGate["6. Merge Approved\n(2 Peer Reviews Required)"]
-        NowSec --> MergeGate
-    end
-
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class PR,CI,Approval highlight;
-    class Commit,DangerBot,UnitTests,SauceCloud,NowSec,MergeGate nodeBox;
-```
-
-### The Enterprise Dangerfile Rules (`Dangerfile.ts`)
-
-Danger runs automatically on every Bitrise PR build. Ensure your PR complies with these programmatic checks:
+Choosing **React Native** does not lock you out of native device capabilities. When high-performance hardware drivers or proprietary native SDKs are required, write a lightweight **TurboModule** in C++ or Swift/Kotlin rather than rewriting the application:
 
 ```typescript
-import { danger, warn, fail, message } from 'danger';
+// Specifying a Type-Safe TurboModule in React Native (TypeScript Spec)
+import type { TurboModule } from 'react-native';
+import { TurboModuleRegistry } from 'react-native';
 
-// 1. Enforce changelog update for any non-trivial PR
-const hasCodeChanges = danger.git.modified_files.some(f => f.startsWith('src/') || f.startsWith('app/'));
-const hasChangelog = danger.git.modified_files.includes('CHANGELOG.md');
-
-if (hasCodeChanges && !hasChangelog) {
-  warn('Please add a summary of your changes to CHANGELOG.md.');
+export interface Spec extends TurboModule {
+  // Direct C++ JSI call into native hardware driver without JSON bridge serialization
+  scanBarcodeHardware(timeoutMs: number): Promise<string>;
+  getBatteryHealth(): Promise<number>;
 }
 
-// 2. Validate Conventional Commit message formatting
-const validPrefixes = ['feat:', 'fix:', 'docs:', 'refactor:', 'test:', 'chore:'];
-const commitSubject = danger.github.pr.title;
-const isValidTitle = validPrefixes.some(prefix => commitSubject.startsWith(prefix));
-
-if (!isValidTitle) {
-  fail(`PR title must follow Conventional Commits (e.g., 'feat: add user profile' or 'fix: resolve crash').`);
-}
-
-// 3. Monitor bundle size and large PR warning
-const totalLinesChanged = danger.github.pr.additions + danger.github.pr.deletions;
-if (totalLinesChanged > 600) {
-  warn(`This PR is large (${totalLinesChanged} lines). Consider breaking it into smaller reviewable units.`);
-}
+export default TurboModuleRegistry.getEnforcing<Spec>('EnterpriseHardwareScanner');
 ```
 
 ---
 
-## Phase 5: Production Deployment & Team Support
-
-Once merged into `main`, Bitrise compiles signed binaries (`.aab` and `.ipa`) using enterprise signing certificates and deploys them to internal testing rings:
-
-<div class="portal-gates-container">
-  <div class="portal-gates-flow">
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">1. Merge to Main</div>
-      <div class="portal-gate-sub">Trigger CI build</div>
-    </div>
-    <span class="portal-gate-arrow">&rarr;</span>
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">2. Fastlane Signing</div>
-      <div class="portal-gate-sub">Enterprise certificates</div>
-    </div>
-    <span class="portal-gate-arrow">&rarr;</span>
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">3. TestFlight / Internal</div>
-      <div class="portal-gate-sub">Beta distribution</div>
-    </div>
-    <span class="portal-gate-arrow">&rarr;</span>
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">4. Production Ring</div>
-      <div class="portal-gate-sub">Staged rollout</div>
-    </div>
-  </div>
-</div>
-
----
-
-## Top Enterprise Conventions & Best Practices
-
-<div class="portal-alert-box">
-  <div class="portal-alert-title">CRITICAL PRODUCTION CONVENTIONS</div>
-  <ul>
-    <li><strong>Branch Naming Standard:</strong> Always use <code>feat/JIRA-1234-brief-name</code>, <code>fix/JIRA-1234-brief-name</code>, or <code>chore/brief-name</code>.</li>
-    <li><strong>No Raw Secrets in Git:</strong> Never commit `.env` or keystore credentials. Credentials are injected dynamically by Bitrise secrets vault during CI runs.</li>
-    <li><strong>Code Coverage Threshold:</strong> All new business logic in domain layers must maintain at least 80% unit test coverage.</li>
-    <li><strong>Datadog Crash Triaging:</strong> All fatal crashes must have an assigned owner within 24 hours of notification in the mobile telemetry channel.</li>
-  </ul>
-</div>
-
----
-
-## What You Should Understand Before Moving On
+## Architecture Review Board (ARB) Sign-Off Checklist
 
 <div class="portal-checklist-box">
-  <div class="portal-checklist-title">COMPLETION CHECKLIST</div>
-  <p>Confirm you have achieved the following milestones before taking your first Jira sprint ticket:</p>
+  <div class="portal-checklist-title">ARB EVALUATION CHECKLIST</div>
+  <p>Verify that your proposed stack selection satisfies all enterprise governance criteria before repository initialization:</p>
   <ul>
-    <li><strong>Toolchain Diagnostics:</strong> All checks in <code>npx @enterprise/doctor-cli check</code> report green passes.</li>
-    <li><strong>Registry Authentication:</strong> Successful resolution of <code>@enterprise/*</code> packages or internal Maven/CocoaPods dependencies.</li>
-    <li><strong>Local Simulator Boot:</strong> Able to run the starter project locally on both iOS Simulator and Android Emulator.</li>
-    <li><strong>Core SDK Familiarity:</strong> Understand how Identity SSO and Datadog RUM are initialized in the application entry point.</li>
-    <li><strong>PR Quality Gate Ready:</strong> Understand Conventional Commit requirements and Danger PR Bot rules.</li>
+    <li><strong>Cross-Platform Default:</strong> If proposing a Native-only stack instead of React Native, have you documented the hard technical blocker (e.g. Bluetooth Classic serial or Metal shaders)?</li>
+    <li><strong>Team Resourcing:</strong> If selecting separate native iOS and Android stacks, do you have funding and headcount for two distinct engineering teams?</li>
+    <li><strong>Design System Support:</strong> Does the chosen framework mirror the enterprise token system from <code>@enterprise/ui-tokens</code>?</li>
+    <li><strong>CI/CD Enrollment:</strong> Is the repository configured with the standardized Bitrise automated pipeline template?</li>
+    <li><strong>Security Sign-Off:</strong> Does the data model comply with the enterprise encryption-at-rest and Remote Data Wipe protocols?</li>
   </ul>
 </div>
