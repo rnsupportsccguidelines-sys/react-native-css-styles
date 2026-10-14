@@ -1,122 +1,81 @@
 ---
-title: Architecture & Platform Standards Overview
-description: Master architectural overview and governance framework for enterprise mobile engineering across iOS, Android, and React Native.
+title: Enterprise Standard Mobile Architecture
+description: Comprehensive specification of the 4-Layer Clean Architecture standard enforced across all enterprise iOS, Android, and React Native applications.
 sidebar:
   order: 1
-  label: Architecture Overview
+  label: Clean Architecture
 ---
 
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">[MODULE 02]</span>
-    <span class="portal-hub-tag">ARCHITECTURE &amp; PLATFORM STANDARDS</span>
+    <span class="portal-badge-hub">[PLATFORM STANDARDS]</span>
+    <span class="portal-hub-tag">MODULE 02: ARCHITECTURE SPECIFICATION</span>
   </div>
-  <div class="portal-hero-title">Enterprise Mobile Architecture Overview</div>
+  <div class="portal-hero-title">Enterprise Standard Mobile Architecture: 4-Layer Clean Architecture</div>
   <div class="portal-hero-desc">
-    The master architectural blueprint governing all enterprise iOS, Android, and React Native applications. Enforces strict 4-layer clean architecture, unidirectional data flow (UDF), offline-first network resilience, runtime feature flag governance, and hardware-backed credential storage.
+    The foundational architectural pattern enforced across all enterprise iOS, Android, and React Native codebases. By decoupling Presentation, Domain, Data, and Infrastructure into distinct layers governed by Dependency Inversion, applications maintain high testability, predictable state flow, and zero framework lock-in.
   </div>
 
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Macro Topology</div>
-      <div class="portal-cap-desc">4-tier pipeline connecting mobile clients to enterprise microservices</div>
+      <div class="portal-cap-title">Presentation Layer</div>
+      <div class="portal-cap-desc">Declarative UI (Compose / SwiftUI / Fabric) &amp; reactive State Holders</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Clean Architecture</div>
-      <div class="portal-cap-desc">Isolated Presentation, Domain, Data &amp; Core Infrastructure layers</div>
+      <div class="portal-cap-title">Domain Layer</div>
+      <div class="portal-cap-desc">Pure business Use Cases, Entities &amp; Repository contracts (zero OS imports)</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Network Resilience</div>
-      <div class="portal-cap-desc">Automated Circuit Breaker with encrypted local cache fallback</div>
+      <div class="portal-cap-title">Data Layer</div>
+      <div class="portal-cap-desc">Repository implementations, offline local caches &amp; network DTO mappers</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Governance</div>
-      <div class="portal-cap-desc">Architecture Decision Records (ADRs) &amp; Architecture Review Board (ARB)</div>
+      <div class="portal-cap-title">Core Infrastructure</div>
+      <div class="portal-cap-desc">Shared Enterprise SDKs: SSO Identity, Circuit Breaker &amp; Datadog Telemetry</div>
     </div>
   </div>
 </div>
 
-## Macro Architecture Topology
+## The 4-Layer Clean Architecture Specification
 
-The enterprise mobile ecosystem is organized into four distinct operational tiers, from client devices to enterprise cloud backends:
-
-```mermaid
-flowchart TD
-    subgraph Clients["Tier 1: Client Application Tier"]
-        RN["React Native\n(Fabric & TypeScript)"]
-        Android["Native Android\n(Kotlin & Compose)"]
-        iOS["Native iOS\n(Swift & SwiftUI)"]
-    end
-
-    subgraph SDKs["Tier 2: Enterprise Shared SDK Tier"]
-        Auth["Identity SSO\n(OAuth2 / OIDC)"]
-        Breaker["Resilience Client\n(Circuit Breaker)"]
-        RUM["Datadog Telemetry\n(RUM & Crash Traces)"]
-        Tokens["Design System\n(Enterprise Tokens)"]
-    end
-
-    subgraph Gateway["Tier 3: Enterprise Edge Gateway"]
-        Edge["API Management Gateway\n(Rate Limiting & Token Exchange)"]
-        WAF["Web Application Firewall\n& Mutual TLS (mTLS)"]
-    end
-
-    subgraph Backend["Tier 4: Enterprise Core Services"]
-        APIs["Domain Microservices\n(Orders, Logistics, Billing)"]
-        Kafka["Enterprise Event Hub\n(Kafka / Event Streams)"]
-    end
-
-    Clients --> SDKs
-    SDKs --> Gateway
-    Gateway --> Backend
-
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class Clients,SDKs,Gateway,Backend highlight;
-    class RN,Android,iOS,Auth,Breaker,RUM,Tokens,Edge,WAF,APIs,Kafka nodeBox;
-```
-
----
-
-## The 4 Core Architectural Pillars
-
-All mobile applications delivered across the enterprise must implement the four foundational architectural pillars:
+Every enterprise mobile codebase—whether implemented in Kotlin, Swift, or TypeScript—must strictly adhere to the 4 architectural layers described below:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Architectural Pillar</th>
-        <th>Standard Enforced</th>
-        <th>Engineering Purpose</th>
-        <th>Verification Method</th>
+        <th>Architectural Layer</th>
+        <th>Primary Responsibilities</th>
+        <th>Allowed Inward Dependencies</th>
+        <th>Prohibited Elements</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>1. Clean Architecture</strong></td>
-        <td>Strict 4-layer model (Presentation, Domain, Data, Core). Domain layer has zero external dependencies.</td>
-        <td>Decouples pure business rules from volatile UI frameworks and databases. Guarantees 100% portable domain testing.</td>
-        <td>Danger PR code structure audit &amp; unit tests.</td>
+        <td><strong>1. Presentation Layer</strong></td>
+        <td>Renders reactive UI views, captures user input, and manages screen lifecycle state.</td>
+        <td>Depends only on the <strong>Domain Layer</strong> (executes Use Cases and observes state).</td>
+        <td>No direct SQL queries, no direct HTTP client calls, no raw network DTO models.</td>
       </tr>
       <tr>
-        <td><strong>2. Network Resilience</strong></td>
-        <td>Threshold-based Circuit Breaker wrapping all remote HTTP calls with local offline cache fallback.</td>
-        <td>Prevents cascading connection timeouts, stops battery drain, and maintains offline usability in dead zones.</td>
-        <td>Automated unit tests with simulated 500/timeout responses.</td>
+        <td><strong>2. Domain Layer</strong></td>
+        <td>Encapsulates pure enterprise business rules, entity models, and abstract repository contracts.</td>
+        <td><strong>Zero external dependencies.</strong> Pure language code (zero Android, iOS, or React imports).</td>
+        <td>No UI widgets, no database drivers, no third-party SDK dependencies, no platform imports.</td>
       </tr>
       <tr>
-        <td><strong>3. Remote Config &amp; Flags</strong></td>
-        <td>Dynamic feature flags and emergency kill switches decoupled from store release cycles.</td>
-        <td>Enables staged percentage rollouts (5% &rarr; 25% &rarr; 100%) and instant kill-switching without waiting for 72-hour store review.</td>
-        <td>Integration with enterprise feature flag SDK.</td>
+        <td><strong>3. Data Layer</strong></td>
+        <td>Implements domain repository contracts. Coordinates remote APIs with offline local databases.</td>
+        <td>Depends on the <strong>Domain Layer</strong> (implements interfaces) and <strong>Infrastructure</strong>.</td>
+        <td>No direct UI rendering logic, no lifecycle observation, no business rule mutation.</td>
       </tr>
       <tr>
-        <td><strong>4. Hardware-Backed Security</strong></td>
-        <td>OAuth2/OIDC SSO tokens stored in hardware KeyStore (Android) or Keychain (iOS). Zero plain-text credentials.</td>
-        <td>Protects against binary reverse engineering, memory dumping, and stolen device credential exfiltration.</td>
-        <td>NowSecure SAST/DAST automated security scanning.</td>
+        <td><strong>4. Infrastructure / Core</strong></td>
+        <td>Provides foundational cross-cutting capabilities (SSO Auth, Circuit Breaker, Datadog RUM, KeyStore).</td>
+        <td>Standalone shared packages consumed by the Data and Presentation layers.</td>
+        <td>No feature-specific business domain logic. Must remain reusable across repositories.</td>
       </tr>
     </tbody>
   </table>
@@ -124,292 +83,330 @@ All mobile applications delivered across the enterprise must implement the four 
 
 ---
 
-## Unidirectional Data Flow (UDF) & State Architecture
+## Dependency Inversion & Data Flow Diagram
 
-To prevent race conditions, stale views, and inconsistent screen states, all user actions follow a strict **Unidirectional Data Flow (UDF)** loop:
+The **Dependency Rule** dictates that source code dependencies must only point inward toward higher-level business logic. The Domain layer is the core of the system and knows nothing about databases, network protocols, or UI widgets:
 
 ```mermaid
 flowchart TD
-    subgraph Loop["Unidirectional Data Flow (UDF) Cycle"]
-        UI["1. Declarative View\n(Renders current immutable state)"]
-        Action["2. User Intent / Action\n(Button tap, scroll, text input)"]
-        Reducer["3. State Holder / ViewModel\n(Processes intent via Domain Use Case)"]
-        NewState["4. New Immutable State\n(Emitted as fresh state snapshot)"]
+    subgraph Client["1. Presentation Layer"]
+        UI["UI Views\n(SwiftUI / Jetpack Compose / React Native)"]
+        VM["State Holders\n(ViewModels / React Hooks / State Machines)"]
+        UI -->|"User Event"| VM
+    end
 
-        UI -->|"User interacts"| Action
-        Action -->|"Dispatched to"| Reducer
-        Reducer -->|"Calculates & emits"| NewState
-        NewState -->|"Re-renders"| UI
+    subgraph CoreDomain["2. Domain Layer (Pure Business Core)"]
+        UC["Use Cases & Interactors\n(e.g., SubmitOrderUseCase)"]
+        Entities["Pure Business Entities\n(e.g., Order, LineItem, User)"]
+        RepoContract["Repository Interfaces\n(e.g., OrderRepository Contract)"]
+        VM -->|"Executes"| UC
+        UC -->|"Operates On"| Entities
+        UC -->|"Invokes Contract"| RepoContract
+    end
+
+    subgraph DataInfra["3. Data & Infrastructure Layer"]
+        RepoImpl["Repository Implementation\n(e.g., OrderRepositoryImpl)"]
+        LocalSource["Local Offline Cache\n(Room SQLite / CoreData / MMKV)"]
+        RemoteSource["Remote API Client\n(Circuit Breaker + Auth Headers)"]
+        RepoImpl -.->|"Implements"| RepoContract
+        RepoImpl -->|"Read / Write"| LocalSource
+        RepoImpl -->|"HTTP Network"| RemoteSource
     end
 
     classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
     classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
     classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class Loop highlight;
-    class UI,Action,Reducer,NewState nodeBox;
+    class Client,CoreDomain,DataInfra highlight;
+    class UI,VM,UC,Entities,RepoContract,RepoImpl,LocalSource,RemoteSource nodeBox;
 ```
 
-### Implementing UDF State Modeling (TypeScript Example)
+---
 
-Every screen model must be expressed as an immutable, discriminated state union to eliminate undefined or conflicting intermediate UI states:
+## Cross-Platform Clean Architecture Implementation
 
+To understand how Clean Architecture is implemented in practice, observe the following end-to-end implementation of an `OrderSubmission` feature across all three supported platforms:
+
+<Tabs syncKey="mobile-platform">
+<TabItem label="React Native (TypeScript)">
+
+#### Domain Layer: Pure Contract & Use Case
 ```typescript
-// 1. Define explicit, exhaustive UI state states
-export type ScreenState<T> =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'success'; data: T; isStaleFromCache: boolean }
-  | { status: 'error'; message: string; canRetry: boolean };
+// src/domain/entities/Order.ts
+export interface Order {
+  id: string;
+  totalAmount: number;
+  currency: string;
+  items: Array<{ sku: string; quantity: number }>;
+}
 
-// 2. Define user actions (Intents)
-export type OrderAction =
-  | { type: 'FETCH_ORDERS' }
-  | { type: 'REFRESH_ORDERS' }
-  | { type: 'CANCEL_ORDER'; orderId: string };
+// src/domain/repositories/OrderRepository.ts
+export interface OrderRepository {
+  submitOrder(order: Order): Promise<{ confirmationId: string }>;
+}
 
-// 3. State Reducer (Guarantees predictable state transitions)
-export function orderReducer(state: ScreenState<Order[]>, action: OrderAction): ScreenState<Order[]> {
-  switch (action.type) {
-    case 'FETCH_ORDERS':
-      return { status: 'loading' };
-    case 'REFRESH_ORDERS':
-      // Preserve existing data while refreshing in background
-      return state.status === 'success' ? state : { status: 'loading' };
-    default:
-      return state;
+// src/domain/usecases/SubmitOrderUseCase.ts
+export class SubmitOrderUseCase {
+  constructor(private orderRepository: OrderRepository) {}
+
+  async execute(order: Order): Promise<{ confirmationId: string }> {
+    if (order.items.length === 0) {
+      throw new Error('Cannot submit an order with zero items.');
+    }
+    return await this.orderRepository.submitOrder(order);
   }
 }
 ```
 
+#### Data Layer: Repository Implementation with Circuit Breaker
+```typescript
+// src/data/repositories/OrderRepositoryImpl.ts
+import { OrderRepository } from '../../domain/repositories/OrderRepository';
+import { Order } from '../../domain/entities/Order';
+import { CircuitBreaker } from '@enterprise/resilience-sdk';
+
+export class OrderRepositoryImpl implements OrderRepository {
+  private breaker = new CircuitBreaker({ failureThreshold: 3, resetTimeoutMs: 15000 });
+
+  async submitOrder(order: Order): Promise<{ confirmationId: string }> {
+    return await this.breaker.execute(async () => {
+      const response = await fetch('https://api.enterprise.internal/v1/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order),
+      });
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      return await response.json();
+    });
+  }
+}
+```
+
+#### Presentation Layer: Hook & Screen Component
+```typescript
+// src/presentation/hooks/useSubmitOrder.ts
+import { useState } from 'react';
+import { SubmitOrderUseCase } from '../../domain/usecases/SubmitOrderUseCase';
+import { Order } from '../../domain/entities/Order';
+
+export function useSubmitOrder(useCase: SubmitOrderUseCase) {
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmationId, setConfirmationId] = useState<string | null>(null);
+
+  const submit = async (order: Order) => {
+    setSubmitting(true);
+    try {
+      const result = await useCase.execute(order);
+      setConfirmationId(result.confirmationId);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return { submit, submitting, confirmationId };
+}
+```
+</TabItem>
+<TabItem label="Android (Kotlin)">
+
+#### Domain Layer: Entities, Contract & Use Case
+```kotlin
+package com.enterprise.mobile.domain
+
+data class Order(
+    val id: String,
+    val totalAmount: Double,
+    val items: List<OrderItem>
+)
+
+interface OrderRepository {
+    suspend fun submitOrder(order: Order): Result<String>
+}
+
+class SubmitOrderUseCase(
+    private val repository: OrderRepository
+) {
+    suspend operator fun invoke(order: Order): Result<String> {
+        if (order.items.isEmpty()) {
+            return Result.failure(IllegalArgumentException("Order must contain at least one item."))
+        }
+        return repository.submitOrder(order)
+    }
+}
+```
+
+#### Data Layer: Repository Implementation with Local Cache & Remote API
+```kotlin
+package com.enterprise.mobile.data
+
+import com.enterprise.mobile.domain.Order
+import com.enterprise.mobile.domain.OrderRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+class OrderRepositoryImpl(
+    private val apiService: OrderApiService,
+    private val orderDao: OrderDao
+) : OrderRepository {
+
+    override suspend fun submitOrder(order: Order): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.postOrder(order.toDto())
+            // Save confirmation locally for offline persistence
+            orderDao.insertOrder(order.toEntity(response.confirmationId))
+            Result.success(response.confirmationId)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
+```
+
+#### Presentation Layer: ViewModel & Compose Screen
+```kotlin
+package com.enterprise.mobile.presentation
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.enterprise.mobile.domain.Order
+import com.enterprise.mobile.domain.SubmitOrderUseCase
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+sealed interface OrderState {
+    object Idle : OrderState
+    object Loading : OrderState
+    data class Success(val confirmationId: String) : OrderState
+    data class Error(val message: String) : OrderState
+}
+
+class OrderViewModel(
+    private val submitOrderUseCase: SubmitOrderUseCase
+) : ViewModel() {
+
+    private val _state = MutableStateFlow<OrderState>(OrderState.Idle)
+    val state: StateFlow<OrderState> = _state
+
+    fun submit(order: Order) {
+        viewModelScope.launch {
+            _state.value = OrderState.Loading
+            submitOrderUseCase(order).fold(
+                onSuccess = { _state.value = OrderState.Success(it) },
+                onFailure = { _state.value = OrderState.Error(it.localizedMessage ?: "Submission failed") }
+            )
+        }
+    }
+}
+```
+</TabItem>
+<TabItem label="iOS (Swift)">
+
+#### Domain Layer: Entities, Protocol & Interactor
+```swift
+import Foundation
+
+struct Order: Identifiable {
+    let id: String
+    let totalAmount: Decimal
+    let items: [OrderItem]
+}
+
+protocol OrderRepositoryProtocol {
+    func submitOrder(_ order: Order) async throws -> String
+}
+
+final class SubmitOrderUseCase {
+    private let repository: OrderRepositoryProtocol
+
+    init(repository: OrderRepositoryProtocol) {
+        self.repository = repository
+    }
+
+    func execute(order: Order) async throws -> String {
+        guard !order.items.isEmpty else {
+            throw DomainError.emptyOrder
+        }
+        return try await repository.submitOrder(order)
+    }
+}
+```
+
+#### Data Layer: Repository Implementation
+```swift
+import Foundation
+
+final class OrderRepositoryImpl: OrderRepositoryProtocol {
+    private let networkClient: NetworkClientProtocol
+    private let database: LocalDatabaseProtocol
+
+    init(networkClient: NetworkClientProtocol, database: LocalDatabaseProtocol) {
+        self.networkClient = networkClient
+        self.database = database
+    }
+
+    func submitOrder(_ order: Order) async throws -> String {
+        let dto = OrderRequestDTO(from: order)
+        let response: OrderResponseDTO = try await networkClient.post("/v1/orders", body: dto)
+        // Cache to local SQLite/CoreData storage
+        try await database.persistOrderConfirmation(response.confirmationId)
+        return response.confirmationId
+    }
+}
+```
+
+#### Presentation Layer: SwiftUI View & `@MainActor` ViewModel
+```swift
+import SwiftUI
+
+@MainActor
+final class OrderViewModel: ObservableObject {
+    @Published var state: ViewState<String> = .idle
+    private let useCase: SubmitOrderUseCase
+
+    init(useCase: SubmitOrderUseCase) {
+        self.useCase = useCase
+    }
+
+    func submit(order: Order) async {
+        state = .loading
+        do {
+            let confirmationId = try await useCase.execute(order: order)
+            self.state = .success(confirmationId)
+        } catch {
+            self.state = .error(error.localizedDescription)
+        }
+    }
+}
+```
+</TabItem>
+</Tabs>
+
 ---
 
-## Architecture Navigation Directory
-
-Explore the dedicated architecture specifications to implement specific technical standards:
-
-<div class="portal-cards-grid">
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-green">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="7" height="7"/>
-            <rect x="14" y="3" width="7" height="7"/>
-            <rect x="14" y="14" width="7" height="7"/>
-            <rect x="3" y="14" width="7" height="7"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Clean Architecture Specification</h3>
-        <span class="portal-tag-pill">LAYER STANDARDS</span>
-      </div>
-      <p class="portal-card-desc">
-        Deep dive into the 4-layer structure with complete code implementations across React Native, Kotlin Jetpack Compose, and Swift SwiftUI.
-      </p>
-      <div class="portal-card-pills">
-        <span>Presentation</span>
-        <span>Domain</span>
-        <span>Data</span>
-        <span>Dependency Inversion</span>
-      </div>
-    </div>
-    <div class="portal-card-action">
-      <a href="/mobile/architecture/clean-architecture/" class="portal-card-link">View Clean Architecture &rarr;</a>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-coral">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Circuit Breaker &amp; Resilience</h3>
-        <span class="portal-tag-pill">NETWORK RESILIENCE</span>
-      </div>
-      <p class="portal-card-desc">
-        Threshold configuration, state machines (Closed, Open, Half-Open), and offline storage fallbacks to prevent cascading socket failures.
-      </p>
-      <div class="portal-card-pills">
-        <span>Circuit Breaker</span>
-        <span>Offline Cache</span>
-        <span>Retry Policies</span>
-      </div>
-    </div>
-    <div class="portal-card-action">
-      <a href="/mobile/architecture/circuit-breaker/" class="portal-card-link">View Resilience Guide &rarr;</a>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-purple">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
-            <line x1="4" y1="22" x2="4" y2="15"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Feature Flags &amp; Remote Config</h3>
-        <span class="portal-tag-pill">RELEASE GOVERNANCE</span>
-      </div>
-      <p class="portal-card-desc">
-        Runtime feature toggling, dynamic rollouts by user segment, and emergency production kill switches decoupled from app store review queues.
-      </p>
-      <div class="portal-card-pills">
-        <span>Remote Flags</span>
-        <span>Kill Switches</span>
-        <span>Phased Rollouts</span>
-      </div>
-    </div>
-    <div class="portal-card-action">
-      <a href="/mobile/architecture/feature-flags/" class="portal-card-link">View Feature Flags Guide &rarr;</a>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-amber">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <ellipse cx="12" cy="5" rx="9" ry="3"/>
-            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Offline Synchronization &amp; Storage</h3>
-        <span class="portal-tag-pill">OFFLINE FIRST</span>
-      </div>
-      <p class="portal-card-desc">
-        Local database standards (Room SQLite, CoreData, MMKV), schema migration policies, and two-way sync conflict resolution protocols.
-      </p>
-      <div class="portal-card-pills">
-        <span>SQLite / Room</span>
-        <span>MMKV Storage</span>
-        <span>Conflict Resolution</span>
-      </div>
-    </div>
-    <div class="portal-card-action">
-      <a href="/mobile/architecture/offline-sync/" class="portal-card-link">View Storage Guide &rarr;</a>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-blue">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="6" y1="3" x2="6" y2="15"/>
-            <circle cx="18" cy="6" r="3"/>
-            <circle cx="6" cy="18" r="3"/>
-            <path d="M18 9a9 9 0 0 1-9 9"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Branching &amp; PR Conventions</h3>
-        <span class="portal-tag-pill">GIT STANDARDS</span>
-      </div>
-      <p class="portal-card-desc">
-        Standardized GitFlow branch models, Conventional Commits formatting rules, and automated Danger PR verification checks.
-      </p>
-      <div class="portal-card-pills">
-        <span>Trunk Based</span>
-        <span>Conventional Commits</span>
-        <span>Danger Bot</span>
-      </div>
-    </div>
-    <div class="portal-card-action">
-      <a href="/mobile/architecture/branching-prs/" class="portal-card-link">View Branching Guide &rarr;</a>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-teal">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Repository Health &amp; Inactivity Policy</h3>
-        <span class="portal-tag-pill">GOVERNANCE</span>
-      </div>
-      <p class="portal-card-desc">
-        Automated policies governing repository deprecation, mandatory dependency vulnerability patching, and security audits.
-      </p>
-      <div class="portal-card-pills">
-        <span>Repo Health</span>
-        <span>Vulnerability Scans</span>
-        <span>Deprecation</span>
-      </div>
-    </div>
-    <div class="portal-card-action">
-      <a href="/mobile/architecture/repository-health/" class="portal-card-link">View Health Policy &rarr;</a>
-    </div>
-  </div>
-
-</div>
-
----
-
-## Architectural Non-Negotiables ("The Golden Rules")
+## Architectural Anti-Patterns & Prohibitions
 
 <div class="portal-alert-box">
-  <div class="portal-alert-title">MANDATORY ARCHITECTURAL ENFORCEMENT</div>
-  <p>The following five constraints are programmatically enforced via CI and trigger automated PR rejection if violated:</p>
+  <div class="portal-alert-title">ARCHITECTURAL BOUNDARY PROHIBITIONS</div>
   <ul>
-    <li><strong>1. No Direct Network or Database Access from UI:</strong> Views and ViewModels must never instantiate HTTP clients or execute direct SQL queries. All persistence and remote queries must be dispatched through Domain Use Cases.</li>
-    <li><strong>2. Zero Framework Imports in the Domain Layer:</strong> The Domain layer must remain pure business logic. It must never import <code>android.*</code>, <code>UIKit</code>, <code>SwiftUI</code>, or <code>react-native</code>.</li>
-    <li><strong>3. Mandatory Circuit Breaker on Remote Calls:</strong> All external API endpoints called from mobile clients must be encapsulated inside the enterprise Circuit Breaker.</li>
-    <li><strong>4. Hardware-Backed Credential Storage:</strong> Auth tokens and cryptographic keys must be stored in Android KeyStore or iOS Keychain with biometric gating where required. Never store tokens in plain local storage or commit them in code.</li>
-    <li><strong>5. Minimum 80% Unit Test Coverage on Domain Logic:</strong> All Use Cases, validation logic, and business rules must have automated unit test coverage with mock repositories.</li>
+    <li><strong>1. UI Calling Data Sources Directly:</strong> Never call SQLite queries, network endpoints, or KeyStore methods directly from a SwiftUI View, Jetpack Compose Composable, or React component. All access must be brokered through a Domain Use Case.</li>
+    <li><strong>2. Platform Frameworks in Domain:</strong> The Domain layer must never import <code>android.*</code>, <code>UIKit</code>, <code>SwiftUI</code>, or <code>react-native</code>. Pure business logic must remain 100% portable and unit testable in pure JVM or native runtimes.</li>
+    <li><strong>3. Leaking Network DTOs to the UI:</strong> Remote JSON DTOs must be transformed by Data Mappers into immutable Domain Entities before leaving the Data layer. This insulates UI screens from backend API breaking changes.</li>
+    <li><strong>4. God ViewModels / Fat Controllers:</strong> ViewModels must only coordinate UI state and invoke Use Cases. Business validation, multi-source orchestration, and caching logic belong strictly in Use Cases and Repositories.</li>
   </ul>
 </div>
-
----
-
-## Architecture Decision Records (ADR) Process
-
-When an engineering team proposes a substantial architectural change—such as introducing a new third-party dependency, modifying database engines, or altering authentication handshakes—they must submit an **Architecture Decision Record (ADR)** to the **Architecture Review Board (ARB)**.
-
-### Standard Enterprise ADR Template (`docs/adr/ADR-0001-template.md`)
-
-```markdown
-# ADR-0001: Adoption of MMKV for High-Speed Key-Value Storage
-
-## Status
-Accepted (Date: 2026-10-14)
-
-## Context
-Our mobile application requires synchronous access to user preferences and encryption salts during app cold start. The existing async storage engine introduces 180ms of cold-start latency on Android devices.
-
-## Decision
-We will adopt Tencent MMKV as the enterprise standard key-value storage engine for fast, synchronous, encrypted access on both iOS and Android.
-
-## Consequences
-### Positive
-* Cold-start storage read time reduced from 180ms to < 8ms.
-* Built-in multi-process synchronization support.
-* Transparent AES-128 encryption with keys managed in iOS Keychain and Android KeyStore.
-
-### Trade-offs / Mitigations
-* Introduces a native C++ library dependency (adds ~250KB to binary size).
-* Mitigation: Pre-compiled binary verified by NowSecure and approved by Security.
-```
 
 ---
 
 ## Architecture Review Board (ARB) Checklist
 
 <div class="portal-checklist-box">
-  <div class="portal-checklist-title">ARCHITECTURE CONFORMANCE CHECKLIST</div>
-  <p>Before advancing a new mobile initiative into production sprint planning, ensure your project satisfies these architectural baselines:</p>
+  <div class="portal-checklist-title">PR ARCHITECTURE CONFORMANCE CHECKLIST</div>
+  <p>Verify that your implementation complies with enterprise standards before opening a pull request:</p>
   <ul>
-    <li><strong>Layer Separation Verified:</strong> Repository structure mirrors the Presentation, Domain, Data, and Core package layout.</li>
-    <li><strong>Unidirectional Data Flow:</strong> ViewModels emit single immutable state streams; UI dispatches explicit user intents.</li>
-    <li><strong>Circuit Breaker Configured:</strong> External HTTP endpoints are configured with failure thresholds and fallback local caches.</li>
-    <li><strong>ADRs Documented:</strong> Any deviations from tier-1 standards have an approved ADR committed in the <code>docs/adr/</code> directory.</li>
-    <li><strong>Zero Security Leaks:</strong> Credentials and API tokens are resolved at runtime via Enterprise SSO and stored in secure hardware enclaves.</li>
+    <li><strong>Clean Layer Separation:</strong> Presentation, Domain, and Data are organized into separate packages or Gradle/SPM/npm modules.</li>
+    <li><strong>Dependency Direction:</strong> All dependencies point inward toward the Domain layer; Domain has zero dependencies on Data or Presentation.</li>
+    <li><strong>Domain Unit Test Coverage:</strong> All Use Cases and business validation rules maintain at least 90% unit test coverage using mock repositories.</li>
+    <li><strong>Circuit Breaker Protection:</strong> All external HTTP requests in repository implementations are wrapped in the enterprise Circuit Breaker.</li>
+    <li><strong>Immutability:</strong> State models in ViewModels are exposed as read-only streams (<code>StateFlow</code> on Android, <code>@Published private(set)</code> on iOS, immutable React state).</li>
   </ul>
 </div>
