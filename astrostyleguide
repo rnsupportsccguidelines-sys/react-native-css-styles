@@ -43,7 +43,7 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 Traditional mobile architectures follow a **Network-First** approach: when a user opens a screen, a loading spinner displays while waiting for an HTTP response. If the network is slow or disconnected, the user stares at a spinner or an error screen.
 
 Enterprise mobile applications must strictly adhere to the **Zero-Spinner Philosophy**:
-1. **Instant Render from Local Storage:** All screens render immediately (<16ms) using cached data from the local database on app cold-start.
+1. **Instant Render from Local Storage:** All screens render immediately (&lt;16ms) using cached data from the local database on app cold-start.
 2. **Background Reconciliation:** Network requests run asynchronously in the background. When fresh data arrives, reactive data streams (`StateFlow`, `ObservableObject`, or reactive hooks) automatically update the UI without layout jitter.
 3. **Optimistic UI Updates:** User mutations (e.g., submitting an inspection, updating an inventory count) apply to the local UI immediately and are written to an offline **Outbox Queue**.
 
