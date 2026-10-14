@@ -7,38 +7,61 @@ sidebar:
 ---
 
 <style>{`
+  /* --------------------------------------------------------------------------
+     High-Contrast Dual-Theme Tokens (Enterprise Dark Green & Crisp Light)
+     -------------------------------------------------------------------------- */
   :root[data-theme='dark'] {
     --sl-color-bg: #0d1912;
     --sl-color-bg-inline-code: #13251c;
     --sl-color-border: #1f3b2c;
     --sl-color-text: #e2e8f0;
     --sl-color-text-accent: #22c55e;
+    
     --portal-gold: #f3d17b;
     --portal-card-bg: #13251c;
     --portal-card-border: #1f3b2c;
+    --portal-text-body: #cbd5e1;
+    --portal-text-muted: #9ca3af;
+    --portal-pill-bg: #1a2e23;
+    --portal-pill-border: rgba(255, 255, 255, 0.1);
+    --portal-pill-text: #e2e8f0;
     --portal-accent: #22c55e;
+    --portal-accent-hover: #4ade80;
+    --portal-diagram-bg: #09130e;
   }
-  :root[data-theme='light'] {
+
+  :root, :root[data-theme='light'] {
     --sl-color-bg: #f8faf8;
-    --sl-color-bg-inline-code: #e8efe9;
+    --sl-color-bg-inline-code: #edf4ee;
     --sl-color-border: #d4e2d8;
-    --sl-color-text: #1a251e;
+    --sl-color-text: #111827;
     --sl-color-text-accent: #007a3d;
-    --portal-gold: #1b4d2e;
+    
+    --portal-gold: #143823;
     --portal-card-bg: #ffffff;
-    --portal-card-border: #dbe7df;
+    --portal-card-border: #d8e5dc;
+    --portal-text-body: #1f2937;
+    --portal-text-muted: #4b5563;
+    --portal-pill-bg: #f0f7f2;
+    --portal-pill-border: #cfe0d4;
+    --portal-pill-text: #133824;
     --portal-accent: #007a3d;
+    --portal-accent-hover: #005a2b;
+    --portal-diagram-bg: #ffffff;
   }
 
+  /* Page title matching theme */
   :root[data-theme='dark'] #_top, :root[data-theme='dark'] h1 { color: #f3d17b !important; }
-  :root[data-theme='light'] #_top, :root[data-theme='light'] h1 { color: #1b4d2e !important; }
+  :root[data-theme='light'] #_top, :root[data-theme='light'] h1 { color: #143823 !important; }
 
+  /* Hero Orientation Card */
   .portal-hero-card {
     background: var(--portal-card-bg);
     border: 1px solid var(--portal-card-border);
     border-radius: 12px;
     padding: 24px 28px;
-    margin: 20px 0 36px 0;
+    margin: 20px 0 32px 0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
   }
   .portal-hero-topbar {
     display: flex;
@@ -61,34 +84,39 @@ sidebar:
   .portal-hub-tag {
     font-size: 0.78rem;
     font-weight: 700;
-    color: var(--portal-gold);
+    color: var(--portal-accent);
     letter-spacing: 0.05em;
   }
   .portal-hero-title {
-    font-size: 1.35rem;
-    font-weight: 700;
+    font-size: 1.4rem;
+    font-weight: 800;
     color: var(--portal-gold);
     margin: 0 0 10px 0;
+    line-height: 1.3;
   }
   .portal-hero-desc {
-    font-size: 0.92rem;
-    color: #9ca3af;
+    font-size: 0.95rem;
+    color: var(--portal-text-body);
     line-height: 1.6;
     margin: 0 0 20px 0;
   }
 
+  /* Capabilities Bar */
   .portal-caps-bar {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+    gap: 14px;
     padding-top: 18px;
     border-top: 1px solid var(--portal-card-border);
   }
   @media (max-width: 900px) {
     .portal-caps-bar { grid-template-columns: repeat(2, 1fr); }
   }
+  @media (max-width: 520px) {
+    .portal-caps-bar { grid-template-columns: 1fr; }
+  }
   .portal-cap-item {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--portal-pill-bg);
     border: 1px solid var(--portal-card-border);
     border-radius: 8px;
     padding: 12px 14px;
@@ -96,15 +124,56 @@ sidebar:
   .portal-cap-title {
     font-size: 0.88rem;
     font-weight: 700;
-    color: var(--portal-accent);
+    color: var(--portal-gold);
     margin-bottom: 4px;
   }
   .portal-cap-desc {
-    font-size: 0.76rem;
-    color: #8b949e;
-    line-height: 1.4;
+    font-size: 0.8rem;
+    color: var(--portal-text-body);
+    line-height: 1.45;
   }
 
+  /* Section Title */
+  .portal-section-heading {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: var(--portal-gold);
+    margin: 36px 0 6px 0;
+  }
+  .portal-section-sub {
+    font-size: 0.92rem;
+    color: var(--portal-text-muted);
+    margin: 0 0 20px 0;
+  }
+
+  /* Center-align Mermaid Flowchart Container & SVG */
+  .starlight-mermaid,
+  pre.mermaid,
+  .mermaid,
+  div.mermaid {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    width: 100% !important;
+    margin: 24px auto 36px auto !important;
+    overflow-x: auto !important;
+    background: transparent !important;
+  }
+
+  .starlight-mermaid svg,
+  pre.mermaid svg,
+  .mermaid svg,
+  svg[id^="mermaid"] {
+    display: block !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Routes Grid */
   .portal-routes-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -117,6 +186,7 @@ sidebar:
   @media (max-width: 680px) {
     .portal-routes-grid { grid-template-columns: 1fr; }
   }
+
   .portal-route-card {
     background: var(--portal-card-bg);
     border: 1px solid var(--portal-card-border);
@@ -125,16 +195,38 @@ sidebar:
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   }
   .portal-route-card:hover {
+    transform: translateY(-2px);
     border-color: var(--portal-accent);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
   }
+
   .portal-route-topbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 14px;
   }
+
+  /* Top-Left Solid Color Square Badge */
+  .portal-route-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+  }
+  .badge-green  { background: #22c55e; }
+  .badge-purple { background: #8b5cf6; }
+  .badge-coral  { background: #f87171; }
+  .badge-amber  { background: #f59e0b; }
+  .badge-teal   { background: #06b6d4; }
+
   .portal-step-pill {
     font-size: 0.72rem;
     font-weight: 700;
@@ -145,19 +237,22 @@ sidebar:
     border-radius: 4px;
     letter-spacing: 0.05em;
   }
+
   .portal-route-title {
     font-size: 1.15rem;
     font-weight: 700;
     color: var(--portal-gold);
     margin: 0 0 8px 0;
+    line-height: 1.35;
   }
   .portal-route-desc {
-    font-size: 0.85rem;
-    color: #9ca3af;
+    font-size: 0.88rem;
+    color: var(--portal-text-body);
     line-height: 1.5;
     margin: 0 0 16px 0;
-    min-height: 44px;
+    min-height: 48px;
   }
+
   .portal-route-topics {
     display: flex;
     flex-wrap: wrap;
@@ -165,32 +260,78 @@ sidebar:
     margin-bottom: 18px;
   }
   .portal-route-topics span {
-    font-size: 0.72rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--portal-card-border);
-    padding: 3px 8px;
-    border-radius: 4px;
-    color: #8b949e;
+    font-size: 0.74rem;
+    background: var(--portal-pill-bg);
+    border: 1px solid var(--portal-pill-border);
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--portal-pill-text);
+    font-weight: 600;
   }
+
   .portal-route-action {
     padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid var(--portal-card-border);
     display: flex;
     justify-content: flex-end;
   }
   .portal-action-link {
     color: var(--portal-accent) !important;
-    font-size: 0.82rem;
-    font-weight: 600;
+    font-size: 0.84rem;
+    font-weight: 700;
     text-decoration: none !important;
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    transition: transform 0.15s ease, color 0.15s ease;
+  }
+  .portal-action-link:hover {
+    color: var(--portal-accent-hover) !important;
+    transform: translateX(2px);
   }
 
+  /* Table */
+  .portal-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--portal-card-border);
+    border-radius: 8px;
+    margin: 16px 0 36px 0;
+  }
+  .portal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+    text-align: left;
+  }
+  .portal-table th {
+    background: var(--portal-pill-bg);
+    color: var(--portal-gold);
+    font-weight: 700;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--portal-card-border);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.74rem;
+  }
+  .portal-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--portal-card-border);
+    color: var(--portal-text-body);
+  }
+  .portal-table tr:last-child td { border-bottom: none; }
+  .portal-table code {
+    background: var(--portal-pill-bg);
+    border: 1px solid var(--portal-card-border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--portal-accent);
+    font-size: 0.78rem;
+  }
+
+  /* Guardrails Alert Box */
   .portal-alert-box {
-    background: rgba(34, 197, 94, 0.05);
-    border: 1px solid rgba(34, 197, 94, 0.25);
+    background: var(--portal-pill-bg);
+    border: 1px solid var(--portal-card-border);
     border-left: 4px solid var(--portal-accent);
     border-radius: 8px;
     padding: 20px;
@@ -203,10 +344,20 @@ sidebar:
     letter-spacing: 0.04em;
     margin-bottom: 8px;
   }
+  .portal-alert-box p {
+    font-size: 0.86rem;
+    color: var(--portal-text-body);
+    margin: 0 0 10px 0;
+  }
+  .portal-alert-box ul {
+    margin: 0;
+    padding-left: 20px;
+  }
   .portal-alert-box li {
-    font-size: 0.82rem;
-    color: #e2e8f0;
+    font-size: 0.84rem;
+    color: var(--portal-text-body);
     margin-bottom: 6px;
+    line-height: 1.5;
   }
   .portal-alert-box li strong { color: var(--portal-accent); }
 `}</style>
@@ -228,11 +379,11 @@ sidebar:
     </div>
     <div class="portal-cap-item">
       <div class="portal-cap-title">Shared Core SDKs</div>
-      <div class="portal-cap-desc">Pre-built auth, networking, analytics &amp; UI tokens</div>
+      <div class="portal-cap-desc">Pre-built auth, networking, analytics and UI tokens</div>
     </div>
     <div class="portal-cap-item">
       <div class="portal-cap-title">Automated CI/CD</div>
-      <div class="portal-cap-desc">Bitrise build pipelines &amp; automated Danger PR inspection</div>
+      <div class="portal-cap-desc">Bitrise build pipelines and automated Danger PR inspection</div>
     </div>
     <div class="portal-cap-item">
       <div class="portal-cap-title">Clean Architecture</div>
@@ -241,164 +392,19 @@ sidebar:
   </div>
 </div>
 
-## The Onboarding Journey Map
+<h2 class="portal-section-heading">The Onboarding Journey Map</h2>
+<p class="portal-section-sub">Follow this sequential roadmap to navigate through the foundational guides in this section:</p>
 
 ```mermaid
 flowchart TD
-    Start["New Engineer Joins Mobile Platform"] --> Step1["Step 1: Understand Ecosystem &rarr; Platform Overview"]
+    Start["New Engineer Joins Mobile Platform"] --> Step1["Step 1: Understand Ecosystem -> Platform Overview"]
     Step1 --> PersonaCheck{"Determine Developer Persona"}
     
-    PersonaCheck -- "Web / Backend Transitioning" --> NonMobile["Step 2A: Non-Mobile Engineer Track\n(Mental Models &amp; Mobile Fundamentals)"]
-    PersonaCheck -- "Experienced Mobile Engineer" --> MobileTrack["Step 2B: New Mobile Engineer Track\n(Monorepos, Conventions &amp; SDKs)"]
+    PersonaCheck -- "Web / Backend Transitioning" --> NonMobile["Step 2A: Non-Mobile Engineer Track\n(Mental Models & Core Fundamentals)"]
+    PersonaCheck -- "Experienced Mobile Engineer" --> MobileTrack["Step 2B: New Mobile Engineer Track\n(Monorepos, Conventions & SDKs)"]
     
-    NonMobile --> Step3["Step 3: Framework Evaluation &rarr; Tech Stack Selection"]
+    NonMobile --> Step3["Step 3: Framework Evaluation -> Tech Stack Selection"]
     MobileTrack --> Step3
     
-    Step3 --> Step4["Step 4: Local Workstation &rarr; Machine Setup"]
-    Step4 --> Step5["Step 5: Code, Test &amp; Submit First Pull Request"]
-
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef terminal fill:#102619,stroke:#22c55e,stroke-width:2px,color:#22c55e;
-    class PersonaCheck highlight;
-    class Step5 terminal;
-```
-
----
-
-## Onboarding Navigation Directory
-
-Follow each dedicated guide in sequence. In-depth configuration and platform-specific instructions are maintained exclusively within each respective guide to prevent duplication:
-
-<div class="portal-routes-grid">
-
-  <!-- Route 1 -->
-  <div class="portal-route-card">
-    <div>
-      <div class="portal-route-topbar">
-        <span class="portal-step-pill">STEP 01</span>
-      </div>
-      <h3 class="portal-route-title">Platform Overview</h3>
-      <p class="portal-route-desc">
-        Understand the mobile engineering ecosystem: shared architectural layers, core foundational libraries, telemetry pipelines, and repository topology.
-      </p>
-      <div class="portal-route-topics">
-        <span>Architecture Layers</span>
-        <span>Shared SDKs</span>
-        <span>CI/CD Overview</span>
-      </div>
-    </div>
-    <div class="portal-route-action">
-      <a href="/mobile/onboarding/platform-overview/" class="portal-action-link">Open Platform Overview &rarr;</a>
-    </div>
-  </div>
-
-  <!-- Route 2 -->
-  <div class="portal-route-card">
-    <div>
-      <div class="portal-route-topbar">
-        <span class="portal-step-pill">STEP 02A</span>
-      </div>
-      <h3 class="portal-route-title">Non-Mobile Engineer Track</h3>
-      <p class="portal-route-desc">
-        Designed specifically for web, frontend, and backend developers. Explains native view hierarchies, main thread constraints, and app lifecycles.
-      </p>
-      <div class="portal-route-topics">
-        <span>DOM vs Native Tree</span>
-        <span>Threading &amp; Locks</span>
-        <span>Memory &amp; Lifecycle</span>
-      </div>
-    </div>
-    <div class="portal-route-action">
-      <a href="/mobile/onboarding/non-mobile-dev-guide/" class="portal-action-link">Open Non-Mobile Track &rarr;</a>
-    </div>
-  </div>
-
-  <!-- Route 3 -->
-  <div class="portal-route-card">
-    <div>
-      <div class="portal-route-topbar">
-        <span class="portal-step-pill">STEP 02B</span>
-      </div>
-      <h3 class="portal-route-title">New Mobile Engineer Track</h3>
-      <p class="portal-route-desc">
-        Accelerated path for experienced mobile developers. Jump directly into our monorepo structures, internal package registries, and PR conventions.
-      </p>
-      <div class="portal-route-topics">
-        <span>Monorepo Structure</span>
-        <span>Private Registries</span>
-        <span>Review Standards</span>
-      </div>
-    </div>
-    <div class="portal-route-action">
-      <a href="/mobile/onboarding/new-mobile-engineer-track/" class="portal-action-link">Open Mobile Track &rarr;</a>
-    </div>
-  </div>
-
-  <!-- Route 4 -->
-  <div class="portal-route-card">
-    <div>
-      <div class="portal-route-topbar">
-        <span class="portal-step-pill">STEP 03</span>
-      </div>
-      <h3 class="portal-route-title">Tech Stack Selection</h3>
-      <p class="portal-route-desc">
-        Evaluate technical trade-offs between Jetpack Compose, SwiftUI, and React Native New Architecture using the platform decision matrix.
-      </p>
-      <div class="portal-route-topics">
-        <span>Native vs Hybrid</span>
-        <span>Decision Matrix</span>
-        <span>Hardware Features</span>
-      </div>
-    </div>
-    <div class="portal-route-action">
-      <a href="/mobile/onboarding/tech-stack-matrix/" class="portal-action-link">Open Tech Selection &rarr;</a>
-    </div>
-  </div>
-
-  <!-- Route 5 -->
-  <div class="portal-route-card">
-    <div>
-      <div class="portal-route-topbar">
-        <span class="portal-step-pill">STEP 04</span>
-      </div>
-      <h3 class="portal-route-title">Machine Setup &amp; Workstation</h3>
-      <p class="portal-route-desc">
-        Automated scripts, Xcode and Android Studio versions, JDK 17 setup, simulator configurations, and terminal diagnostic CLI validation.
-      </p>
-      <div class="portal-route-topics">
-        <span>macOS Toolchains</span>
-        <span>Doctor CLI Check</span>
-        <span>Simulators &amp; Devices</span>
-      </div>
-    </div>
-    <div class="portal-route-action">
-      <a href="/mobile/onboarding/machine-setup/" class="portal-action-link">Open Machine Setup &rarr;</a>
-    </div>
-  </div>
-
-</div>
-
----
-
-## Initial Access Prerequisites
-
-Submit these baseline entitlement requests via the corporate self-service portal so credentials provision in the background while you review the guides:
-
-| Platform System | Entitlement Group | Required Purpose | Validation Command |
-| :--- | :--- | :--- | :--- |
-| **Enterprise GitHub** | `org-mobile-engineering` | Clone core repositories and templates | `ssh -T git@git.enterprise.internal` |
-| **Artifact Registry** | `pkg-mobile-artifacts-read` | Pull shared Maven, CocoaPods &amp; npm packages | `curl -I https://registry.enterprise.internal/health` |
-| **Bitrise CI / CD** | `bitrise-mobile-engineers` | Trigger builds and inspect PR status | Bitrise dashboard console login |
-| **Figma Design System** | `design-mobile-tokens` | Access unified UI components and design specs | Figma workspace project access |
-
-<div class="portal-alert-box">
-  <div class="portal-alert-title">FOUNDATIONAL PLATFORM GUARDRAILS</div>
-  <p>Keep these non-negotiable principles in mind as you progress through each track:</p>
-  <ul>
-    <li><strong>Strict Layered Separation:</strong> UI components must only observe ViewModel state; direct repository or network calls from view layers are strictly prohibited.</li>
-    <li><strong>Zero Plaintext Credentials:</strong> API secrets, auth tokens, and certificates must always reside in secure storage (KeyStore / Keychain), never in source control.</li>
-    <li><strong>Offline-First Resilience:</strong> All features touching network endpoints must implement caching and Circuit Breaker resilience.</li>
-    <li><strong>Automated Gate Compliance:</strong> Every pull request must pass Danger PR Bot static analysis and unit test suites prior to merge.</li>
-  </ul>
-</div>
+    Step3 --> Step4["Step 4: Local Workstation -> Machine Setup"]
+    Step4 --> Step5["Step 5: Code, Test & Submit First Pull Request"]
