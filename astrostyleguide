@@ -1,5 +1,5 @@
 /* ==========================================================================
-   DIAGRAM WRAPPER, EXPAND BUTTON & FULLSCREEN OVERLAY
+   1. DIAGRAM FULLSCREEN EXPAND & TOGGLE (PURE CSS)
    ========================================================================== */
 .portal-diagram-wrap {
   position: relative !important;
@@ -12,7 +12,15 @@
   box-sizing: border-box !important;
   display: block !important;
 }
-
+/* Hidden checkbox toggle */
+.portal-diagram-toggle {
+  position: absolute !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+}
 .portal-diagram-header {
   display: flex !important;
   align-items: center !important;
@@ -23,7 +31,6 @@
   box-sizing: border-box !important;
   width: 100% !important;
 }
-
 .portal-diagram-badge {
   font-size: 0.72rem !important;
   font-weight: 800 !important;
@@ -34,7 +41,7 @@
   align-items: center !important;
   gap: 6px !important;
 }
-
+/* Expand Button */
 .portal-expand-btn {
   background: rgba(34, 197, 94, 0.15) !important;
   border: 1.5px solid var(--portal-accent, #22c55e) !important;
@@ -50,15 +57,14 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
   transition: all 0.2s ease !important;
   user-select: none !important;
+  text-decoration: none !important;
 }
-
 .portal-expand-btn:hover {
   background: var(--portal-accent, #22c55e) !important;
   color: #09130e !important;
   box-shadow: 0 4px 14px rgba(34, 197, 94, 0.45) !important;
   transform: translateY(-1px) !important;
 }
-
 .portal-expand-btn svg {
   width: 14px !important;
   height: 14px !important;
@@ -66,10 +72,20 @@
   stroke-width: 2.2 !important;
   flex-shrink: 0 !important;
 }
-
+/* Toggle visibility: default state */
+.portal-diagram-wrap .portal-icon-close,
+.portal-diagram-wrap .portal-text-close {
+  display: none !important;
+}
+.portal-diagram-wrap .portal-icon-expand,
+.portal-diagram-wrap .portal-text-expand {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
 .portal-diagram-viewport {
   overflow: auto !important;
-  padding: 24px 20px 24px 20px !important;
+  padding: 24px 20px !important;
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
@@ -77,14 +93,8 @@
   background: transparent !important;
   box-sizing: border-box !important;
 }
-
-.portal-diagram-viewport svg {
-  transform-origin: center center !important;
-  transition: transform 0.15s ease-out !important;
-}
-
-/* Fullscreen Overlay Mode */
-.portal-diagram-wrap.is-fullscreen {
+/* Fullscreen mode when checkbox is checked */
+.portal-diagram-wrap:has(.portal-diagram-toggle:checked) {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
@@ -103,14 +113,13 @@
   display: flex !important;
   flex-direction: column !important;
 }
-
-.portal-diagram-wrap.is-fullscreen .portal-diagram-header {
+.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-diagram-header {
   background: #060d09 !important;
   padding: 14px 24px !important;
   border-bottom: 1px solid var(--portal-card-border, #1f3b2c) !important;
 }
-
-.portal-diagram-wrap.is-fullscreen .portal-expand-btn {
+/* Red Close Fullscreen Button in fullscreen */
+.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-expand-btn {
   background: rgba(239, 68, 68, 0.25) !important;
   border: 1.5px solid #ef4444 !important;
   color: #fca5a5 !important;
@@ -120,85 +129,36 @@
   border-radius: 8px !important;
   box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35) !important;
 }
-
-.portal-diagram-wrap.is-fullscreen .portal-expand-btn:hover {
+.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-expand-btn:hover {
   background: #ef4444 !important;
   color: #ffffff !important;
   box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5) !important;
 }
-
-.portal-diagram-wrap.is-fullscreen .portal-diagram-viewport {
+.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-icon-expand,
+.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-text-expand {
+  display: none !important;
+}
+.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-icon-close,
+.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-text-close {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-diagram-viewport {
   flex: 1 !important;
   height: calc(100vh - 65px) !important;
   max-height: 100vh !important;
   padding: 40px !important;
 }
-
-.portal-diagram-wrap.is-fullscreen .portal-diagram-viewport svg {
+.portal-diagram-wrap:has(.portal-diagram-toggle:checked) .portal-diagram-viewport svg {
   max-width: 95vw !important;
   max-height: 88vh !important;
   width: auto !important;
   height: auto !important;
 }
-
 /* ==========================================================================
-   CLEAN ARCHITECTURE TABS & MODULAR FILE HEADERS
+   2. FILE HEADER BANNERS (FOR MODULAR MVVM CODE BLOCKS)
    ========================================================================== */
-.portal-tabs-container {
-  margin: 24px 0 36px 0 !important;
-  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
-  border-radius: 12px !important;
-  background: var(--portal-card-bg, #13251c) !important;
-  overflow: hidden !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
-  display: block !important;
-}
-
-.portal-tabs-nav {
-  display: flex !important;
-  background: #09130e !important;
-  border-bottom: 1px solid var(--portal-card-border, #1f3b2c) !important;
-  overflow-x: auto !important;
-  padding: 8px 10px !important;
-  gap: 8px !important;
-  scrollbar-width: thin !important;
-}
-
-.portal-tab-btn {
-  background: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 8px !important;
-  padding: 9px 16px !important;
-  font-size: 0.84rem !important;
-  font-weight: 700 !important;
-  color: var(--portal-text-muted, #9ca3af) !important;
-  cursor: pointer !important;
-  white-space: nowrap !important;
-  transition: all 0.15s ease !important;
-  text-decoration: none !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-}
-
-.portal-tab-btn:hover {
-  color: var(--portal-gold, #f3d17b) !important;
-  background: rgba(243, 209, 123, 0.08) !important;
-  border-color: rgba(243, 209, 123, 0.3) !important;
-}
-
-.portal-tab-btn.active {
-  color: #ffffff !important;
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(19, 37, 28, 0.95)) !important;
-  border-color: var(--portal-accent, #22c55e) !important;
-  box-shadow: 0 2px 10px rgba(34, 197, 94, 0.25) !important;
-}
-
-.portal-tab-panel {
-  padding: 20px 22px 24px 22px !important;
-}
-
-/* File Header Banner Inside Tabs */
 .portal-file-header {
   display: flex !important;
   align-items: center !important;
@@ -215,11 +175,9 @@
   border-bottom: none !important;
   box-sizing: border-box !important;
 }
-
 .portal-file-header:first-child {
   margin-top: 0 !important;
 }
-
 .portal-file-path {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important;
   font-size: 0.82rem !important;
@@ -229,7 +187,6 @@
   align-items: center !important;
   gap: 6px !important;
 }
-
 .portal-file-tag {
   font-size: 0.68rem !important;
   font-weight: 800 !important;
@@ -241,7 +198,6 @@
   color: var(--portal-accent, #22c55e) !important;
   white-space: nowrap !important;
 }
-
 .portal-file-header + .code-block-wrap,
 .portal-file-header + pre,
 .portal-file-header + div pre {
@@ -250,6 +206,52 @@
   border-top-right-radius: 0 !important;
   border-top: 1px solid rgba(31, 59, 44, 0.5) !important;
 }
+/* ==========================================================================
+   3. STARLIGHT TABS POLISH
+   ========================================================================== */
+starlight-tabs {
+  margin: 24px 0 36px 0 !important;
+  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
+  border-radius: 12px !important;
+  background: var(--portal-card-bg, #13251c) !important;
+  overflow: hidden !important;
+  display: block !important;
+}
+starlight-tabs [role="tablist"] {
+  display: flex !important;
+  background: #09130e !important;
+  border-bottom: 1px solid var(--portal-card-border, #1f3b2c) !important;
+  overflow-x: auto !important;
+  padding: 8px 10px !important;
+  gap: 8px !important;
+}
+starlight-tabs [role="tab"] {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  padding: 9px 16px !important;
+  font-size: 0.84rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-text-muted, #9ca3af) !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition: all 0.15s ease !important;
+}
+starlight-tabs [role="tab"]:hover {
+  color: var(--portal-gold, #f3d17b) !important;
+  background: rgba(243, 209, 123, 0.08) !important;
+  border-color: rgba(243, 209, 123, 0.3) !important;
+}
+starlight-tabs [role="tab"][aria-selected="true"] {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(19, 37, 28, 0.95)) !important;
+  border-color: var(--portal-accent, #22c55e) !important;
+  box-shadow: 0 2px 10px rgba(34, 197, 94, 0.25) !important;
+}
+starlight-tabs [role="tabpanel"] {
+  padding: 20px 22px 24px 22px !important;
+}
+
 
 
 
@@ -348,12 +350,15 @@ app/src/main/java/com/enterprise/mobile/
 ### Layered Architecture Flowchart
 
 <div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-flowchart-toggle" class="portal-diagram-toggle" />
   <div class="portal-diagram-header">
     <span class="portal-diagram-badge">CLEAN ARCHITECTURE FLOW</span>
-    <button type="button" class="portal-expand-btn" onclick="diagramFullscreen(this)" title="Toggle Fullscreen">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-      <span>Expand Diagram</span>
-    </button>
+    <label for="diagram-flowchart-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
   </div>
   <div class="portal-diagram-viewport">
 
@@ -416,12 +421,15 @@ graph TD
 ### Unidirectional Data Flow (UDF) Sequence Diagram
 
 <div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-sequence-toggle" class="portal-diagram-toggle" />
   <div class="portal-diagram-header">
     <span class="portal-diagram-badge">UDF SEQUENCE FLOW</span>
-    <button type="button" class="portal-expand-btn" onclick="diagramFullscreen(this)" title="Toggle Fullscreen">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-      <span>Expand Diagram</span>
-    </button>
+    <label for="diagram-sequence-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
   </div>
   <div class="portal-diagram-viewport">
 
@@ -1160,59 +1168,3 @@ Enterprise Android applications must consume internal SDKs from the private ente
   </ul>
 </div>
 
-<script is:inline>
-  function diagramFullscreen(btn) {
-    const wrap = btn.closest('.portal-diagram-wrap');
-    if (!wrap) return;
-    wrap.classList.toggle('is-fullscreen');
-    const isFull = wrap.classList.contains('is-fullscreen');
-    if (isFull) {
-      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> <span>Close Fullscreen</span>';
-    } else {
-      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg> <span>Expand Diagram</span>';
-    }
-    document.body.style.overflow = isFull ? 'hidden' : '';
-  }
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      document.querySelectorAll('.portal-diagram-wrap.is-fullscreen').forEach(wrap => {
-        wrap.classList.remove('is-fullscreen');
-        const btn = wrap.querySelector('.portal-expand-btn');
-        if (btn) {
-          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg> <span>Expand Diagram</span>';
-        }
-        document.body.style.overflow = '';
-      });
-    }
-  });
-
-  function autoAttachDiagramControls() {
-    document.querySelectorAll('.mermaid, .starlight-mermaid, pre.mermaid').forEach(el => {
-      let wrap = el.closest('.portal-diagram-wrap');
-      if (!wrap) {
-        wrap = document.createElement('div');
-        wrap.className = 'portal-diagram-wrap';
-        el.parentNode.insertBefore(wrap, el);
-        
-        const header = document.createElement('div');
-        header.className = 'portal-diagram-header';
-        header.innerHTML = '<span class="portal-diagram-badge">ARCHITECTURE &amp; FLOW VIEW</span><button type="button" class="portal-expand-btn" onclick="diagramFullscreen(this)" title="Toggle Fullscreen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg> <span>Expand Diagram</span></button>';
-        
-        const viewport = document.createElement('div');
-        viewport.className = 'portal-diagram-viewport';
-        viewport.appendChild(el);
-        
-        wrap.appendChild(header);
-        wrap.appendChild(viewport);
-      }
-    });
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', autoAttachDiagramControls);
-  } else {
-    autoAttachDiagramControls();
-  }
-  setTimeout(autoAttachDiagramControls, 600);
-  setTimeout(autoAttachDiagramControls, 1800);
-</script>
