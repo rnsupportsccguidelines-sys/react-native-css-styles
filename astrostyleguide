@@ -1,132 +1,409 @@
 ---
-title: Platform Overview
-description: Architectural topology, core capabilities, delivery lifecycle, and engineering domains of the Mobile Engineering Platform.
+title: Non-Mobile Engineer Track
+description: Comprehensive transition guide and foundational primer for web, frontend, and backend developers entering enterprise mobile engineering from scratch.
 sidebar:
-  order: 2
-  label: Platform Overview
+  order: 3
+  label: Non-Mobile Track
 ---
 
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">[ECOSYSTEM TOPOLOGY]</span>
-    <span class="portal-hub-tag">MASTER ARCHITECTURE MAP</span>
+    <span class="portal-badge-hub">[ENGINEERING TRANSITION]</span>
+    <span class="portal-hub-tag">FOUNDATIONAL PRIMER (MOBILE 100)</span>
   </div>
-  <div class="portal-hero-title">Enterprise Mobile Platform Architecture</div>
+  <div class="portal-hero-title">Non-Mobile Engineer Track: Web & Backend to Mobile</div>
   <div class="portal-hero-desc">
-    The Enterprise Mobile Engineering Platform establishes a unified delivery framework across iOS, Android, and React Native. It standardizes common capabilities into shared infrastructure—including identity, networking resilience, automated gate inspections, and telemetry—enabling teams to focus on domain features rather than redundant foundation code.
+    Designed specifically for web (React, Vue, Node.js), backend (Java, Go, Python, C#), and fullstack engineers transitioning into mobile development. This guide demystifies native OS execution, the 60/120fps UI thread constraint, offline-first persistence, application sandboxing, and binary release lifecycles.
   </div>
 
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Client Stacks</div>
-      <div class="portal-cap-desc">Jetpack Compose, SwiftUI & React Native New Architecture</div>
+      <div class="portal-cap-title">Paradigm Shifts</div>
+      <div class="portal-cap-desc">Client sandboxing, process death &amp; main thread budgeting</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">CI/CD & Bitrise</div>
-      <div class="portal-cap-desc">Automated build runners, Danger checks & Fastlane</div>
+      <div class="portal-cap-title">Concurrency</div>
+      <div class="portal-cap-desc">Coroutines, MainActor &amp; non-blocking React Native threads</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Release Gates</div>
-      <div class="portal-cap-desc">Automated Danger checks, Sauce Labs & NowSecure scans</div>
+      <div class="portal-cap-title">Offline Resilience</div>
+      <div class="portal-cap-desc">Circuit Breaker pattern, SQLite/Room &amp; network caching</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Observability</div>
-      <div class="portal-cap-desc">Datadog RUM, crash alerting & remote feature flags</div>
+      <div class="portal-cap-title">Tooling &amp; CI/CD</div>
+      <div class="portal-cap-desc">Android Studio, Xcode, Doctor CLI &amp; Bitrise runners</div>
     </div>
   </div>
 </div>
 
-## Platform Delivery Lifecycle
+## The Mental Model Shift: Web & Backend vs. Mobile
 
-The Enterprise Mobile Platform follows a standardized delivery lifecycle from local feature creation through automated inspection, store distribution, and runtime production operations:
+Engineers entering mobile from web or backend microservices often encounter subtle architectural differences that lead to major production bugs if unaddressed:
 
-```mermaid
-flowchart TD
-    Dev["1. Local Workstation & Development\n(IDEs, Templates & Internal SDKs)"]
-    PR["GitHub Enterprise Pull Request"]
-
-    Dev --> PR
-
-    subgraph CI["2. Quality & Security (Bitrise CI Pipeline)"]
-        Danger["Danger PR Code Checks"]
-        Sauce["Sauce Labs Device Cloud"]
-        NowSec["NowSecure SAST/DAST"]
-
-        Danger --> Sauce --> NowSec
-    end
-
-    PR --> Danger
-
-    subgraph Dist["3. Store Distribution"]
-        PublicStore["Public App Stores\n(Google Play & Apple App Store)"]
-        EnterpriseStore["Enterprise App Portal\n(Internal Distribution)"]
-    end
-
-    NowSec --> PublicStore
-    NowSec --> EnterpriseStore
-
-    subgraph Ops["4. Production Operations"]
-        Users["Active Mobile Users"]
-        Datadog["Datadog RUM Telemetry\n& Crash Alerts"]
-
-        Users --> Datadog
-    end
-
-    PublicStore --> Users
-    EnterpriseStore --> Users
-
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef terminal fill:#102619,stroke:#22c55e,stroke-width:2px,color:#ffffff;
-    class Dev,PR highlight;
-    class Datadog terminal;
-```
-
-* **Development:** Feature development executed in Android Studio, Xcode, or VS Code using enterprise templates and internal shared SDK packages.
-* **Quality & Security:** Automated Bitrise CI triggers on every pull request, executing static Danger inspections, unit test suites, cloud device regression, and binary vulnerability scanning.
-* **Distribution:** Automated deployment to public app stores (Apple App Store, Google Play Store) or private Enterprise App Distribution portals.
-* **Operations:** Real-time production telemetry via Datadog RUM, crash report tracking, and remote emergency kill switches.
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Engineering Dimension</th>
+        <th>Web / Backend Architecture</th>
+        <th>Mobile Client Architecture</th>
+        <th>Why It Matters</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Runtime Environment</strong></td>
+        <td>Controlled servers or browser JS sandbox; predictable memory and CPU.</td>
+        <td>Heterogeneous mobile hardware (iOS &amp; Android devices) with strict battery and RAM limits.</td>
+        <td>OS forcefully terminates apps that consume excessive RAM or background CPU.</td>
+      </tr>
+      <tr>
+        <td><strong>Deployment &amp; Rollback</strong></td>
+        <td>Instant continuous deployment. Fixes deploy to production servers in minutes.</td>
+        <td>Compiled binaries (<code>.aab</code> / <code>.ipa</code>) distributed through App Store and Google Play.</td>
+        <td>Zero instant rollbacks. App store reviews take 24–72 hours; users must manually download updates.</td>
+      </tr>
+      <tr>
+        <td><strong>Execution &amp; Threading</strong></td>
+        <td>Multi-threaded web servers or single-threaded event loop with async I/O.</td>
+        <td>Strict Main/UI thread (16.6ms frame budget). Background tasks require explicit dispatching.</td>
+        <td>Heavy computation on the Main Thread freezes the screen and triggers OS ANRs / app watchdog kills.</td>
+      </tr>
+      <tr>
+        <td><strong>Network Topology</strong></td>
+        <td>Reliable low-latency datacenter LAN or stable home broadband.</td>
+        <td>Volatile cellular connectivity, tunnel cutouts, subway dead zones, and sudden airplane mode.</td>
+        <td>Apps must be designed offline-first. Unhandled network drops cause immediate crashes or empty states.</td>
+      </tr>
+      <tr>
+        <td><strong>State &amp; Lifecycle</strong></td>
+        <td>Stateless microservices or persistent browser tab until closed.</td>
+        <td>Transient OS lifecycle: Foreground &rarr; Background &rarr; Suspended &rarr; Process Death.</td>
+        <td>The OS can terminate background processes at any time; apps must restore state on relaunch.</td>
+      </tr>
+      <tr>
+        <td><strong>Security &amp; Secrets</strong></td>
+        <td>Secrets stored securely in server-side environment variables or HashiCorp Vault.</td>
+        <td>Code and assets reside on user hardware. Binaries can be decompiled and inspected.</td>
+        <td>Never hardcode API keys or secrets in client code. Use Secure Enclave / KeyStore.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
 ---
 
-## Core Platform Capabilities
+## Architectural Comparison
 
-The platform aggregates foundational engineering tools and services into unified operational pillars:
+The following diagram illustrates how standard web/backend tiering translates into mobile native client architecture:
 
 ```mermaid
 flowchart TD
-    Core["Enterprise Mobile Engineering Platform"]
-
-    subgraph Eng["Pillar 1: Engineering & Delivery"]
-        Dev["1. Client Development\n(Android Compose, iOS SwiftUI, React Native)"]
-        CI["2. CI/CD & Build Pipelines\n(Bitrise Cloud Runners & Fastlane)"]
-        Dist["3. Store Distribution\n(App Store, Google Play & Enterprise Portal)"]
-        Dev --> CI --> Dist
+    subgraph Web["Web & Backend Tiering"]
+        Browser["1. Browser Client\n(DOM & React Virtual DOM)"]
+        Server["2. Application Gateway\n(Express / Spring Boot / Go)"]
+        DB["3. Enterprise Database\n(PostgreSQL / Redis)"]
+        Browser -->|"HTTP / REST"| Server -->|"TCP / SQL"| DB
     end
 
-    subgraph Gov["Pillar 2: Quality & Governance"]
-        Test["4. Automated Testing\n(Sauce Labs Cloud & Parallel Suites)"]
-        Sec["5. Security & Governance\n(NowSecure SAST/DAST & TGRC)"]
-        Obs["6. Observability & Services\n(Datadog RUM, Push Alerts & Feature Flags)"]
-        Test --> Sec --> Obs
+    subgraph Mobile["Mobile Native Architecture"]
+        UI["1. Native UI Layer\n(Compose / SwiftUI / Fabric)"]
+        Worker["2. Background Dispatcher\n(Coroutines / Tasks / Worker Thread)"]
+        LocalCache["3. Local Offline Cache\n(Room SQLite / CoreData / MMKV)"]
+        UI -->|"Non-blocking events"| Worker
+        Worker -->|"Read / Write"| LocalCache
     end
-
-    Core --> Eng
-    Core --> Gov
 
     classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
     classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
     classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class Core highlight;
-    class Dev,CI,Dist,Test,Sec,Obs nodeBox;
+    class Web,Mobile highlight;
+    class Browser,Server,DB,UI,Worker,LocalCache nodeBox;
 ```
 
 ---
 
-## Supported Development Platforms
+## The Golden Rule: Never Block the Main Thread
 
-The platform supports three tier-1 mobile architectures. Each stack is equipped with dedicated scaffolding templates, linting configurations, and enterprise SDK mirrors:
+On mobile platforms, the **Main Thread (UI Thread)** is solely responsible for rendering frames at 60Hz (16.6ms per frame) or 120Hz (8.3ms per frame) and responding to user gestures. 
+
+If your code executes heavy loops, synchronous JSON parsing, or network calls on the main thread:
+* **On Android:** Triggers an **ANR (Application Not Responding)** dialog after 5 seconds, prompting the user to force-close the app.
+* **On iOS:** Triggers the system **Watchdog timer**, which abruptly terminates the application process.
+
+### Concurrency Code Patterns Across Stacks
+
+#### 1. React Native (TypeScript): Offloading Heavy Calculations
+
+In React Native, JavaScript runs on its own engine thread, while native rendering occurs on the UI thread. However, long-running JavaScript synchronous loops will freeze user gesture responses:
+
+```typescript
+import React, { useState, useTransition } from 'react';
+import { View, Text, FlatList, TextInput, ActivityIndicator, StyleSheet } from 'react-native';
+
+export function SearchableDirectory({ dataset }: { dataset: Array<{ id: string; name: string }> }) {
+  const [query, setQuery] = useState('');
+  const [filteredData, setFilteredData] = useState(dataset);
+  const [isPending, startTransition] = useTransition();
+
+  const handleSearch = (text: string) => {
+    setQuery(text);
+
+    // Non-blocking transition: preserves instant typing responsiveness on UI thread
+    startTransition(() => {
+      const lower = text.toLowerCase();
+      const results = dataset.filter(item => item.name.toLowerCase().includes(lower));
+      setFilteredData(results);
+    });
+  };
+
+  return (
+    <View style={styles.container}>
+      <TextInput
+        value={query}
+        onChangeText={handleSearch}
+        placeholder="Search enterprise directory..."
+        placeholderTextColor="#9ca3af"
+        style={styles.input}
+      />
+      {isPending && <ActivityIndicator color="#22c55e" style={styles.loader} />}
+      <FlatList
+        data={filteredData}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => <Text style={styles.itemText}>{item.name}</Text>}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 16, backgroundColor: '#0d1912' },
+  input: { height: 44, borderColor: '#1f3b2c', borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, color: '#e2e8f0' },
+  loader: { marginVertical: 8 },
+  itemText: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1f3b2c', color: '#cbd5e1' },
+});
+```
+
+#### 2. Native Android (Kotlin Coroutines): Dispatcher Switching
+
+Android uses Coroutines to cleanly move work between threads. Always switch to `Dispatchers.IO` for network or disk operations:
+
+```kotlin
+package com.enterprise.mobile.feature.orders
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+sealed interface OrderUiState {
+    object Loading : OrderUiState
+    data class Success(val orders: List<Order>) : OrderUiState
+    data class Error(val message: String) : OrderUiState
+}
+
+class OrdersViewModel(
+    private val repository: OrderRepository
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow<OrderUiState>(OrderUiState.Loading)
+    val uiState: StateFlow<OrderUiState> = _uiState.asStateFlow()
+
+    fun fetchOrders() {
+        viewModelScope.launch {
+            _uiState.value = OrderUiState.Loading
+            try {
+                // withContext(Dispatchers.IO) ensures network work runs off the Main Thread
+                val orderList = withContext(Dispatchers.IO) {
+                    repository.getOrdersFromRemote()
+                }
+                // Automatically resumes on Main Thread to safely update state
+                _uiState.value = OrderUiState.Success(orderList)
+            } catch (e: Exception) {
+                _uiState.value = OrderUiState.Error(e.localizedMessage ?: "Network request failed")
+            }
+        }
+    }
+}
+```
+
+#### 3. Native iOS (Swift & SwiftUI): Structured Concurrency & `@MainActor`
+
+In modern Swift, annotate UI view models with `@MainActor` to guarantee that all UI updates are marshaled to the main thread:
+
+```swift
+import SwiftUI
+
+enum ViewState<T> {
+    case loading
+    case success(T)
+    case error(String)
+}
+
+@MainActor
+final class OrdersViewModel: ObservableObject {
+    @Published private(set) var state: ViewState<[Order]> = .loading
+    private let service: OrderServiceProtocol
+
+    init(service: OrderServiceProtocol = OrderService()) {
+        self.service = service
+    }
+
+    func loadOrders() async {
+        state = .loading
+        do {
+            // Asynchronous network call executes on background thread pool
+            let orders = try await service.fetchOrders()
+            // MainActor guarantees state assignment occurs on the Main Thread
+            self.state = .success(orders)
+        } catch {
+            self.state = .error(error.localizedDescription)
+        }
+    }
+}
+```
+
+---
+
+## Network Resilience: The Circuit Breaker Pattern
+
+Mobile connections drop frequently. The enterprise standard requires that all remote network calls use a **Circuit Breaker** to avoid cascading socket timeouts and drain device battery:
+
+```mermaid
+flowchart TD
+    subgraph Breaker["Circuit Breaker States"]
+        Closed["1. Closed (Normal)\nAll requests pass through"]
+        Open["2. Open (Tripped)\nFails immediately to cache"]
+        HalfOpen["3. Half-Open (Testing)\nTests probe request"]
+
+        Closed -->|"Failure threshold exceeded"| Open
+        Open -->|"Reset timeout expires"| HalfOpen
+        HalfOpen -->|"Probe succeeds"| Closed
+        HalfOpen -->|"Probe fails"| Open
+    end
+
+    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
+    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
+    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
+    class Breaker highlight;
+    class Closed,Open,HalfOpen nodeBox;
+```
+
+### Implementing Circuit Breaker & Offline Fallback
+
+The following TypeScript snippet demonstrates how client apps query remote endpoints with an automatic local storage fallback:
+
+```typescript
+import { CircuitBreaker } from '@enterprise/resilience-sdk';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+}
+
+// 1. Configure the Circuit Breaker with thresholds
+const profileBreaker = new CircuitBreaker({
+  failureThreshold: 3,        // Trip after 3 consecutive network failures
+  resetTimeoutMs: 30000,      // Wait 30s before probing server again
+  requestTimeoutMs: 5000,     // Timeout individual request after 5s
+});
+
+export async function getUserProfile(userId: string): Promise<UserProfile> {
+  const cacheKey = `@cache:user:${userId}`;
+
+  try {
+    // 2. Execute network request inside Circuit Breaker
+    return await profileBreaker.execute(async () => {
+      const response = await fetch(`https://api.enterprise.internal/v1/users/${userId}`);
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      
+      const data: UserProfile = await response.json();
+      // Cache fresh data locally for offline scenarios
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+      return data;
+    });
+  } catch (err) {
+    // 3. Gracefully serve stale cache when offline or circuit is open
+    const cachedData = await AsyncStorage.getItem(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData) as UserProfile;
+    }
+    throw new Error('Offline and no cached data available for this user.');
+  }
+}
+```
+
+---
+
+## Application Lifecycle & State Restoration
+
+Unlike server processes that stay active indefinitely, the mobile OS continuously manages application processes to preserve memory and battery:
+
+```mermaid
+flowchart TD
+    subgraph Life["Application Lifecycle States"]
+        FG["1. Active Foreground\n(User interacting on screen)"]
+        BG["2. Background / Paused\n(App minimized or screen locked)"]
+        Susp["3. Suspended in RAM\n(No CPU execution allowed)"]
+        Dead["4. Process Terminated\n(OS reclaims RAM for camera/system)"]
+
+        FG -->|"User presses Home"| BG
+        BG -->|"System reclaims CPU"| Susp
+        Susp -->|"Low memory condition"| Dead
+        Dead -->|"User taps icon"| FG
+    end
+
+    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
+    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
+    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
+    class Life highlight;
+    class FG,BG,Susp,Dead nodeBox;
+```
+
+### Handling Process Death with State Restoration
+
+When the user minimizes the app and opens a memory-intensive tool (like the device camera), the OS may silently kill your background process. When the user returns, the OS restores the view, but in-memory variables are lost.
+
+#### State Restoration Code Pattern (Android Kotlin)
+
+```kotlin
+package com.enterprise.mobile.feature.checkout
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+
+class CheckoutViewModel(
+    private val savedStateHandle: SavedStateHandle
+) : ViewModel() {
+
+    // SavedStateHandle automatically persists state across OS process termination
+    var currentStep: Int
+        get() = savedStateHandle["checkout_step"] ?: 1
+        set(value) { savedStateHandle["checkout_step"] = value }
+
+    var selectedShippingId: String?
+        get() = savedStateHandle["shipping_id"]
+        set(value) { savedStateHandle["shipping_id"] = value }
+
+    fun advanceToNextStep(shippingId: String) {
+        this.selectedShippingId = shippingId
+        this.currentStep = currentStep + 1
+    }
+}
+```
+
+---
+
+## Tech Stack Recommendation for Non-Mobile Engineers
+
+Select your starting platform path based on your existing engineering skill set:
 
 <div class="portal-cards-grid">
 
@@ -140,19 +417,20 @@ The platform supports three tier-1 mobile architectures. Each stack is equipped 
           </svg>
         </div>
         <h3 class="portal-card-title">React Native (New Architecture)</h3>
-        <span class="portal-tag-pill">CROSS-PLATFORM</span>
+        <span class="portal-tag-pill">RECOMMENDED FOR 80%</span>
       </div>
       <p class="portal-card-desc">
-        Optimized for feature velocity and high code reuse across platforms. Leverages Fabric native renderer, TurboModules, and internal TypeScript packages.
+        Ideal for React, web, TypeScript, and fullstack developers. Reuses your component lifecycle knowledge, JSX, state patterns, and npm ecosystem to deliver unified iOS and Android apps.
       </p>
       <div class="portal-card-pills">
         <span>TypeScript</span>
         <span>Fabric Renderer</span>
         <span>TurboModules</span>
+        <span>Shared Codebase</span>
       </div>
     </div>
     <div class="portal-card-action">
-      <a href="/mobile/development/react-native/" class="portal-card-link">View React Native Guide &rarr;</a>
+      <a href="/mobile/development/react-native/" class="portal-card-link">Start React Native Guide &rarr;</a>
     </div>
   </div>
 
@@ -168,19 +446,20 @@ The platform supports three tier-1 mobile architectures. Each stack is equipped 
           </svg>
         </div>
         <h3 class="portal-card-title">Native Android (Kotlin / Compose)</h3>
-        <span class="portal-tag-pill">NATIVE ANDROID</span>
+        <span class="portal-tag-pill">BACKEND &amp; JVM DEVS</span>
       </div>
       <p class="portal-card-desc">
-        Engineered for hardware-intensive workflows, offline background sync, Bluetooth peripherals, and deep Android OS integrations.
+        Ideal for Java, Kotlin, and backend JVM engineers. Leverages familiar Gradle builds, strong typing, declarative Jetpack Compose UI, and direct access to Android hardware APIs.
       </p>
       <div class="portal-card-pills">
         <span>Kotlin 2.0</span>
         <span>Jetpack Compose</span>
         <span>Hilt DI</span>
+        <span>Coroutines</span>
       </div>
     </div>
     <div class="portal-card-action">
-      <a href="/mobile/development/android/" class="portal-card-link">View Android Guide &rarr;</a>
+      <a href="/mobile/development/android/" class="portal-card-link">Start Android Native Guide &rarr;</a>
     </div>
   </div>
 
@@ -194,20 +473,20 @@ The platform supports three tier-1 mobile architectures. Each stack is equipped 
           </svg>
         </div>
         <h3 class="portal-card-title">Native iOS (Swift / SwiftUI)</h3>
-        <span class="portal-tag-pill">NATIVE IOS</span>
+        <span class="portal-tag-pill">SYSTEMS &amp; C++ DEVS</span>
       </div>
       <p class="portal-card-desc">
-        Tailored for flagship Apple ecosystem experiences requiring native Metal graphics, CoreML acceleration, secure enclave operations, or advanced iOS system integrations.
+        Ideal for engineers comfortable with strong typing, memory ownership, and macOS development. Builds flagship Apple ecosystem applications using SwiftUI, async/await, and CoreML.
       </p>
       <div class="portal-card-pills">
         <span>Swift 6</span>
         <span>SwiftUI</span>
-        <span>Async/Await</span>
-        <span>KeyStore Enclave</span>
+        <span>Structured Concurrency</span>
+        <span>Secure Enclave</span>
       </div>
     </div>
     <div class="portal-card-action">
-      <a href="/mobile/development/ios/" class="portal-card-link">View iOS Guide &rarr;</a>
+      <a href="/mobile/development/ios/" class="portal-card-link">Start iOS Native Guide &rarr;</a>
     </div>
   </div>
 
@@ -215,112 +494,48 @@ The platform supports three tier-1 mobile architectures. Each stack is equipped 
 
 ---
 
-## Quality and Security Gates
+## Step-by-Step 0-to-1 Local Development Setup
 
-Every production application binary progresses through a strict, automated verification pipeline before release approval:
+Follow these sequential steps to boot your first enterprise mobile application locally:
 
-<div class="portal-gates-container">
-  <div class="portal-gates-flow">
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">1. Pull Request</div>
-      <div class="portal-gate-sub">Branch validation</div>
-    </div>
-    <span class="portal-gate-arrow">&rarr;</span>
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">2. Code Review</div>
-      <div class="portal-gate-sub">Peer approvals</div>
-    </div>
-    <span class="portal-gate-arrow">&rarr;</span>
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">3. Bitrise & Danger</div>
-      <div class="portal-gate-sub">CI runner & PR checks</div>
-    </div>
-    <span class="portal-gate-arrow">&rarr;</span>
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">4. Sauce Labs</div>
-      <div class="portal-gate-sub">Device cloud regression</div>
-    </div>
-    <span class="portal-gate-arrow">&rarr;</span>
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">5. NowSecure</div>
-      <div class="portal-gate-sub">SAST / DAST scans</div>
-    </div>
-    <span class="portal-gate-arrow">&rarr;</span>
-    <div class="portal-gate-node">
-      <div class="portal-gate-title">6. Release Gate</div>
-      <div class="portal-gate-sub">App store deployment</div>
-    </div>
-  </div>
-</div>
+```bash
+# Step 1: Verify your workstation toolchain with Doctor CLI
+npx @enterprise/doctor-cli check
 
-### CI/CD Automation (Bitrise)
+# Expected output:
+# [PASS] Node.js 20.x detected
+# [PASS] Xcode Command Line Tools detected
+# [PASS] Android SDK platform-tools detected
+# [PASS] CocoaPods installed and healthy
 
-All pull requests trigger automated **Bitrise** workflows:
-* **Automated Webhooks:** Every PR push triggers dedicated macOS and Linux cloud runners in Bitrise.
-* **Danger PR Bot Inspection:** Runs inside Bitrise to analyze bundle size changes, verify conventional commit syntax, and enforce changelog updates.
-* **Fastlane Build Pipelines:** Compiles signed test binaries (`.aab` for Android, `.ipa` for iOS) and triggers parallel cloud testing.
+# Step 2: Clone the enterprise starter template
+git clone git@github.enterprise.com:mobile-starters/react-native-starter.git my-mobile-app
+cd my-mobile-app
 
-### Code Quality
+# Step 3: Install verified enterprise dependencies
+npm install
 
-Code standards are enforced continuously through automated branch policies:
-* **Peer Reviews:** Mandatory minimum of two passing reviews from code owners before merge.
-* **Branch Protection:** Direct pushes to `main` and `release/*` branches are strictly prohibited.
-* **Automated Danger Checks:** Danger Bot enforces changelog updates, inspects binary bundle size deltas, and validates conventional commit messages.
+# Step 4: Boot the iOS Simulator (macOS required)
+npm run ios
 
-### Functional Validation
-
-Test integrity is verified across isolated execution environments:
-* **Unit and Component Tests:** Must achieve minimum 80% code coverage threshold.
-* **Sauce Labs Cloud Execution:** Automated regression suites run across physical Android and iOS devices, validating UI state under varying battery, connectivity, and OS versions.
-
-### Security and Governance
-
-Mobile application security is strictly audited prior to distribution:
-* **NowSecure SAST/DAST Scans:** Automated scanning detects insecure data storage, hardcoded secrets, and network communication vulnerabilities.
-* **TGRC Enterprise Sign-Off:** Automated compliance checks ensure regulatory standards (data privacy, encryption in transit and at rest) are fully verified.
-
----
-
-## Engineering Domains
-
-The documentation portal is organized into 6 core technical domains that collectively support the mobile engineering lifecycle:
-
-```mermaid
-flowchart TD
-    Mob["Enterprise Mobile Engineering Ecosystem"]
-
-    subgraph Found["Foundations & Platforms"]
-        D1["Domain 1: Architecture & Standards\n(Clean Architecture & Circuit Breaker)"]
-        D2["Domain 2: Client Stacks & SDKs\n(Compose, SwiftUI, React Native)"]
-    end
-
-    subgraph Pipeline["Build & Security Pipeline"]
-        D3["Domain 3: Build & Release CI/CD\n(Bitrise Pipelines & Code Signing)"]
-        D4["Domain 4: Security & Compliance\n(NowSecure SAST/DAST & TGRC)"]
-    end
-
-    subgraph Delivery["Distribution & Enablement"]
-        D5["Domain 5: App Distribution & Stores\n(Public Stores & Enterprise Internal)"]
-        D6["Domain 6: Developer Productivity\n(Doctor Diagnostic CLI & Templates)"]
-    end
-
-    Mob --> Found
-    Mob --> Pipeline
-    Mob --> Delivery
-
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef terminal fill:#102619,stroke:#22c55e,stroke-width:2px,color:#ffffff;
-    class Mob highlight;
-    class D1,D2,D3,D4,D5,D6 terminal;
+# Step 5: Boot the Android Emulator
+npm run android
 ```
 
-1. **Architecture & Standards:** Clean Architecture patterns, unidirectional data flow, Circuit Breaker resilience, and remote feature flag governance.
-2. **Development Platforms:** In-depth guidelines, design tokens, and shared SDK catalogs for Android, iOS, and React Native.
-3. **Build & Release:** Bitrise pipeline configurations, Fastlane lanes, automated code signing, and release train schedules.
-4. **Security & Observability:** KeyStore/Keychain secure token storage, Datadog RUM monitoring, crash triaging, and NowSecure compliance.
-5. **App Distribution:** Workflows for enterprise internal distribution, test flights, and public store releases.
-6. **Developer Productivity:** Workstation setup automation, Doctor diagnostic CLI, and repository starter templates.
+---
+
+## Top 5 Pitfalls Web & Backend Engineers Must Avoid
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">SECURITY &amp; STABILITY PITFALLS</div>
+  <ul>
+    <li><strong>1. Never Hardcode API Keys or Secrets:</strong> Client application binaries are public assets. Anyone can decompile an <code>.apk</code> or <code>.ipa</code> package and extract string constants. Store tokens exclusively in KeyStore/Keychain or resolve them at runtime via OAuth SSO.</li>
+    <li><strong>2. Never Run Heavy Loops on the Main Thread:</strong> Long computations, synchronous file I/O, or parsing large JSON payloads freeze the screen, triggering OS crashes. Always dispatch work to background workers or coroutine dispatchers.</li>
+    <li><strong>3. Never Assume Continuous Connectivity:</strong> Always handle offline states, network timeouts, and flaky cellular signals. Provide local caching and retry mechanisms.</li>
+    <li><strong>4. Clean Up Event Listeners to Prevent Memory Leaks:</strong> Mobile OS devices have constrained RAM. Dangling event subscribers, uncancelled timers, and retained singleton delegates keep screens in memory, causing OOM (Out-of-Memory) termination.</li>
+    <li><strong>5. Never Build Production Binaries on Personal Laptops:</strong> Official application packages must be built, signed, and distributed exclusively through automated Bitrise CI pipelines to guarantee tamper-proof audit trails.</li>
+  </ul>
+</div>
 
 ---
 
@@ -328,12 +543,12 @@ flowchart TD
 
 <div class="portal-checklist-box">
   <div class="portal-checklist-title">COMPLETION CHECKLIST</div>
-  <p>Before proceeding to your developer track, confirm you can answer the following:</p>
+  <p>Confirm you understand the following principles before building your first feature:</p>
   <ul>
-    <li><strong>Major Architecture Components:</strong> How client applications interact with enterprise backend APIs through shared SDKs and Circuit Breaker resilience.</li>
-    <li><strong>Application Delivery Lifecycle:</strong> The path code travels from local feature development through automated quality gates to production.</li>
-    <li><strong>Quality and Security Verification:</strong> Where automated Danger, Sauce Labs cloud devices, and NowSecure scans occur in CI.</li>
-    <li><strong>Supported Platforms:</strong> The trade-offs and decision criteria for choosing React Native vs. Native Android vs. Native iOS.</li>
-    <li><strong>Platform Services:</strong> The availability and integration patterns for shared push notifications, auth SSO, and Datadog telemetry.</li>
+    <li><strong>Main Thread Budget:</strong> Why keeping work off the Main Thread is critical to prevent ANRs and system watchdog kills.</li>
+    <li><strong>Offline Resilience:</strong> How the Circuit Breaker pattern protects client applications against slow or dropped mobile networks.</li>
+    <li><strong>Process Death:</strong> How the OS reclaims RAM from background applications and how to preserve user state across launches.</li>
+    <li><strong>Toolchain Setup:</strong> Successful execution of <code>npx @enterprise/doctor-cli check</code> with all green passes.</li>
+    <li><strong>Framework Direction:</strong> Whether your team is adopting React Native or native Android/iOS for your domain application.</li>
   </ul>
 </div>
