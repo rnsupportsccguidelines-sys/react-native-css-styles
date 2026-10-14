@@ -1,0 +1,445 @@
+Here is the complete code for your Astro Starlight documentation page. You can copy and paste this directly into your `.mdx` file (for example, `src/content/docs/index.mdx` or `src/content/docs/overview.mdx`):
+
+```mdx
+---
+title: Getting Started
+description: Your complete guide to building, deploying and scaling mobile solutions.
+sidebar:
+  order: 1
+  label: Overview
+---
+
+<style>{`
+  /* --------------------------------------------------------------------------
+     Theme & Typography Tokens (Dark Green Canvas + Gold Accents)
+     -------------------------------------------------------------------------- */
+  :root[data-theme='dark'] {
+    --sl-color-bg: #0d1912;
+    --sl-color-bg-inline-code: #13251c;
+    --sl-color-border: #1f3b2c;
+    --sl-color-text: #e2e8f0;
+    --sl-color-text-accent: #22c55e;
+    --portal-gold: #f3d17b;
+    --portal-card-bg: #13251c;
+    --portal-card-border: #1f3b2c;
+    --portal-pill-bg: #1a2e23;
+    --portal-pill-border: rgba(255, 255, 255, 0.1);
+    --portal-pill-text: #e2e8f0;
+    --portal-pill-hover: #233e2f;
+    --portal-accent: #22c55e;
+    --portal-accent-hover: #4ade80;
+  }
+
+  :root, :root[data-theme='light'] {
+    --sl-color-bg: #f8faf8;
+    --sl-color-bg-inline-code: #e8efe9;
+    --sl-color-border: #d4e2d8;
+    --sl-color-text: #1a251e;
+    --sl-color-text-accent: #007a3d;
+    --portal-gold: #1b4d2e;
+    --portal-card-bg: #ffffff;
+    --portal-card-border: #dbe7df;
+    --portal-pill-bg: #f0f6f2;
+    --portal-pill-border: #d1ded5;
+    --portal-pill-text: #1a3826;
+    --portal-pill-hover: #e1efe5;
+    --portal-accent: #007a3d;
+    --portal-accent-hover: #005a2b;
+  }
+
+  /* Style Starlight's page heading */
+  :root[data-theme='dark'] #_top,
+  :root[data-theme='dark'] h1 {
+    color: #f3d17b !important;
+  }
+  :root[data-theme='light'] #_top,
+  :root[data-theme='light'] h1 {
+    color: #1b4d2e !important;
+  }
+
+  /* Hero Welcome Card */
+  .portal-hero-card {
+    border: 1px solid var(--sl-color-border);
+    background: var(--sl-color-bg-inline-code);
+    border-radius: 10px;
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 20px 0 28px 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .portal-hero-icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--portal-accent);
+  }
+  .portal-hero-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--portal-gold);
+    margin-bottom: 3px;
+  }
+  .portal-hero-sub {
+    font-size: 0.88rem;
+    color: #9ca3af;
+    margin: 0;
+  }
+
+  /* 3-Column Responsive Grid */
+  .portal-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 36px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (max-width: 1100px) {
+    .portal-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 700px) {
+    .portal-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Card */
+  .portal-card {
+    background: var(--portal-card-bg);
+    border: 1px solid var(--portal-card-border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .portal-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--portal-accent);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Top-Left Square Icon */
+  .portal-icon-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    color: #ffffff;
+  }
+  .badge-green  { background: #22c55e; }
+  .badge-purple { background: #8b5cf6; }
+  .badge-coral  { background: #f87171; }
+  .badge-rose   { background: #f43f5e; }
+  .badge-amber  { background: #f59e0b; }
+  .badge-teal   { background: #06b6d4; }
+
+  .portal-card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--portal-gold) !important;
+    margin: 0 0 6px 0;
+    line-height: 1.35;
+  }
+  .portal-card-desc {
+    font-size: 0.84rem;
+    color: #9ca3af;
+    line-height: 1.5;
+    margin: 0 0 16px 0;
+    min-height: 40px;
+  }
+
+  /* 2-Column Pill Links Grid */
+  .portal-pills {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 10px;
+    margin-bottom: 16px;
+  }
+  .portal-pill-link {
+    background: var(--portal-pill-bg);
+    border: 1px solid var(--portal-pill-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: var(--portal-pill-text) !important;
+    text-decoration: none !important;
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    transition: all 0.15s ease;
+  }
+  .portal-pill-link:hover {
+    background: var(--portal-pill-hover);
+    border-color: var(--portal-accent);
+    color: #ffffff !important;
+  }
+
+  /* Card Footer with Bottom-Right Green "View All ->" Link */
+  .portal-card-foot {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .portal-view-link {
+    color: var(--portal-accent) !important;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: transform 0.15s ease, color 0.15s ease;
+  }
+  .portal-view-link:hover {
+    color: var(--portal-accent-hover) !important;
+    transform: translateX(2px);
+  }
+`}</style>
+
+<!-- Hero Welcome Card -->
+<div class="portal-hero-card">
+  <div class="portal-hero-icon">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+      <line x1="12" y1="18" x2="12.01" y2="18"/>
+    </svg>
+  </div>
+  <div>
+    <div class="portal-hero-title">Welcome to Mobile Engineering Platform</div>
+    <div class="portal-hero-sub">Your complete guide to building, deploying and scaling mobile solutions.</div>
+  </div>
+</div>
+
+<!-- Strict 3-Column Responsive Grid -->
+<div class="portal-grid">
+
+  <!-- 1. Start From Here -->
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-green">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+          <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+        </svg>
+      </div>
+      <h2 class="portal-card-title">1. Start From Here</h2>
+      <p class="portal-card-desc">
+        Platform ecosystem, workstation setup, fast-track checklists, and framework selection.
+      </p>
+      <div class="portal-pills">
+        <a href="/mobile/onboarding/day-one-checklist/" class="portal-pill-link">Platform Overview</a>
+        <a href="/mobile/onboarding/welcome-quickstart/" class="portal-pill-link">Engineer Onboarding</a>
+        <a href="/mobile/onboarding/non-mobile-dev-guide/" class="portal-pill-link">Non-Mobile Guide</a>
+        <a href="/mobile/onboarding/tech-stack-matrix/" class="portal-pill-link">Tech Stack Selection</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="/mobile/onboarding/" class="portal-view-link">View All &rarr;</a>
+    </div>
+  </div>
+
+  <!-- 2. Mobile Architecture & Standards -->
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-green">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/>
+          <rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+        </svg>
+      </div>
+      <h2 class="portal-card-title">2. Mobile Architecture &amp; Standards</h2>
+      <p class="portal-card-desc">
+        Clean architecture layers, Circuit Breaker resilience, feature flags, and branching rules.
+      </p>
+      <div class="portal-pills">
+        <a href="/mobile/architecture/clean-architecture-spec/" class="portal-pill-link">Architecture</a>
+        <a href="/mobile/architecture/resilience-circuit-breaker/" class="portal-pill-link">Resilience</a>
+        <a href="/mobile/architecture/feature-flagging/" class="portal-pill-link">Feature Flags</a>
+        <a href="/mobile/architecture/git-branching-strategy/" class="portal-pill-link">Git Rules</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="/mobile/architecture/" class="portal-view-link">View All &rarr;</a>
+    </div>
+  </div>
+
+  <!-- 3. Development Platforms & SDKs -->
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-purple">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 18 22 12 16 6"/>
+          <polyline points="8 6 2 12 8 18"/>
+        </svg>
+      </div>
+      <h2 class="portal-card-title">3. Development Platforms &amp; SDKs</h2>
+      <p class="portal-card-desc">
+        Android, iOS, React Native catalogs, shared libraries, and app core foundations.
+      </p>
+      <div class="portal-pills">
+        <a href="/mobile/platforms/android-standards/" class="portal-pill-link">Android Standards</a>
+        <a href="/mobile/platforms/ios-standards/" class="portal-pill-link">iOS Standards</a>
+        <a href="/mobile/platforms/react-native-standards/" class="portal-pill-link">RN Standards</a>
+        <a href="/mobile/platforms/master-sdk-catalog/" class="portal-pill-link">SDK's Catalog</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="/mobile/platforms/" class="portal-view-link">View All &rarr;</a>
+    </div>
+  </div>
+
+  <!-- 4. Build & Release Kit (CI/CD) -->
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-coral">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/>
+          <polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+      </div>
+      <h2 class="portal-card-title">4. Build &amp; Release Kit (CI/CD)</h2>
+      <p class="portal-card-desc">
+        Bitrise pipelines, camp.yml spec reference, Danger PR inspection, and automated builds.
+      </p>
+      <div class="portal-pills">
+        <a href="/mobile/cicd/build-kit-overview/" class="portal-pill-link">4.1 Build Kit</a>
+        <a href="/mobile/cicd/camp-spec-reference/" class="portal-pill-link">4.3 CAMP Spec</a>
+        <a href="/mobile/cicd/bitrise-pipelines/" class="portal-pill-link">4.4 Bitrise CI</a>
+        <a href="/mobile/cicd/danger-pr-bot/" class="portal-pill-link">4.5 Danger Bot</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="/mobile/cicd/" class="portal-view-link">View All &rarr;</a>
+    </div>
+  </div>
+
+  <!-- 5. Observability, Security & Services -->
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-green">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <h2 class="portal-card-title">5. Observability, Security &amp; Services</h2>
+      <p class="portal-card-desc">
+        Push notifications, Datadog RUM telemetry, security checklist, and data wipe protocol.
+      </p>
+      <div class="portal-pills">
+        <a href="/mobile/foundations/push-notifications/" class="portal-pill-link">5.1 Push Notify</a>
+        <a href="/mobile/foundations/observability-monitoring/" class="portal-pill-link">5.2 Datadog RUM</a>
+        <a href="/mobile/foundations/security-foundations/" class="portal-pill-link">5.3 Security</a>
+        <a href="/mobile/foundations/data-wipe-protocol/" class="portal-pill-link">5.4 Data Wipe</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="/mobile/foundations/" class="portal-view-link">View All &rarr;</a>
+    </div>
+  </div>
+
+  <!-- 6. App Store & Distribution -->
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-rose">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="21 8 21 21 3 21 3 8"/>
+          <rect x="1" y="3" width="22" height="5"/>
+          <line x1="10" y1="12" x2="14" y2="12"/>
+        </svg>
+      </div>
+      <h2 class="portal-card-title">6. App Store &amp; Distribution</h2>
+      <p class="portal-card-desc">
+        Enterprise App Store, Google Play deployment, Apple App Store publishing, and signing.
+      </p>
+      <div class="portal-pills">
+        <a href="/mobile/distribution/enterprise-store/" class="portal-pill-link">6.1 Ent Store</a>
+        <a href="/mobile/distribution/google-play-publish/" class="portal-pill-link">6.2 Play Store</a>
+        <a href="/mobile/distribution/apple-app-store/" class="portal-pill-link">6.3 App Store</a>
+        <a href="/mobile/distribution/certs-signing/" class="portal-pill-link">6.4 Certs &amp; Signing</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="/mobile/distribution/" class="portal-view-link">View All &rarr;</a>
+    </div>
+  </div>
+
+  <!-- 7. Testing & Quality Engineering -->
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-amber">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/>
+          <line x1="8.5" y1="2" x2="15.5" y2="2"/>
+          <line x1="7" y1="16" x2="17" y2="16"/>
+        </svg>
+      </div>
+      <h2 class="portal-card-title">7. Testing &amp; Quality Engineering</h2>
+      <p class="portal-card-desc">
+        Unit test harnesses, MockWebServer stubs, Maestro automated E2E, and gate thresholds.
+      </p>
+      <div class="portal-pills">
+        <a href="/mobile/testing/unit-testing-matrix/" class="portal-pill-link">7.1 Unit Testing</a>
+        <a href="/mobile/testing/maestro-e2e/" class="portal-pill-link">7.2 UI &amp; Maestro</a>
+        <a href="/mobile/testing/mock-web-server/" class="portal-pill-link">7.3 Mocking API</a>
+        <a href="/mobile/testing/quality-gates/" class="portal-pill-link">7.4 Coverage Gates</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="/mobile/testing/" class="portal-view-link">View All &rarr;</a>
+    </div>
+  </div>
+
+  <!-- 8. GenAI & Mobile AI -->
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-teal">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="2"/>
+          <rect x="9" y="9" width="6" height="6"/>
+          <line x1="9" y1="1" x2="9" y2="4"/>
+          <line x1="15" y1="1" x2="15" y2="4"/>
+          <line x1="9" y1="20" x2="9" y2="23"/>
+          <line x1="15" y1="20" x2="15" y2="23"/>
+          <line x1="20" y1="9" x2="23" y2="9"/>
+          <line x1="20" y1="14" x2="23" y2="14"/>
+          <line x1="1" y1="9" x2="4" y2="9"/>
+          <line x1="1" y1="14" x2="4" y2="14"/>
+        </svg>
+      </div>
+      <h2 class="portal-card-title">8. GenAI &amp; Mobile AI</h2>
+      <p class="portal-card-desc">
+        On-device LLMs, LiteRT, CoreML, Gemini SDK integration, and edge inference.
+      </p>
+      <div class="portal-pills">
+        <a href="/mobile/genai/on-device-models/" class="portal-pill-link">8.1 On-Device AI</a>
+        <a href="/mobile/genai/gemini-sdk-integration/" class="portal-pill-link">8.2 Gemini SDK</a>
+        <a href="/mobile/genai/litert-acceleration/" class="portal-pill-link">8.3 LiteRT Core</a>
+        <a href="/mobile/genai/edge-privacy-governance/" class="portal-pill-link">8.4 Edge Privacy</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="/mobile/genai/" class="portal-view-link">View All &rarr;</a>
+    </div>
+  </div>
+
+</div>
+```
