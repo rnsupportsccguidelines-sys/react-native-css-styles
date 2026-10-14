@@ -1,387 +1,830 @@
----
-title: Branching & Pull Request Guidelines
-description: Enterprise Git branching strategy, pull request protocols, release workflows, and code review standards for mobile engineering teams.
-sidebar:
-  order: 5
-  label: Branching & PR Guidelines
----
+/* ==========================================================================
+   ENTERPRISE MOBILE ENGINEERING PORTAL - MASTER STYLESHEET
+   Scoped strictly to Mobile Documentation (/mobile-draft/ routes)
+   Prevents leaking styles to other teams' documentation sections
+   ========================================================================== */
 
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">[GIT STANDARDS]</span>
-    <span class="portal-hub-tag">MODULE 02.5: SOURCE CONTROL &amp; REVIEWS</span>
-  </div>
-  <div class="portal-hero-title">Branching &amp; Pull Request Guidelines</div>
-  <div class="portal-hero-desc">
-    A simple and practical overview of the branching strategy and pull request process enforced across all mobile applications to ensure stable releases, high-quality code reviews, and efficient engineering collaboration.
-  </div>
+/* 1. FULL-WIDTH CANVAS & STARLIGHT TOC PRESERVATION (SCOPED TO MOBILE-DRAFT) */
+:root:has(a[aria-current="page"][href*="mobile-draft"]),
+:root:has([class*="portal-"]),
+html.mobile-draft-docs,
+body.mobile-draft-docs {
+  --sl-content-width: 100% !important;
+  --sl-content-pad-x: 1.25rem !important;
+}
 
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Production Stability</div>
-      <div class="portal-cap-desc">Direct commits to <code>master</code> and <code>develop</code> are strictly blocked</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Feature Isolation</div>
-      <div class="portal-cap-desc">All work isolated in short-lived, single-purpose feature branches</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Mandatory Peer Review</div>
-      <div class="portal-cap-desc">Minimum 1 approved peer review required (2 preferred) before merging</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Dual-Merge Hotfixes</div>
-      <div class="portal-cap-desc">Production hotfixes must merge to both <code>master</code> and <code>develop</code></div>
-    </div>
-  </div>
-</div>
+:root:has(a[aria-current="page"][href*="mobile-draft"]) .content-panel,
+:root:has(a[aria-current="page"][href*="mobile-draft"]) .sl-markdown-content,
+:root:has([class*="portal-"]) .content-panel,
+:root:has([class*="portal-"]) .sl-markdown-content,
+.mobile-draft-docs .content-panel,
+.mobile-draft-docs .sl-markdown-content {
+  max-width: 100% !important;
+  width: 100% !important;
+}
 
-## Engineering Principles
+/* 2. DUAL THEME TOKENS (SCOPED TO MOBILE-DRAFT) */
+:root:has(a[aria-current="page"][href*="mobile-draft"]),
+:root:has([class*="portal-"]),
+:root[data-theme='dark']:has(a[aria-current="page"][href*="mobile-draft"]),
+:root[data-theme='dark']:has([class*="portal-"]),
+html.mobile-draft-docs,
+body.mobile-draft-docs {
+  --sl-color-bg: #0d1912;
+  --sl-color-bg-nav: #09130e;
+  --sl-color-bg-sidebar: #09130e;
+  --sl-color-bg-inline-code: #13251c;
+  --sl-color-border: #1f3b2c;
+  --sl-color-text: #e2e8f0;
+  --sl-color-text-accent: #22c55e;
+  --portal-gold: #f3d17b;
+  --portal-card-bg: #13251c;
+  --portal-card-border: #1f3b2c;
+  --portal-text-body: #cbd5e1;
+  --portal-text-muted: #9ca3af;
+  --portal-pill-bg: #1a2e23;
+  --portal-pill-border: rgba(255, 255, 255, 0.12);
+  --portal-pill-text: #e2e8f0;
+  --portal-pill-hover: #233e2f;
+  --portal-accent: #22c55e;
+  --portal-accent-hover: #4ade80;
+}
 
-Every engineer contributing to enterprise mobile repositories must follow these core principles:
-* **Keep production branches stable:** Production code in `master` must always represent deployable, audited software.
-* **Use feature branches for all development work:** Never commit directly to integration or production branches.
-* **Merge changes using Pull Requests (PRs):** All code modifications enter the repository through tracked PRs.
-* **Require peer review before merging:** Every line of production code is reviewed by at least one qualified peer.
-* **Automate quality checks through CI/CD:** Unit tests, linting, and build verification must pass before merge.
-* **Maintain traceability from commit to release:** Connect Jira tickets to branch names, commits, and PR descriptions.
+:root[data-theme='light']:has(a[aria-current="page"][href*="mobile-draft"]),
+:root[data-theme='light']:has([class*="portal-"]),
+html[data-theme='light'].mobile-draft-docs,
+body[data-theme='light'].mobile-draft-docs {
+  --sl-color-bg: #f8faf8;
+  --sl-color-bg-nav: #ffffff;
+  --sl-color-bg-sidebar: #f2f6f3;
+  --sl-color-bg-inline-code: #edf4ee;
+  --sl-color-border: #d4e2d8;
+  --sl-color-text: #111827;
+  --sl-color-text-accent: #007a3d;
+  --portal-gold: #143823;
+  --portal-card-bg: #ffffff;
+  --portal-card-border: #d8e5dc;
+  --portal-text-body: #1f2937;
+  --portal-text-muted: #4b5563;
+  --portal-pill-bg: #f0f7f2;
+  --portal-pill-border: #cfe0d4;
+  --portal-pill-text: #133824;
+  --portal-pill-hover: #e1efe5;
+  --portal-accent: #007a3d;
+  --portal-accent-hover: #005a2b;
+}
 
----
+/* 3. TYPOGRAPHY & TOC HEADINGS (SCOPED TO MOBILE-DRAFT) */
+:root[data-theme='dark']:has(a[aria-current="page"][href*="mobile-draft"]) #_top,
+:root[data-theme='dark']:has(a[aria-current="page"][href*="mobile-draft"]) h1,
+:root[data-theme='dark']:has([class*="portal-"]) #_top,
+:root[data-theme='dark']:has([class*="portal-"]) h1,
+.mobile-draft-docs h1 {
+  color: #f3d17b !important;
+}
 
-## Standard Branches
+:root[data-theme='light']:has(a[aria-current="page"][href*="mobile-draft"]) #_top,
+:root[data-theme='light']:has(a[aria-current="page"][href*="mobile-draft"]) h1,
+:root[data-theme='light']:has([class*="portal-"]) #_top,
+:root[data-theme='light']:has([class*="portal-"]) h1,
+html[data-theme='light'] .mobile-draft-docs h1 {
+  color: #143823 !important;
+}
 
-Enterprise mobile repositories utilize a standardized multi-branch topology:
+:root:has(a[aria-current="page"][href*="mobile-draft"]) .sl-markdown-content h2:not(.portal-card-title):not(.portal-route-title),
+:root:has([class*="portal-"]) .sl-markdown-content h2:not(.portal-card-title):not(.portal-route-title),
+.mobile-draft-docs h2:not(.portal-card-title):not(.portal-route-title) {
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+  margin: 36px 0 8px 0 !important;
+  border-bottom: none !important;
+}
 
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Branch Name</th>
-        <th>Branch Role &amp; Purpose</th>
-        <th>Access Rules</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>master</code> / <code>prod</code></td>
-        <td><strong>Production-ready code.</strong> Reflects live App Store and Google Play releases.</td>
-        <td>Strictly protected. Merges only via Release or Hotfix PRs. Direct pushes blocked.</td>
-      </tr>
-      <tr>
-        <td><code>develop</code></td>
-        <td><strong>Active development and sprint integration.</strong> Target branch for completed features.</td>
-        <td>Protected. Merges only via approved Feature PRs. CI runs on every commit.</td>
-      </tr>
-      <tr>
-        <td><code>user_testing</code></td>
-        <td><strong>UAT, QA staging, and stakeholder validation.</strong> Builds distributed to internal testers.</td>
-        <td>Automated CI deployment triggers test builds via Firebase App Distribution / TestFlight.</td>
-      </tr>
-      <tr>
-        <td><code>feature-*</code></td>
-        <td><strong>New features and enhancements.</strong> Created by engineers for sprint tasks.</td>
-        <td>Branch owner pushes. Short-lived; merged into <code>develop</code> via PR.</td>
-      </tr>
-      <tr>
-        <td><code>bugfix-*</code></td>
-        <td><strong>Bug fixes.</strong> Non-critical bug repairs identified during sprint development.</td>
-        <td>Branched from and merged back into <code>develop</code>.</td>
-      </tr>
-      <tr>
-        <td><code>hotfix-*</code></td>
-        <td><strong>Emergency production fixes.</strong> Urgent patches for live production bugs.</td>
-        <td>Branched from <code>master</code>. Merged into <strong>both</strong> <code>master</code> and <code>develop</code>.</td>
-      </tr>
-      <tr>
-        <td><code>release-*</code></td>
-        <td><strong>Release preparation and validation.</strong> Feature freeze, version bumps, release notes.</td>
-        <td>Branched from <code>develop</code>. Merged into <code>master</code> and <code>develop</code>.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+:root[data-theme='dark']:has(a[aria-current="page"][href*="mobile-draft"]) h2:not(.portal-card-title):not(.portal-route-title),
+:root[data-theme='dark']:has([class*="portal-"]) h2:not(.portal-card-title):not(.portal-route-title) {
+  color: #f3d17b !important;
+}
 
----
+:root[data-theme='light']:has(a[aria-current="page"][href*="mobile-draft"]) h2:not(.portal-card-title):not(.portal-route-title),
+:root[data-theme='light']:has([class*="portal-"]) h2:not(.portal-card-title):not(.portal-route-title) {
+  color: #143823 !important;
+}
 
-## Feature Branch Workflow
+:root:has(a[aria-current="page"][href*="mobile-draft"]) .sl-markdown-content h3:not(.portal-card-title):not(.portal-route-title),
+:root:has([class*="portal-"]) .sl-markdown-content h3:not(.portal-card-title):not(.portal-route-title),
+.mobile-draft-docs h3:not(.portal-card-title):not(.portal-route-title) {
+  font-size: 1.08rem !important;
+  font-weight: 700 !important;
+  margin: 24px 0 6px 0 !important;
+}
 
-### 1. Create a Feature Branch
-Always start your work from the latest updated `develop` branch:
+:root[data-theme='dark']:has(a[aria-current="page"][href*="mobile-draft"]) h3:not(.portal-card-title):not(.portal-route-title),
+:root[data-theme='dark']:has([class*="portal-"]) h3:not(.portal-card-title):not(.portal-route-title) {
+  color: #e2e8f0 !important;
+}
 
-```bash
-# 1. Switch to develop
-git checkout develop
+:root[data-theme='light']:has(a[aria-current="page"][href*="mobile-draft"]) h3:not(.portal-card-title):not(.portal-route-title),
+:root[data-theme='light']:has([class*="portal-"]) h3:not(.portal-card-title):not(.portal-route-title) {
+  color: #143823 !important;
+}
 
-# 2. Prune remote references and pull latest commits
-git fetch -p origin
-git pull origin develop
+.portal-section-sub {
+  font-size: 0.92rem;
+  color: var(--portal-text-muted);
+  margin: 0 0 18px 0;
+  line-height: 1.5;
+}
 
-# 3. Create and switch to your feature branch
-git checkout -b feature-123-add-azure-authentication
-```
+/* 4. HERO ORIENTATION & TOPOLOGY CARDS */
+.portal-hero-card {
+  background: var(--portal-card-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 12px !important;
+  padding: 18px 22px !important;
+  margin: 16px 0 28px 0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
 
-### 2. Branch Naming Conventions
-Branch names must be lowercase, hyphen-separated, and include the Jira ticket key where applicable:
+.portal-hero-card.portal-hero-row,
+.portal-hero-row,
+.portal-hero-card:has(.portal-hero-icon) {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 16px !important;
+}
 
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Branch Pattern</th>
-        <th>Example Branch Name</th>
-        <th>When to Use</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>feature-[ticket]-[description]</code></td>
-        <td><code>feature-123-add-azure-authentication</code></td>
-        <td>New feature work associated with a Jira ticket.</td>
-      </tr>
-      <tr>
-        <td><code>feature-[description]</code></td>
-        <td><code>feature-user-profile-screen</code></td>
-        <td>Un-ticketed or cross-cutting feature enhancement.</td>
-      </tr>
-      <tr>
-        <td><code>bugfix-[description]</code></td>
-        <td><code>bugfix-login-crash</code></td>
-        <td>Sprint-level defect resolution in development.</td>
-      </tr>
-      <tr>
-        <td><code>hotfix-[description]</code></td>
-        <td><code>hotfix-payment-timeout</code></td>
-        <td>Urgent production issue requiring immediate release.</td>
-      </tr>
-      <tr>
-        <td><code>release-[version]</code></td>
-        <td><code>release-2026.10</code></td>
-        <td>Sprint release candidate branch.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+.portal-hero-topbar {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  margin-bottom: 4px !important;
+}
 
-### 3. Best Practices for Feature Branches
-* **One feature per branch:** Keep branch scope tight. Do not mix unrelated refactors with new feature work.
-* **Keep branches short-lived:** Aim to merge branches within 2 to 3 days to prevent large merge conflicts.
-* **Commit frequently:** Make small, logical commits with clear Conventional Commit messages.
-* **Sync regularly with `develop`:** Rebase or merge `develop` daily to catch integration issues early.
-* **Use meaningful branch names:** Describe the technical goal clearly in the branch identifier.
+.portal-badge-hub {
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: var(--portal-accent) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  padding: 3px 10px !important;
+  border-radius: 4px !important;
+  letter-spacing: 0.06em !important;
+}
 
----
+.portal-hub-tag {
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-accent) !important;
+  letter-spacing: 0.05em !important;
+}
 
-## The 3 Core Development Flows
+.portal-hero-title {
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+  color: var(--portal-gold) !important;
+  margin: 0 0 4px 0 !important;
+  line-height: 1.3 !important;
+}
 
-### 1. Standard Feature Development Flow
-Engineers branch from `develop`, implement changes, and merge back through an approved Pull Request:
+.portal-hero-desc {
+  font-size: 0.94rem !important;
+  color: var(--portal-text-body) !important;
+  line-height: 1.55 !important;
+  margin: 0 0 12px 0 !important;
+}
 
-```mermaid
-flowchart TD
-    DevStart["develop (latest)"] -->|"git checkout -b feature-*"| Feat["feature-* / bugfix-* Branch\n(Local commits & unit tests)"]
-    Feat -->|"git push --set-upstream"| PR["Pull Request (GitHub Enterprise)\n• CI test suite execution\n• Peer code review (1-2 approvals)"]
-    PR -->|"Squash and merge"| DevEnd["develop (updated)\n(Auto-triggers nightly development build)"]
+.portal-hero-icon {
+  width: 32px !important;
+  height: 32px !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--portal-accent) !important;
+  margin-top: 3px !important;
+}
+.portal-hero-icon svg { width: 26px !important; height: 26px !important; }
 
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class DevStart,DevEnd highlight;
-    class Feat,PR nodeBox;
-```
+.portal-hero-sub {
+  font-size: 0.88rem !important;
+  color: var(--portal-text-muted) !important;
+  margin: 0 !important;
+}
 
----
+.portal-caps-bar {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 12px !important;
+  padding-top: 14px !important;
+  border-top: 1px solid var(--portal-card-border) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 900px) { .portal-caps-bar { grid-template-columns: repeat(2, 1fr) !important; } }
+@media (max-width: 520px) { .portal-caps-bar { grid-template-columns: 1fr !important; } }
 
-### 2. Release Flow (Sprint Completion)
-When sprint work is complete, code transitions through release staging for final stakeholder and UAT testing:
+.portal-cap-item {
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  box-sizing: border-box !important;
+}
 
-```mermaid
-flowchart TD
-    Dev["develop (Feature Freeze)"] -->|"Branch release-YYYY.MM"| Rel["release-2026.10\n(Version bump & release notes)"]
-    Rel -->|"Deploys to"| UAT["user_testing\n(Stakeholder QA & acceptance testing)"]
-    UAT -->|"Validation passes"| Master["master / prod\n(Tagged release: v2026.10)\nDeploy to App Store & Google Play"]
-    Master -.->|"Back-merge validation fixes"| Dev
+.portal-cap-title {
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-gold) !important;
+  margin-bottom: 3px !important;
+}
 
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class Dev,Master highlight;
-    class Rel,UAT nodeBox;
-```
+.portal-cap-desc {
+  font-size: 0.78rem !important;
+  color: var(--portal-text-body) !important;
+  line-height: 1.4 !important;
+}
 
-**Release Branch Rules:**
-* Release branches should contain **only bug fixes, documentation updates, and release validation changes**.
-* **Avoid introducing new features** after the release branch is cut.
+/* 5. MERMAID DIAGRAM RESPONSIVE CLAMPING (SCOPED TO MOBILE-DRAFT) */
+:root:has(a[aria-current="page"][href*="mobile-draft"]) .starlight-mermaid,
+:root:has([class*="portal-"]) .starlight-mermaid,
+:root:has([class*="portal-"]) pre.mermaid,
+:root:has([class*="portal-"]) .mermaid,
+:root:has([class*="portal-"]) div.mermaid,
+.mobile-draft-docs .starlight-mermaid,
+.mobile-draft-docs pre.mermaid,
+.mobile-draft-docs .mermaid {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  margin: 16px 0 28px 0 !important;
+  padding: 16px 10px !important;
+  overflow-x: auto !important;
+  background: transparent !important;
+  box-sizing: border-box !important;
+}
 
----
+:root:has(a[aria-current="page"][href*="mobile-draft"]) .starlight-mermaid svg,
+:root:has([class*="portal-"]) .starlight-mermaid svg,
+:root:has([class*="portal-"]) pre.mermaid svg,
+:root:has([class*="portal-"]) .mermaid svg,
+:root:has([class*="portal-"]) svg[id^="mermaid"],
+.mobile-draft-docs .starlight-mermaid svg,
+.mobile-draft-docs svg[id^="mermaid"] {
+  display: block !important;
+  margin: 0 auto !important;
+  width: auto !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
 
-### 3. Emergency Hotfix Flow
-For urgent production defects discovered in the field:
+/* 6. RESPONSIVE CARDS GRIDS */
+.portal-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 16px !important;
+  margin: 16px 0 36px 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 1160px) { .portal-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+@media (max-width: 680px)  { .portal-grid { grid-template-columns: 1fr !important; } }
 
-```mermaid
-flowchart TD
-    Prod["master / prod (Incident Detected)"] -->|"Branch hotfix-*"| Hotfix["hotfix-payment-timeout\n(Minimal surgical patch)"]
-    Hotfix -->|"Deploys to"| QA["user_testing\n(Rapid smoke test)"]
-    QA -->|"Approved"| MergeSplit{"Dual-Merge Requirement"}
-    MergeSplit -->|"1. Merge to Production"| ProdFix["master / prod\n(Tagged patch release v2026.10.1)"]
-    MergeSplit -->|"2. Merge to Development"| DevFix["develop\n(Prevents regression in next release)"]
+.portal-cards-grid,
+.portal-routes-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 16px !important;
+  margin: 16px 0 28px 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 768px) {
+  .portal-cards-grid,
+  .portal-routes-grid { grid-template-columns: 1fr !important; }
+}
 
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef highlight fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    classDef nodeBox fill:#102619,stroke:#22c55e,stroke-width:1.5px,color:#ffffff;
-    class Prod,ProdFix,DevFix highlight;
-    class Hotfix,QA,MergeSplit nodeBox;
-```
+.portal-card,
+.portal-route-card {
+  background: var(--portal-card-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 12px !important;
+  padding: 18px 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
+  box-sizing: border-box !important;
+  height: 100% !important;
+}
 
-<div class="portal-alert-box">
-  <div class="portal-alert-title">CRITICAL HOTFIX RULE</div>
-  <p><strong>Hotfixes must be merged back into BOTH <code>master</code> and <code>develop</code>.</strong></p>
-  <p>This prevents future sprint releases from overwriting the hotfix and reintroducing the critical defect into production.</p>
-</div>
+.portal-card:hover,
+.portal-route-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: var(--portal-accent) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+}
 
----
+.portal-card-full,
+.portal-route-card-full {
+  grid-column: span 2 !important;
+}
+@media (max-width: 768px) {
+  .portal-card-full,
+  .portal-route-card-full { grid-column: span 1 !important; }
+}
 
-## Pull Request (PR) Process
+/* 7. SHARED BADGE COLORS & SIZES */
+.portal-icon-badge,
+.portal-card-icon,
+.portal-route-icon {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+  flex-shrink: 0 !important;
+}
 
-### 1. Push Branch
-Push your feature branch to the central remote repository:
+.portal-icon-badge svg,
+.portal-card-icon svg,
+.portal-route-icon svg {
+  width: 18px !important;
+  height: 18px !important;
+}
 
-```bash
-git push --set-upstream origin feature-branch-name
-```
+.badge-green  { background: #22c55e !important; }
+.badge-purple { background: #8b5cf6 !important; }
+.badge-coral  { background: #f87171 !important; }
+.badge-rose   { background: #f43f5e !important; }
+.badge-amber  { background: #f59e0b !important; }
+.badge-teal   { background: #06b6d4 !important; }
+.badge-blue   { background: #3b82f6 !important; }
 
-### 2. Create a Pull Request
-1. Push changes to GitHub Enterprise.
-2. Open the repository in your browser.
-3. Select the **Pull Requests** tab.
-4. Click **New Pull Request**.
-5. Choose source (`feature-*`) and target branch (`develop`).
-6. Complete the PR template description.
-7. Request designated peer reviewers.
+/* 8. PAGE 1: GETTING STARTED / OVERVIEW HUB (.portal-grid .portal-card) - CONFIRMED WORKING */
+.portal-grid .portal-card > div {
+  display: grid !important;
+  grid-template-columns: 36px 1fr !important;
+  column-gap: 14px !important;
+  row-gap: 4px !important;
+  width: 100% !important;
+}
 
-### 3. PR Requirements Before Merge
-Every Pull Request must satisfy four baseline gates before merge eligibility:
-* **CI Checks Pass:** All automated unit tests, UI test smoke suites, and Danger bot linters pass without errors.
-* **Code Reviewed by Peers:** Meets the team review approval quota.
-* **Unit Tests Added or Updated:** All new logic and bug fixes must have automated test coverage.
-* **Documentation Updated:** Architectural changes, new environment variables, or API dependencies documented.
+.portal-grid .portal-icon-badge {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  margin: 0 !important;
+  align-self: center !important;
+}
 
----
+.portal-grid .portal-card-title,
+.portal-grid h2.portal-card-title,
+.sl-markdown-content .portal-grid .portal-card-title,
+.sl-markdown-content .portal-grid h2.portal-card-title {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  font-size: 1.08rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-gold) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  align-self: center !important;
+  line-height: 1.3 !important;
+}
 
-## Code Review Standards
+.portal-grid .portal-card-desc,
+.portal-grid p.portal-card-desc,
+.sl-markdown-content .portal-grid .portal-card-desc,
+.sl-markdown-content .portal-grid p.portal-card-desc {
+  grid-column: 2 / -1 !important;
+  grid-row: 2 !important;
+  font-size: 0.88rem !important;
+  color: var(--portal-text-body) !important;
+  line-height: 1.45 !important;
+  margin: 4px 0 14px 0 !important;
+  padding: 0 !important;
+}
 
-Every Pull Request must be thoroughly reviewed by engineering peers before merging into shared branches.
+.portal-grid .portal-pills {
+  grid-column: 1 / -1 !important;
+  grid-row: 3 !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px 10px !important;
+  margin-bottom: 16px !important;
+  width: 100% !important;
+}
 
-### Reviewer Verification Checklist
-Reviewers should systematically inspect the following criteria:
-* **Code Quality & Readability:** Clean architecture, decoupled components, and maintainable structure.
-* **Correct Functionality:** Code satisfies acceptance criteria without edge-case regressions.
-* **Appropriate Test Coverage:** Edge cases and failure modes covered by unit tests.
-* **Safe Concurrency Handling:** Proper thread dispatching (`Dispatchers.IO`, `@MainActor`, async/await). No race conditions.
-* **Adherence to Coding Standards:** Consistent linting, formatting, and design pattern usage.
-* **Clear Naming & Documentation:** Self-describing identifiers and updated README/docstrings.
-* **UI/UX Conformance:** Visual components conform to design system specs across light and dark modes.
+/* 9. PAGE 2: WELCOME & QUICK START (.portal-routes-grid .portal-route-card) - BULLETPROOF FLEX */
+.portal-routes-grid .portal-route-card > div,
+.portal-route-card > div {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
 
-### Recommended Review Model
-* **Minimum Requirement:** **1 approved peer review**.
-* **Preferred Standard:** **2 approved peer reviews** (at least one senior/lead engineer).
-* **Branch Protection Rules:** Repository settings enforce that the "Merge" button remains disabled until required approvals are registered.
+.portal-route-topbar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-bottom: 12px !important;
+  width: 100% !important;
+}
 
----
+.portal-route-icon,
+.portal-route-card .portal-route-icon {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+  flex-shrink: 0 !important;
+}
 
-## Maintaining a Healthy Repository (Do's and Don'ts)
+.portal-route-title,
+h3.portal-route-title,
+.sl-markdown-content h3.portal-route-title,
+.sl-markdown-content .portal-route-title {
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-gold) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.35 !important;
+  flex: 1 1 auto !important;
+}
 
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th style="width: 50%;">DO (Engineering Best Practices)</th>
-        <th style="width: 50%;">DON'T (Strictly Prohibited)</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Use feature branches:</strong> Isolate all changes in dedicated branches.</td>
-        <td><strong>Commit directly to master or develop:</strong> Direct pushes to shared branches are blocked.</td>
-      </tr>
-      <tr>
-        <td><strong>Keep PRs small:</strong> Limit PRs to &lt;400 lines of code for fast, thorough reviews.</td>
-        <td><strong>Keep long-running branches:</strong> Branches open &gt;5 days suffer severe merge conflicts.</td>
-      </tr>
-      <tr>
-        <td><strong>Merge frequently:</strong> Ship small, verifiable increments into <code>develop</code>.</td>
-        <td><strong>Skip code reviews:</strong> Never bypass peer reviews, even for small fixes.</td>
-      </tr>
-      <tr>
-        <td><strong>Run automated testing:</strong> Ensure all local unit tests pass before opening a PR.</td>
-        <td><strong>Merge failing builds:</strong> Never override or bypass broken CI checks.</td>
-      </tr>
-      <tr>
-        <td><strong>Review all code changes:</strong> Inspect every file diff carefully before approval.</td>
-        <td><strong>Create monolithic PRs:</strong> Avoid giant, 1000+ line PRs that cannot be properly audited.</td>
-      </tr>
-      <tr>
-        <td><strong>Follow naming conventions:</strong> Use standard prefixes (<code>feature-</code>, <code>bugfix-</code>, <code>hotfix-</code>).</td>
-        <td><strong>Leave commented-out code:</strong> Remove dead code before submitting PRs.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+.portal-tag-pill,
+.portal-route-card .portal-tag-pill {
+  margin-left: auto !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-accent) !important;
+  background: rgba(34, 197, 94, 0.12) !important;
+  border: 1px solid rgba(34, 197, 94, 0.3) !important;
+  padding: 3px 8px !important;
+  border-radius: 4px !important;
+  letter-spacing: 0.05em !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
 
----
+.portal-route-desc,
+p.portal-route-desc,
+.sl-markdown-content p.portal-route-desc,
+.sl-markdown-content .portal-route-desc {
+  font-size: 0.88rem !important;
+  color: var(--portal-text-body) !important;
+  line-height: 1.55 !important;
+  margin: 0 0 14px 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
 
-## Forking a Repository
+.portal-route-pills,
+.sl-markdown-content .portal-route-pills {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin: 0 0 16px 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
 
-While internal feature development takes place within the central repository using feature branches, **forking** is utilized for cross-organization contributions and external contractor engagements.
+.portal-route-pills span,
+.sl-markdown-content .portal-route-pills span {
+  font-size: 0.74rem !important;
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-pill-border) !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  color: var(--portal-pill-text) !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  line-height: 1.4 !important;
+  white-space: nowrap !important;
+}
 
-### When Forking is Useful:
-* Working with external contributors or third-party vendors.
-* Contributors do not have direct write access to the primary repository.
-* Experimenting with proof-of-concept architectures independently.
+/* 10. PAGE 3: PLATFORM OVERVIEW (.portal-cards-grid .portal-card) - BULLETPROOF FLEX */
+.portal-cards-grid .portal-card > div {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
 
-### Keeping Your Fork Updated:
-Keep your local clone synchronized with the upstream enterprise repository:
+.portal-card-topbar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-bottom: 12px !important;
+  width: 100% !important;
+}
 
-```bash
-# 1. Add upstream enterprise repository
-git remote add upstream https://github.enterprise.internal/mobile/enterprise-app.git
+.portal-cards-grid .portal-card-icon {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+  flex-shrink: 0 !important;
+}
 
-# 2. Fetch upstream branches
-git fetch upstream
+.portal-cards-grid .portal-card-title,
+.portal-cards-grid h3.portal-card-title,
+.sl-markdown-content .portal-cards-grid h3.portal-card-title,
+.sl-markdown-content .portal-cards-grid .portal-card-title {
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-gold) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.35 !important;
+  flex: 1 1 auto !important;
+}
 
-# 3. Switch to your local main branch
-git checkout main
+.portal-cards-grid .portal-tag-pill {
+  margin-left: auto !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-accent) !important;
+  background: rgba(34, 197, 94, 0.12) !important;
+  border: 1px solid rgba(34, 197, 94, 0.3) !important;
+  padding: 3px 8px !important;
+  border-radius: 4px !important;
+  letter-spacing: 0.05em !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
 
-# 4. Merge upstream updates into your fork
-git merge upstream/main
-```
+.portal-cards-grid .portal-card-desc,
+.portal-cards-grid p.portal-card-desc,
+.sl-markdown-content .portal-cards-grid p.portal-card-desc,
+.sl-markdown-content .portal-cards-grid .portal-card-desc {
+  font-size: 0.88rem !important;
+  color: var(--portal-text-body) !important;
+  line-height: 1.55 !important;
+  margin: 0 0 14px 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
 
----
+.portal-card-pills,
+.sl-markdown-content .portal-card-pills {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin: 0 0 16px 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
 
-## Quick Reference Summary Flow
+.portal-card-pills span,
+.sl-markdown-content .portal-card-pills span {
+  font-size: 0.74rem !important;
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-pill-border) !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  color: var(--portal-pill-text) !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  line-height: 1.4 !important;
+  white-space: nowrap !important;
+}
 
-The macro lifecycle across all development, release, and hotfix tracks:
+/* 11. PILL LINKS (INTERACTIVE BADGES) */
+.portal-pill-link,
+.sl-markdown-content .portal-pill-link {
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-pill-border) !important;
+  border-radius: 6px !important;
+  padding: 8px 10px !important;
+  color: var(--portal-pill-text) !important;
+  text-decoration: none !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block !important;
+  transition: all 0.15s ease !important;
+}
 
-```mermaid
-flowchart TD
-    subgraph FeatureWork["1. Feature Work"]
-        F1["feature-*"] -->|"Pull Request"| D1["develop"]
-    end
+.portal-pill-link:hover,
+.sl-markdown-content .portal-pill-link:hover {
+  background: var(--portal-pill-hover) !important;
+  border-color: var(--portal-accent) !important;
+  color: #ffffff !important;
+}
 
-    subgraph ReleaseStaging["2. Release Candidate"]
-        D2["develop"] -->|"Cut release"| R1["release-YYYY.MM"]
-        R1 -->|"Staging build"| U1["user_testing"]
-        U1 -->|"Sign-off"| M1["master / prod"]
-    end
+/* 12. CARD FOOTER ACTIONS */
+.portal-card-foot,
+.portal-card-action,
+.portal-route-action {
+  padding-top: 10px !important;
+  border-top: 1px solid var(--portal-card-border) !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  margin-top: auto !important;
+}
 
-    subgraph HotfixTrack["3. Emergency Patch"]
-        M2["master"] -->|"Hotfix cut"| H1["hotfix-*"]
-        H1 -->|"Smoke test"| U2["user_testing"]
-        U2 -->|"Dual merge"| M3["master & develop"]
-    end
+.portal-view-link,
+.portal-card-link,
+.portal-route-link,
+.sl-markdown-content .portal-view-link,
+.sl-markdown-content .portal-card-link,
+.sl-markdown-content .portal-route-link {
+  color: var(--portal-accent) !important;
+  font-size: 0.84rem !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: transform 0.15s ease, color 0.15s ease !important;
+}
 
-    classDef default fill:#13251c,stroke:#1f3b2c,stroke-width:1.5px,color:#e2e8f0;
-    classDef flowBox fill:#1b3826,stroke:#22c55e,stroke-width:2px,color:#f3d17b;
-    class FeatureWork,ReleaseStaging,HotfixTrack flowBox;
-```
+.portal-view-link:hover,
+.portal-card-link:hover,
+.portal-route-link:hover,
+.sl-markdown-content .portal-view-link:hover,
+.sl-markdown-content .portal-card-link:hover,
+.sl-markdown-content .portal-route-link:hover {
+  color: var(--portal-accent-hover) !important;
+  transform: translateX(2px) !important;
+}
 
-> **Summary:** This workflow maintains stable production releases, improves engineering collaboration, and ensures all mobile changes are validated through rigorous peer reviews and automated CI/CD quality checks before deployment.
+/* 13. RELEASE GATES SEQUENTIAL BAR */
+.portal-gates-container {
+  background: var(--portal-card-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 12px !important;
+  padding: 18px 20px !important;
+  margin: 16px 0 28px 0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.portal-gates-flow {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin: 12px 0 !important;
+}
+
+.portal-gate-node {
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  text-align: center !important;
+  flex: 1 !important;
+  min-width: 120px !important;
+}
+
+.portal-gate-title {
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  color: var(--portal-gold) !important;
+}
+
+.portal-gate-sub {
+  font-size: 0.72rem !important;
+  color: var(--portal-text-muted) !important;
+  margin-top: 2px !important;
+}
+
+.portal-gate-arrow {
+  color: var(--portal-accent) !important;
+  font-weight: 800 !important;
+  font-size: 1rem !important;
+}
+
+/* 14. TABLE STYLING */
+.portal-table-wrap {
+  overflow-x: auto !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 8px !important;
+  margin: 20px 0 28px 0 !important;
+  width: 100% !important;
+  background: var(--portal-card-bg) !important;
+  box-sizing: border-box !important;
+}
+
+.portal-table,
+.sl-markdown-content table.portal-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-size: 0.85rem !important;
+  text-align: left !important;
+  margin: 0 !important;
+  display: table !important;
+}
+
+.portal-table th,
+.sl-markdown-content table.portal-table th {
+  background: var(--portal-pill-bg) !important;
+  color: var(--portal-gold) !important;
+  font-weight: 700 !important;
+  padding: 10px 14px !important;
+  border-bottom: 1px solid var(--portal-card-border) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  font-size: 0.75rem !important;
+}
+
+.portal-table td,
+.sl-markdown-content table.portal-table td {
+  padding: 11px 14px !important;
+  border-bottom: 1px solid var(--portal-card-border) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  color: var(--portal-text-body) !important;
+  font-size: 0.85rem !important;
+}
+
+.portal-table tr:last-child td,
+.sl-markdown-content table.portal-table tr:last-child td {
+  border-bottom: none !important;
+}
+
+.portal-table td code,
+.sl-markdown-content table.portal-table td code {
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  color: var(--portal-accent) !important;
+  font-size: 0.78rem !important;
+}
+
+/* 15. CHECKLIST & ALERT BOXES */
+.portal-checklist-box,
+.portal-alert-box {
+  background: var(--portal-pill-bg) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-left: 4px solid var(--portal-accent) !important;
+  border-radius: 8px !important;
+  padding: 18px 20px !important;
+  margin: 28px 0 20px 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.portal-checklist-title,
+.portal-alert-title {
+  font-size: 0.88rem !important;
+  font-weight: 800 !important;
+  color: var(--portal-gold) !important;
+  letter-spacing: 0.04em !important;
+  margin-bottom: 8px !important;
+}
+
+.portal-checklist-box p,
+.portal-alert-box p {
+  font-size: 0.86rem !important;
+  color: var(--portal-text-body) !important;
+  margin: 0 0 10px 0 !important;
+}
+
+.portal-checklist-box ul,
+.portal-alert-box ul {
+  margin: 0 !important;
+  padding-left: 20px !important;
+}
+
+.portal-checklist-box li,
+.portal-alert-box li {
+  font-size: 0.85rem !important;
+  color: var(--portal-text-body) !important;
+  margin-bottom: 6px !important;
+  line-height: 1.5 !important;
+}
+
+.portal-checklist-box li strong,
+.portal-alert-box li strong {
+  color: var(--portal-accent) !important;
+}
