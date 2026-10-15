@@ -1,724 +1,257 @@
 ---
-title: "02. Codebase Preparation & Native Configuration"
-description: "Hands-on guide to configuring your React Native codebase for automated Bitrise CI/CD: scripts, metadata, security boundaries, and native Gradle and Xcode signing."
+title: "Chapter 09: Zero-Touch Store Delivery (Google Play & Apple TestFlight)"
+description: "Master automated continuous delivery from Bitrise to Google Play Internal Testing tracks and Apple TestFlight using Service Accounts and App Store Connect API keys."
 ---
-
 import DiagramExpand from './DiagramExpand.astro';
 
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
-    <span class="portal-hub-tag">CHAPTER 02 &bull; REPO PREPARATION</span>
-  </div>
-  <h1 class="portal-hero-title">Codebase Preparation &amp; Native Configuration</h1>
-  <p class="portal-hero-desc">
-    A step-by-step engineering walkthrough for standardizing your React Native code repository prior to CI execution. Configure deterministic npm script hooks, declare the enterprise platform metadata standard (<code>campfile.yml</code>), enforce strict credential git-ignore boundaries, and adapt native Android and iOS build files for cloud code signing.
+<div class="portal-header">
+  <div class="portal-badge">ENTERPRISE CONTINUOUS DELIVERY</div>
+  <h1 class="portal-title">Zero-Touch Store Delivery (Google Play & TestFlight)</h1>
+  <p class="portal-subtitle">
+    Eliminate manual binary uploads, credential sharing, and version skew. Configure fully automated, cryptographically authenticated deployments from Bitrise to Google Play Console and Apple App Store Connect.
   </p>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Script Standards</div>
-      <div class="portal-cap-desc">Deterministic lint &bull; Strict typecheck &bull; In-band Jest tests</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Platform Metadata</div>
-      <div class="portal-cap-desc">campfile.yml spec &bull; Multi-flavor bundle IDs &bull; RUM telemetry</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Secret Isolation</div>
-      <div class="portal-cap-desc">Hardened .gitignore &bull; Zero plaintext keys &bull; Keystore exclusion</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Dynamic Signing</div>
-      <div class="portal-cap-desc">Gradle CI env hooks &bull; Shared Xcode schemes &bull; Zero build drift</div>
-    </div>
-  </div>
+</div>
+
+<div class="portal-alert-box info">
+  <div class="portal-alert-title">PREREQUISITE NOTICE</div>
+  <p>
+    This chapter builds directly upon the code signing keys, provisioning profiles, and keystores configured in <strong>Chapter 06</strong>. Ensure your Bitrise secrets library contains valid production keystores and distribution certificates before executing store deployment workflows.
+  </p>
+</div>
+
+## 1. The Zero-Touch Delivery Philosophy
+
+In manual development teams, deploying an update requires a developer to generate an APK, AAB, or IPA on their local laptop, log into web consoles (Google Play Console and App Store Connect) with personal credentials, manually fill out forms, drag-and-drop gigabyte-sized files over unstable Wi-Fi, and manually assign tester groups.
+
+This manual process introduces severe enterprise risks:
+* **Version Skew:** Developers accidentally upload debug variants or test binaries missing critical release flags.
+* **Credential Exposure:** Team members share master developer credentials or two-factor authentication (2FA) SMS codes.
+* **ProGuard Mapping Loss:** Deobfuscation files (`mapping.txt` and `dSYM.zip`) are lost or forgotten, rendering production crash analytics unreadable.
+* **Auditing Failure:** No tamper-proof log exists to prove which commit hash corresponds to the distributed binary.
+
+In a **Zero-Touch Delivery** pipeline, human developers never upload binaries. Merging an approved release branch automatically triggers Bitrise to compile, sign, attach debug symbols, authenticate via machine-to-machine service keys, and publish directly to designated internal testing tracks within minutes.
+
+<DiagramExpand id="diag-store-delivery-pipeline" title="Enterprise Zero-Touch Store Delivery Flow">
+  <pre class="mermaid">
+flowchart TD
+    classDef git fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff;
+    classDef ci fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff;
+    classDef store fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef user fill:#162e20,stroke:#a855f7,stroke-width:2px,color:#ffffff;
+
+    A["Git Release Merge (release/v2.4.0)"]:::git --> B["Bitrise Release Workflow"]:::ci
+    
+    subgraph Bitrise["Bitrise Cloud Runner"]
+        B --> C1["Build Signed AAB + R8 Mapping"]:::ci
+        B --> C2["Build Signed IPA + dSYM Bundle"]:::ci
+        C1 --> D1["google-play-deploy@3 Step"]:::ci
+        C2 --> D2["deploy-to-itunesconnect-with-deliver@3"]:::ci
+    end
+
+    D1 -->|"GCP Service Account JSON Auth"| E1["Google Play Developer API"]:::store
+    D2 -->|"App Store Connect API Key (.p8)"| E2["App Store Connect API"]:::store
+
+    E1 --> F1["Google Play Console: Internal Track"]:::store
+    E2 --> F2["Apple TestFlight: Internal QA Group"]:::store
+
+    F1 --> G1["QA Testers (Play Store App Notification)"]:::user
+    F2 --> G2["QA Testers (TestFlight Push Notification)"]:::user
+  </pre>
+</DiagramExpand>
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Attribute</th>
+        <th>Google Play Store Track</th>
+        <th>Apple TestFlight Group</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Target Track / Group</strong></td>
+        <td><code>internal</code> (Internal Testing)</td>
+        <td><code>QA-Internal-Testers</code> (Internal Testing)</td>
+      </tr>
+      <tr>
+        <td><strong>Review Required?</strong></td>
+        <td>No automated or human review</td>
+        <td>No review for Internal Testers (External requires Beta Review)</td>
+      </tr>
+      <tr>
+        <td><strong>Time to Device</strong></td>
+        <td>2 to 5 minutes post-upload</td>
+        <td>5 to 15 minutes post-upload (Apple asset processing)</td>
+      </tr>
+      <tr>
+        <td><strong>Maximum Testers</strong></td>
+        <td>100 email addresses per list</td>
+        <td>100 internal team members per App Store Connect account</td>
+      </tr>
+      <tr>
+        <td><strong>Artifact Type</strong></td>
+        <td>Android App Bundle (<code>.aab</code>)</td>
+        <td>iOS App Store Package (<code>.ipa</code>)</td>
+      </tr>
+      <tr>
+        <td><strong>Crash Symbol Artifact</strong></td>
+        <td>ProGuard / R8 <code>mapping.txt</code></td>
+        <td>Xcode <code>dSYM.zip</code> archive</td>
+      </tr>
+    </tbody>
+  </table>
 </div>
 
 ---
 
-## 1. The Local-to-CI Parity Principle
+## 2. Android: Google Play Developer API & Service Account
 
-Before creating cloud pipelines, you must enforce the **Local-to-CI Parity Principle**:
+To deploy Android App Bundles without human login or 2FA prompts, Bitrise communicates directly with the **Google Play Developer API** using an OAuth2 Service Account managed inside Google Cloud Platform (GCP).
 
-```
-========================================================================================
-THE LOCAL-TO-CI PARITY PRINCIPLE:
-Every test, lint rule, and compilation command executed by Bitrise in the cloud 
-must be runnable and passing locally on your developer workstation.
-Never rely on CI to discover basic syntax errors, type mismatches, or missing imports.
-========================================================================================
-```
+### Step 1: Link Google Cloud Project to Play Console
+1. Log into the **Google Play Console** using an Owner or Admin account.
+2. In the left navigation menu, navigate to **Settings** &gt; **Developer account** &gt; **API access**.
+3. If no Google Cloud project is linked, click **Choose a project to link** or **Create new Google Cloud project**. Link it to your enterprise cloud project.
 
-If a command fails on your local machine, it is guaranteed to fail on Bitrise. Standardizing your project scripts ensures that both developers and cloud virtual machines run identical commands.
+### Step 2: Create the Service Account in Google Cloud Console
+1. Navigate to the **Google Cloud Console** (`https://console.cloud.google.com/`) under the linked project.
+2. Open **IAM & Admin** &gt; **Service Accounts**.
+3. Click **Create Service Account**:
+   * **Service account name:** `bitrise-play-store-deployer`
+   * **Service account ID:** `bitrise-play-store-deployer`
+   * **Description:** Automated CI/CD binary deployment key for Bitrise runner.
+4. Click **Create and Continue**.
+5. In the **Grant this service account access to project** step, assign the role **Service Account User** (or continue without project-level roles, as permissions are granted in Play Console).
+6. Click **Done**.
 
----
-
-## 2. Step 1: Standardize `package.json` Scripts
-
-Bitrise workflows require predictable command names to run quality checks across any project in the enterprise.
-
-Open your project root <code>package.json</code> and ensure the <code>scripts</code> section contains these four standard hooks:
-
-**`package.json`**
+### Step 3: Generate the JSON Private Key
+1. In the Service Accounts list, locate `bitrise-play-store-deployer@<project-id>.iam.gserviceaccount.com`.
+2. Click the three-dots menu icon under **Actions** and select **Manage keys**.
+3. Click **Add Key** &gt; **Create new key**.
+4. Select **JSON** as the key type and click **Create**.
+5. Save the downloaded JSON file securely. The file structure matches the following standard schema:
 
 ```json
 {
-  "name": "my-mobile-app",
-  "version": "1.0.0",
-  "scripts": {
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "typecheck": "tsc --noEmit",
-    "test": "jest --passWithNoTests --runInBand",
-    "test:coverage": "jest --coverage --maxWorkers=2",
-    "danger": "danger ci"
-  }
+  "type": "service_account",
+  "project_id": "",
+  "private_key_id": "",
+  "private_key": "",
+  "client_email": "",
+  "client_id": "",
+  "auth_uri": "",
+  "token_uri": "",
+  "auth_provider_x509_cert_url": "",
+  "client_x509_cert_url": ""
 }
 ```
-
-### Script Parameter Breakdown
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Script Name</th>
-        <th>Command String</th>
-        <th>Purpose &amp; Why It Matters on CI</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>npm run lint</code></td>
-        <td><code>eslint . --ext .js,.jsx,.ts,.tsx</code></td>
-        <td>Scans all JavaScript and TypeScript source files for code standard violations, unused variables, and potential runtime bugs.</td>
-      </tr>
-      <tr>
-        <td><code>npm run typecheck</code></td>
-        <td><code>tsc --noEmit</code></td>
-        <td>Runs the TypeScript compiler in validation-only mode without generating JS bundles. Catches interface mismatches and type errors before native compilation.</td>
-      </tr>
-      <tr>
-        <td><code>npm test</code></td>
-        <td><code>jest --passWithNoTests --runInBand</code></td>
-        <td>Executes Jest unit tests. The <code>--passWithNoTests</code> flag prevents build failure on newly scaffolded modules, while <code>--runInBand</code> runs tests sequentially in the main process to prevent virtual machine out-of-memory (OOM) errors.</td>
-      </tr>
-      <tr>
-        <td><code>npm run test:coverage</code></td>
-        <td><code>jest --coverage --maxWorkers=2</code></td>
-        <td>Generates LCOV code coverage reports for quality auditing without exhausting Bitrise virtual CPU allocations.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
----
-
-## 3. Step 2: The Enterprise Metadata Standard (`campfile.yml`)
-
-Every enterprise mobile application must declare a <code>campfile.yml</code> in its root directory. This configuration file acts as the single source of truth for platform tooling, monitoring telemetry (Datadog), bundle identifiers per flavor, and store target configurations.
-
-Create a file named <code>campfile.yml</code> in your repository root:
-
-**`campfile.yml`**
-
-```yaml
-app_name: my-mobile-app
-app_identifier:
-  dev: com.enterprise.mobileapp.dev
-  staging: com.enterprise.mobileapp.staging
-  prod: com.enterprise.mobileapp
-
-bitrise_app_slug: "a1b2c3d4e5f6g7h8"
-business_enterprise: corporate
-business_unit: mobile-engineering
-platform_type: react_native
-
-datadog_app_url: "https://app.datadoghq.com/rum/application/00000000-0000-0000-0000-000000000000"
-repository_name: "https://git.enterprise.internal/mobile-engineering/my-mobile-app.git"
-
-distribution_targets:
-  dev:
-    channel: slack
-    notify_group: mobile-devs
-  staging:
-    channel: firebase_app_distribution
-    tester_groups:
-      - QA-Engineers
-      - Product-Owners
-  prod:
-    channel: app_stores
-    google_play_track: internal
-    apple_testflight: true
-```
-
-### Field Validation Rules
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Field Name</th>
-        <th>Type</th>
-        <th>Constraint Rule</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>app_name</code></td>
-        <td>String</td>
-        <td>Must match the root project directory and the Bitrise application title.</td>
-      </tr>
-      <tr>
-        <td><code>app_identifier</code></td>
-        <td>Map</td>
-        <td>Must declare distinct reverse-domain package identifiers for <code>dev</code>, <code>staging</code>, and <code>prod</code> to allow side-by-side device installation.</td>
-      </tr>
-      <tr>
-        <td><code>platform_type</code></td>
-        <td>Enum</td>
-        <td>Allowed values: <code>react_native</code>, <code>android</code>, <code>ios</code>, or <code>flutter</code>.</td>
-      </tr>
-      <tr>
-        <td><code>business_enterprise</code></td>
-        <td>String</td>
-        <td>Designates the parent division for cloud cost allocation and resource governance.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
----
-
-## 4. Step 3: Hardening `.gitignore` &amp; Secret Isolation
-
-Accidental commits of cryptographic signing materials, API keys, or developer keystores represent one of the most critical security liabilities in mobile engineering.
-
-Open your <code>.gitignore</code> and ensure the following rules are present:
-
-**`.gitignore`**
-
-```gitignore
-# 1. Dependency Directories
-node_modules/
-.pnp
-.pnp.js
-
-# 2. Environment & Secret Variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.env
-
-# 3. Android Keystores & Secrets
-*.keystore
-*.jks
-android/app/*.keystore
-android/app/*.jks
-android/.gradle/
-android/app/build/
-android/local.properties
-
-# 4. iOS Certificates & Provisioning Profiles
-*.mobileprovision
-*.cer
-*.cert
-*.p12
-*.p8
-AuthKey_*.p8
-ios/Pods/
-ios/build/
-ios/DerivedData/
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-xcuserdata/
-
-# 5. Build Deliverables & Archives
-*.apk
-*.aab
-*.ipa
-*.dSYM.zip
-*.mapping.txt
-```
-
-<div class="portal-alert-box">
-  <div class="portal-alert-title">SECRET REVOCATION POLICY</div>
-  <p class="portal-alert-desc">
-    If a private Keystore (<code>.jks</code>), service account JSON key, or Apple <code>.p8</code> API key is ever committed to a remote Git repository—even on an internal branch—it is considered permanently compromised. You must immediately revoke the key, generate a fresh cryptographic pair, and report the incident to Mobile Security.
-  </p>
-</div>
-
----
-
-## 5. Step 4: Dynamic Android Signing in `build.gradle`
-
-In local development, developers typically compile with default debug keys. On Bitrise, the pipeline must dynamically read official production signing credentials injected into environment variables, without breaking local developer compilation.
-
-Open <code>android/app/build.gradle</code> and update the <code>android { ... }</code> configuration:
-
-**`android/app/build.gradle`**
-
-```groovy
-android {
-    namespace "com.enterprise.mobileapp"
-    compileSdkVersion rootProject.ext.compileSdkVersion
-
-    defaultConfig {
-        applicationId "com.enterprise.mobileapp"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
-    }
-
-    signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
-
-        release {
-            // Check if Bitrise injected the production keystore path
-            if (System.getenv("BITRISEIO_ANDROID_KEYSTORE_URL") != null) {
-                storeFile file(System.getenv("BITRISEIO_ANDROID_KEYSTORE_URL"))
-                storePassword System.getenv("BITRISEIO_ANDROID_KEYSTORE_PASSWORD")
-                keyAlias System.getenv("BITRISEIO_ANDROID_KEYSTORE_ALIAS")
-                keyPassword System.getenv("BITRISEIO_ANDROID_KEY_PASSWORD")
-            } else {
-                // Safe developer fallback: compile with debug key locally if release key absent
-                storeFile file('debug.keystore')
-                storePassword 'android'
-                keyAlias 'androiddebugkey'
-                keyPassword 'android'
-            }
-        }
-    }
-
-    buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-        }
-    }
-}
-```
-
-### Why this design is resilient:
-1. **Zero Hardcoded Secrets**: Passwords and key aliases are never written to source code.
-2. **Local Parity**: Developers can still run <code>./gradlew assembleRelease</code> locally without errors; it will safely fall back to the local debug keystore.
-3. **CI Automatic Activation**: When Bitrise executes the <code>sign-apk</code> step, it automatically mounts the official Keystore and sets <code>$BITRISEIO_ANDROID_KEYSTORE_URL</code>, enabling official cryptographic release signing.
-
----
-
-## 6. Step 5: iOS Scheme Configuration in Xcode
-
-When building iOS binaries on Bitrise macOS virtual machines, the cloud runner does not have a graphical interface. It relies on **Shared Schemes** in Xcode to know which targets to compile.
-
-### 6.1 Step 1: Mark Schemes as Shared
-
-By default, Xcode marks new schemes as *private* (stored in <code>xcuserdata/</code>, which is excluded by <code>.gitignore</code>). If you do not mark your scheme as **Shared**, Bitrise will report: <code>Scheme not found in workspace</code>.
-
-1. Open your project in Xcode: <code>open ios/MyMobileApp.xcworkspace</code>.
-2. In the top toolbar, click the Scheme dropdown and select **Manage Schemes...**
-3. Locate your application scheme (e.g., <code>MyMobileApp</code>).
-4. Check the **Shared** checkbox in the rightmost column.
-5. Click **Close**.
 
 <div class="portal-screenshot-box">
   <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT</span>
-    <span class="portal-screenshot-title">Xcode Manage Schemes - Shared Checkbox</span>
+    <span class="portal-screenshot-badge">SCREENSHOT PLACEHOLDER</span>
+    <span class="portal-screenshot-location">Google Cloud Console: IAM & Admin &gt; Service Accounts &gt; Keys</span>
   </div>
-  <p class="portal-screenshot-desc">
-    <strong>Where to capture:</strong> Open Xcode &gt; Menu: <span class="portal-screenshot-path">Product &gt; Scheme &gt; Manage Schemes...</span> Highlight the active scheme row with the <strong>Shared</strong> checkbox checked on the far right.
+  <p class="portal-screenshot-caption">
+    <strong>Capture Focus:</strong> Show the Service Account details page displaying the <code>bitrise-play-store-deployer</code> email address, the active JSON key ID, and the key creation timestamp with status set to Active.
   </p>
 </div>
 
-### 6.2 Step 2: Commit the Shared Scheme to Git
-
-Once marked as shared, Xcode creates a descriptor at:
-<code>ios/MyMobileApp.xcodeproj/xcshareddata/xcschemes/MyMobileApp.xcscheme</code>
-
-Stage and commit this file to Git:
-
-```bash
-git add ios/MyMobileApp.xcodeproj/xcshareddata/xcschemes/MyMobileApp.xcscheme
-git commit -m "chore(ios): mark Xcode scheme as shared for CI execution"
-```
-
----
-
-## 7. Step 6: Local Verification Smoke Test
-
-Before pushing your changes and creating cloud workflows, run this three-step smoke test locally:
-
-```bash
-# 1. Verify code style and formatting
-npm run lint
-
-# 2. Verify TypeScript type safety
-npm run typecheck
-
-# 3. Execute unit test suite
-npm test
-```
-
-### Android Local Compilation Check:
-```bash
-cd android
-./gradlew assembleDevDebug --dry-run
-cd ..
-```
-
-If all three commands exit with code `0`, your codebase is officially prepared for continuous integration.
-
----
-
-## 8. Summary &amp; Next Steps
-
-You have established complete repository readiness:
-* Standardized npm script hooks are active in <code>package.json</code>.
-* The enterprise platform metadata standard is codified in <code>campfile.yml</code>.
-* Plaintext credentials and keystores are strictly guarded in <code>.gitignore</code>.
-* Android Gradle is configured to read signing keys dynamically from CI memory.
-* Xcode schemes are shared and committed to Git.
-
-
-
-
-
-
-----------------------------------------
-
----
-title: "03. Automated PR Quality Gates with Danger.js"
-description: "Configure automated pull request code review gates on Bitrise using Danger.js: description validation, assignee enforcement, WIP blocking, and diff size guards."
----
-
-import DiagramExpand from './DiagramExpand.astro';
-
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
-    <span class="portal-hub-tag">CHAPTER 03 &bull; CODE REVIEW AUTOMATION</span>
-  </div>
-  <h1 class="portal-hero-title">Automated PR Quality Gates with Danger.js</h1>
-  <p class="portal-hero-desc">
-    Automate pull request hygiene and review conventions across your mobile engineering teams using Danger.js on Bitrise. Enforce comprehensive PR descriptions, block accidental merges of work-in-progress code, verify reviewer assignments, monitor code churn thresholds, and automatically publish structured markdown review tables.
-  </p>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Automated Etiquette</div>
-      <div class="portal-cap-desc">Description length &bull; [WIP] blocker &bull; Testing notes required</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Review Governance</div>
-      <div class="portal-cap-desc">Assignee verification &bull; Reviewer assignment &bull; Zero orphaned PRs</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Diff Size Guards</div>
-      <div class="portal-cap-desc">Threshold alerts (&gt; 500 lines) &bull; Modularity enforcement &bull; Small slices</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">GitHub Integration</div>
-      <div class="portal-cap-desc">Enterprise PAT &bull; Webhook status check &bull; Markdown summary tables</div>
-    </div>
-  </div>
-</div>
-
----
-
-## 1. Why Danger.js in Enterprise Mobile CI/CD
-
-During manual code reviews, senior developers frequently waste valuable engineering time repeating basic hygiene requests:
-* *"Please provide a summary of what changed and how to test it."*
-* *"Please assign yourself to this Pull Request."*
-* *"This PR is marked WIP, why is it opened for review?"*
-* *"This PR modifies 1,400 lines across 60 files; please split it into smaller PRs."*
-
-Danger.js eliminates this friction by running as an automated, impartial code reviewer on Bitrise. It inspects Pull Request metadata and Git diffs, executing programmed rules codified in a <code>dangerfile.ts</code>, and posts a structured comment directly onto the GitHub PR.
-
----
-
-## 2. Step 1: Install Danger.js Dependency
-
-Danger runs as an npm module within your project. Add it to your <code>devDependencies</code>:
-
-**`TERMINAL`**
-
-```bash
-npm install --save-dev danger
-```
-
-Verify that your <code>package.json</code> contains a script entry for Danger:
-
-**`package.json`**
-
-```json
-{
-  "scripts": {
-    "danger": "danger ci"
-  }
-}
-```
-
----
-
-## 3. Step 2: Crafting the Production `dangerfile.ts`
-
-Create a file named <code>dangerfile.ts</code> in the root directory of your repository. This file defines the exact quality rules enforced on every GitHub Pull Request:
-
-**`dangerfile.ts`**
-
-```typescript
-import { danger, warn, fail, message } from "danger";
-
-// ---------------------------------------------------------------------------
-// RULE 1: Enforce Pull Request Description Quality
-// ---------------------------------------------------------------------------
-const prBody = danger.github.pr.body;
-if (!prBody || prBody.trim().length < 15) {
-  fail("This Pull Request requires a description. Please provide context, user impact, and QA testing steps.");
-}
-
-// ---------------------------------------------------------------------------
-// RULE 2: Enforce Assignee Assignment
-// ---------------------------------------------------------------------------
-if (!danger.github.pr.assignee) {
-  warn("This Pull Request needs an assignee. Please assign yourself or a lead engineer.");
-}
-
-// ---------------------------------------------------------------------------
-// RULE 3: Block Work-In-Progress (WIP) Pull Requests from Merging
-// ---------------------------------------------------------------------------
-const prTitle = danger.github.pr.title;
-if (
-  prTitle.toLowerCase().includes("[wip]") ||
-  prTitle.toLowerCase().startsWith("wip:") ||
-  prTitle.toLowerCase().includes("(wip)")
-) {
-  fail("This Pull Request is marked as [WIP]. Remove the WIP tag before merging to branch.");
-}
-
-// ---------------------------------------------------------------------------
-// RULE 4: Guard Against Giant Pull Request Diffs (> 500 lines)
-// ---------------------------------------------------------------------------
-const totalModifications = danger.github.pr.additions + danger.github.pr.deletions;
-if (totalModifications > 500) {
-  warn(
-    `Big PR! This change modifies ${totalModifications} lines. Consider breaking changes into smaller, incremental review slices.`
-  );
-}
-
-// ---------------------------------------------------------------------------
-// RULE 5: Automated Test Coverage Verification
-// ---------------------------------------------------------------------------
-const modifiedAppCode = danger.git.modified_files.some(file => 
-  file.startsWith("src/") && !file.includes(".test.") && !file.includes(".spec.")
-);
-
-const modifiedTests = danger.git.modified_files.some(file => 
-  file.includes(".test.") || file.includes(".spec.") || file.includes("__tests__")
-);
-
-if (modifiedAppCode && !modifiedTests) {
-  warn("Source code in `src/` was modified, but no corresponding test files were updated. Please verify if unit tests are needed.");
-}
-
-if (modifiedTests) {
-  message("Great engineering discipline! This Pull Request includes automated test modifications.");
-}
-
-// ---------------------------------------------------------------------------
-// RULE 6: Lockfile Synchronization Guard
-// ---------------------------------------------------------------------------
-const packageChanged = danger.git.modified_files.includes("package.json");
-const lockfileChanged = danger.git.modified_files.includes("package-lock.json");
-
-if (packageChanged && !lockfileChanged) {
-  fail("`package.json` was updated, but `package-lock.json` was not. Run `npm install` and commit the updated lockfile.");
-}
-```
-
-### Danger.js Rule Enforcement Matrix
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Rule Category</th>
-        <th>Trigger Condition</th>
-        <th>Severity</th>
-        <th>Pipeline Outcome</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>PR Description</strong></td>
-        <td>Body text is empty or fewer than 15 characters</td>
-        <td><code>fail()</code></td>
-        <td>Blocks GitHub PR merge; status check turns red.</td>
-      </tr>
-      <tr>
-        <td><strong>Assignee Check</strong></td>
-        <td>No GitHub user assigned to the PR</td>
-        <td><code>warn()</code></td>
-        <td>Leaves yellow warning table; does not halt compilation.</td>
-      </tr>
-      <tr>
-        <td><strong>WIP Blocker</strong></td>
-        <td>Title contains <code>[WIP]</code> or starts with <code>wip:</code></td>
-        <td><code>fail()</code></td>
-        <td>Prevents accidental early merges of unfinished feature code.</td>
-      </tr>
-      <tr>
-        <td><strong>Diff Size Threshold</strong></td>
-        <td>Total additions + deletions exceed 500 lines</td>
-        <td><code>warn()</code></td>
-        <td>Reminds developer to favor small, incremental PR slices.</td>
-      </tr>
-      <tr>
-        <td><strong>Lockfile Guard</strong></td>
-        <td><code>package.json</code> modified without <code>package-lock.json</code></td>
-        <td><code>fail()</code></td>
-        <td>Prevents dependency version drift and non-deterministic builds.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
----
-
-## 4. Step 3: GitHub Personal Access Token (PAT) Setup
-
-Danger requires GitHub API access to read PR metadata and post comments on your pull requests.
-
-### 4.1 Creating the Personal Access Token in GitHub
-
-1. Log into your GitHub Enterprise account.
-2. In the top right corner, click your profile picture &gt; **Settings**.
-3. In the left navigation, scroll to the bottom and click **Developer settings**.
-4. Click **Personal access tokens** &gt; **Tokens (classic)**.
-5. Click **Generate new token (classic)**.
-6. Set **Note** to: <code>Bitrise-Danger-Bot</code>.
-7. Under **Select scopes**, check the **repo** scope (Full control of private repositories).
-8. Click **Generate token** and copy the resulting string (e.g., <code>ghp_xxxxxxxxxxxx</code>).
-
-### 4.2 Storing the Token in Bitrise Secrets
-
-1. Open your mobile application in the **Bitrise Console**.
-2. Click **Workflow Editor** &gt; **Secrets Tab**.
-3. Add a new secret:
-   * **Key**: <code>DANGER_GITHUB_API_TOKEN</code>
-   * **Value**: <code>ghp_xxxxxxxxxxxx</code>
-4. For GitHub Enterprise installations, also declare these environment variables in your <code>app.envs</code>:
-   * <code>DANGER_GITHUB_HOST</code>: <code>git.enterprise.internal</code>
-   * <code>DANGER_GITHUB_API_BASE_URL</code>: <code>https://git.enterprise.internal/api/v3</code>
-
----
-
-## 5. Step 4: Bitrise Workflow Step Configuration
-
-Danger must execute in your <code>pr-checks</code> workflow immediately after source code checkout and dependency installation:
-
-**`bitrise.yml (pr-checks excerpt)`**
-
-```yaml
-workflows:
-  pr-checks:
-    steps:
-    - activate-ssh-key@4: {}
-    - git-clone@8: {}
-    - restore-cache@1:
-        inputs:
-        - key: npm-v1-{{ checksum "package-lock.json" }}
-    - npm@1:
-        title: Install Dependencies
-        inputs:
-        - command: ci
-
-    # Execute Danger.js Quality Gate
-    - npm@1:
-        title: Run Danger.js Review Bot
-        inputs:
-        - command: run danger
-        envs:
-        - DANGER_GITHUB_API_TOKEN: $DANGER_GITHUB_API_TOKEN
-        - DANGER_GITHUB_HOST: $DANGER_GITHUB_HOST
-        - DANGER_GITHUB_API_BASE_URL: $DANGER_GITHUB_API_BASE_URL
-
-    - npm@1:
-        title: TypeScript Type Check
-        inputs:
-        - command: run typecheck
-    - npm@1:
-        title: Run Jest Unit Tests
-        inputs:
-        - command: test
-```
-
----
-
-## 6. Visual Reference: Danger.js Automated Review Table
-
-When a developer opens a Pull Request that violates a rule, Danger immediately posts a formatted markdown table directly on GitHub:
+### Step 4: Grant Permissions in Google Play Console
+1. Return to the **Google Play Console** &gt; **Users and permissions**.
+2. Click **Invite new user**.
+3. In the **Email address** field, paste the exact service account email: `bitrise-play-store-deployer@<project-id>.iam.gserviceaccount.com`.
+4. Under **App permissions**, click **Add app** and select your mobile application.
+5. In the permissions dialog, check the following enterprise permissions:
+   * **Releases:**
+     * *Manage production tracks*
+     * *Manage testing tracks (internal, closed, open)*
+     * *Release apps to testing tracks*
+     * *Edit and delete draft releases*
+6. Click **Apply**, then click **Invite user** at the bottom right. No email verification is required; the service account is active immediately.
 
 <div class="portal-screenshot-box">
   <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT</span>
-    <span class="portal-screenshot-title">GitHub PR - Danger.js Review Comment Table</span>
+    <span class="portal-screenshot-badge">SCREENSHOT PLACEHOLDER</span>
+    <span class="portal-screenshot-location">Google Play Console: Users and Permissions &gt; User Details</span>
   </div>
-  <p class="portal-screenshot-desc">
-    <strong>Where to capture:</strong> Open any GitHub Pull Request where the Bitrise <span class="portal-screenshot-path">pr-checks</span> workflow ran. Capture the automated comment table showing the red failure notice (e.g., Short PR description) and yellow warning notices (e.g., Big PR warning).
+  <p class="portal-screenshot-caption">
+    <strong>Capture Focus:</strong> Display the permissions matrix granted to the Service Account email address, highlighting checked boxes for "Release apps to testing tracks" and "Manage testing tracks".
+  </p>
+</div>
+
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">THE INITIAL UPLOAD RULE</div>
+  <p>
+    The Google Play Developer API <strong>cannot</strong> create a brand-new application from scratch. You must manually upload your very first signed <code>.aab</code> file once through the Google Play Console web UI to register the package name, app icon, store listing, and privacy policy. All subsequent releases can be 100% automated via Bitrise.
   </p>
 </div>
 
 ---
 
-## 7. Troubleshooting Common Danger.js Errors
+## 3. iOS: App Store Connect API Key & TestFlight Deliver
+
+For automated iOS delivery, Apple provides the **App Store Connect API**. Unlike legacy Apple ID username/password authentications that required constant 2FA verification codes, API keys are persistent, secure, machine-readable cryptographic tokens.
+
+### Step 1: Generate an App Store Connect API Key
+1. Log into **App Store Connect** (`https://appstoreconnect.apple.com/`) as an Account Holder or Admin.
+2. Select **Users and Access** from the top header navigation.
+3. Click the **Integrations** tab (or **Keys** tab in legacy consoles).
+4. Click the **Add (+)** button next to App Store Connect API:
+   * **Name:** `Bitrise-CI-CD-Deployer`
+   * **Access Role:** `App Manager` (allows uploading builds, creating release notes, and managing TestFlight tester groups)
+5. Click **Generate**.
+
+### Step 2: Extract Key Identifiers and Download Private Key
+After generation, the table will display:
+* **Issuer ID:** A standard UUID representing your Apple Developer Team (e.g., `57246542-96fe-1a63-e053-0824d011072a`).
+* **Key ID:** A 10-character alphanumeric identifier (e.g., `D3ABC12345`).
+* **Download API Key:** A link allowing you to download `AuthKey_D3ABC12345.p8`.
+
+<div class="portal-alert-box danger">
+  <div class="portal-alert-title">IRREVERSIBLE ONE-TIME DOWNLOAD</div>
+  <p>
+    Apple permits downloading the <code>.p8</code> private key file <strong>exactly once</strong>. Once the page is refreshed or left, the download button disappears forever. Store this file immediately in your enterprise password manager before closing the browser window.
+  </p>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT PLACEHOLDER</span>
+    <span class="portal-screenshot-location">App Store Connect: Users and Access &gt; Integrations &gt; App Store Connect API</span>
+  </div>
+  <p class="portal-screenshot-caption">
+    <strong>Capture Focus:</strong> Capture the API Keys table showing the Key Name, Key ID (10 characters), Issuer ID (UUID), and the role set to "App Manager".
+  </p>
+</div>
+
+### Step 3: Configure Bitrise Secrets for App Store Connect
+In your Bitrise Project Web Console, open **Workflows** &gt; **Secrets** tab and define:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Error Symptom</th>
-        <th>Likely Root Cause</th>
-        <th>Exact Resolution</th>
+        <th>Bitrise Secret Key</th>
+        <th>Value Type</th>
+        <th>Description / Example</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><code>Danger: 401 Bad Credentials</code></td>
-        <td>The <code>$DANGER_GITHUB_API_TOKEN</code> is expired, revoked, or mistyped in the Bitrise Secrets tab.</td>
-        <td>Generate a new Personal Access Token on GitHub with <code>repo</code> scope and update the secret in Bitrise.</td>
+        <td><code>APP_STORE_CONNECT_KEY_ID</code></td>
+        <td>Environment Variable</td>
+        <td>10-character Key ID (e.g., <code>D3ABC12345</code>)</td>
       </tr>
       <tr>
-        <td><code>Cannot find dangerfile.ts</code></td>
-        <td>The file is misplaced in a subfolder or named <code>Dangerfile</code> instead of <code>dangerfile.ts</code>.</td>
-        <td>Ensure <code>dangerfile.ts</code> resides directly in the root directory alongside <code>package.json</code>.</td>
+        <td><code>APP_STORE_CONNECT_ISSUER_ID</code></td>
+        <td>Environment Variable</td>
+        <td>UUID from App Store Connect (e.g., <code>57246542-96fe-1a63-e053-0824d011072a</code>)</td>
       </tr>
       <tr>
-        <td><code>Rate limit exceeded on GitHub API</code></td>
-        <td>Unauthenticated API calls or shared token across multiple high-volume CI systems.</td>
-        <td>Confirm <code>$DANGER_GITHUB_API_TOKEN</code> is properly exported in the Bitrise workflow step environment.</td>
-      </tr>
-      <tr>
-        <td><code>GitHub Enterprise URL unreachable</code></td>
-        <td>Missing <code>DANGER_GITHUB_HOST</code> or <code>DANGER_GITHUB_API_BASE_URL</code> environment variables.</td>
-        <td>Verify that the host domain (e.g. <code>git.enterprise.internal</code>) and API URL (<code>https://git.enterprise.internal/api/v3</code>) are declared in <code>app.envs</code>.</td>
+        <td><code>APP_STORE_CONNECT_API_KEY_P8</code></td>
+        <td>Secret Environment Variable</td>
+        <td>Full plaintext content of <code>AuthKey_D3ABC12345.p8</code> including header and footer</td>
       </tr>
     </tbody>
   </table>
@@ -726,1471 +259,347 @@ When a developer opens a Pull Request that violates a rule, Danger immediately p
 
 ---
 
-## 8. Summary
+## 4. Production Release Workflows (`bitrise.yml`)
 
-You have established automated pull request code governance:
-* Danger.js is integrated into your project <code>devDependencies</code>.
-* A strict <code>dangerfile.ts</code> enforces PR descriptions, blocks <code>[WIP]</code> merges, checks assignees, and guards against lockfile desynchronization.
-* GitHub Personal Access Tokens and Enterprise endpoints are securely declared.
-* The <code>pr-checks</code> workflow automatically posts feedback tables on every commit.
-
-
-
-----------------------------------------------------
-
-
-
----
-title: "04. Bitrise Pipeline Configuration"
-description: "Master guide to writing a production-grade bitrise.yml: 4 core workflows, trigger maps, dependency caching, and fast parallel module testing."
----
-
-import DiagramExpand from './DiagramExpand.astro';
-
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
-    <span class="portal-hub-tag">CHAPTER 04 &bull; PIPELINE ARCHITECTURE</span>
-  </div>
-  <h1 class="portal-hero-title">Bitrise Pipeline Configuration</h1>
-  <p class="portal-hero-desc">
-    The central operational blueprint for your mobile CI/CD system. Learn how to write a production-ready <code>bitrise.yml</code> file from scratch, orchestrate the four core mobile workflows, configure aggressive dependency caching, and implement fast parallel module testing to slash build durations by 70%.
-  </p>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">4 Core Workflows</div>
-      <div class="portal-cap-desc">pr-checks &bull; deploy-dev &bull; deploy-staging-qa &bull; release-prod</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Trigger Routing</div>
-      <div class="portal-cap-desc">Automated PR triggers &bull; Branch push mapping &bull; Zero manual clicks</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Parallel Acceleration</div>
-      <div class="portal-cap-desc">Git diff detection &bull; Dynamic module flags &bull; run_if execution</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Two-Tier Caching</div>
-      <div class="portal-cap-desc">package-lock checksums &bull; Gradle cache &bull; Sub-3 minute builds</div>
-    </div>
-  </div>
-</div>
-
----
-
-## 1. Anatomy of `bitrise.yml`
-
-The <code>bitrise.yml</code> file lives at the root of your mobile repository. It is the single declarative source of truth parsed by Bitrise runners.
-
-```
-+-------------------------------------------------------------------------------+
-|                            BITRISE.YML HIERARCHY                              |
-|                                                                               |
-|  format_version: "11"       Specification standard                            |
-|  app: envs                  Global environment defaults                       |
-|  trigger_map                Git event router (Pushes, Pull Requests, Tags)    |
-|  pipelines                  Multi-stage orchestration                         |
-|    └── stages               Sequential phases                                 |
-|          └── workflows      Individual task sequences (run in parallel)       |
-|                └── steps    Modular atomic actions from StepLib               |
-+-------------------------------------------------------------------------------+
-```
-
----
-
-## 2. The Complete Production `bitrise.yml`
-
-Below is the complete, production-tested <code>bitrise.yml</code> configuration for enterprise React Native and mobile applications:
-
-**`bitrise.yml`**
+The following complete, copy-paste ready Bitrise workflow definitions demonstrate how to compile signed release artifacts and distribute them directly to Google Play and Apple TestFlight.
 
 ```yaml
-format_version: "11"
+format_version: '11'
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 project_type: react-native
 
 app:
   envs:
-  - PROJECT_LOCATION: android
-  - MODULE: app
-  - BITRISE_PROJECT_PATH: ios/MyMobileApp.xcworkspace
-  - BITRISE_SCHEME: MyMobileApp
-
-trigger_map:
-- pull_request_source_branch: "*"
-  workflow: pr-checks
-- push_branch: develop
-  workflow: deploy-dev
-- push_branch: staging
-  workflow: deploy-staging-qa
-- push_branch: main
-  workflow: release-prod
+    - PACKAGE_NAME: "com.enterprise.mobileapp"
+    - BUNDLE_ID: "com.enterprise.mobileapp"
+    - GOOGLE_PLAY_TRACK: "internal"
 
 workflows:
   # =========================================================================
-  # 1. PULL REQUEST QUALITY GATE (< 5 MIN SLA)
+  # WORKFLOW: Release Android to Google Play Internal Testing
   # =========================================================================
-  pr-checks:
-    description: Code Quality, TypeScript Safety, Danger.js Bot & Smoke Compile
+  release_android:
+    summary: Builds signed Android AAB and publishes to Google Play Internal track
     steps:
-    - activate-ssh-key@4: {}
-    - git-clone@8: {}
-    
-    # Restore node_modules cache based on package-lock checksum
-    - restore-cache@1:
-        inputs:
-        - key: npm-v1-{{ checksum "package-lock.json" }}
-    
-    - npm@1:
-        title: Install Dependencies
-        inputs:
-        - command: ci
-    
-    # Save cache if dependencies changed
-    - save-cache@1:
-        inputs:
-        - key: npm-v1-{{ checksum "package-lock.json" }}
-        - paths: node_modules
+      - activate-ssh-key@4:
+          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
 
-    - npm@1:
-        title: Run ESLint
-        inputs:
-        - command: run lint
+      - git-clone@8: {}
 
-    - npm@1:
-        title: TypeScript Type Check
-        inputs:
-        - command: run typecheck
+      - yarn@0:
+          inputs:
+            - command: install --frozen-lockfile
 
-    - npm@1:
-        title: Run Danger.js Review Bot
-        inputs:
-        - command: run danger
-        envs:
-        - DANGER_GITHUB_API_TOKEN: $DANGER_GITHUB_API_TOKEN
-        - DANGER_GITHUB_HOST: $DANGER_GITHUB_HOST
-        - DANGER_GITHUB_API_BASE_URL: $DANGER_GITHUB_API_BASE_URL
+      - install-missing-android-tools@3:
+          inputs:
+            - gradlew_path: android/gradlew
 
-    - npm@1:
-        title: Run Jest Unit Tests
-        inputs:
-        - command: test
+      # Inject dynamic build number into Android versionCode
+      - change-android-versioncode-and-versionname@1:
+          inputs:
+            - build_gradle_path: android/app/build.gradle
+            - new_version_code: $BITRISE_BUILD_NUMBER
 
-    - install-missing-android-tools@3: {}
-    
-    # Smoke compile to ensure zero native compilation breakages before merge
-    - android-build@1:
-        title: Smoke Compile devDebug APK
-        inputs:
-        - project_location: $PROJECT_LOCATION
-        - module: $MODULE
-        - variant: devDebug
-        - build_type: apk
+      # Download enterprise release keystore
+      - file-downloader@1:
+          inputs:
+            - source: $BITRISEIO_ANDROID_KEYSTORE_URL
+            - destination: android/app/release.keystore
+
+      # Download Google Play Service Account JSON key
+      - file-downloader@1:
+          inputs:
+            - source: $BITRISEIO_GPLAY_SERVICE_ACCOUNT_JSON_URL
+            - destination: /tmp/gplay-service-account.json
+
+      # Compile signed Release Android App Bundle (AAB)
+      - android-build@1:
+          inputs:
+            - project_location: android
+            - module: app
+            - variant: release
+            - build_type: aab
+            - app_path: android/app/build/outputs/bundle/release/app-release.aab
+
+      # Deploy AAB + ProGuard/R8 mapping.txt directly to Google Play Developer API
+      - google-play-deploy@3:
+          inputs:
+            - service_account_json_key_path: /tmp/gplay-service-account.json
+            - package_name: $PACKAGE_NAME
+            - app_path: $BITRISE_AAB_PATH
+            - mapping_file: android/app/build/outputs/mapping/release/mapping.txt
+            - track: $GOOGLE_PLAY_TRACK
+            - user_fraction: "1.0"
+            - whatsnew_dir: android/whatsnew
+
+      - deploy-to-bitrise-io@2:
+          inputs:
+            - notify_user_groups: none
+            - is_compress: "true"
 
   # =========================================================================
-  # 2. DEV DEPLOYMENT (TRIGGER: PUSH TO DEVELOP)
+  # WORKFLOW: Release iOS to Apple TestFlight Internal QA
   # =========================================================================
-  deploy-dev:
-    description: Builds Dev Flavor APK and notifies Slack
+  release_ios:
+    summary: Builds signed iOS IPA and publishes to Apple TestFlight via deliver
     steps:
-    - activate-ssh-key@4: {}
-    - git-clone@8: {}
-    - restore-cache@1:
-        inputs:
-        - key: npm-v1-{{ checksum "package-lock.json" }}
-    - npm@1:
-        inputs:
-        - command: ci
-    - install-missing-android-tools@3: {}
-    - android-build@1:
-        inputs:
-        - project_location: $PROJECT_LOCATION
-        - module: $MODULE
-        - variant: devDebug
-        - build_type: apk
-    - deploy-to-bitrise-io@2: {}
-    - slack@3:
-        inputs:
-        - webhook_url: $SLACK_WEBHOOK_URL
-        - message: "New DEV build compiled and uploaded to Bitrise Artifacts."
+      - activate-ssh-key@4:
+          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
 
-  # =========================================================================
-  # 3. STAGING / QA DEPLOYMENT (TRIGGER: PUSH TO STAGING)
-  # =========================================================================
-  deploy-staging-qa:
-    description: Signs Staging APK and deploys to Firebase App Distribution
-    steps:
-    - activate-ssh-key@4: {}
-    - git-clone@8: {}
-    - restore-cache@1:
-        inputs:
-        - key: npm-v1-{{ checksum "package-lock.json" }}
-    - npm@1:
-        inputs:
-        - command: ci
-    - install-missing-android-tools@3: {}
-    - android-build@1:
-        inputs:
-        - project_location: $PROJECT_LOCATION
-        - module: $MODULE
-        - variant: stagingRelease
-        - build_type: apk
-    - sign-apk@1: {}
-    - firebase-app-distribution@0:
-        inputs:
-        - app_path: $BITRISE_APK_PATH
-        - app_id: $FIREBASE_STAGING_APP_ID
-        - groups: "QA-Testers, Mobile-Engineers"
-        - release_notes: "Staging QA build from commit $BITRISE_GIT_COMMIT"
-    - deploy-to-bitrise-io@2: {}
+      - git-clone@8: {}
 
-  # =========================================================================
-  # 4. PRODUCTION RELEASE (TRIGGER: PUSH TO MAIN)
-  # =========================================================================
-  release-prod:
-    description: Production release to Google Play Internal Track & Apple TestFlight
-    steps:
-    - activate-ssh-key@4: {}
-    - git-clone@8: {}
-    - restore-cache@1:
-        inputs:
-        - key: npm-v1-{{ checksum "package-lock.json" }}
-    - npm@1:
-        inputs:
-        - command: ci
-    - install-missing-android-tools@3: {}
-    
-    # 4.1 Android Production App Bundle (.aab)
-    - android-build@1:
-        title: Build Production Android App Bundle (.aab)
-        inputs:
-        - project_location: $PROJECT_LOCATION
-        - module: $MODULE
-        - variant: prodRelease
-        - build_type: aab
-    - sign-apk@1: {}
-    - google-play-deploy@3:
-        inputs:
-        - service_account_json_key_path: $GOOGLE_PLAY_SERVICE_ACCOUNT_URL
-        - package_name: com.enterprise.mobileapp
-        - app_path: $BITRISE_AAB_PATH
-        - track: internal
+      - yarn@0:
+          inputs:
+            - command: install --frozen-lockfile
 
-    # 4.2 iOS Production Archive (.ipa)
-    - xcode-archive@5:
-        title: Archive Production iOS IPA
-        inputs:
-        - project_path: $BITRISE_PROJECT_PATH
-        - scheme: $BITRISE_SCHEME
-        - distribution_method: app-store
-        - automatic_code_signing: api-key
-    - deploy-to-itunesconnect-with-deliver@3:
-        inputs:
-        - api_key_url: $APP_STORE_CONNECT_API_KEY_URL
-        - api_issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        - api_key_id: $APP_STORE_CONNECT_KEY_ID
-        - ipa_path: $BITRISE_IPA_PATH
-        - submit_for_review: "no"
-    - deploy-to-bitrise-io@2: {}
+      - cocoapods-install@2:
+          inputs:
+            - is_repo_update: false
+            - podfile_path: ios/Podfile
+
+      # Auto-sync provisioning profiles and certificates via App Store Connect API
+      - auto-provision-ios@3:
+          inputs:
+            - distribution_type: app-store
+            - api_key_path: $APP_STORE_CONNECT_API_KEY_P8
+            - key_id: $APP_STORE_CONNECT_KEY_ID
+            - issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+
+      # Set iOS CFBundleVersion to match Bitrise Build Number
+      - set-ios-info-plist-unified@1:
+          inputs:
+            - info_plist_file: ios/MobileApp/Info.plist
+            - bundle_version: $BITRISE_BUILD_NUMBER
+
+      # Archive signed iOS Application (.ipa) and dSYM symbols
+      - xcode-archive@4:
+          inputs:
+            - project_path: ios/MobileApp.xcworkspace
+            - scheme: MobileApp
+            - configuration: Release
+            - distribution_method: app-store
+            - automatic_code_signing: api-key
+
+      # Deploy to TestFlight via Fastlane deliver engine using API Key
+      - deploy-to-itunesconnect-with-deliver@3:
+          inputs:
+            - ipa_path: $BITRISE_IPA_PATH
+            - dsym_path: $BITRISE_DSYM_PATH
+            - api_key_path: $APP_STORE_CONNECT_API_KEY_P8
+            - key_id: $APP_STORE_CONNECT_KEY_ID
+            - issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+            - platform: ios
+            - skip_waiting_for_build_processing: "false"
+            - skip_metadata: "true"
+            - skip_screenshots: "true"
+            - team_id: $APPLE_TEAM_ID
+
+      - deploy-to-bitrise-io@2:
+          inputs:
+            - notify_user_groups: none
 ```
 
 ---
 
-## 3. Workflow Responsibility Matrix
+## 5. Release Notes and Changelog Automation
 
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Workflow Name</th>
-        <th>Trigger Condition</th>
-        <th>Target Audience</th>
-        <th>Output Deliverables</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>pr-checks</code></td>
-        <td>Any Pull Request opened or updated</td>
-        <td>Peer Reviewers &amp; Author</td>
-        <td>Status check badge, Danger.js markdown comment, devDebug compilation verification.</td>
-      </tr>
-      <tr>
-        <td><code>deploy-dev</code></td>
-        <td>Push or merge to <code>develop</code> branch</td>
-        <td>Developers &amp; Internal Testers</td>
-        <td>Unsigned <code>devDebug</code> APK stored in Bitrise Artifacts; Slack channel alert.</td>
-      </tr>
-      <tr>
-        <td><code>deploy-staging-qa</code></td>
-        <td>Push or merge to <code>staging</code> branch</td>
-        <td>QA Engineers &amp; Product Managers</td>
-        <td>Signed <code>stagingRelease</code> APK published to Firebase App Distribution with release notes.</td>
-      </tr>
-      <tr>
-        <td><code>release-prod</code></td>
-        <td>Push or merge to <code>main</code> branch</td>
-        <td>Beta Testers &amp; Store Reviewers</td>
-        <td>Production <code>.aab</code> uploaded to Google Play Internal Track; production <code>.ipa</code> delivered to Apple TestFlight.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+Both Google Play and TestFlight allow distributing release notes ("What's New") to testers so QA engineers understand which features, fixes, and ticket IDs are included in each build.
 
----
-
-## 4. Fast Parallel Module Testing (Build Acceleration)
-
-In large mobile codebases, executing the entire test suite on every PR causes developer bottlenecks. By configuring a **Two-Stage Pipeline** with dynamic Git diff detection, Bitrise runs only the tests affected by your changes:
-
-<DiagramExpand title="PARALLEL MODULE TESTING PIPELINE ARCHITECTURE">
-
-```mermaid
-graph TD
-    subgraph Stage1 ["STAGE 1: CHANGE DETECTION"]
-        DiffCheck["Detect Changed Modules<br/>git diff --name-only origin/main"]
-        ExportEnvs["Export Module Flags via envman<br/>MODULE_HOME=true &bull; MODULE_PROFILE=true"]
-    end
-
-    subgraph Stage2 ["STAGE 2: PARALLEL EXECUTION"]
-        HomeTests["Home Tests Workflow<br/>run_if: MODULE_HOME == true"]
-        ProfileTests["Profile Tests Workflow<br/>run_if: MODULE_PROFILE == true"]
-        SearchTests["Search Tests Workflow<br/>run_if: MODULE_SEARCH == true"]
-    end
-
-    DiffCheck --> ExportEnvs
-    ExportEnvs --> HomeTests
-    ExportEnvs --> ProfileTests
-    ExportEnvs --> SearchTests
-```
-
-</DiagramExpand>
-
-### 4.1 Step 1: Define Pipelines and Stages
-
-Add the pipeline structure to the top of your <code>bitrise.yml</code>:
-
-**`bitrise.yml (pipeline excerpt)`**
-
-```yaml
-pipelines:
-  pr-validation-pipeline:
-    stages:
-    - setup-stage: {}
-    - parallel-test-stage: {}
-
-stages:
-  setup-stage:
-    workflows:
-    - detect-changes: {}
-  
-  # Workflows inside this stage execute in parallel on separate virtual machines
-  parallel-test-stage:
-    workflows:
-    - test-home-module: {}
-    - test-profile-module: {}
-    - test-search-module: {}
-```
-
-### 4.2 Step 2: The Change Detection Script
-
-Inside the <code>detect-changes</code> workflow, inspect the Git diff against the target branch and export conditional flags:
-
-**`detect-changes workflow`**
+### Android What's New Directory Structure
+The `google-play-deploy@3` step automatically detects language-specific release notes organized under an `android/whatsnew/` directory:
 
 ```text
-- script@1:
-    title: Detect Changed Modules
-    inputs:
-    - content: |-
-        #!/bin/bash
-        set -e
-        CHANGED_FILES=$(git diff --name-only origin/main)
-        
-        echo "Changed files detected:"
-        echo "$CHANGED_FILES"
-        
-        if echo "$CHANGED_FILES" | grep -q "src/home/"; then
-          envman add --key MODULE_HOME --value "true"
-        fi
-        
-        if echo "$CHANGED_FILES" | grep -q "src/profile/"; then
-          envman add --key MODULE_PROFILE --value "true"
-        fi
-
-        if echo "$CHANGED_FILES" | grep -q "src/search/"; then
-          envman add --key MODULE_SEARCH --value "true"
-        fi
-
-- share-pipeline-variable@1:
-    inputs:
-    - variables: |-
-        MODULE_HOME
-        MODULE_PROFILE
-        MODULE_SEARCH
+android/
+├── app/
+│   ├── build.gradle
+│   └── src/
+└── whatsnew/
+    ├── whatsnew-en-US
+    ├── whatsnew-es-ES
+    └── whatsnew-de-DE
 ```
 
-### 4.3 Step 3: Conditional Workflow Execution (`run_if`)
-
-Each module workflow tests its respective feature slice only when its flag is active:
-
-**`test-home-module workflow`**
-
-```yaml
-workflows:
-  test-home-module:
-    run_if: '{{ getenv "MODULE_HOME" | eq "true" }}'
-    steps:
-    - activate-ssh-key@4: {}
-    - git-clone@8: {}
-    - restore-cache@1:
-        inputs:
-        - key: npm-v1-{{ checksum "package-lock.json" }}
-    - npm@1:
-        inputs:
-        - command: ci
-    - npm@1:
-        title: Test Home Module
-        inputs:
-        - command: run test:home
+Each file contains plain text describing the release (maximum 500 characters per file):
+```text
+Release Build 248 (Sprint 42):
+- Feature: Added biometrics authentication support for Android 14.
+- Fix: Resolved memory leak during offline database synchronization.
+- Security: Patched deep-link intent vulnerabilities identified by NowSecure.
 ```
 
-<div class="portal-alert-box">
-  <div class="portal-alert-title">BUILD ACCELERATION IMPACT</div>
-  <p class="portal-alert-desc">
-    By evaluating changes at the module boundary, developers modifying only the Profile screen skip Home and Search test runs entirely. This reduces average PR check execution time from 28 minutes to 3.5 minutes, saving over 70% in monthly Bitrise build credit consumption.
-  </p>
-</div>
+### Dynamic Git Changelog Script
+Rather than manually editing text files, add a brief **Script** step in Bitrise prior to the deployment step to auto-generate the changelog from Git commit messages since the last tag:
 
----
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-## 5. Summary
+echo "=== Generating Release Changelog from Git Commits ==="
+mkdir -p android/whatsnew
 
-You have established complete pipeline automation:
-* The production <code>bitrise.yml</code> orchestrates PR quality checks, dev builds, QA staging, and production store distribution.
-* Workflows trigger deterministically from Git branch events without manual intervention.
-* Smart parallel module testing eliminates wasted CI minutes by running tests only for modified feature slices.
+PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
 
-Next Chapter: **05. Bitrise Web Console Setup (`05-bitrise-web-console-setup.mdx`)**.
+if [ -z "$PREVIOUS_TAG" ]; then
+  CHANGELOG="Initial automated Bitrise release build #${BITRISE_BUILD_NUMBER}."
+else
+  CHANGELOG=$(git log "${PREVIOUS_TAG}..HEAD" --oneline --no-merges | head -n 5)
+fi
 
-
-
-
-
-
--------------------------------------
-
-
----
-title: "05. Bitrise Web Console Setup"
-description: "Step-by-step walkthrough of the Bitrise web console: project registration, workspace ownership, SSH deploy keys, stack selection, and GitHub webhook routing."
----
-
-import DiagramExpand from './DiagramExpand.astro';
-
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
-    <span class="portal-hub-tag">CHAPTER 05 &bull; CONSOLE ONBOARDING</span>
-  </div>
-  <h1 class="portal-hero-title">Bitrise Web Console Setup</h1>
-  <p class="portal-hero-desc">
-    A guided visual walkthrough for registering your mobile repository within the Bitrise cloud platform. Learn how to configure workspace ownership, enforce irreversible project privacy boundaries, authorize SSH deploy keys, assign virtual machine stacks, and establish bidirectional GitHub webhooks.
-  </p>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Workspace Isolation</div>
-      <div class="portal-cap-desc">Governance ownership &bull; Access groups &bull; Billing allocation</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Privacy Protection</div>
-      <div class="portal-cap-desc">Immutable Private setting &bull; Masked logs &bull; Restricted artifacts</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">SSH Deploy Keys</div>
-      <div class="portal-cap-desc">Automated read-only key &bull; Fine-grained PAT &bull; Zero human keys</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Webhook Routing</div>
-      <div class="portal-cap-desc">Push events &bull; Pull Request events &bull; Automatic pipeline triggers</div>
-    </div>
-  </div>
-</div>
-
----
-
-## 1. Onboarding Overview
-
-Setting up your mobile repository in the Bitrise web console establishes the bridge between your remote Git host and cloud build runners:
-
-```
-+-------------------------------------------------------------------------------+
-|                        BITRISE CLOUD ONBOARDING FLOW                          |
-|                                                                               |
-|  1. CHOOSE WORKSPACE    Select enterprise team workspace                      |
-|  2. SET PRIVACY         Select 'Private' (Irreversible security setting)      |
-|  3. CONNECT REPO        Provide Git SSH / HTTPS clone URL                     |
-|  4. SSH AUTHORIZATION   Auto-add read-only deploy key to GitHub repo          |
-|  5. SELECT BRANCH       Designate primary integration branch (main / develop) |
-|  6. SCAN & CONFIGURE    Project scanner validates stack (Linux / macOS)       |
-|  7. REGISTER WEBHOOK    Configure bidirectional GitHub event triggers         |
-+-------------------------------------------------------------------------------+
+echo "$CHANGELOG" > android/whatsnew/whatsnew-en-US
+echo "Generated release notes for build ${BITRISE_BUILD_NUMBER}:"
+cat android/whatsnew/whatsnew-en-US
 ```
 
 ---
 
-## 2. Step 1: Select Workspace &amp; Account Ownership
-
-1. Log into your Bitrise account: <code>https://app.bitrise.io</code>.
-2. In the top navigation bar or dashboard, click the **Add New App** button.
-3. Under **Project access**, select the **Workspace** that will own the application (e.g., <code>Mobile Platform Engineering</code>).
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT</span>
-    <span class="portal-screenshot-title">Bitrise Add New App - Workspace Selection</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    <strong>Where to capture:</strong> Open Bitrise &gt; Click <span class="portal-screenshot-path">Add New App</span> &gt; Step 1 (Choose Account &amp; Workspace). Highlight the Workspace dropdown showing your enterprise team selected.
-  </p>
-</div>
-
----
-
-## 3. Step 2: Enforce the Privacy Setting (Private)
-
-Bitrise gives you two privacy choices during app initialization:
+## 6. Verification and Troubleshooting Matrix
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Privacy Option</th>
-        <th>Access Permissions</th>
-        <th>Enterprise Policy</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Private</strong></td>
-        <td>Accessible only to you, your Workspace members, and explicitly invited developers. Build logs, signing credentials, and artifacts are strictly guarded.</td>
-        <td><strong>MANDATORY</strong>: All commercial and enterprise repositories must select Private.</td>
-      </tr>
-      <tr>
-        <td><strong>Public</strong></td>
-        <td>Anyone with the URL can view commit messages, read full build logs, and download compiled APK/IPA artifacts without authentication.</td>
-        <td><strong>STRICTLY FORBIDDEN</strong>: Commercial source code and private keystores must never be exposed publicly.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="portal-alert-box">
-  <div class="portal-alert-title">IMMUTABILITY WARNING</div>
-  <p class="portal-alert-desc">
-    You cannot change an application's privacy setting after project creation. If you accidentally register an enterprise repository as Public, you must delete the app immediately and re-enroll it as Private.
-  </p>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT</span>
-    <span class="portal-screenshot-title">Bitrise Privacy Selection - Private Option</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    <strong>Where to capture:</strong> Open Bitrise Add App Wizard &gt; Step 2 <span class="portal-screenshot-path">(Set privacy of the app)</span>. Highlight the <strong>Private</strong> card selected with the green outline.
-  </p>
-</div>
-
----
-
-## 4. Step 3: Connect Repository &amp; Authorize SSH Keys
-
-### 4.1 Provide Repository URL
-
-1. In the repository connection step, select your Git provider (GitHub Enterprise) or select **Enter URL manually**.
-2. For private enterprise repositories, provide the SSH clone URL:
-   <code>git@git.enterprise.internal:mobile-engineering/my-mobile-app.git</code>
-
-### 4.2 Authorize Deploy Key
-
-Bitrise requires read-only clone access to fetch your source code during builds:
-
-1. Click **Auto-add SSH key**.
-2. Bitrise contacts GitHub via API and registers a unique, read-only **Deploy Key** directly in your repository settings (<code>Repository Settings &gt; Deploy Keys</code>).
-3. Alternatively, click **Copy SSH key**, open GitHub manually, navigate to <code>Settings &gt; Deploy Keys &gt; Add deploy key</code>, paste the public key, and click **Add key** (leave "Allow write access" unchecked).
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT</span>
-    <span class="portal-screenshot-title">Bitrise SSH Key Authorization</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    <strong>Where to capture:</strong> Open Bitrise Add App Wizard &gt; Step 3 <span class="portal-screenshot-path">(SSH key authorization)</span>. Capture the screen showing the <strong>Auto-add a generated SSH key</strong> button and the public key text field.
-  </p>
-</div>
-
----
-
-## 5. Step 4: Branch Specification &amp; Stack Selection
-
-### 5.1 Specify Default Branch
-
-Enter the primary integration branch of your repository (e.g., <code>development</code> or <code>main</code>). Bitrise will use this branch to run its initial project validation scan.
-
-### 5.2 Configure Virtual Machine Stacks
-
-Once your repository is registered, navigate to:
-**Workflow Editor &gt; Stacks Tab**
-
-Configure the standard enterprise build environments:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Platform Target</th>
-        <th>Assigned Stack OS</th>
-        <th>Installed Toolchain Specifications</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Android Pipelines</strong></td>
-        <td>Linux Ubuntu (Standard)</td>
-        <td>Android SDK (Build-Tools 34.x), OpenJDK 17, Gradle 8.x, Fastlane.</td>
-      </tr>
-      <tr>
-        <td><strong>iOS / React Native</strong></td>
-        <td>macOS (Apple Silicon M-Series)</td>
-        <td>Xcode 16.x, Node.js 20.x, CocoaPods, Ruby, Fastlane.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT</span>
-    <span class="portal-screenshot-title">Bitrise Stacks Tab - Stack Selection</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    <strong>Where to capture:</strong> Open Bitrise App &gt; Click <span class="portal-screenshot-path">Workflow Editor &gt; Stacks Tab</span>. Highlight the default stack dropdown showing the macOS Apple Silicon Xcode version and Linux Android stack.
-  </p>
-</div>
-
----
-
-## 6. Step 5: Register GitHub Webhooks
-
-Webhooks allow GitHub to send instantaneous HTTP notifications to Bitrise whenever code is pushed or a Pull Request is opened, eliminating the need for scheduled polling.
-
-### 6.1 Retrieve Your Bitrise Webhook Endpoint
-
-1. In your Bitrise app, navigate to **App Settings** (gear icon in the top right).
-2. In the left menu, click **Webhooks**.
-3. Under "Incoming Webhooks", select **GitHub** from the dropdown.
-4. Copy the unique **Webhook URL**:
-   <code>https://hooks.bitrise.io/h/github/app/a1b2c3d4e5f6g7h8/bitrise-hook</code>
-
-### 6.2 Register Webhook in GitHub Repository
-
-1. Open your GitHub repository in your browser: <code>https://git.enterprise.internal/mobile-engineering/my-mobile-app</code>.
-2. Click **Settings** (top navigation tab) &gt; **Webhooks** &gt; **Add webhook**.
-3. Fill in the fields:
-   * **Payload URL**: Paste the Bitrise webhook URL copied above.
-   * **Content type**: Select <code>application/json</code> (CRITICAL: Do not leave as form-urlencoded).
-   * **Secret**: Leave blank (unless configured in Bitrise Webhook Secret).
-4. Under "Which events would you like to trigger this webhook?", select **Let me select individual events**:
-   * Check **Pushes**
-   * Check **Pull requests**
-5. Check the **Active** box.
-6. Click **Add webhook**.
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT</span>
-    <span class="portal-screenshot-title">GitHub Webhooks - Add Webhook Configuration</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    <strong>Where to capture:</strong> In GitHub &gt; <span class="portal-screenshot-path">Repo Settings &gt; Webhooks &gt; Add webhook</span>. Capture the form showing the Payload URL filled with hooks.bitrise.io, Content Type set to application/json, and checkboxes for Pushes and Pull requests selected.
-  </p>
-</div>
-
-### 6.3 Verifying Webhook Connectivity
-
-Immediately after creation, inspect GitHub's **Recent Deliveries** section at the bottom of the webhook page:
-* A green checkmark with **HTTP 200 OK** confirms that Bitrise received the handshake ping.
-* Any future push to <code>develop</code>, <code>staging</code>, or <code>main</code> will trigger its respective workflow within 2 seconds.
-
----
-
-## 7. Summary
-
-You have established full cloud console connectivity:
-* The application is registered under your enterprise Workspace with an immutable **Private** setting.
-* An automated, read-only SSH Deploy Key is authorized for repository access.
-* The Linux Android and macOS Apple Silicon stacks are assigned.
-* Bidirectional GitHub webhooks are active and routing `push` and `pull_request` events automatically.
-
-Next Chapter: **06. Code Signing &amp; Secrets Management (`06-code-signing-and-secrets.mdx`)**.
-
-
-
------------------------------------------------------------
-
-
-
-
-
----
-title: "06. Code Signing & Secrets Management"
-description: "Master enterprise mobile security and release authorization on Bitrise: secret vaults, Android Keystore management, and Apple App Store Connect API Keys."
----
-
-import DiagramExpand from './DiagramExpand.astro';
-
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
-    <span class="portal-hub-tag">CHAPTER 06 &bull; SECURITY &amp; SIGNING</span>
-  </div>
-  <h1 class="portal-hero-title">Code Signing &amp; Secrets Management</h1>
-  <p class="portal-hero-desc">
-    Protect enterprise release keys and deployment credentials while achieving zero-touch, automated signing in cloud pipelines. Learn how to configure Bitrise encrypted secret vaults, provision release Android Keystores, and set up headless Apple App Store Connect API Keys (<code>.p8</code>) to eliminate manual 2FA session expirations.
-  </p>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Encrypted Secrets Vault</div>
-      <div class="portal-cap-desc">Runtime memory injection &bull; Automatic log masking &bull; Zero Git leaks</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Android Keystores</div>
-      <div class="portal-cap-desc">Cloud storage mounting &bull; Dynamic Gradle alias &bull; PEPK separation</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Apple .p8 API Keys</div>
-      <div class="portal-cap-desc">Headless signing &bull; Zero 2FA expiry &bull; Fastlane Deliver integration</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Access Governance</div>
-      <div class="portal-cap-desc">Protected secrets &bull; PR isolation &bull; Cryptographic release integrity</div>
-    </div>
-  </div>
-</div>
-
----
-
-## 1. The Enterprise Secret Boundary
-
-In modern mobile DevSecOps, developers **never store production signing keys on local laptops**. All certificates, passwords, and API credentials are kept in encrypted Bitrise cloud stores:
-
-```
-+-------------------------------------------------------------------------------+
-|                        BITRISE SECRET SECURITY BOUNDARY                       |
-|                                                                               |
-|  ENCRYPTED VAULT (Bitrise Secrets Tab)                                        |
-|  - $SLACK_WEBHOOK_URL                  - $GOOGLE_PLAY_SERVICE_ACCOUNT_URL     |
-|  - $DANGER_GITHUB_API_TOKEN            - $APP_STORE_CONNECT_API_KEY_URL       |
-|                                                                               |
-|  CODE SIGNING TAB (Hardware Mount)                                            |
-|  - Android Keystore (.jks / .keystore) -> Mounts to $BITRISEIO_..._URL        |
-|  - Apple API Key (AuthKey_*.p8)        -> Dynamic Fastlane / Deliver hook     |
-|                                                                               |
-|  RUNTIME ISOLATION                                                            |
-|  - Credentials exist only in virtual machine RAM during release jobs          |
-|  - Automatic log scrubbing masks all secret values from build transcripts     |
-+-------------------------------------------------------------------------------+
-```
-
----
-
-## 2. Step 1: Configuring the Secrets Tab
-
-Navigate to your application in Bitrise &gt; **Workflow Editor &gt; Secrets Tab**. Declare the following core environment secrets:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Secret Variable Key</th>
-        <th>Target Workflow</th>
-        <th>Description &amp; Security Role</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>$SLACK_WEBHOOK_URL</code></td>
-        <td><code>deploy-dev</code>, <code>deploy-staging-qa</code></td>
-        <td>Incoming webhook URL for sending real-time build notifications to Slack channels.</td>
-      </tr>
-      <tr>
-        <td><code>$DANGER_GITHUB_API_TOKEN</code></td>
-        <td><code>pr-checks</code></td>
-        <td>GitHub Personal Access Token (PAT) with <code>repo</code> scope for automated PR comments.</td>
-      </tr>
-      <tr>
-        <td><code>$FIREBASE_STAGING_APP_ID</code></td>
-        <td><code>deploy-staging-qa</code></td>
-        <td>Firebase Android / iOS Application ID for staging binary distribution.</td>
-      </tr>
-      <tr>
-        <td><code>$GOOGLE_PLAY_SERVICE_ACCOUNT_URL</code></td>
-        <td><code>release-prod</code></td>
-        <td>Google Cloud Service Account JSON key for deploying AABs to the Play Console Internal Track.</td>
-      </tr>
-      <tr>
-        <td><code>$APP_STORE_CONNECT_API_KEY_URL</code></td>
-        <td><code>release-prod</code></td>
-        <td>Apple App Store Connect API Key (<code>AuthKey_*.p8</code>) file storage URL.</td>
-      </tr>
-      <tr>
-        <td><code>$APP_STORE_CONNECT_KEY_ID</code></td>
-        <td><code>release-prod</code></td>
-        <td>10-character key identifier generated in the Apple Developer Portal.</td>
-      </tr>
-      <tr>
-        <td><code>$APP_STORE_CONNECT_ISSUER_ID</code></td>
-        <td><code>release-prod</code></td>
-        <td>UUID identifier of the enterprise App Store Connect issuer account.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="portal-alert-box">
-  <div class="portal-alert-title">AUTOMATIC LOG MASKING</div>
-  <p class="portal-alert-desc">
-    Bitrise automatically scans build terminal outputs. If any script accidentally prints the value of a defined Secret, Bitrise immediately scrubs the string and replaces it with <code>[REDACTED]</code> in the published logs.
-  </p>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT</span>
-    <span class="portal-screenshot-title">Bitrise Secrets Tab - Masked Key Management</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    <strong>Where to capture:</strong> Open Bitrise &gt; <span class="portal-screenshot-path">Workflow Editor &gt; Secrets Tab</span>. Capture the list of secrets showing keys like <code>SLACK_WEBHOOK_URL</code> and <code>DANGER_GITHUB_API_TOKEN</code> with values masked as dots.
-  </p>
-</div>
-
----
-
-## 3. Step 2: Android Keystore Configuration
-
-To sign production Android App Bundles (<code>.aab</code>) and staging APKs, upload your enterprise Keystore to the dedicated **Code Signing Tab**.
-
-### 3.1 Uploading Keystore Credentials
-
-1. Open **Workflow Editor &gt; Code Signing Tab**.
-2. In the **Android Keystore file** section, drag and drop your release <code>.jks</code> or <code>.keystore</code> file.
-3. Complete the credential fields:
-   * **Keystore password**: The master encryption password for the keystore file.
-   * **Keystore alias**: The unique key alias specified during key generation.
-   * **Private key password**: The password for the specific alias (often identical to keystore password).
-4. Click **Save metadata**.
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT</span>
-    <span class="portal-screenshot-title">Bitrise Code Signing - Android Keystore Upload</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    <strong>Where to capture:</strong> In Bitrise &gt; <span class="portal-screenshot-path">Workflow Editor &gt; Code Signing Tab</span> &gt; Android Keystore section. Capture the green card displaying the uploaded keystore file and confirmed alias name.
-  </p>
-</div>
-
-### 3.2 How the `sign-apk` Step Operates at Runtime
-
-When your workflow executes the <code>sign-apk@1</code> step, Bitrise performs the following sequence:
-
-1. Downloads the encrypted Keystore file into a temporary, isolated directory on the runner:
-   <code>/tmp/bitrise_signing_xxxx/release.keystore</code>
-2. Exports the temporary file path as <code>$BITRISEIO_ANDROID_KEYSTORE_URL</code>.
-3. Injects the credentials into environment variables:
-   * <code>$BITRISEIO_ANDROID_KEYSTORE_PASSWORD</code>
-   * <code>$BITRISEIO_ANDROID_KEYSTORE_ALIAS</code>
-   * <code>$BITRISEIO_ANDROID_KEY_PASSWORD</code>
-4. Signs the compiled binary using <code>apksigner</code> / <code>jarsigner</code> with v1, v2, and v3 signature schemes.
-5. Emits the signed binary to <code>$BITRISE_SIGNED_APK_PATH</code> or <code>$BITRISE_SIGNED_AAB_PATH</code>.
-6. Automatically shreds the temporary keystore file when the build terminates.
-
----
-
-## 4. Step 3: Apple App Store Connect API Key (`.p8`)
-
-Historically, iOS code signing relied on developer Apple IDs combined with SMS 2-Factor Authentication. In enterprise automation, this caused frequent build failures when 2FA sessions expired every 30 days.
-
-Modern Bitrise pipelines use **App Store Connect API Keys (`.p8`)**, which provide permanent, headless authentication directly through Apple APIs.
-
-### 4.1 Generating the API Key in App Store Connect
-
-1. Log into **App Store Connect**: <code>https://appstoreconnect.apple.com</code>.
-2. In the top navigation, click **Users and Access**.
-3. Select the **Integrations** tab &gt; **App Store Connect API**.
-4. Click the **+** (Generate API Key) button.
-5. In the modal:
-   * **Name**: <code>Bitrise-CI-Delivery-Key</code>
-   * **Access**: Select **App Manager** (or Admin).
-6. Click **Generate**.
-7. Note the **Issuer ID** at the top of the page (UUID string).
-8. Note the **Key ID** on the generated row (10 alphanumeric characters).
-9. Click **Download API Key** to retrieve the <code>AuthKey_<KeyID>.p8</code> file.
-
-<div class="portal-alert-box">
-  <div class="portal-alert-title">ONE-TIME DOWNLOAD WARNING</div>
-  <p class="portal-alert-desc">
-    Apple only allows you to download the <code>.p8</code> file once. Store the downloaded file immediately in your enterprise secure password vault. If lost, the key cannot be recovered; you must revoke it and generate a new key pair.
-  </p>
-</div>
-
----
-
-### 4.2 Uploading the Apple API Key to Bitrise
-
-1. Open your app in Bitrise &gt; **Workflow Editor &gt; Code Signing Tab**.
-2. Scroll to the **Apple Service Account API Keys** section.
-3. Click **Add API Key**.
-4. Fill in the parameters:
-   * **Name**: <code>Enterprise-AppStore-API-Key</code>
-   * **Key ID**: Enter the 10-character key ID from Apple (e.g., <code>2X9R4ABCD2</code>).
-   * **Issuer ID**: Enter the UUID from Apple (e.g., <code>57246542-96fe-1a63-e053-0824d011072a</code>).
-   * **Private Key**: Upload the <code>AuthKey_2X9R4ABCD2.p8</code> file.
-5. Click **Save**.
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT</span>
-    <span class="portal-screenshot-title">Bitrise Code Signing - Apple API Key (.p8)</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    <strong>Where to capture:</strong> In Bitrise &gt; <span class="portal-screenshot-path">Workflow Editor &gt; Code Signing Tab &gt; Apple Service Account API Keys</span>. Capture the green card displaying the Key ID and Issuer ID configured.
-  </p>
-</div>
-
----
-
-## 5. Step 4: Connecting the Release Pipeline
-
-Once your secrets and signing keys are registered, the <code>release-prod</code> workflow connects them directly into build steps:
-
-**`bitrise.yml (release-prod excerpt)`**
-
-```yaml
-workflows:
-  release-prod:
-    steps:
-    # 1. Compile & Sign Android Production AAB
-    - android-build@1:
-        title: Build Production Android App Bundle (.aab)
-        inputs:
-        - project_location: $PROJECT_LOCATION
-        - module: $MODULE
-        - variant: prodRelease
-        - build_type: aab
-    - sign-apk@1: {}
-
-    # 2. Archive & Sign iOS Production IPA with Apple API Key
-    - xcode-archive@5:
-        title: Archive Production iOS IPA
-        inputs:
-        - project_path: $BITRISE_PROJECT_PATH
-        - scheme: $BITRISE_SCHEME
-        - distribution_method: app-store
-        - automatic_code_signing: api-key
-
-    # 3. Deliver to Apple TestFlight
-    - deploy-to-itunesconnect-with-deliver@3:
-        inputs:
-        - api_key_url: $APP_STORE_CONNECT_API_KEY_URL
-        - api_issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        - api_key_id: $APP_STORE_CONNECT_KEY_ID
-        - ipa_path: $BITRISE_IPA_PATH
-        - submit_for_review: "no"
-```
-
----
-
-## 6. Summary
-
-You have established cryptographic release governance:
-* Environment secrets are guarded in Bitrise vaults with automated transcript log masking.
-* Android Keystores are provisioned for memory-only mounting during compilation.
-* Apple App Store Connect API Keys (<code>.p8</code>) eliminate 2FA session expirations, enabling reliable, automated TestFlight delivery.
-* Developers never touch or export private release keys on personal machines.
-
-Next Chapter: **07. Real-Device Cloud Testing with Sauce Labs (`07-cloud-device-testing-saucelabs.mdx`)**.
-
-
-
----------------------------------------------------
-
----
-title: "07. Real-Device Cloud Testing with Sauce Labs"
-description: "Master automated physical device testing in Bitrise using Sauce Labs: saucelabs.request.yml, saucectl runner, parallel device pools, and artifact collection."
----
-
-import DiagramExpand from './DiagramExpand.astro';
-
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
-    <span class="portal-hub-tag">CHAPTER 07 &bull; DEVICE TESTING</span>
-  </div>
-  <h1 class="portal-hero-title">Real-Device Cloud Testing with Sauce Labs</h1>
-  <p class="portal-hero-desc">
-    Eliminate device fragmentation and hardware-specific runtime crashes by automating testing on physical Android and iOS hardware. Learn how to configure the Sauce Labs device cloud, structure <code>saucelabs.request.yml</code> and <code>.sauce/config.yml</code>, orchestrate the two-step Bitrise test workflow, and inspect video recordings and device telemetry.
-  </p>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Real-Device Farm</div>
-      <div class="portal-cap-desc">Thousands of physical iPhones &bull; Google Pixels &bull; Samsung Galaxies</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">2-Step Pipeline</div>
-      <div class="portal-cap-desc">Sauce Labs App Create &bull; Upload and Test &bull; Automatic ID export</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">saucectl CLI</div>
-      <div class="portal-cap-desc">Declarative runner &bull; Appium &bull; Espresso &bull; XCUITest orchestration</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Rich Artifacts</div>
-      <div class="portal-cap-desc">Full video replays &bull; Screenshots &bull; Console logs &bull; Network HAR</div>
-    </div>
-  </div>
-</div>
-
----
-
-## 1. Why Real-Device Cloud Testing Matters
-
-Simulators and emulators on developer laptops cannot accurately replicate physical device realities:
-* **OEM Customizations**: Samsung One UI, Xiaomi MIUI, and Google Pixel skins alter background task execution and push notifications.
-* **Hardware Sensors &amp; GPU Constraints**: Camera APIs, biometric sensors (Face ID, Fingerprint), and GPU rendering engines behave differently on physical chipsets.
-* **OS Version Fragmentation**: Testing simultaneously across Android 11 through 15 and iOS 16 through 18 ensures backward compatibility.
-
-Sauce Labs provides an enterprise cloud of real, physical mobile devices hosted in secure data centers, enabling automated regression tests on every staging build.
-
----
-
-## 2. Architecture at a Glance (The 2-Step Bitrise Workflow)
-
-The integration splits into two distinct, governed steps within your Bitrise pipeline:
-
-<DiagramExpand title="SAUCE LABS TWO-STEP PIPELINE ARCHITECTURE">
-
-```mermaid
-graph TD
-    subgraph BuildPhase ["1. COMPILATION PHASE"]
-        Clone["git-clone &bull; npm ci"] --> Compile["android-build or xcode-archive"]
-        Compile --> ReadyBin["Compiled Binary Ready<br/>$BITRISE_APK_PATH or $BITRISE_IPA_PATH"]
-    end
-
-    subgraph Step1 ["2. STEP 1: SAUCE LABS APP CREATE"]
-        ReqFile["Read saucelabs.request.yml<br/>from project root"] --> Register["Register App in Sauce Labs Storage API"]
-        Register --> ExportIDs["Export Environment Variables:<br/>$SAUCE_APP_NAME &bull; $SAUCE_APP_ID &bull; $SAUCE_APP_FILE_NAME"]
-    end
-
-    subgraph Step2 ["3. STEP 2: SAUCE LABS UPLOAD AND TEST"]
-        UploadBin["Upload Binary via Storage API<br/>https://api.us-west-1.saucelabs.com"] --> RunTest["Execute saucectl test_command<br/>Appium / Espresso / XCUITest"]
-        RunTest --> StreamLogs["Stream Test Artifacts to Bitrise:<br/>Videos &bull; Screenshots &bull; HAR Network Logs"]
-    end
-
-    ReadyBin --> Step1
-    ExportIDs --> Step2
-```
-
-</DiagramExpand>
-
----
-
-## 3. Step 1: Create the Request File (`saucelabs.request.yml`)
-
-Create a file named <code>saucelabs.request.yml</code> in the root directory of your repository. This file identifies your application in Sauce Labs storage:
-
-**`saucelabs.request.yml`**
-
-```yaml
-app_name: my-mobile-app
-platform: android # Allowed: android or ios
-owner_email: mobile-engineering@enterprise.internal
-team: mobile-platform
-description: Enterprise React Native mobile application provisioned via Bitrise CI/CD
-
-# Optional Metadata Fields
-business_unit: corporate
-environment: staging
-repository: https://git.enterprise.internal/mobile-engineering/my-mobile-app.git
-```
-
-### Field Validation Rules
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Field</th>
-        <th>Type</th>
-        <th>Constraint Rule</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>app_name</code></td>
-        <td>String</td>
-        <td>Must not be empty. Represents your application title in Sauce Labs App Storage.</td>
-      </tr>
-      <tr>
-        <td><code>platform</code></td>
-        <td>Enum</td>
-        <td>Must be exactly <code>android</code> or <code>ios</code>.</td>
-      </tr>
-      <tr>
-        <td><code>owner_email</code></td>
-        <td>Email</td>
-        <td>Must be a valid enterprise email address for test failure alerts.</td>
-      </tr>
-      <tr>
-        <td><code>team</code></td>
-        <td>String</td>
-        <td>Name of the owning mobile engineering squad.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
----
-
-## 4. Step 2: Configure the Test Runner (`.sauce/config.yml`)
-
-Sauce Labs uses the declarative <code>saucectl</code> CLI to orchestrate test execution across real device pools.
-
-Create a folder named <code>.sauce/</code> in your repository root, and place a <code>config.yml</code> file inside it:
-
-**`.sauce/config.yml`**
-
-```yaml
-apiVersion: v1alpha
-kind: espresso # Use xcuitest for iOS, or appium for cross-platform
-sauce:
-  region: us-west-1
-  concurrency: 2
-  metadata:
-    build: "Bitrise Build $BITRISE_BUILD_NUMBER"
-    tags:
-      - "staging"
-      - "regression"
-
-espresso:
-  app: storage:$SAUCE_APP_ID
-  testApp: storage:$SAUCE_TEST_APP_ID
-
-# Define Real Device Pools
-suites:
-  - name: "Pixel-Real-Device-Suite"
-    devices:
-      - name: "Google Pixel.*"
-        platformVersion: "14"
-    testOptions:
-      class:
-        - "com.enterprise.mobileapp.SmokeTests"
-
-  - name: "Samsung-Real-Device-Suite"
-    devices:
-      - name: "Samsung Galaxy S.*"
-        platformVersion: "13"
-```
-
----
-
-## 5. Step 3: Configure Bitrise Secrets &amp; Steps
-
-### 5.1 Store Sauce Labs Credentials in Bitrise Secrets
-
-In Bitrise &gt; **Workflow Editor &gt; Secrets Tab**, declare your API credentials:
-* <code>$SAUCE_USERNAME</code>: Your Sauce Labs account username.
-* <code>$SAUCE_ACCESS_KEY</code>: Your Sauce Labs alphanumeric access key (found under User Settings &gt; Access Key).
-
-### 5.2 Add Steps to `bitrise.yml`
-
-Integrate the two steps into your <code>deploy-staging-qa</code> workflow:
-
-**`bitrise.yml (Sauce Labs Steps)`**
-
-```yaml
-# 1. Register App in Sauce Labs Storage
-- git::https://git.enterprise.internal/mobile-engineering/bitrise-step-sauce-labs-app-create.git@v1:
-    title: Sauce Labs App Create
-    inputs:
-    - yaml_file_path: "saucelabs.request.yml"
-    - sauce_username: $SAUCE_USERNAME
-    - sauce_access_key: $SAUCE_ACCESS_KEY
-
-# 2. Upload Compiled Binary & Execute Tests
-- git::https://git.enterprise.internal/mobile-engineering/bitrise-step-sauce-labs-upload-and-test.git@v1:
-    title: Sauce Labs Mobile Upload and Test
-    inputs:
-    - sauce_username: $SAUCE_USERNAME
-    - sauce_access_key: $SAUCE_ACCESS_KEY
-    - sauce_region: "us-west-1"
-    - app_path: $BITRISE_APK_PATH
-    - app_name: $SAUCE_APP_FILE_NAME
-    - test_command: "saucectl run --config .sauce/config.yml"
-    - working_dir: $BITRISE_SOURCE_DIR
-    - test_fail_on_failure: "yes"
-```
-
----
-
-## 6. Variables Passed Between Steps
-
-The two steps communicate through environment variables dynamically exported during execution:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Variable Name</th>
-        <th>Exported By</th>
-        <th>Consumed By</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>$SAUCE_APP_ID</code></td>
-        <td><code>App Create</code></td>
-        <td><code>Upload and Test</code></td>
-        <td>Unique storage UUID assigned to the registered application in Sauce Labs.</td>
-      </tr>
-      <tr>
-        <td><code>$SAUCE_APP_NAME</code></td>
-        <td><code>App Create</code></td>
-        <td><code>Upload and Test</code></td>
-        <td>Canonical application title parsed from <code>saucelabs.request.yml</code>.</td>
-      </tr>
-      <tr>
-        <td><code>$SAUCE_APP_FILE_NAME</code></td>
-        <td><code>App Create</code></td>
-        <td><code>Upload and Test</code></td>
-        <td>Normalized binary filename (e.g., <code>my-mobile-app.apk</code>) used in cloud storage.</td>
-      </tr>
-      <tr>
-        <td><code>$CREATION_STATUS</code></td>
-        <td><code>App Create</code></td>
-        <td>Conditional steps</td>
-        <td>Status output (<code>created</code>, <code>already_exists</code>, or <code>failed</code>).</td>
-      </tr>
-      <tr>
-        <td><code>$SAUCE_TEST_EXIT_CODE</code></td>
-        <td><code>Upload and Test</code></td>
-        <td>Build summary</td>
-        <td>Exit code (<code>0</code> for pass, non-zero for test assertion failures).</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
----
-
-## 7. Visual Reference: Sauce Labs Automated Dashboard
-
-When tests complete, full execution telemetry is published to the Sauce Labs web portal:
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT</span>
-    <span class="portal-screenshot-title">Sauce Labs - Automated Test Execution Dashboard</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    <strong>Where to capture:</strong> Open Sauce Labs &gt; <span class="portal-screenshot-path">Automated &gt; Test Results</span> &gt; Click the latest test session. Capture the dashboard showing the physical device name (e.g., Google Pixel 8), video player with scrubbing timeline, screenshots, and passing test assertions.
-  </p>
-</div>
-
----
-
-## 8. Troubleshooting Quick Reference
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Symptom</th>
-        <th>Likely Root Cause</th>
+        <th>Failure Symptom</th>
+        <th>Root Cause</th>
         <th>Resolution</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><code>401 Unauthorized during upload</code></td>
-        <td>Invalid or expired <code>$SAUCE_ACCESS_KEY</code> in Bitrise Secrets.</td>
-        <td>Open Sauce Labs &gt; User Settings &gt; Access Key. Regenerate key and update Bitrise secret.</td>
+        <td><code>Google Play API: 403 Forbidden - App not found</code></td>
+        <td>The package name has never had an initial <code>.aab</code> uploaded manually via the web UI.</td>
+        <td>Log into Google Play Console and manually drag-and-drop your first signed release <code>.aab</code> into the Internal track to register the application.</td>
       </tr>
       <tr>
-        <td><code>App not found during test execution</code></td>
-        <td>Upload step failed or <code>$SAUCE_APP_ID</code> was not passed correctly.</td>
-        <td>Confirm upload step finished with HTTP 200 before test execution started.</td>
+        <td><code>Google Play API: 400 Invalid version code</code></td>
+        <td>The uploaded <code>versionCode</code> is lower than or equal to an existing artifact in Google Play.</td>
+        <td>Ensure <code>change-android-versioncode-and-versionname</code> uses <code>$BITRISE_BUILD_NUMBER</code> and that the build number exceeds existing release codes.</td>
       </tr>
       <tr>
-        <td><code>Tests timeout waiting for a device</code></td>
-        <td>Requested device model is unavailable or concurrency limit reached.</td>
-        <td>Use wildcard regex (e.g. <code>Google Pixel.*</code>) instead of exact device IDs to pick available pool units.</td>
+        <td><code>deliver: 401 Unauthorized - Invalid authentication token</code></td>
+        <td>The App Store Connect <code>.p8</code> API key content is corrupted or lines were truncated.</td>
+        <td>Verify the secret in Bitrise contains the complete key including <code>-----BEGIN PRIVATE KEY-----</code> and <code>-----END PRIVATE KEY-----</code> headers without trailing spaces.</td>
       </tr>
       <tr>
-        <td><code>saucectl: command not found</code></td>
-        <td>CLI runner not installed on the virtual machine stack.</td>
-        <td>Add an install script step before testing: <code>curl -L https://saucelabs.github.io/saucectl/install | bash</code>.</td>
+        <td><code>TestFlight: Missing Compliance (Encryption)</code></td>
+        <td>Export compliance declaration missing from iOS <code>Info.plist</code>, blocking automated release.</td>
+        <td>Add <code>&lt;key&gt;ITSAppUsesNonExemptEncryption&lt;/key&gt;&lt;false/&gt;</code> to your <code>Info.plist</code> file.</td>
       </tr>
       <tr>
-        <td><code>Wrong region error (HTTP 404)</code></td>
-        <td><code>sauce_region</code> mismatch between Bitrise step and Sauce Labs account data center.</td>
-        <td>Verify account data center (<code>us-west-1</code>, <code>us-east-4</code>, or <code>eu-central-1</code>) and align both configs.</td>
+        <td><code>dSYM missing warning in App Store Connect</code></td>
+        <td>Xcode archive did not package debug symbols or symbols were stripped during release build.</td>
+        <td>Ensure <code>DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"</code> is set in your Xcode Release build settings.</td>
       </tr>
     </tbody>
   </table>
 </div>
 
+
+
+
+
+------------------------
 ---
-
-## 9. Summary
-
-You have established automated real-device validation:
-* The <code>saucelabs.request.yml</code> and <code>.sauce/config.yml</code> files declare app identity and device pool matrices.
-* Bitrise registers the binary and streams execution to physical Android and iOS hardware.
-* Video recordings, network HAR logs, and crash traces are captured automatically on every staging release.
-
-Next Chapter: **08. Automated Security Hardening with NowSecure (`08-security-hardening-nowsecure.mdx`)**.
-
-
------------------------------------------------------------
-
+title: "Chapter 10: The 7-Stage Verification Ladder & Troubleshooting Matrix"
+description: "Master the 7-stage mobile verification ladder, the One-Write Rule, and rapid triage protocols for the top 10 mobile CI/CD failure modes."
 ---
-title: "08. Automated Security Hardening with NowSecure"
-description: "Implement automated mobile SAST and DAST security gates in Bitrise: NowSecure binary analysis, CVSS scoring, and hard build failures on Critical vulnerabilities."
----
-
 import DiagramExpand from './DiagramExpand.astro';
 
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
-    <span class="portal-hub-tag">CHAPTER 08 &bull; SECURITY HARDENING</span>
-  </div>
-  <h1 class="portal-hero-title">Automated Security Hardening with NowSecure</h1>
-  <p class="portal-hero-desc">
-    Protect enterprise mobile applications against reverse engineering, plaintext credential leaks, and network interception before releasing to app stores. Learn how to configure automated static (SAST) and dynamic (DAST) binary analysis in Bitrise using NowSecure, enforce hard quality gates against Critical CVEs, and automate GitHub issue remediation.
+<div class="portal-header">
+  <div class="portal-badge">ENTERPRISE TRIAGE &amp; RELIABILITY</div>
+  <h1 class="portal-title">The 7-Stage Verification Ladder &amp; Troubleshooting Matrix</h1>
+  <p class="portal-subtitle">
+    Transform opaque build failures into predictable, rapid fixes. Learn the formal 7-stage verification ladder, enforce the One-Write Rule, and resolve the top 10 production CI/CD errors in under 60 seconds.
   </p>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Binary SAST &amp; DAST</div>
-      <div class="portal-cap-desc">Static analysis &bull; Dynamic execution on physical devices &bull; APISec testing</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Hard Security Gate</div>
-      <div class="portal-cap-desc">Automatic build failure &bull; Halts release on Critical/High CVEs &bull; Zero store leaks</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Automated Remediation</div>
-      <div class="portal-cap-desc">Auto-generates GitHub issues &bull; Email alerts &bull; Code fix guidance</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">OWASP MASVS</div>
-      <div class="portal-cap-desc">NIAP &bull; CVSS v3.1 &bull; CWE &bull; Continuous regulatory compliance</div>
-    </div>
-  </div>
 </div>
 
----
+<div class="portal-alert-box info">
+  <div class="portal-alert-title">THE CAPSTONE RELIABILITY STANDARD</div>
+  <p>
+    A professional mobile CI/CD pipeline is judged not only by how smoothly it succeeds, but by how transparently and deterministically it fails. This chapter defines the diagnostic contracts that prevent broken artifacts from ever reaching end users.
+  </p>
+</div>
 
-## 1. The Need for Automated Mobile Security
+## 1. The 7-Stage Mobile Verification Ladder
 
-Unlike web applications where backend logic remains behind private corporate firewalls, mobile binaries (`.apk`, `.aab`, `.ipa`) are downloaded directly to end-user devices. Attackers can decompile source bytecode, inspect local databases, and intercept network communications.
+In web engineering, deployment often finishes when a container starts serving HTTP traffic. In mobile engineering, distribution passes through a multi-tier cryptographic and store distribution pipeline before a single binary bit can execute on a tester's device.
 
-Manual annual penetration tests are insufficient in continuous release environments. Automated binary security testing ensures that:
-* Every production release is tested against **OWASP MASVS** (Mobile Application Security Verification Standard).
-* Accidental secrets (hardcoded AWS keys, unpinned SSL certificates, debug logging) are detected **before** binaries reach QA or store review.
-* Vulnerable code triggers an immediate, automated build failure.
+Enterprise mobile teams monitor deployments through the **7-Stage Verification Ladder**:
 
----
+<DiagramExpand id="diag-verification-ladder" title="The 7-Stage Mobile Verification Ladder">
+  <pre class="mermaid">
+flowchart TD
+    classDef stage fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff;
+    classDef error fill:#2d1515,stroke:#ef4444,stroke-width:2px,color:#ffffff;
 
-## 2. Security Analysis Methodology
+    S1["Stage 1: BuildStarted"]:::stage --> S2["Stage 2: BuildSuccessful"]:::stage
+    S2 --> S3["Stage 3: ArtifactValidated"]:::stage
+    S3 --> S4["Stage 4: Uploaded"]:::stage
+    S4 --> S5["Stage 5: Signed"]:::stage
+    S5 --> S6["Stage 6: Enabled"]:::stage
+    S6 --> S7["Stage 7: UserVisible"]:::stage
 
-NowSecure analyzes compiled application binaries without requiring access to your proprietary source code:
-
-```
-+-------------------------------------------------------------------------------+
-|                        NOWSECURE THREE-TIER ANALYSIS                          |
-|                                                                               |
-|  1. STATIC BINARY ANALYSIS (SAST)                                             |
-|     Decompiles DEX and Mach-O binaries; inspects third-party SDKs, manifests, |
-|     crypto algorithms, hardcoded keys, and insecure exported components.      |
-|                                                                               |
-|  2. DYNAMIC REAL-DEVICE ANALYSIS (DAST)                                       |
-|     Launches the binary on physical cloud test devices; monitors memory,      |
-|     sandbox filesystem leakage, IPC communication, and unencrypted caches.    |
-|                                                                               |
-|  3. INTERACTIVE & API SECURITY (APISec)                                       |
-|     Intercepts outbound HTTP traffic; verifies TLS certificate pinning,      |
-|     detects plaintext PII transmissions, and validates cipher suites.         |
-+-------------------------------------------------------------------------------+
-```
-
----
-
-## 3. The Hard Security Quality Gate Flow
-
-The security step acts as a blocking gate between compilation and store distribution:
-
-<DiagramExpand title="NOWSECURE HARD SECURITY QUALITY GATE WORKFLOW">
-
-```mermaid
-graph TD
-    Compile["Compile Release Binary<br/>.aab or .ipa"] --> UploadSec["Upload Binary to NowSecure Portal<br/>NowSecure Step in Bitrise"]
-    UploadSec --> RunScan["Execute SAST, DAST &amp; APISec Tests<br/>CVSS Scoring against OWASP MASVS"]
-    RunScan --> EvalCVSS{"Are Critical or High<br/>CVE Vulnerabilities Detected?"}
-    
-    EvalCVSS -->|YES: Vulnerabilities Found| FailBuild["HARD BUILD FAILURE<br/>Halt Bitrise Pipeline Immediately"]
-    FailBuild --> AlertDev["Send Email Alert to Stakeholders<br/>Auto-Create GitHub Remediation Issue"]
-    FailBuild --> BlockStore["BLOCK RELEASE<br/>Prevent Upload to Google Play / TestFlight"]
-
-    EvalCVSS -->|NO: Pass or Medium Only| PassBuild["SECURITY PASS<br/>Proceed to Store Distribution Step"]
-    PassBuild --> DeployStore["Deploy to Google Play &bull; Apple TestFlight"]
-```
-
+    S1 -.->|"Env / SSH Failure"| E1["Abort: Infrastructure Failure"]:::error
+    S2 -.->|"Compilation / Lint Fail"| E2["Abort: Codebase Defect"]:::error
+    S3 -.->|"Invalid Keystore / Bundle ID"| E3["Abort: Packaging Defect"]:::error
+    S4 -.->|"API Auth / Network Timeout"| E4["Abort: Store API Failure"]:::error
+    S5 -.->|"Apple DRM / Google Processing"| E5["Abort: Store Ingestion Error"]:::error
+    S6 -.->|"Missing Compliance / Track Full"| E6["Abort: Governance Block"]:::error
+    S7 -.->|"Crash on Launch"| E7["Immediate Roll-Forward Hotfix"]:::error
+  </pre>
 </DiagramExpand>
 
----
-
-## 4. Step 1: Generating Required Tokens
-
-NowSecure automation requires authentication across three systems:
-
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Token Name</th>
-        <th>Where to Generate</th>
-        <th>Purpose</th>
+        <th>Stage</th>
+        <th>System / Boundary</th>
+        <th>Verification Condition</th>
+        <th>Failure Indicator</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><code>$NOWSECURE_TOKEN</code></td>
-        <td>NowSecure Portal &gt; User Profile &gt; Preferences &gt; API Token</td>
-        <td>Authenticates binary upload and initiates automated security assessments.</td>
+        <td><strong>1. BuildStarted</strong></td>
+        <td>Bitrise Agent</td>
+        <td>Runner VM allocated, SSH keys installed, repository cloned cleanly at target commit hash.</td>
+        <td>SSH git clone permission denied, stack boot timeout.</td>
       </tr>
       <tr>
-        <td><code>$BITRISE_ACCESS_TOKEN</code></td>
-        <td>Bitrise &gt; Account Settings &gt; Security &gt; Personal Access Tokens</td>
-        <td>Allows the security step to read build status and attach PDF security reports to Bitrise artifacts.</td>
+        <td><strong>2. BuildSuccessful</strong></td>
+        <td>Bitrise Compiler</td>
+        <td>Yarn dependencies resolved, TypeScript validated, Android Gradle / Xcode Archive completed with exit code 0.</td>
+        <td>Compiler error, OOM killed, missing CocoaPods dependency.</td>
       </tr>
       <tr>
-        <td><code>$GIT_TOKEN</code></td>
-        <td>GitHub &gt; Settings &gt; Developer settings &gt; Personal access tokens</td>
-        <td>Enables the security step to automatically open GitHub issues in the repo when vulnerabilities occur.</td>
+        <td><strong>3. ArtifactValidated</strong></td>
+        <td>Bitrise Runner</td>
+        <td>Binary inspected locally. Correct <code>versionCode</code> / <code>CFBundleVersion</code>, package name matches whitelist, <code>mapping.txt</code> or <code>dSYM</code> generated.</td>
+        <td>Unsigned APK, missing R8 deobfuscation map, wrong bundle ID.</td>
+      </tr>
+      <tr>
+        <td><strong>4. Uploaded</strong></td>
+        <td>Store Developer API</td>
+        <td>HTTP 200 received from Google Play Developer API or Apple Transporter. Full binary byte stream ingested.</td>
+        <td>401 Unauthorized API key, 403 Forbidden, connection reset.</td>
+      </tr>
+      <tr>
+        <td><strong>5. Signed</strong></td>
+        <td>Apple / Google Cloud</td>
+        <td>Store cloud completes static analysis, DRM stamping, dynamic asset slicing, and re-signing with store keys.</td>
+        <td>App Store Connect "Invalid Binary" status, asset validation failure.</td>
+      </tr>
+      <tr>
+        <td><strong>6. Enabled</strong></td>
+        <td>Store Web Console</td>
+        <td>Artifact promoted to designated track (e.g. <code>internal</code>) or TestFlight internal group. Export compliance approved.</td>
+        <td>"Missing Compliance" modal blocking release, track quota exceeded.</td>
+      </tr>
+      <tr>
+        <td><strong>7. UserVisible</strong></td>
+        <td>Physical Device</td>
+        <td>Testers receive store push notifications. Binary successfully installs and passes splash screen without crash.</td>
+        <td>Crash-on-launch (SIGSEGV / uncaught JS exception), installation loop.</td>
       </tr>
     </tbody>
   </table>
@@ -2198,195 +607,244 @@ NowSecure automation requires authentication across three systems:
 
 ---
 
-## 5. Step 2: Bitrise Step Configuration
+## 2. The One-Write Rule and Safe Rollback Protocol
 
-Add the security check step to your <code>release-prod</code> workflow immediately after binary compilation and signing:
+Unlike web deployments where servers can be instantly reverted to a previous container hash, mobile stores enforce a strict cryptographic constraint:
 
-**`bitrise.yml (NowSecure Step Excerpt)`**
+<div class="portal-alert-box danger">
+  <div class="portal-alert-title">THE ONE-WRITE RULE</div>
+  <p>
+    <strong>Version codes and bundle versions are strictly monotonic and irreversible.</strong> Once a version code (e.g. <code>versionCode: 248</code>) has been submitted to Google Play or Apple App Store Connect, no binary with that version number or lower can ever be uploaded again, even if the release was deleted, rejected, or revoked.
+  </p>
+</div>
 
-```yaml
-workflows:
-  release-prod:
-    steps:
-    - activate-ssh-key@4: {}
-    - git-clone@8: {}
-    
-    # 1. Compile & Sign Production Android AAB
-    - android-build@1:
-        inputs:
-        - project_location: $PROJECT_LOCATION
-        - module: $MODULE
-        - variant: prodRelease
-        - build_type: aab
-    - sign-apk@1: {}
+### Why Rollbacks Do Not Exist in Mobile
+When a catastrophic bug reaches production in mobile apps, you **cannot** simply "rollback" the server:
+1. Physical devices cache the higher version number. The operating system package manager (Android Package Installer or iOS SpringBoard) refuses to install a binary with a lower version number over an existing higher version.
+2. Store APIs reject re-uploading an older binary without an incremented build number.
 
-    # 2. Automated Security Quality Gate
-    - git::https://git.enterprise.internal/mobile-engineering/bitrise-step-nowsecure-security-check.git@v1:
-        title: NowSecure Binary Security Check
-        inputs:
-        - nowsecure_token: $NOWSECURE_TOKEN
-        - bitrise_token: $BITRISE_ACCESS_TOKEN
-        - git_token: $GIT_TOKEN
-        - git_username: "mobile-security-bot"
-        - app_file_path: $BITRISE_AAB_PATH
-        - app_platform: "android"
-        - app_package: "com.enterprise.mobileapp"
-        - fail_on_severity: "high" # Fails build on High or Critical CVEs
-        - alert_email_list: "mobile-security@enterprise.internal,app-leads@enterprise.internal"
+### The Safe Roll-Forward Protocol
+When an artifact fails at Stage 6 or Stage 7:
+1. **Never attempt to overwrite the existing tag or build number.**
+2. Revert the faulty commit on the release branch using `git revert <commit_hash>`.
+3. Allow Bitrise to execute a new release build with an incremented `$BITRISE_BUILD_NUMBER` (e.g. build 249).
+4. Bitrise compiles, signs, and distributes the clean build to the internal testing track, instantly superseding the defective build.
 
-    # 3. Store Deployment Steps (Executed ONLY if Security Gate Passes)
-    - google-play-deploy@3:
-        inputs:
-        - service_account_json_key_path: $GOOGLE_PLAY_SERVICE_ACCOUNT_URL
-        - package_name: com.enterprise.mobileapp
-        - app_path: $BITRISE_AAB_PATH
-        - track: internal
+```bash
+# Emergency Roll-Forward Procedure
+git checkout release/v2.4.0
+git pull origin release/v2.4.0
+
+# Create a clean revert commit
+git revert 4f8a12b -m 1 --no-edit
+
+# Push to trigger automated Bitrise build #249
+git push origin release/v2.4.0
 ```
 
 ---
 
-## 6. Input Parameters Reference
+## 3. Top 10 Mobile CI/CD Build Errors and 60-Second Fixes
+
+The following battle-tested troubleshooting matrix covers 95% of all build failures encountered by React Native engineers on Bitrise.
+
+### 1. Android NDK Architecture Mismatch
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>Execution failed for task ':react-native-reanimated:buildCMakeDebug[arm64-v8a]'. NDK at /opt/android-sdk/ndk/23.1.7779620 did not have a valid source.properties.</code></p>
+</div>
+
+* **Root Cause:** Bitrise Android stack updated its default NDK version, while `android/app/build.gradle` requested an incompatible legacy version.
+* **60-Second Fix:** Explicitly pin the NDK version in `android/app/build.gradle` matching the Bitrise system stack:
+  ```groovy
+  android {
+      ndkVersion = "25.1.8937393" // Match Bitrise installed Android NDK
+  }
+  ```
+
+---
+
+### 2. CocoaPods Lockfile Out of Sync
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>[!] The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.</code></p>
+</div>
+
+* **Root Cause:** A developer updated `package.json` locally on their laptop, committed the change, but forgot to run `pod install` inside the `ios/` directory, causing a mismatch with `ios/Podfile.lock`.
+* **60-Second Fix:** Run clean pod installation on your branch, commit the resulting `Podfile.lock`, and push:
+  ```bash
+  cd ios && rm -rf Pods Podfile.lock && pod install --repo-update && git commit -am "fix(ios): synchronize Podfile.lock" && git push
+  ```
+
+---
+
+### 3. Gradle JVM Heap Out of Memory (OOM)
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>Expiring Daemon because JVM heap space is exhausted. java.lang.OutOfMemoryError: GC overhead limit exceeded.</code></p>
+</div>
+
+* **Root Cause:** The default Gradle daemon allocation (1.5 GB) is insufficient for compiling large React Native multi-module codebases with R8 code shrinking enabled.
+* **60-Second Fix:** Increase Gradle heap allocation in `android/gradle.properties`:
+  ```properties
+  org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError
+  org.gradle.parallel=true
+  org.gradle.caching=true
+  ```
+
+---
+
+### 4. Apple Missing Distribution Certificate
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>Error: No signing certificate "Apple Distribution" found matching team ID "57246542" in keychain.</code></p>
+</div>
+
+* **Root Cause:** Bitrise step `xcode-archive` executed without downloading or unlocking the code signing certificate, or the certificate expired.
+* **60-Second Fix:** Ensure the `auto-provision-ios@3` step is positioned **immediately prior** to `xcode-archive@4` and uses valid `APP_STORE_CONNECT_API_KEY_P8` credentials.
+
+---
+
+### 5. Google Play API: 403 Forbidden
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>Google Play API: 403 Forbidden - The caller does not have permission for the requested project.</code></p>
+</div>
+
+* **Root Cause:** The Google Cloud Service Account email has not been granted release permissions inside Google Play Console, or the initial release was never uploaded manually.
+* **60-Second Fix:** Open Google Play Console &gt; **Users and permissions**, verify the service account email is listed under **Users**, and ensure the checkbox **Release apps to testing tracks** is checked.
+
+---
+
+### 6. Transporter 401 Unauthorized
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>[deliver] Transporter transfer failed. 401 Unauthorized: Invalid authentication token.</code></p>
+</div>
+
+* **Root Cause:** The `APP_STORE_CONNECT_API_KEY_P8` secret stored in Bitrise contains trailing whitespace, has lost newline characters, or the App Store Connect Key was revoked.
+* **60-Second Fix:** Open Bitrise **Secrets**, re-paste the full text of `AuthKey_*.p8` including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` headers, and verify that the Key ID matches the filename.
+
+---
+
+### 7. Gradle Wrapper Missing Execution Bit
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>bash: ./gradlew: Permission denied. Step failed with exit code 126.</code></p>
+</div>
+
+* **Root Cause:** A developer on Windows committed `android/gradlew` without Unix executable permissions (`+x`).
+* **60-Second Fix:** Update Git file permissions mode from your terminal:
+  ```bash
+  git update-index --chmod=+x android/gradlew
+  git commit -m "fix(ci): grant execute permissions to android/gradlew"
+  git push
+  ```
+
+---
+
+### 8. Danger.js GitHub API Rate Limit Exceeded
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>Danger failed: Error: API rate limit exceeded for user ID (403 Forbidden).</code></p>
+</div>
+
+* **Root Cause:** The `DANGER_GITHUB_API_TOKEN` environment variable was empty or missing, forcing Danger to make unauthenticated requests subject to GitHub's 60 req/hr IP rate limit.
+* **60-Second Fix:** Generate a fine-grained GitHub Personal Access Token (PAT) with `pull_requests: write` permissions and assign it to `DANGER_GITHUB_API_TOKEN` in Bitrise Secrets.
+
+---
+
+### 9. TestFlight Missing Export Compliance
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>TestFlight build status: Missing Compliance. Testing cannot begin until encryption information is provided.</code></p>
+</div>
+
+* **Root Cause:** Apple requires apps using standard HTTPS encryption to declare exemption status in `Info.plist`. Without this, builds halt waiting for human web console clicks.
+* **60-Second Fix:** Insert the compliance key into `ios/MobileApp/Info.plist`:
+  ```xml
+  <key>ITSAppUsesNonExemptEncryption</key>
+  <false/>
+  ```
+
+---
+
+### 10. Yarn Frozen Lockfile Assertion Failure
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>error Your lockfile needs to be updated, but --frozen-lockfile was specified.</code></p>
+</div>
+
+* **Root Cause:** Dependencies in `package.json` were modified manually in an editor without running `yarn install` locally to update `yarn.lock`.
+* **60-Second Fix:** Run `yarn install` locally, commit the synchronized `yarn.lock`, and push to your PR branch:
+  ```bash
+  yarn install
+  git commit -am "fix: synchronize yarn.lock with package.json"
+  git push
+  ```
+
+---
+
+## 4. Enterprise Pre-Merge & Post-Merge Sign-off Checklist
+
+Before merging release pull requests or distributing production updates, complete the following formal verification sign-off:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Input Parameter</th>
-        <th>Required</th>
-        <th>Allowed Values / Format</th>
-        <th>Description</th>
+        <th>Phase</th>
+        <th>Verification Item</th>
+        <th>Verification Method</th>
+        <th>Owner</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><code>app_file_path</code></td>
-        <td>Yes</td>
-        <td><code>$BITRISE_AAB_PATH</code> or <code>$BITRISE_IPA_PATH</code></td>
-        <td>Path to the compiled, signed release binary.</td>
+        <td><strong>Pre-Merge</strong></td>
+        <td>Danger.js bot has approved the PR</td>
+        <td>GitHub PR conversation tab displays green Danger checklist</td>
+        <td>PR Author</td>
       </tr>
       <tr>
-        <td><code>app_platform</code></td>
-        <td>Yes</td>
-        <td><code>android</code> or <code>ios</code></td>
-        <td>Target operating system platform.</td>
+        <td><strong>Pre-Merge</strong></td>
+        <td>Modular test matrix passed</td>
+        <td>Bitrise `pr_check` status check is green across unit &amp; lint steps</td>
+        <td>CI System</td>
       </tr>
       <tr>
-        <td><code>fail_on_severity</code></td>
-        <td>Yes</td>
-        <td><code>medium</code>, <code>high</code>, or <code>critical</code></td>
-        <td>The minimum CVSS vulnerability threshold that will trigger an immediate build failure. Production policy mandates <code>high</code>.</td>
+        <td><strong>Pre-Merge</strong></td>
+        <td>No uncommitted lockfile changes</td>
+        <td>`git status` clean after `yarn install` and `pod install`</td>
+        <td>PR Author</td>
       </tr>
       <tr>
-        <td><code>alert_email_list</code></td>
-        <td>Yes</td>
-        <td>Comma-separated emails</td>
-        <td>Stakeholder list notified immediately upon vulnerability detection.</td>
+        <td><strong>Post-Merge</strong></td>
+        <td>Release workflow execution</td>
+        <td>Bitrise `release_android` and `release_ios` exit with code 0</td>
+        <td>Release Lead</td>
       </tr>
       <tr>
-        <td><code>git_token</code></td>
-        <td>Yes</td>
-        <td><code>$GIT_TOKEN</code></td>
-        <td>GitHub token used to automatically open remediation issues in the source repository.</td>
+        <td><strong>Post-Merge</strong></td>
+        <td>Artifact signature verification</td>
+        <td>Bitrise deploy-to-bitrise-io step contains signed `.aab` and `.ipa`</td>
+        <td>Release Lead</td>
+      </tr>
+      <tr>
+        <td><strong>Post-Merge</strong></td>
+        <td>Store API ingestion confirmation</td>
+        <td>Google Play Console Internal track displays build #; TestFlight displays build #</td>
+        <td>QA Lead</td>
+      </tr>
+      <tr>
+        <td><strong>Post-Merge</strong></td>
+        <td>Smoke test on physical hardware</td>
+        <td>Install from Play Store / TestFlight on test devices; verify cold start</td>
+        <td>QA Team</td>
       </tr>
     </tbody>
   </table>
 </div>
-
-<div class="portal-alert-box">
-  <div class="portal-alert-title">ENTERPRISE RELEASE ENFORCEMENT</div>
-  <p class="portal-alert-desc">
-    Because the <code>google-play-deploy</code> and <code>deploy-to-itunesconnect-with-deliver</code> steps are placed <em>after</em> the NowSecure step, any binary containing Critical or High security flaws will never reach Google Play Console or Apple TestFlight.
-  </p>
-</div>
-
----
-
-## 7. Visual Reference: Security Report &amp; Issue Creation
-
-When an assessment finishes, developers receive both a web report card and automated GitHub remediation tracking:
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT</span>
-    <span class="portal-screenshot-title">NowSecure - Security Assessment Report</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    <strong>Where to capture:</strong> Open NowSecure Console &gt; <span class="portal-screenshot-path">App Overview &gt; Latest Assessment Report</span>. Capture the dashboard showing the overall CVSS risk score gauge, summary counts of Critical / High / Medium findings, and the OWASP MASVS compliance status.
-  </p>
-</div>
-
----
-
-## 8. Top 5 Mobile Security Findings &amp; How to Remediate
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Flagged Finding</th>
-        <th>CVSS Severity</th>
-        <th>Root Cause &amp; Remediation</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Missing TLS Certificate Pinning</strong></td>
-        <td>High</td>
-        <td>App accepts any device-trusted CA, allowing Man-in-the-Middle (MitM) inspection. Implement native certificate pinning or network security config.</td>
-      </tr>
-      <tr>
-        <td><strong>Plaintext Sensitive Storage</strong></td>
-        <td>High</td>
-        <td>Auth tokens or PII stored unencrypted in <code>SharedPreferences</code> or iOS <code>UserDefaults</code>. Migrate keys to Android KeyStore or Apple Keychain.</td>
-      </tr>
-      <tr>
-        <td><strong>Hardcoded Secrets / Tokens</strong></td>
-        <td>Critical</td>
-        <td>Private API tokens or HMAC keys compiled directly into JavaScript bundles. Remove hardcoded strings; inject tokens at runtime via authenticated session APIs.</td>
-      </tr>
-      <tr>
-        <td><strong>Exported Activities without Permissions</strong></td>
-        <td>High</td>
-        <td>Android activities declared in <code>AndroidManifest.xml</code> with <code>android:exported="true"</code> without explicit permission guards. Set to <code>false</code> unless required for deep links.</td>
-      </tr>
-      <tr>
-        <td><strong>Debuggable Flag Enabled</strong></td>
-        <td>Critical</td>
-        <td>Release binary compiled with <code>android:debuggable="true"</code>. Ensure release build variant specifies <code>debuggable false</code> in Gradle.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
----
-
-## 9. Summary
-
-You have established automated security hardening:
-* Every release binary is analyzed across static, dynamic, and API vectors.
-* Builds with Critical or High CVSS vulnerabilities are stopped automatically.
-* Remediation issues are filed directly in GitHub with code-level fix guidance.
-* Zero vulnerable binaries are permitted to reach store review tracks.
-
-Next Chapter: **09. Zero-Touch Store Distribution (`09-store-distribution.mdx`)**.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
