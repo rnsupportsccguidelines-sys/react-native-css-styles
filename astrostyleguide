@@ -1,45 +1,1315 @@
 ---
-interface Props {
-  title?: string;
-  id?: string;
-}
-
-const { title = "ARCHITECTURE DIAGRAM", id } = Astro.props;
-const toggleId = id
-  ? `diagram-${id}-toggle`
-  : `diagram-${Math.random().toString(36).slice(2, 9)}-toggle`;
+title: "01. Mobile CI/CD Overview & Mental Model"
+description: "Foundations of enterprise mobile build and release engineering: transitioning from manual laptop builds to governed Bitrise cloud automation."
 ---
 
-<div class="portal-diagram-wrap">
-  <input type="checkbox" id={toggleId} class="portal-diagram-toggle" />
-  <div class="portal-diagram-header">
-    <span class="portal-diagram-badge">{title}</span>
-    <label for={toggleId} class="portal-expand-btn" title="Toggle Fullscreen">
-      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
-      </svg>
-      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-      <span class="portal-text-expand">Expand Diagram</span>
-      <span class="portal-text-close">Close Fullscreen</span>
-    </label>
+import DiagramExpand from './DiagramExpand.astro';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
+    <span class="portal-hub-tag">CHAPTER 01 &bull; FOUNDATIONS</span>
   </div>
-  <div class="portal-diagram-viewport">
-    <slot />
+  <h1 class="portal-hero-title">Mobile CI/CD Overview &amp; Mental Model</h1>
+  <p class="portal-hero-desc">
+    The foundational handbook for React Native and mobile engineers transitioning from manual local compilation to governed, cloud-based Bitrise continuous integration and delivery. Learn the core mental models, cloud stack architectures, repository structures, and verification ladders governing enterprise mobile releases.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Governed Self-Service</div>
+      <div class="portal-cap-desc">GitOps enrollment &bull; Secret-free YAML &bull; Immutable workflows</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Automated PR Gates</div>
+      <div class="portal-cap-desc">Danger.js bot &bull; ESLint &bull; TypeScript &bull; Jest &bull; Smoke compile</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">4 Governed Routes</div>
+      <div class="portal-cap-desc">QA Android &bull; QA iOS &bull; UAT Android &bull; UAT iOS</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">7-Stage Evidence Ladder</div>
+      <div class="portal-cap-desc">Cryptographic audit &bull; Signed &bull; Enabled &bull; User endpoint verified</div>
+    </div>
   </div>
 </div>
 
+---
 
-import DiagramExpand from '../../components/DiagramExpand.astro';
-## Hardware Security Lifecycle
-<DiagramExpand title="KEYSTORE ENCRYPTION LIFECYCLE">
-```mermaid
-sequenceDiagram
-    autonumber
-    App->>Vault: Request Master Key
-    Vault->>KeyStore: Hardware Unlock
-    KeyStore-->>App: AES-256 Session Token
+## 1. The Mobile Developer Mental Model
+
+In traditional local development, mobile developers build applications directly on personal MacBooks or workstations. While functional for solo projects, manual builds introduce critical security vulnerabilities, configuration drift, and lost engineering velocity in an enterprise.
+
+### 1.1 Manual Laptop Compilation vs. Governed Bitrise CI/CD
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Engineering Stage</th>
+        <th>The Manual Way (Local Laptop)</th>
+        <th>The Enterprise Automated Way (Bitrise Cloud)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Code Hygiene</strong></td>
+        <td>Developer forgets to run tests or linting; pushes unverified code directly to remote branches.</td>
+        <td>Every Pull Request triggers automated gates: ESLint, TypeScript typecheck, Jest unit tests, and Danger.js review bots.</td>
+      </tr>
+      <tr>
+        <td><strong>Build Consistency</strong></td>
+        <td>"Works on my machine" failures caused by divergent Node.js, JDK, or Xcode installations across developer laptops.</td>
+        <td>Ephemeral, hermetic virtual machines (Linux for Android, Apple Silicon macOS for iOS) provisioned from clean, standard templates.</td>
+      </tr>
+      <tr>
+        <td><strong>Code Signing</strong></td>
+        <td>Private Keystores (<code>.jks</code>) and Apple Distribution Certificates (<code>.p12</code>) stored unencrypted on personal laptops.</td>
+        <td>Signing keys stored in encrypted cloud secret vaults; dynamically mounted into memory only during release jobs.</td>
+      </tr>
+      <tr>
+        <td><strong>Testing Scope</strong></td>
+        <td>Manual validation on personal physical devices connected via USB cables.</td>
+        <td>Automated parallel test execution across hundreds of real physical devices in cloud farms (Sauce Labs).</td>
+      </tr>
+      <tr>
+        <td><strong>Security Auditing</strong></td>
+        <td>Insecure dependencies and unpinned network transports ship unnoticed to production.</td>
+        <td>Automated SAST and DAST binary security checks (NowSecure) automatically halt builds if Critical or High CVEs exist.</td>
+      </tr>
+      <tr>
+        <td><strong>Store Distribution</strong></td>
+        <td>Developer manually uploads <code>.aab</code> to Play Console or archives in Xcode and uploads to TestFlight.</td>
+        <td>Zero-touch pipelines deploy signed artifacts directly to Google Play Internal Testing tracks and Apple TestFlight via API keys.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 2. The 5 Core Bitrise Concepts Explained
+
+Bitrise is an enterprise mobile CI/CD orchestration platform. To understand how automated builds operate, internalize these five architectural pillars:
+
+<div class="portal-cards-grid">
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-green">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+        </div>
+        <h3 class="portal-card-title">1. Stacks (Virtual Machines)</h3>
+        <span class="portal-tag-pill">EXECUTION RUNNERS</span>
+      </div>
+      <p class="portal-card-desc">
+        Isolated, ephemeral cloud virtual machines spun up per build. Android workflows run on lightweight Linux Ubuntu machines with pre-installed Android SDKs and OpenJDK 17. iOS and React Native workflows execute on dedicated Apple Silicon macOS hardware with clean Xcode environments.
+      </p>
+      <div class="portal-card-pills">
+        <span>Linux Ubuntu 22.04</span>
+        <span>Android SDK 34</span>
+        <span>OpenJDK 17</span>
+        <span>Apple Silicon M-Series</span>
+        <span>Xcode 16.x</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-teal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        </div>
+        <h3 class="portal-card-title">2. Workflows (Pipeline Stages)</h3>
+        <span class="portal-tag-pill">ORCHESTRATION</span>
+      </div>
+      <p class="portal-card-desc">
+        An ordered sequence of automated tasks designed for a single operational goal. Workflows can run sequentially or in parallel within pipeline stages. Each branch triggers an isolated workflow configured in <code>bitrise.yml</code>.
+      </p>
+      <div class="portal-card-pills">
+        <span>pr-checks (&lt; 5 min)</span>
+        <span>deploy-dev</span>
+        <span>deploy-staging-qa</span>
+        <span>release-prod</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-purple">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+        </div>
+        <h3 class="portal-card-title">3. Steps &amp; StepLib</h3>
+        <span class="portal-tag-pill">MODULAR BLOCKS</span>
+      </div>
+      <p class="portal-card-desc">
+        Reusable, open-source execution blocks maintained in the Bitrise StepLib. Steps receive declared inputs, execute bash scripts or pre-compiled binaries, and export environment variables (e.g., <code>$BITRISE_APK_PATH</code>) for downstream steps.
+      </p>
+      <div class="portal-card-pills">
+        <span>git-clone@8</span>
+        <span>restore-cache@1</span>
+        <span>android-build@1</span>
+        <span>xcode-archive@5</span>
+        <span>sign-apk@1</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-amber">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        <h3 class="portal-card-title">4. Env Vars &amp; Secrets Vault</h3>
+        <span class="portal-tag-pill">SECURITY BOUNDARY</span>
+      </div>
+      <p class="portal-card-desc">
+        Strict isolation between public configuration flags and encrypted secrets. Secrets are stored in Bitrise encrypted vaults, dynamically mounted into memory at runtime, and masked from build logs to prevent credential leakage.
+      </p>
+      <div class="portal-card-pills">
+        <span>$PROJECT_LOCATION</span>
+        <span>$BITRISE_SCHEME</span>
+        <span>$BITRISEIO_ANDROID_KEYSTORE_PASSWORD</span>
+        <span>Log Masking</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="portal-card portal-card-full">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-card-icon badge-blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <h3 class="portal-card-title">5. Artifacts &amp; Cryptographic Deliverables</h3>
+        <span class="portal-tag-pill">AUDIT EVIDENCE</span>
+      </div>
+      <p class="portal-card-desc">
+        The verifiable output files generated by each workflow. In addition to signed release binaries (Android <code>.aab</code> and iOS <code>.ipa</code>), artifacts include device test videos from Sauce Labs, security scan CVE reports from NowSecure, and SHA-256 build manifests retained for release audit compliance.
+      </p>
+      <div class="portal-card-pills">
+        <span>Release AAB (.aab)</span>
+        <span>Universal APK (.apk)</span>
+        <span>App Store IPA (.ipa)</span>
+        <span>Test Videos &amp; HAR Logs</span>
+        <span>NowSecure CVE Manifests</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 3. Visual Repository File Structure
+
+Setting up this enterprise CI/CD pipeline requires creating and updating a defined set of files in your mobile application repository:
+
+<div class="portal-tree-box">
+my-mobile-app/ (Your React Native Project Root)
+│
+├── bitrise.yml                  [CREATE] Master CI/CD pipeline definition
+├── dangerfile.ts                [CREATE] Automated Pull Request review bot
+├── campfile.yml                 [CREATE] Enterprise platform metadata specification
+├── saucelabs.request.yml        [CREATE] Sauce Labs cloud device test reservation
+├── .sauce/
+│   └── config.yml               [CREATE] Sauce Labs test runner configuration
+│
+├── package.json                 [UPDATE] Add standard scripts (lint, typecheck, test)
+├── .gitignore                   [UPDATE] Add security ignore rules (keystores, .p8, .env)
+│
+├── android/
+│   └── app/
+│       └── build.gradle         [UPDATE] Read release signing keys from CI environment
+│
+└── ios/
+    └── MyMobileApp.xcodeproj/    [UPDATE] Configure Scheme &amp; Bundle Identifiers
+</div>
+
+### 3.1 Repository Inventory &amp; Responsibility Matrix
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>File Path</th>
+        <th>Action</th>
+        <th>Role &amp; Responsibility</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>bitrise.yml</code></td>
+        <td><strong>Create</strong></td>
+        <td>The operational core of your pipeline. Configures triggers, dependency caching, compilation steps, code signing, and store deployments.</td>
+      </tr>
+      <tr>
+        <td><code>dangerfile.ts</code></td>
+        <td><strong>Create</strong></td>
+        <td>Enforces team review conventions on GitHub. Validates PR descriptions, enforces assignees, and blocks unfinished Work-in-Progress (<code>[WIP]</code>) code.</td>
+      </tr>
+      <tr>
+        <td><code>campfile.yml</code></td>
+        <td><strong>Create</strong></td>
+        <td>Standard mobile platform metadata file. Connects your project to monitoring dashboards (Datadog), bundle IDs, and distribution channels.</td>
+      </tr>
+      <tr>
+        <td><code>saucelabs.request.yml</code></td>
+        <td><strong>Create</strong></td>
+        <td>Defines application properties, owner email, and platform target for automated cloud device testing.</td>
+      </tr>
+      <tr>
+        <td><code>.sauce/config.yml</code></td>
+        <td><strong>Create</strong></td>
+        <td>Specifies real device pools (e.g., Google Pixel 8, iPhone 15) and test execution frameworks (Appium / Espresso / XCUITest).</td>
+      </tr>
+      <tr>
+        <td><code>package.json</code></td>
+        <td><strong>Modify</strong></td>
+        <td>Adds standard npm script hooks for deterministic CI execution (<code>npm run lint</code>, <code>npm run typecheck</code>, <code>npm test</code>).</td>
+      </tr>
+      <tr>
+        <td><code>.gitignore</code></td>
+        <td><strong>Modify</strong></td>
+        <td>Prevents accidental commits of plaintext credentials, local keystores, <code>.env</code> files, or private Apple API keys.</td>
+      </tr>
+      <tr>
+        <td><code>android/app/build.gradle</code></td>
+        <td><strong>Modify</strong></td>
+        <td>Replaces hardcoded signing paths with dynamic Bitrise environment variables (<code>$BITRISEIO_ANDROID_KEYSTORE_URL</code>).</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 4. The Governed GitOps Lifecycle
+
+In an enterprise environment, developers do not manually create Bitrise apps by clicking through web forms. Instead, all enrollment is governed through **GitOps**:
+
 ```
++-------------------------------------------------------------------------------+
+|                           GITOPS ENROLLMENT FLOW                              |
+|                                                                               |
+|  [Developer Repo]              [Config Repo: develop]     [Config Repo: main] |
+|   Write source code     --->    Submit secret-free    ---> Reviewed promotion |
+|   Ready for enrollment          app.yaml request           to main branch     |
+|                                                                  |            |
+|                                                                  v            |
+|                                                        Bitrise App Created    |
+|                                                        Once via Automation    |
++-------------------------------------------------------------------------------+
+```
+
+### 4.1 One-Time Enrollment vs. Later Builds
+
+* **One-Time Enrollment**: Initial enrollment creates the Bitrise project **once**. A developer submits a secret-free YAML request file (<code>config/teams/&lt;team&gt;/bitrise/apps/&lt;app&gt;.yaml</code>) to the platform configuration repository. Once reviewed and merged to <code>main</code>, automation calls the Bitrise API to initialize the app, attach approved workflow templates, and link protected signing keys.
+* **Later Builds**: Subsequent releases reuse the existing Bitrise project. Recurring builds trigger automatically on code pushes and Pull Requests. Developers never re-submit enrollment requests for existing apps.
+
+### 4.2 The Secret-Free Request YAML Contract
+
+The enrollment file contains zero credentials or signing data:
+
+```yaml
+app_name: my-mobile-app
+team: mobile-platform
+repo_url: https://git.enterprise.internal/mobile-engineering/my-mobile-app.git
+source_branch: development
+platform: react-native
+template_id: react-native-standard
+template_version: 1.15.9
+access_groups:
+  - Mobile_Engineering
+optional_users: []
+```
+
+#### Strict Contract Rules:
+1. **Filename Identity**: The file must reside at <code>config/teams/&lt;team&gt;/bitrise/apps/&lt;app&gt;.yaml</code>. The folder name must equal <code>team</code>; the filename must equal <code>app_name</code>.
+2. **Create-Only Policy**: The contract is strictly create-only. Actions like <code>action: update</code>, <code>operation: reconcile</code>, or <code>delete: true</code> are rejected by pre-merge validators.
+3. **Zero Secret Boundary**: The inclusion of tokens, passwords, private keys, or keystores will trigger immediate validation rejection.
+
+---
+
+## 5. Enterprise Pipeline Topology &amp; The 4 Governed Routes
+
+Every enrolled enterprise application provisions four standard build and verification routes:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Route Identifier</th>
+        <th>Target Stage</th>
+        <th>Platform</th>
+        <th>Expected Artifact</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>qa_android</code></td>
+        <td>Quality Assurance (QA)</td>
+        <td>Android</td>
+        <td>Private APK / Approved Android Artifact</td>
+      </tr>
+      <tr>
+        <td><code>qa_ios</code></td>
+        <td>Quality Assurance (QA)</td>
+        <td>iOS</td>
+        <td>Private IPA</td>
+      </tr>
+      <tr>
+        <td><code>uat_android</code></td>
+        <td>User Acceptance Testing (UAT)</td>
+        <td>Android</td>
+        <td>Private APK / Approved Android Artifact</td>
+      </tr>
+      <tr>
+        <td><code>uat_ios</code></td>
+        <td>User Acceptance Testing (UAT)</td>
+        <td>iOS</td>
+        <td>Private IPA</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<DiagramExpand title="ENTERPRISE MOBILE PIPELINE TOPOLOGY">
+
+```mermaid
+graph TD
+    subgraph TriggerLayer ["1. CODE TRIGGERS &amp; BRANCHING"]
+        PR["Pull Request to develop / staging"] --> W1["pr-checks Workflow"]
+        PushDev["Push to develop branch"] --> W2["deploy-dev Workflow"]
+        PushStage["Push to staging branch"] --> W3["deploy-staging-qa Workflow"]
+        PushMain["Push / Tag on main branch"] --> W4["release-prod Workflow"]
+    end
+
+    subgraph QualityLayer ["2. AUTOMATED QUALITY &amp; VALIDATION"]
+        W1 --> Lint["ESLint &bull; TypeScript Check"]
+        W1 --> Danger["Danger.js Review Bot"]
+        W1 --> Jest["Jest Unit Tests"]
+        W1 --> Smoke["Smoke Compile devDebug"]
+    end
+
+    subgraph StagingLayer ["3. CLOUD TESTING &amp; STAGING DELIVERY"]
+        W3 --> Parallel["Parallel Module Testing"]
+        W3 --> Sauce["Sauce Labs Real-Device Farm"]
+        W3 --> SignStaging["Sign Staging APK / IPA"]
+        W3 --> Firebase["Firebase App Distribution"]
+    end
+
+    subgraph ProductionLayer ["4. SECURITY &amp; ZERO-TOUCH STORE DELIVERY"]
+        W4 --> Sec["NowSecure SAST / DAST Scan"]
+        W4 --> SignProd["Sign Release with Vault Keystore"]
+        W4 --> Play["Google Play Console Internal Track"]
+        W4 --> TestFlight["Apple TestFlight (.p8 Deliver)"]
+    end
+```
+
 </DiagramExpand>
+
+---
+
+## 6. The 7-Stage Evidence &amp; Verification Ladder
+
+In an enterprise release audit, an application is never certified as "released" simply because a build completed. The delivery pipeline must establish proof across seven sequential checkpoints:
+
+<DiagramExpand title="THE 7-STAGE EVIDENCE &amp; VERIFICATION LADDER">
+
+```mermaid
+graph TD
+    S1["1. BuildStarted<br/>Exact branch, commit hash, and workflow ID confirmed"] --> S2["2. BuildSuccessful<br/>Zero compilation errors on clean Bitrise virtual machine"]
+    S2 --> S3["3. ArtifactValidated<br/>File size > 0 &bull; SHA-256 integrity hash matches"]
+    S3 --> S4["4. Uploaded<br/>Readback verifies binary received by distribution platform"]
+    S4 --> S5["5. Signed<br/>Verified cryptographic signature using enterprise release credential"]
+    S5 --> S6["6. Enabled<br/>Exact signed version toggled active in enterprise catalog"]
+    S6 --> S7["7. Assigned &amp; UserVisible<br/>Assigned to 'All Users' &amp; endpoint returns latest version"]
+```
+
+</DiagramExpand>
+
+### 6.1 Checkpoint Verification Matrix
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Checkpoint Stage</th>
+        <th>Evidence Required</th>
+        <th>What It Proves</th>
+        <th>What It Does NOT Prove</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Pull Request</strong></td>
+        <td>Pre-merge validator execution</td>
+        <td>Request and template compliance</td>
+        <td>Live enrollment or Bitrise project creation</td>
+      </tr>
+      <tr>
+        <td><strong>2. Bitrise Project</strong></td>
+        <td>API readback of app slug</td>
+        <td>Bitrise project exists</td>
+        <td>Successful artifact compilation</td>
+      </tr>
+      <tr>
+        <td><strong>3. Private Artifact</strong></td>
+        <td>Binary output in <code>$BITRISE_DEPLOY_DIR</code></td>
+        <td>Build produced a valid binary</td>
+        <td>Upload to distribution portal</td>
+      </tr>
+      <tr>
+        <td><strong>4. Uploaded</strong></td>
+        <td>App ID and Version readback</td>
+        <td>Binary upload completed</td>
+        <td>Signing, enablement, or user access</td>
+      </tr>
+      <tr>
+        <td><strong>5. Signed</strong></td>
+        <td>Cryptographic certificate readback</td>
+        <td>Signed with official release key</td>
+        <td>Active enablement in catalog</td>
+      </tr>
+      <tr>
+        <td><strong>6. Enabled</strong></td>
+        <td>Status toggled to Active</td>
+        <td>Version is active in portal</td>
+        <td>Audience visibility on user devices</td>
+      </tr>
+      <tr>
+        <td><strong>7. User Endpoint</strong></td>
+        <td>HTTP GET query on user endpoint</td>
+        <td>Assigned to All Users; visible to download</td>
+        <td>Device installation or session launch</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">PROVISIONAL CHECKPOINT WARNING</div>
+  <p class="portal-alert-desc">
+    If an artifact is uploaded but not signed and enabled, it is recorded as a <strong>provisional upload checkpoint</strong>. It does not complete the release. Never report a build as fully released until Stage 7 is confirmed.
+  </p>
+</div>
+
+---
+
+## 7. The One-Write Rule &amp; Security Boundaries
+
+### 7.1 The One-Write Rule
+
+To prevent resource duplication, corrupt states, or half-provisioned releases when external network timeouts occur:
+
+```
+========================================================================================
+THE ONE-WRITE RULE:
+Automation executes each external mutation at most once.
+If an operation times out or returns an ambiguous response:
+1. DO NOT immediately re-run the mutation.
+2. Halt execution in a safe state (partial_failure / side_effect_unknown).
+3. Perform a GET-only readback to verify if the external resource was created.
+4. If the resource exists, reconcile state. If absent, execute controlled retry.
+========================================================================================
+```
+
+### 7.2 The Secret Boundary
+
+Never commit, print, or store the following items in request YAML files, Git history, PR descriptions, documentation, or CI build transcripts:
+* API tokens or Personal Access Tokens (PAT)
+* Passwords or passphrase strings
+* Private keys (<code>.pem</code>, <code>.p8</code>, <code>.key</code>)
+* Android Keystores (<code>.jks</code>, <code>.keystore</code>)
+* iOS Distribution Certificates (<code>.p12</code>) or Provisioning Profiles
+* Bitrise secret values or cloud provider service credentials
+
+All sensitive credentials must be injected dynamically at build runtime through the **Bitrise Secrets Tab**.
+
+---
+
+## 8. Summary &amp; Next Steps
+
+You now understand the enterprise mental model:
+1. **Local laptops are for feature development**; clean Bitrise cloud virtual machines are for building, signing, and releasing.
+2. **Pipelines are governed through GitOps**: secret-free enrollment requests, immutable templates, and strict PR validation gates.
+3. **Releases are verified cryptographically** through the 7-stage Verification Ladder before being exposed to end users.
+
+
+
+
+--------------------------------------------------------------
+
+
+---
+title: "02. Codebase Preparation & Native Configuration"
+description: "Hands-on guide to configuring your React Native codebase for automated Bitrise CI/CD: scripts, metadata, security boundaries, and native Gradle and Xcode signing."
+---
+
+import DiagramExpand from './DiagramExpand.astro';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
+    <span class="portal-hub-tag">CHAPTER 02 &bull; REPO PREPARATION</span>
+  </div>
+  <h1 class="portal-hero-title">Codebase Preparation &amp; Native Configuration</h1>
+  <p class="portal-hero-desc">
+    A step-by-step engineering walkthrough for standardizing your React Native code repository prior to CI execution. Configure deterministic npm script hooks, declare the enterprise platform metadata standard (<code>campfile.yml</code>), enforce strict credential git-ignore boundaries, and adapt native Android and iOS build files for cloud code signing.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Script Standards</div>
+      <div class="portal-cap-desc">Deterministic lint &bull; Strict typecheck &bull; In-band Jest tests</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Platform Metadata</div>
+      <div class="portal-cap-desc">campfile.yml spec &bull; Multi-flavor bundle IDs &bull; RUM telemetry</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Secret Isolation</div>
+      <div class="portal-cap-desc">Hardened .gitignore &bull; Zero plaintext keys &bull; Keystore exclusion</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Dynamic Signing</div>
+      <div class="portal-cap-desc">Gradle CI env hooks &bull; Shared Xcode schemes &bull; Zero build drift</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. The Local-to-CI Parity Principle
+
+Before creating cloud pipelines, you must enforce the **Local-to-CI Parity Principle**:
+
+```
+========================================================================================
+THE LOCAL-TO-CI PARITY PRINCIPLE:
+Every test, lint rule, and compilation command executed by Bitrise in the cloud 
+must be runnable and passing locally on your developer workstation.
+Never rely on CI to discover basic syntax errors, type mismatches, or missing imports.
+========================================================================================
+```
+
+If a command fails on your local machine, it is guaranteed to fail on Bitrise. Standardizing your project scripts ensures that both developers and cloud virtual machines run identical commands.
+
+---
+
+## 2. Step 1: Standardize `package.json` Scripts
+
+Bitrise workflows require predictable command names to run quality checks across any project in the enterprise.
+
+Open your project root <code>package.json</code> and ensure the <code>scripts</code> section contains these four standard hooks:
+
+<div class="portal-code-frame">
+  <div class="portal-code-header">
+    <span class="portal-file-badge">package.json</span>
+    <span class="portal-badge-hub">STANDARD SCRIPTS</span>
+  </div>
+  <pre class="portal-code-block"><code>{
+  "name": "my-mobile-app",
+  "version": "1.0.0",
+  "scripts": {
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --passWithNoTests --runInBand",
+    "test:coverage": "jest --coverage --maxWorkers=2",
+    "danger": "danger ci"
+  }
+}</code></pre>
+</div>
+
+### Script Parameter Breakdown
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Script Name</th>
+        <th>Command String</th>
+        <th>Purpose &amp; Why It Matters on CI</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>npm run lint</code></td>
+        <td><code>eslint . --ext .js,.jsx,.ts,.tsx</code></td>
+        <td>Scans all JavaScript and TypeScript source files for code standard violations, unused variables, and potential runtime bugs.</td>
+      </tr>
+      <tr>
+        <td><code>npm run typecheck</code></td>
+        <td><code>tsc --noEmit</code></td>
+        <td>Runs the TypeScript compiler in validation-only mode without generating JS bundles. Catches interface mismatches and type errors before native compilation.</td>
+      </tr>
+      <tr>
+        <td><code>npm test</code></td>
+        <td><code>jest --passWithNoTests --runInBand</code></td>
+        <td>Executes Jest unit tests. The <code>--passWithNoTests</code> flag prevents build failure on newly scaffolded modules, while <code>--runInBand</code> runs tests sequentially in the main process to prevent virtual machine out-of-memory (OOM) errors.</td>
+      </tr>
+      <tr>
+        <td><code>npm run test:coverage</code></td>
+        <td><code>jest --coverage --maxWorkers=2</code></td>
+        <td>Generates LCOV code coverage reports for quality auditing without exhausting Bitrise virtual CPU allocations.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 3. Step 2: The Enterprise Metadata Standard (`campfile.yml`)
+
+Every enterprise mobile application must declare a <code>campfile.yml</code> in its root directory. This configuration file acts as the single source of truth for platform tooling, monitoring telemetry (Datadog), bundle identifiers per flavor, and store target configurations.
+
+Create a file named <code>campfile.yml</code> in your repository root:
+
+<div class="portal-code-frame">
+  <div class="portal-code-header">
+    <span class="portal-file-badge">campfile.yml</span>
+    <span class="portal-badge-hub">ENTERPRISE SPECIFICATION</span>
+  </div>
+  <pre class="portal-code-block"><code>app_name: my-mobile-app
+app_identifier:
+  dev: com.enterprise.mobileapp.dev
+  staging: com.enterprise.mobileapp.staging
+  prod: com.enterprise.mobileapp
+
+bitrise_app_slug: "a1b2c3d4e5f6g7h8"
+business_enterprise: corporate
+business_unit: mobile-engineering
+platform_type: react_native
+
+datadog_app_url: "https://app.datadoghq.com/rum/application/00000000-0000-0000-0000-000000000000"
+repository_name: "https://git.enterprise.internal/mobile-engineering/my-mobile-app.git"
+
+distribution_targets:
+  dev:
+    channel: slack
+    notify_group: mobile-devs
+  staging:
+    channel: firebase_app_distribution
+    tester_groups:
+      - QA-Engineers
+      - Product-Owners
+  prod:
+    channel: app_stores
+    google_play_track: internal
+    apple_testflight: true</code></pre>
+</div>
+
+### Field Validation Rules
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Field Name</th>
+        <th>Type</th>
+        <th>Constraint Rule</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>app_name</code></td>
+        <td>String</td>
+        <td>Must match the root project directory and the Bitrise application title.</td>
+      </tr>
+      <tr>
+        <td><code>app_identifier</code></td>
+        <td>Map</td>
+        <td>Must declare distinct reverse-domain package identifiers for <code>dev</code>, <code>staging</code>, and <code>prod</code> to allow side-by-side device installation.</td>
+      </tr>
+      <tr>
+        <td><code>platform_type</code></td>
+        <td>Enum</td>
+        <td>Allowed values: <code>react_native</code>, <code>android</code>, <code>ios</code>, or <code>flutter</code>.</td>
+      </tr>
+      <tr>
+        <td><code>business_enterprise</code></td>
+        <td>String</td>
+        <td>Designates the parent division for cloud cost allocation and resource governance.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 4. Step 3: Hardening `.gitignore` &amp; Secret Isolation
+
+Accidental commits of cryptographic signing materials, API keys, or developer keystores represent one of the most critical security liabilities in mobile engineering.
+
+Open your <code>.gitignore</code> and ensure the following rules are present:
+
+<div class="portal-code-frame">
+  <div class="portal-code-header">
+    <span class="portal-file-badge">.gitignore</span>
+    <span class="portal-badge-hub">SECURITY ISOLATION</span>
+  </div>
+  <pre class="portal-code-block"><code># 1. Dependency Directories
+node_modules/
+.pnp
+.pnp.js
+
+# 2. Environment &amp; Secret Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# 3. Android Keystores &amp; Secrets
+*.keystore
+*.jks
+android/app/*.keystore
+android/app/*.jks
+android/.gradle/
+android/app/build/
+android/local.properties
+
+# 4. iOS Certificates &amp; Provisioning Profiles
+*.mobileprovision
+*.cer
+*.cert
+*.p12
+*.p8
+AuthKey_*.p8
+ios/Pods/
+ios/build/
+ios/DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+
+# 5. Build Deliverables &amp; Archives
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.mapping.txt</code></pre>
+</div>
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">SECRET REVOCATION POLICY</div>
+  <p class="portal-alert-desc">
+    If a private Keystore (<code>.jks</code>), service account JSON key, or Apple <code>.p8</code> API key is ever committed to a remote Git repository—even on an internal branch—it is considered permanently compromised. You must immediately revoke the key, generate a fresh cryptographic pair, and report the incident to Mobile Security.
+  </p>
+</div>
+
+---
+
+## 5. Step 4: Dynamic Android Signing in `build.gradle`
+
+In local development, developers typically compile with default debug keys. On Bitrise, the pipeline must dynamically read official production signing credentials injected into environment variables, without breaking local developer compilation.
+
+Open <code>android/app/build.gradle</code> and update the <code>android { ... }</code> configuration:
+
+<div class="portal-code-frame">
+  <div class="portal-code-header">
+    <span class="portal-file-badge">android/app/build.gradle</span>
+    <span class="portal-badge-hub">DYNAMIC GRADLE HOOK</span>
+  </div>
+  <pre class="portal-code-block"><code>android {
+    namespace "com.enterprise.mobileapp"
+    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        applicationId "com.enterprise.mobileapp"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+
+        release {
+            // Check if Bitrise injected the production keystore path
+            if (System.getenv("BITRISEIO_ANDROID_KEYSTORE_URL") != null) {
+                storeFile file(System.getenv("BITRISEIO_ANDROID_KEYSTORE_URL"))
+                storePassword System.getenv("BITRISEIO_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("BITRISEIO_ANDROID_KEYSTORE_ALIAS")
+                keyPassword System.getenv("BITRISEIO_ANDROID_KEY_PASSWORD")
+            } else {
+                // Safe developer fallback: compile with debug key locally if release key absent
+                storeFile file('debug.keystore')
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+        }
+    }
+}</code></pre>
+</div>
+
+### Why this design is resilient:
+1. **Zero Hardcoded Secrets**: Passwords and key aliases are never written to source code.
+2. **Local Parity**: Developers can still run <code>./gradlew assembleRelease</code> locally without errors; it will safely fall back to the local debug keystore.
+3. **CI Automatic Activation**: When Bitrise executes the <code>sign-apk</code> step, it automatically mounts the official Keystore and sets <code>$BITRISEIO_ANDROID_KEYSTORE_URL</code>, enabling official cryptographic release signing.
+
+---
+
+## 6. Step 5: iOS Scheme Configuration in Xcode
+
+When building iOS binaries on Bitrise macOS virtual machines, the cloud runner does not have a graphical interface. It relies on **Shared Schemes** in Xcode to know which targets to compile.
+
+### 6.1 Step 1: Mark Schemes as Shared
+
+By default, Xcode marks new schemes as *private* (stored in <code>xcuserdata/</code>, which is excluded by <code>.gitignore</code>). If you do not mark your scheme as **Shared**, Bitrise will report: <code>Scheme not found in workspace</code>.
+
+1. Open your project in Xcode: <code>open ios/MyMobileApp.xcworkspace</code>.
+2. In the top toolbar, click the Scheme dropdown and select **Manage Schemes...**
+3. Locate your application scheme (e.g., <code>MyMobileApp</code>).
+4. Check the **Shared** checkbox in the rightmost column.
+5. Click **Close**.
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT</span>
+    <span class="portal-screenshot-title">Xcode Manage Schemes - Shared Checkbox</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    <strong>Where to capture:</strong> Open Xcode &gt; Menu: <span class="portal-screenshot-path">Product &gt; Scheme &gt; Manage Schemes...</span> Highlight the active scheme row with the <strong>Shared</strong> checkbox checked on the far right.
+  </p>
+</div>
+
+### 6.2 Step 2: Commit the Shared Scheme to Git
+
+Once marked as shared, Xcode creates a descriptor at:
+<code>ios/MyMobileApp.xcodeproj/xcshareddata/xcschemes/MyMobileApp.xcscheme</code>
+
+Stage and commit this file to Git:
+
+```bash
+git add ios/MyMobileApp.xcodeproj/xcshareddata/xcschemes/MyMobileApp.xcscheme
+git commit -m "chore(ios): mark Xcode scheme as shared for CI execution"
+```
+
+---
+
+## 7. Step 6: Local Verification Smoke Test
+
+Before pushing your changes and creating cloud workflows, run this three-step smoke test locally:
+
+```bash
+# 1. Verify code style and formatting
+npm run lint
+
+# 2. Verify TypeScript type safety
+npm run typecheck
+
+# 3. Execute unit test suite
+npm test
+```
+
+### Android Local Compilation Check:
+```bash
+cd android
+./gradlew assembleDevDebug --dry-run
+cd ..
+```
+
+If all three commands exit with code `0`, your codebase is officially prepared for continuous integration.
+
+---
+
+## 8. Summary &amp; Next Steps
+
+You have established complete repository readiness:
+* Standardized npm script hooks are active in <code>package.json</code>.
+* The enterprise platform metadata standard is codified in <code>campfile.yml</code>.
+* Plaintext credentials and keystores are strictly guarded in <code>.gitignore</code>.
+* Android Gradle is configured to read signing keys dynamically from CI memory.
+* Xcode schemes are shared and committed to Git.
+
+-------------------------------------------------------------------------------------------
+
+
+
+---
+title: "03. Automated PR Quality Gates with Danger.js"
+description: "Configure automated pull request code review gates on Bitrise using Danger.js: description validation, assignee enforcement, WIP blocking, and diff size guards."
+---
+
+import DiagramExpand from './DiagramExpand.astro';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
+    <span class="portal-hub-tag">CHAPTER 03 &bull; CODE REVIEW AUTOMATION</span>
+  </div>
+  <h1 class="portal-hero-title">Automated PR Quality Gates with Danger.js</h1>
+  <p class="portal-hero-desc">
+    Automate pull request hygiene and review conventions across your mobile engineering teams using Danger.js on Bitrise. Enforce comprehensive PR descriptions, block accidental merges of work-in-progress code, verify reviewer assignments, monitor code churn thresholds, and automatically publish structured markdown review tables.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Automated Etiquette</div>
+      <div class="portal-cap-desc">Description length &bull; [WIP] blocker &bull; Testing notes required</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Review Governance</div>
+      <div class="portal-cap-desc">Assignee verification &bull; Reviewer assignment &bull; Zero orphaned PRs</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Diff Size Guards</div>
+      <div class="portal-cap-desc">Threshold alerts (&gt; 500 lines) &bull; Modularity enforcement &bull; Small slices</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">GitHub Integration</div>
+      <div class="portal-cap-desc">Enterprise PAT &bull; Webhook status check &bull; Markdown summary tables</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Why Danger.js in Enterprise Mobile CI/CD
+
+During manual code reviews, senior developers frequently waste valuable engineering time repeating basic hygiene requests:
+* *"Please provide a summary of what changed and how to test it."*
+* *"Please assign yourself to this Pull Request."*
+* *"This PR is marked WIP, why is it opened for review?"*
+* *"This PR modifies 1,400 lines across 60 files; please split it into smaller PRs."*
+
+Danger.js eliminates this friction by running as an automated, impartial code reviewer on Bitrise. It inspects Pull Request metadata and Git diffs, executing programmed rules codified in a <code>dangerfile.ts</code>, and posts a structured comment directly onto the GitHub PR.
+
+---
+
+## 2. Step 1: Install Danger.js Dependency
+
+Danger runs as an npm module within your project. Add it to your <code>devDependencies</code>:
+
+<div class="portal-code-frame">
+  <div class="portal-code-header">
+    <span class="portal-file-badge">TERMINAL</span>
+    <span class="portal-badge-hub">NPM INSTALL</span>
+  </div>
+  <pre class="portal-code-block"><code>npm install --save-dev danger</code></pre>
+</div>
+
+Verify that your <code>package.json</code> contains a script entry for Danger:
+
+<div class="portal-code-frame">
+  <div class="portal-code-header">
+    <span class="portal-file-badge">package.json</span>
+    <span class="portal-badge-hub">SCRIPT HOOK</span>
+  </div>
+  <pre class="portal-code-block"><code>{
+  "scripts": {
+    "danger": "danger ci"
+  }
+}</code></pre>
+</div>
+
+---
+
+## 3. Step 2: Crafting the Production `dangerfile.ts`
+
+Create a file named <code>dangerfile.ts</code> in the root directory of your repository. This file defines the exact quality rules enforced on every GitHub Pull Request:
+
+<div class="portal-code-frame">
+  <div class="portal-code-header">
+    <span class="portal-file-badge">dangerfile.ts</span>
+    <span class="portal-badge-hub">TYPESCRIPT QUALITY RULES</span>
+  </div>
+  <pre class="portal-code-block"><code>import { danger, warn, fail, message } from "danger";
+
+// ---------------------------------------------------------------------------
+// RULE 1: Enforce Pull Request Description Quality
+// ---------------------------------------------------------------------------
+const prBody = danger.github.pr.body;
+if (!prBody || prBody.trim().length < 15) {
+  fail("This Pull Request requires a description. Please provide context, user impact, and QA testing steps.");
+}
+
+// ---------------------------------------------------------------------------
+// RULE 2: Enforce Assignee Assignment
+// ---------------------------------------------------------------------------
+if (!danger.github.pr.assignee) {
+  warn("This Pull Request needs an assignee. Please assign yourself or a lead engineer.");
+}
+
+// ---------------------------------------------------------------------------
+// RULE 3: Block Work-In-Progress (WIP) Pull Requests from Merging
+// ---------------------------------------------------------------------------
+const prTitle = danger.github.pr.title;
+if (
+  prTitle.toLowerCase().includes("[wip]") ||
+  prTitle.toLowerCase().startsWith("wip:") ||
+  prTitle.toLowerCase().includes("(wip)")
+) {
+  fail("This Pull Request is marked as [WIP]. Remove the WIP tag before merging to branch.");
+}
+
+// ---------------------------------------------------------------------------
+// RULE 4: Guard Against Giant Pull Request Diffs (> 500 lines)
+// ---------------------------------------------------------------------------
+const totalModifications = danger.github.pr.additions + danger.github.pr.deletions;
+if (totalModifications > 500) {
+  warn(
+    `Big PR! This change modifies ${totalModifications} lines. Consider breaking changes into smaller, incremental review slices.`
+  );
+}
+
+// ---------------------------------------------------------------------------
+// RULE 5: Automated Test Coverage Verification
+// ---------------------------------------------------------------------------
+const modifiedAppCode = danger.git.modified_files.some(file => 
+  file.startsWith("src/") &amp;&amp; !file.includes(".test.") &amp;&amp; !file.includes(".spec.")
+);
+
+const modifiedTests = danger.git.modified_files.some(file => 
+  file.includes(".test.") || file.includes(".spec.") || file.includes("__tests__")
+);
+
+if (modifiedAppCode &amp;&amp; !modifiedTests) {
+  warn("Source code in `src/` was modified, but no corresponding test files were updated. Please verify if unit tests are needed.");
+}
+
+if (modifiedTests) {
+  message("Great engineering discipline! This Pull Request includes automated test modifications.");
+}
+
+// ---------------------------------------------------------------------------
+// RULE 6: Lockfile Synchronization Guard
+// ---------------------------------------------------------------------------
+const packageChanged = danger.git.modified_files.includes("package.json");
+const lockfileChanged = danger.git.modified_files.includes("package-lock.json");
+
+if (packageChanged &amp;&amp; !lockfileChanged) {
+  fail("`package.json` was updated, but `package-lock.json` was not. Run `npm install` and commit the updated lockfile.");
+}</code></pre>
+</div>
+
+### Danger.js Rule Enforcement Matrix
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Rule Category</th>
+        <th>Trigger Condition</th>
+        <th>Severity</th>
+        <th>Pipeline Outcome</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>PR Description</strong></td>
+        <td>Body text is empty or fewer than 15 characters</td>
+        <td><code>fail()</code></td>
+        <td>Blocks GitHub PR merge; status check turns red.</td>
+      </tr>
+      <tr>
+        <td><strong>Assignee Check</strong></td>
+        <td>No GitHub user assigned to the PR</td>
+        <td><code>warn()</code></td>
+        <td>Leaves yellow warning table; does not halt compilation.</td>
+      </tr>
+      <tr>
+        <td><strong>WIP Blocker</strong></td>
+        <td>Title contains <code>[WIP]</code> or starts with <code>wip:</code></td>
+        <td><code>fail()</code></td>
+        <td>Prevents accidental early merges of unfinished feature code.</td>
+      </tr>
+      <tr>
+        <td><strong>Diff Size Threshold</strong></td>
+        <td>Total additions + deletions exceed 500 lines</td>
+        <td><code>warn()</code></td>
+        <td>Reminds developer to favor small, incremental PR slices.</td>
+      </tr>
+      <tr>
+        <td><strong>Lockfile Guard</strong></td>
+        <td><code>package.json</code> modified without <code>package-lock.json</code></td>
+        <td><code>fail()</code></td>
+        <td>Prevents dependency version drift and non-deterministic builds.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 4. Step 3: GitHub Personal Access Token (PAT) Setup
+
+Danger requires GitHub API access to read PR metadata and post comments on your pull requests.
+
+### 4.1 Creating the Personal Access Token in GitHub
+
+1. Log into your GitHub Enterprise account.
+2. In the top right corner, click your profile picture &gt; **Settings**.
+3. In the left navigation, scroll to the bottom and click **Developer settings**.
+4. Click **Personal access tokens** &gt; **Tokens (classic)**.
+5. Click **Generate new token (classic)**.
+6. Set **Note** to: <code>Bitrise-Danger-Bot</code>.
+7. Under **Select scopes**, check the **repo** scope (Full control of private repositories).
+8. Click **Generate token** and copy the resulting string (e.g., <code>ghp_xxxxxxxxxxxx</code>).
+
+### 4.2 Storing the Token in Bitrise Secrets
+
+1. Open your mobile application in the **Bitrise Console**.
+2. Click **Workflow Editor** &gt; **Secrets Tab**.
+3. Add a new secret:
+   * **Key**: <code>DANGER_GITHUB_API_TOKEN</code>
+   * **Value**: <code>ghp_xxxxxxxxxxxx</code>
+4. For GitHub Enterprise installations, also declare these environment variables in your <code>app.envs</code>:
+   * <code>DANGER_GITHUB_HOST</code>: <code>git.enterprise.internal</code>
+   * <code>DANGER_GITHUB_API_BASE_URL</code>: <code>https://git.enterprise.internal/api/v3</code>
+
+---
+
+## 5. Step 4: Bitrise Workflow Step Configuration
+
+Danger must execute in your <code>pr-checks</code> workflow immediately after source code checkout and dependency installation:
+
+<div class="portal-code-frame">
+  <div class="portal-code-header">
+    <span class="portal-file-badge">bitrise.yml (pr-checks excerpt)</span>
+    <span class="portal-badge-hub">STEP CONFIGURATION</span>
+  </div>
+  <pre class="portal-code-block"><code>workflows:
+  pr-checks:
+    steps:
+    - activate-ssh-key@4: {}
+    - git-clone@8: {}
+    - restore-cache@1:
+        inputs:
+        - key: npm-v1-{{ checksum "package-lock.json" }}
+    - npm@1:
+        title: Install Dependencies
+        inputs:
+        - command: ci
+
+    # Execute Danger.js Quality Gate
+    - npm@1:
+        title: Run Danger.js Review Bot
+        inputs:
+        - command: run danger
+        envs:
+        - DANGER_GITHUB_API_TOKEN: $DANGER_GITHUB_API_TOKEN
+        - DANGER_GITHUB_HOST: $DANGER_GITHUB_HOST
+        - DANGER_GITHUB_API_BASE_URL: $DANGER_GITHUB_API_BASE_URL
+
+    - npm@1:
+        title: TypeScript Type Check
+        inputs:
+        - command: run typecheck
+    - npm@1:
+        title: Run Jest Unit Tests
+        inputs:
+        - command: test</code></pre>
+</div>
+
+---
+
+## 6. Visual Reference: Danger.js Automated Review Table
+
+When a developer opens a Pull Request that violates a rule, Danger immediately posts a formatted markdown table directly on GitHub:
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT</span>
+    <span class="portal-screenshot-title">GitHub PR - Danger.js Review Comment Table</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    <strong>Where to capture:</strong> Open any GitHub Pull Request where the Bitrise <span class="portal-screenshot-path">pr-checks</span> workflow ran. Capture the automated comment table showing the red failure notice (e.g., Short PR description) and yellow warning notices (e.g., Big PR warning).
+  </p>
+</div>
+
+---
+
+## 7. Troubleshooting Common Danger.js Errors
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Error Symptom</th>
+        <th>Likely Root Cause</th>
+        <th>Exact Resolution</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>Danger: 401 Bad Credentials</code></td>
+        <td>The <code>$DANGER_GITHUB_API_TOKEN</code> is expired, revoked, or mistyped in the Bitrise Secrets tab.</td>
+        <td>Generate a new Personal Access Token on GitHub with <code>repo</code> scope and update the secret in Bitrise.</td>
+      </tr>
+      <tr>
+        <td><code>Cannot find dangerfile.ts</code></td>
+        <td>The file is misplaced in a subfolder or named <code>Dangerfile</code> instead of <code>dangerfile.ts</code>.</td>
+        <td>Ensure <code>dangerfile.ts</code> resides directly in the root directory alongside <code>package.json</code>.</td>
+      </tr>
+      <tr>
+        <td><code>Rate limit exceeded on GitHub API</code></td>
+        <td>Unauthenticated API calls or shared token across multiple high-volume CI systems.</td>
+        <td>Confirm <code>$DANGER_GITHUB_API_TOKEN</code> is properly exported in the Bitrise workflow step environment.</td>
+      </tr>
+      <tr>
+        <td><code>GitHub Enterprise URL unreachable</code></td>
+        <td>Missing <code>DANGER_GITHUB_HOST</code> or <code>DANGER_GITHUB_API_BASE_URL</code> environment variables.</td>
+        <td>Verify that the host domain (e.g. <code>git.enterprise.internal</code>) and API URL (<code>https://git.enterprise.internal/api/v3</code>) are declared in <code>app.envs</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 8. Summary
+
+You have established automated pull request code governance:
+* Danger.js is integrated into your project <code>devDependencies</code>.
+* A strict <code>dangerfile.ts</code> enforces PR descriptions, blocks <code>[WIP]</code> merges, checks assignees, and guards against lockfile desynchronization.
+* GitHub Personal Access Tokens and Enterprise endpoints are securely declared.
+* The <code>pr-checks</code> workflow automatically posts feedback tables on every commit.
+
+Next Chapter: **04. Bitrise Pipeline Configuration (`04-bitrise-pipeline-configuration.mdx`)**.
+
+
+
+
+--------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
