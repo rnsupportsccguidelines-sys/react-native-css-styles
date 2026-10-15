@@ -1,36 +1,864 @@
+[
+  {
+    "id": "auth-sdk",
+    "name": "Auth & Identity SDK",
+    "version": "v2.4.0",
+    "category": "Security & Identity",
+    "description": "Enterprise OAuth 2.0 and OIDC user login, PKCE authorization flow, biometric key storage, and automated JWT token refresh.",
+    "platforms": ["android", "ios", "react-native"],
+    "installation": {
+      "android": {
+        "title": "Android (Gradle / Kotlin)",
+        "dependency": "implementation(\"com.cargill.mobile:core-auth:2.4.0\")",
+        "fileName": "core/security/AuthManager.kt",
+        "code": "package com.cargill.mobile.core.security\n\nimport android.content.Context\nimport com.cargill.mobile.auth.EnterpriseAuthClient\nimport com.cargill.mobile.auth.AuthConfiguration\nimport javax.inject.Inject\nimport javax.inject.Singleton\n\n@Singleton\nclass AuthManager @Inject constructor(\n    private val context: Context\n) {\n    private val authClient = EnterpriseAuthClient(\n        configuration = AuthConfiguration(\n            clientId = \"cargill-mobile-app\",\n            issuerUri = \"https://identity.cargill.com/oauth2/v1\",\n            redirectUri = \"cargill://oauth/callback\",\n            scopes = listOf(\"openid\", \"profile\", \"email\", \"offline_access\")\n        )\n    )\n\n    suspend fun login(): Result<String> = authClient.login(context)\n    fun getAccessToken(): String? = authClient.getValidAccessToken()\n}"
+      },
+      "ios": {
+        "title": "iOS (Swift Package Manager / SPM)",
+        "dependency": ".package(url: \"https://github.com/cargill-enterprise/ios-core-auth.git\", from: \"2.4.0\")",
+        "fileName": "Core/Security/AuthService.swift",
+        "code": "import Foundation\nimport CargillAuth\n\npublic actor AuthService {\n    public static let shared = AuthService()\n    \n    private let client = EnterpriseAuthClient(\n        configuration: AuthConfig(\n            clientId: \"cargill-mobile-ios\",\n            issuerURL: URL(string: \"https://identity.cargill.com/oauth2/v1\")!,\n            redirectURL: URL(string: \"cargill://oauth/callback\")!,\n            scopes: [\"openid\", \"profile\", \"email\", \"offline_access\"]\n        )\n    )\n    \n    public func login(presentingViewController: UIViewController) async throws -> String {\n        try await client.authenticate(from: presentingViewController)\n    }\n}"
+      },
+      "react-native": {
+        "title": "React Native (npm / Yarn)",
+        "dependency": "yarn add @cargill/react-native-auth",
+        "fileName": "src/core/auth/authClient.ts",
+        "code": "import { EnterpriseAuthClient } from '@cargill/react-native-auth';\n\nexport const authClient = new EnterpriseAuthClient({\n  clientId: 'cargill-mobile-rn',\n  issuerUri: 'https://identity.cargill.com/oauth2/v1',\n  redirectUri: 'cargill://oauth/callback',\n  scopes: ['openid', 'profile', 'email', 'offline_access'],\n});\n\nexport async function signIn(): Promise<string> {\n  const session = await authClient.authorize();\n  return session.accessToken;\n}"
+      }
+    }
+  },
+  {
+    "id": "resilience-sdk",
+    "name": "Resilient Network SDK",
+    "version": "v1.8.2",
+    "category": "Network & Core",
+    "description": "Automatic HTTP retry policies, exponential backoff with jitter, offline fallback caching, TLS pinning, and circuit breaker protection.",
+    "platforms": ["android", "ios", "react-native"],
+    "installation": {
+      "android": {
+        "title": "Android (Gradle / Kotlin)",
+        "dependency": "implementation(\"com.cargill.mobile:core-network:1.8.2\")",
+        "fileName": "core/network/ResilientClientFactory.kt",
+        "code": "package com.cargill.mobile.core.network\n\nimport com.cargill.mobile.network.ResilientOkHttpClient\nimport com.cargill.mobile.network.CircuitBreakerConfig\nimport okhttp3.OkHttpClient\nimport java.time.Duration\n\nobject ResilientClientFactory {\n    fun create(): OkHttpClient {\n        return ResilientOkHttpClient.Builder()\n            .circuitBreaker(CircuitBreakerConfig(\n                failureRateThreshold = 50f,\n                waitDurationInOpenState = Duration.ofSeconds(15),\n                permittedCallsInHalfOpenState = 3\n            ))\n            .build()\n    }\n}"
+      },
+      "ios": {
+        "title": "iOS (Swift Package Manager / SPM)",
+        "dependency": ".package(url: \"https://github.com/cargill-enterprise/ios-core-network.git\", from: \"1.8.2\")",
+        "fileName": "Core/Network/NetworkPipeline.swift",
+        "code": "import Foundation\nimport CargillNetwork\n\npublic final class NetworkPipeline {\n    public static let shared = NetworkPipeline()\n    \n    public let session: URLSession = {\n        let config = URLSessionConfiguration.default\n        return ResilientURLSession(configuration: config, circuitBreaker: .default)\n    }()\n}"
+      },
+      "react-native": {
+        "title": "React Native (npm / Yarn)",
+        "dependency": "yarn add @cargill/react-native-network",
+        "fileName": "src/core/network/apiClient.ts",
+        "code": "import { createResilientClient } from '@cargill/react-native-network';\n\nexport const apiClient = createResilientClient({\n  baseURL: 'https://api.cargill.com',\n  circuitBreaker: {\n    failureThreshold: 5,\n    resetTimeoutMs: 15000,\n  },\n  retry: {\n    retries: 3,\n    retryDelay: (retryCount) => retryCount * 1000,\n  },\n});"
+      }
+    }
+  },
+  {
+    "id": "ui-kit",
+    "name": "Design System UI Kit",
+    "version": "v3.1.0",
+    "category": "UI & Design System",
+    "description": "Standardized buttons, input fields, cards, modal sheets, uniform 8pt spacing grid, adaptive dark/light modes, and WCAG AA accessibility.",
+    "platforms": ["android", "ios", "react-native"],
+    "installation": {
+      "android": {
+        "title": "Android (Gradle / Compose)",
+        "dependency": "implementation(\"com.cargill.mobile:design-system:3.1.0\")",
+        "fileName": "core/ui/ThemeApp.kt",
+        "code": "package com.cargill.mobile.core.ui\n\nimport androidx.compose.runtime.Composable\nimport com.cargill.mobile.designsystem.theme.CargillTheme\n\n@Composable\nfun AppTheme(content: @Composable () -> Unit) {\n    CargillTheme(\n        dynamicColor = false,\n        content = content\n    )\n}"
+      },
+      "ios": {
+        "title": "iOS (Swift Package Manager / SPM)",
+        "dependency": ".package(url: \"https://github.com/cargill-enterprise/ios-design-system.git\", from: \"3.1.0\")",
+        "fileName": "Core/UI/CargillTheme.swift",
+        "code": "import SwiftUI\nimport CargillDesignSystem\n\npublic extension View {\n    func withCargillTheme() -> some View {\n        self.modifier(CargillThemeModifier())\n    }\n}"
+      },
+      "react-native": {
+        "title": "React Native (npm / Yarn)",
+        "dependency": "yarn add @cargill/react-native-ui-kit",
+        "fileName": "src/core/ui/ThemeProvider.tsx",
+        "code": "import React, { type ReactNode } from 'react';\nimport { CargillThemeProvider } from '@cargill/react-native-ui-kit';\n\nexport function ThemeProvider({ children }: { readonly children: ReactNode }) {\n  return <CargillThemeProvider>{children}</CargillThemeProvider>;\n}"
+      }
+    }
+  },
+  {
+    "id": "telemetry-sdk",
+    "name": "Observability & Datadog RUM",
+    "version": "v2.0.1",
+    "category": "Observability",
+    "description": "Real User Monitoring (RUM), distributed APM tracing, crash reporting, ANR tracking, and network performance telemetry.",
+    "platforms": ["android", "ios", "react-native"],
+    "installation": {
+      "android": {
+        "title": "Android (Gradle / Kotlin)",
+        "dependency": "implementation(\"com.cargill.mobile:core-telemetry:2.0.1\")",
+        "fileName": "core/telemetry/TelemetryTracker.kt",
+        "code": "package com.cargill.mobile.core.telemetry\n\nimport android.content.Context\nimport com.cargill.mobile.telemetry.CargillRUM\n\nobject TelemetryTracker {\n    fun initialize(context: Context) {\n        CargillRUM.initialize(\n            context = context,\n            clientToken = \"pub_datadog_cargill_token\",\n            env = \"production\",\n            site = \"datadoghq.com\"\n        )\n    }\n}"
+      },
+      "ios": {
+        "title": "iOS (Swift Package Manager / SPM)",
+        "dependency": ".package(url: \"https://github.com/cargill-enterprise/ios-core-telemetry.git\", from: \"2.0.1\")",
+        "fileName": "Core/Telemetry/TelemetryCoordinator.swift",
+        "code": "import Foundation\nimport CargillTelemetry\n\npublic enum TelemetryCoordinator {\n    public static func start() {\n        CargillRUM.start(\n            clientToken: \"pub_datadog_cargill_token\",\n            environment: \"production\",\n            serviceName: \"cargill-mobile-ios\"\n        )\n    }\n}"
+      },
+      "react-native": {
+        "title": "React Native (npm / Yarn)",
+        "dependency": "yarn add @cargill/react-native-telemetry",
+        "fileName": "src/core/telemetry/rum.ts",
+        "code": "import { CargillRUM } from '@cargill/react-native-telemetry';\n\nexport function initRUM() {\n  CargillRUM.initialize({\n    clientToken: 'pub_datadog_cargill_token',\n    env: 'production',\n    applicationId: 'cargill-rn-app-id',\n    trackUserInteractions: true,\n  });\n}"
+      }
+    }
+  },
+  {
+    "id": "push-sdk",
+    "name": "Push Notifications & Deep Linking",
+    "version": "v1.5.0",
+    "category": "Messaging & Routing",
+    "description": "Unified APNs and FCM payload handling, background notification routing, rich media extensions, and universal deep link navigation.",
+    "platforms": ["android", "ios", "react-native"],
+    "installation": {
+      "android": {
+        "title": "Android (Gradle / Kotlin)",
+        "dependency": "implementation(\"com.cargill.mobile:core-push:1.5.0\")",
+        "fileName": "core/push/PushService.kt",
+        "code": "package com.cargill.mobile.core.push\n\nimport com.cargill.mobile.push.CargillPushMessagingService\nimport com.cargill.mobile.push.PushPayload\n\nclass PushService : CargillPushMessagingService() {\n    override fun onPushReceived(payload: PushPayload) {\n        // Handled automatically with backstack routing\n    }\n}"
+      },
+      "ios": {
+        "title": "iOS (Swift Package Manager / SPM)",
+        "dependency": ".package(url: \"https://github.com/cargill-enterprise/ios-core-push.git\", from: \"1.5.0\")",
+        "fileName": "Core/Push/PushManager.swift",
+        "code": "import UserNotifications\nimport CargillPush\n\npublic final class PushManager {\n    public static func register() {\n        CargillPushCenter.shared.requestAuthorization()\n    }\n}"
+      },
+      "react-native": {
+        "title": "React Native (npm / Yarn)",
+        "dependency": "yarn add @cargill/react-native-push",
+        "fileName": "src/core/push/pushService.ts",
+        "code": "import { initPushNotifications } from '@cargill/react-native-push';\n\nexport function registerPush() {\n  initPushNotifications({\n    onNotificationTap: (deepLink) => {\n      console.log('Navigating to:', deepLink);\n    },\n  });\n}"
+      }
+    }
+  },
+  {
+    "id": "security-vault-sdk",
+    "name": "Hardware Vault & Crypto SDK",
+    "version": "v2.2.0",
+    "category": "Security & Identity",
+    "description": "Android KeyStore StrongBox and Apple Secure Enclave hardware key abstraction, AES-256-GCM authenticated persistence, and biometric access gating.",
+    "platforms": ["android", "ios", "react-native"],
+    "installation": {
+      "android": {
+        "title": "Android (Gradle / Kotlin)",
+        "dependency": "implementation(\"com.cargill.mobile:security-vault:2.2.0\")",
+        "fileName": "core/vault/VaultManager.kt",
+        "code": "package com.cargill.mobile.core.vault\n\nimport com.cargill.mobile.vault.SecureVault\nimport android.content.Context\n\nclass VaultManager(context: Context) {\n    private val vault = SecureVault.create(context)\n    fun saveSecret(key: String, secret: String) = vault.store(key, secret)\n    fun getSecret(key: String): String? = vault.retrieve(key)\n}"
+      },
+      "ios": {
+        "title": "iOS (Swift Package Manager / SPM)",
+        "dependency": ".package(url: \"https://github.com/cargill-enterprise/ios-security-vault.git\", from: \"2.2.0\")",
+        "fileName": "Core/Vault/VaultManager.swift",
+        "code": "import Foundation\nimport CargillVault\n\npublic actor VaultManager {\n    public static let shared = VaultManager()\n    private let vault = SecureEnclaveVault()\n    public func setSecret(key: String, value: String) throws { try vault.save(key: key, value: value) }\n}"
+      },
+      "react-native": {
+        "title": "React Native (npm / Yarn)",
+        "dependency": "yarn add @cargill/react-native-vault",
+        "fileName": "src/core/vault/vault.ts",
+        "code": "import { SecureVault } from '@cargill/react-native-vault';\n\nexport const vault = new SecureVault({\n  storageId: 'cargill.secure.vault',\n});"
+      }
+    }
+  },
+  {
+    "id": "localization-sdk",
+    "name": "Dynamic i18n & RTL SDK",
+    "version": "v1.3.0",
+    "category": "UI & Design System",
+    "description": "Per-app dynamic language switcher without cold restarts, bidirectional RTL layout mirroring, and ICU MessageFormat pluralization.",
+    "platforms": ["android", "ios", "react-native"],
+    "installation": {
+      "android": {
+        "title": "Android (Gradle / Kotlin)",
+        "dependency": "implementation(\"com.cargill.mobile:core-localization:1.3.0\")",
+        "fileName": "core/localization/LocaleService.kt",
+        "code": "package com.cargill.mobile.core.localization\n\nimport com.cargill.mobile.localization.CargillLocaleManager\n\nobject LocaleService {\n    fun setLanguage(tag: String) = CargillLocaleManager.setAppLocale(tag)\n}"
+      },
+      "ios": {
+        "title": "iOS (Swift Package Manager / SPM)",
+        "dependency": ".package(url: \"https://github.com/cargill-enterprise/ios-core-localization.git\", from: \"1.3.0\")",
+        "fileName": "Core/Localization/LocaleService.swift",
+        "code": "import Foundation\nimport CargillLocalization\n\npublic enum LocaleService {\n    public static func switchLanguage(to tag: String) {\n        CargillLocaleCoordinator.shared.setLocale(tag)\n    }\n}"
+      },
+      "react-native": {
+        "title": "React Native (npm / Yarn)",
+        "dependency": "yarn add @cargill/react-native-localization",
+        "fileName": "src/core/localization/locale.ts",
+        "code": "import { setAppLanguage } from '@cargill/react-native-localization';\n\nexport async function updateLocale(tag: string, isRtl = false) {\n  await setAppLanguage(tag, isRtl);\n}"
+      }
+    }
+  },
+  {
+    "id": "branding-sdk",
+    "name": "Dynamic App Icons & Multi-Brand",
+    "version": "v1.1.0",
+    "category": "UI & Design System",
+    "description": "Programmatic launcher icon switching via activity-aliases and alternate icons, white-label client theming, and dynamic asset catalogs.",
+    "platforms": ["android", "ios", "react-native"],
+    "installation": {
+      "android": {
+        "title": "Android (Gradle / Kotlin)",
+        "dependency": "implementation(\"com.cargill.mobile:core-branding:1.1.0\")",
+        "fileName": "core/branding/IconManager.kt",
+        "code": "package com.cargill.mobile.core.branding\n\nimport android.content.Context\nimport com.cargill.mobile.branding.CargillBrandManager\n\nobject IconManager {\n    fun setIcon(context: Context, iconAlias: String) {\n        CargillBrandManager.changeLauncherIcon(context, iconAlias)\n    }\n}"
+      },
+      "ios": {
+        "title": "iOS (Swift Package Manager / SPM)",
+        "dependency": ".package(url: \"https://github.com/cargill-enterprise/ios-core-branding.git\", from: \"1.1.0\")",
+        "fileName": "Core/Branding/IconManager.swift",
+        "code": "import UIKit\nimport CargillBranding\n\npublic enum IconManager {\n    public static func setIcon(name: String?) async throws {\n        try await CargillBrandCoordinator.shared.changeAppIcon(to: name)\n    }\n}"
+      },
+      "react-native": {
+        "title": "React Native (npm / Yarn)",
+        "dependency": "yarn add @cargill/react-native-branding",
+        "fileName": "src/core/branding/icon.ts",
+        "code": "import { changeAppIcon } from '@cargill/react-native-branding';\n\nexport async function switchAppIcon(iconName: string | null) {\n  await changeAppIcon(iconName);\n}"
+      }
+    }
+  },
+  {
+    "id": "data-wipe-sdk",
+    "name": "Enterprise Remote Wipe SDK",
+    "version": "v1.0.0",
+    "category": "Data Hygiene",
+    "description": "Atomic 4-stage remote wipe coordinator: KeyStore/Keychain key destruction, database file shredding, cache purge, and clean login state reset.",
+    "platforms": ["android", "ios", "react-native"],
+    "installation": {
+      "android": {
+        "title": "Android (Gradle / Kotlin)",
+        "dependency": "implementation(\"com.cargill.mobile:core-datawipe:1.0.0\")",
+        "fileName": "core/wipe/WipeService.kt",
+        "code": "package com.cargill.mobile.core.wipe\n\nimport android.content.Context\nimport com.cargill.mobile.datawipe.CargillDataWiper\n\nclass WipeService(private val context: Context) {\n    suspend fun purge() = CargillDataWiper.executeAtomicWipe(context)\n}"
+      },
+      "ios": {
+        "title": "iOS (Swift Package Manager / SPM)",
+        "dependency": ".package(url: \"https://github.com/cargill-enterprise/ios-core-datawipe.git\", from: \"1.0.0\")",
+        "fileName": "Core/Wipe/WipeService.swift",
+        "code": "import Foundation\nimport CargillDataWipe\n\npublic actor WipeService {\n    public static func purgeDeviceData() async throws {\n        try await CargillDataWiper.executeFullWipe()\n    }\n}"
+      },
+      "react-native": {
+        "title": "React Native (npm / Yarn)",
+        "dependency": "yarn add @cargill/react-native-datawipe",
+        "fileName": "src/core/wipe/wipe.ts",
+        "code": "import { executeDataWipe } from '@cargill/react-native-datawipe';\n\nexport async function purgeAllData() {\n  await executeDataWipe();\n}"
+      }
+    }
+  }
+]
+
+------------------
+
+
+  max-width: 1200px !important;
+}
+/* PINNED SOLID RED CLOSE BUTTON */
+.portal-modal-close-btn {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+  border-radius: 8px !important;
+  width: 38px !important;
+  height: 38px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4) !important;
+  transition: all 0.15s ease !important;
+  flex-shrink: 0 !important;
+}
+.portal-modal-close-btn:hover {
+  background: #dc2626 !important;
+  transform: scale(1.05) !important;
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.6) !important;
+}
+.portal-modal-tabs-nav {
+  display: flex !important;
+  background: rgba(0, 0, 0, 0.25) !important;
+  border-bottom: 2px solid var(--portal-card-border) !important;
+  padding: 0 28px !important;
+  gap: 8px !important;
+  overflow-x: auto !important;
+  flex-shrink: 0 !important;
+}
+.portal-modal-body {
+  padding: 24px 28px !important;
+  overflow-y: auto !important;
+  flex-grow: 1 !important;
+}
+.portal-install-box {
+  background: var(--sl-color-bg-inline-code) !important;
+  border: 1px solid var(--portal-card-border) !important;
+  border-radius: 8px !important;
+  padding: 16px 20px !important;
+  margin-bottom: 24px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 16px !important;
+}
+.portal-install-cmd {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important;
+  font-size: 0.92rem !important;
+  color: var(--portal-accent) !important;
+  word-break: break-all !important;
+}
+
+-------------------
+
+---
+// src/components/mobile/SdkCatalog.astro
+
+const { sdks = [] } = Astro.props;
+
+const processedSdks = sdks.map((sdk: any) => {
+  if (!sdk.installation) return sdk;
+  const newInstallation: Record<string, any> = {};
+  
+  Object.keys(sdk.installation).forEach((platformKey) => {
+    const item = sdk.installation[platformKey];
+    newInstallation[platformKey] = {
+      ...item,
+      title: item.title || platformKey.toUpperCase(),
+      dependency: item.dependency || '',
+      fileName: item.fileName || '',
+      code: item.code || item.mdContent || ''
+    };
+  });
+
+  return { ...sdk, installation: newInstallation };
+});
+---
+
+<div class="portal-catalog-wrap">
+  <div class="portal-catalog-controls">
+    <div class="portal-filter-group">
+      <button class="portal-filter-pill active" data-filter="all">All Platforms ({processedSdks.length})</button>
+      <button class="portal-filter-pill" data-filter="android">Android Native</button>
+      <button class="portal-filter-pill" data-filter="ios">iOS Native</button>
+      <button class="portal-filter-pill" data-filter="react-native">React Native</button>
+    </div>
+
+    <div class="portal-search-box">
+      <svg class="portal-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="sdkSearchInput" class="portal-search-input" placeholder="Search SDKs by name or keyword..." />
+    </div>
+  </div>
+
+  <div class="portal-grid" id="sdkGridContainer">
+    {processedSdks && processedSdks.map((sdk: any) => (
+      <div class="portal-card portal-sdk-card" data-sdk-id={sdk.id} data-platforms={sdk.platforms ? sdk.platforms.join(' ') : ''} data-name={sdk.name.toLowerCase()} data-desc={sdk.description.toLowerCase()} data-cat={(sdk.category || '').toLowerCase()}>
+        <div class="portal-sdk-top">
+          <div class="portal-sdk-header">
+            <h3 class="portal-sdk-title">{sdk.name}</h3>
+            <span class="portal-version-badge">{sdk.version}</span>
+          </div>
+          {sdk.category && <div class="portal-file-tag" style="display: inline-block; margin-bottom: 6px;">{sdk.category}</div>}
+          <p class="portal-sdk-desc">{sdk.description}</p>
+        </div>
+
+        <div>
+          <div class="portal-sdk-pills">
+            {sdk.platforms && sdk.platforms.includes('android') && (
+              <span class="badge-android portal-filter-pill" style="padding: 3px 8px; font-size: 0.72rem; cursor: default;">Android</span>
+            )}
+            {sdk.platforms && sdk.platforms.includes('ios') && (
+              <span class="badge-ios portal-filter-pill" style="padding: 3px 8px; font-size: 0.72rem; cursor: default;">iOS</span>
+            )}
+            {sdk.platforms && sdk.platforms.includes('react-native') && (
+              <span class="badge-rn portal-filter-pill" style="padding: 3px 8px; font-size: 0.72rem; cursor: default;">React Native</span>
+            )}
+          </div>
+
+          <button class="portal-btn-install btn-view-setup" data-sdk-id={sdk.id}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            View Installation Instructions
+          </button>
+        </div>
+
+        <div class="sdk-hidden-data" style="display: none;" data-sdk-raw={JSON.stringify(sdk)}></div>
+      </div>
+    ))}
+  </div>
+</div>
+
+<dialog id="sdkModalDialog" class="portal-modal-dialog">
+  <div class="portal-modal-container">
+    <div class="portal-modal-header">
+      <div class="portal-modal-header-left">
+        <div class="portal-modal-title-row">
+          <h2 id="modalTitle" class="portal-modal-title">SDK Installation</h2>
+          <span id="modalVersion" class="portal-version-badge">v1.0.0</span>
+        </div>
+        <div id="modalCategory" class="portal-file-tag" style="display: inline-block; width: fit-content;"></div>
+        <p id="modalDesc" class="portal-modal-desc"></p>
+      </div>
+      <button id="modalCloseBtn" class="portal-modal-close-btn" title="Close Dialog">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div id="modalTabsBar" class="portal-modal-tabs-nav"></div>
+    <div id="modalBodyContent" class="portal-modal-body"></div>
+  </div>
+</dialog>
+
+<script is:inline>
+  (function() {
+    var activePlatformKey = 'android';
+    var currentActiveSdk = null;
+
+    function ensureDialogInBody() {
+      var dialog = document.getElementById('sdkModalDialog');
+      if (dialog && dialog.parentElement !== document.body) {
+        document.body.appendChild(dialog);
+      }
+      return dialog;
+    }
+
+    function openModalForCard(card) {
+      var dialog = ensureDialogInBody();
+      if (!dialog || !card) return;
+
+      var hiddenDataEl = card.querySelector('.sdk-hidden-data');
+      if (!hiddenDataEl) return;
+
+      var sdk = JSON.parse(hiddenDataEl.getAttribute('data-sdk-raw') || '{}');
+      currentActiveSdk = sdk;
+
+      var modalTitle = document.getElementById('modalTitle');
+      var modalVersion = document.getElementById('modalVersion');
+      var modalCategory = document.getElementById('modalCategory');
+      var modalDesc = document.getElementById('modalDesc');
+      var modalTabsBar = document.getElementById('modalTabsBar');
+
+      if (modalTitle) modalTitle.textContent = sdk.name;
+      if (modalVersion) modalVersion.textContent = sdk.version;
+      if (modalCategory) modalCategory.textContent = (sdk.category || '').toUpperCase();
+      if (modalDesc) modalDesc.textContent = sdk.description;
+
+      if (modalTabsBar) modalTabsBar.innerHTML = '';
+
+      var platforms = Object.keys(sdk.installation || {});
+      if (platforms.indexOf(activePlatformKey) === -1 && platforms.length > 0) {
+        activePlatformKey = platforms[0];
+      }
+
+      platforms.forEach(function(pKey) {
+        var tabBtn = document.createElement('button');
+        tabBtn.className = 'portal-tab-btn ' + (pKey === activePlatformKey ? 'active' : '');
+        tabBtn.setAttribute('data-target-platform', pKey);
+        tabBtn.textContent = sdk.installation[pKey].title || pKey.toUpperCase();
+        if (modalTabsBar) modalTabsBar.appendChild(tabBtn);
+      });
+
+      renderActivePlatformPane(sdk);
+
+      if (typeof dialog.showModal === 'function') {
+        dialog.showModal();
+      } else {
+        dialog.setAttribute('open', '');
+      }
+      document.body.style.overflow = 'hidden';
+    }
+
+    function renderActivePlatformPane(sdk) {
+      var modalBodyContent = document.getElementById('modalBodyContent');
+      if (!modalBodyContent || !sdk.installation) return;
+
+      var data = sdk.installation[activePlatformKey];
+      if (!data) return;
+
+      var depEscaped = (data.dependency || '').replace(/'/g, "\\\\'");
+
+      modalBodyContent.innerHTML = 
+        '<div class="portal-install-box">' +
+          '<div>' +
+            '<div style="font-size: 0.72rem; font-weight: 800; color: var(--portal-text-muted); text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.05em;">PACKAGE DEPENDENCY</div>' +
+            '<div class="portal-install-cmd">' + (data.dependency || '') + '</div>' +
+          '</div>' +
+          '<button class="portal-filter-pill" style="background: rgba(255,255,255,0.08); color: var(--sl-color-text); font-size: 0.8rem; padding: 6px 12px;" onclick="navigator.clipboard.writeText(\'' + depEscaped + '\');this.textContent=\'Copied!\';setTimeout(()=>this.textContent=\'Copy\',2000)">' +
+            'Copy' +
+          '</button>' +
+        '</div>' +
+        (data.fileName ? 
+          '<div class="portal-file-header">' +
+            '<span class="portal-file-path">' + data.fileName + '</span>' +
+            '<span class="portal-file-tag">INITIALIZATION &amp; SETUP</span>' +
+          '</div>' : '') +
+        '<div class="code-block-wrap" style="border: 1px solid var(--portal-card-border); border-radius: 0 0 8px 8px; overflow: hidden; background: var(--sl-color-bg-inline-code);">' +
+          '<pre style="margin: 0; padding: 20px; overflow-x: auto; font-family: monospace; font-size: 0.88rem; line-height: 1.6; color: #e2e8f0;"><code>' + escapeHtml(data.code || '') + '</code></pre>' +
+        '</div>';
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function closeModal() {
+      var dialog = document.getElementById('sdkModalDialog');
+      if (dialog) {
+        if (typeof dialog.close === 'function') {
+          dialog.close();
+        } else {
+          dialog.removeAttribute('open');
+        }
+      }
+      document.body.style.overflow = '';
+      currentActiveSdk = null;
+    }
+
+    function filterCards() {
+      var activeFilterBtn = document.querySelector('.portal-filter-pill.active');
+      var filter = activeFilterBtn ? activeFilterBtn.getAttribute('data-filter') : 'all';
+      var searchInput = document.getElementById('sdkSearchInput');
+      var q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+      document.querySelectorAll('.portal-sdk-card').forEach(function(card) {
+        var platforms = (card.getAttribute('data-platforms') || '').split(' ');
+        var name = card.getAttribute('data-name') || '';
+        var desc = card.getAttribute('data-desc') || '';
+        var cat = card.getAttribute('data-cat') || '';
+
+        var matchesPlatform = (filter === 'all' || platforms.indexOf(filter) !== -1);
+        var matchesSearch = (!q || name.indexOf(q) !== -1 || desc.indexOf(q) !== -1 || cat.indexOf(q) !== -1);
+
+        if (matchesPlatform && matchesSearch) {
+          card.style.setProperty('display', 'flex', 'important');
+        } else {
+          card.style.setProperty('display', 'none', 'important');
+        }
+      });
+    }
+
+    function setupCatalogListeners() {
+      ensureDialogInBody();
+
+      document.addEventListener('click', function(e) {
+        var filterBtn = e.target.closest('.portal-filter-pill');
+        if (filterBtn && filterBtn.hasAttribute('data-filter')) {
+          document.querySelectorAll('.portal-filter-pill[data-filter]').forEach(function(b) { b.classList.remove('active'); });
+          filterBtn.classList.add('active');
+          filterCards();
+          return;
+        }
+
+        var trigger = e.target.closest('.btn-view-setup');
+        if (trigger) {
+          var card = trigger.closest('.portal-sdk-card');
+          openModalForCard(card);
+          return;
+        }
+
+        if (e.target.closest('#modalCloseBtn')) {
+          closeModal();
+          return;
+        }
+
+        var tabBtn = e.target.closest('.portal-tab-btn');
+        if (tabBtn) {
+          activePlatformKey = tabBtn.getAttribute('data-target-platform');
+          document.querySelectorAll('.portal-modal-tabs-nav .portal-tab-btn').forEach(function(b) { b.classList.remove('active'); });
+          tabBtn.classList.add('active');
+
+          if (currentActiveSdk) {
+            renderActivePlatformPane(currentActiveSdk);
+          }
+          return;
+        }
+
+        var dialog = document.getElementById('sdkModalDialog');
+        if (e.target === dialog) {
+          closeModal();
+          return;
+        }
+      });
+
+      var searchInput = document.getElementById('sdkSearchInput');
+      if (searchInput) {
+        searchInput.addEventListener('input', filterCards);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupCatalogListeners);
+    } else {
+      setupCatalogListeners();
+    }
+    document.addEventListener('astro:page-load', setupCatalogListeners);
+  })();
+</script>
+---------------------
+
+---
+title: Master Shared SDK Catalog
+description: Complete enterprise shared mobile SDK catalog with multi-platform integration instructions and configuration setup for Android, iOS, and React Native.
+sidebar:
+  order: 6
+  label: Master SDK Catalog
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import SdkCatalog from './SdkCatalog.astro';
+import sdks from './sdks.json';
+
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">APP FOUNDATIONS</span>
-    <span class="portal-hub-tag">CORE ARCHITECTURE &bull; RUNTIME OVERVIEW</span>
+    <span class="portal-badge-hub">ENTERPRISE REPOSITORIES</span>
+    <span class="portal-hub-tag">MASTER SHARED SDK SUITE &bull; PRODUCTION READY</span>
   </div>
-  <h1 class="portal-hero-title">App Foundations Architecture &amp; Runtime Overview</h1>
+  <h1 class="portal-hero-title">Enterprise Master Shared SDK Catalog</h1>
   <p class="portal-hero-desc">
-    Enterprise mobile applications rely on standardized <strong>App Foundations</strong>. Foundations isolate shared infrastructure concerns so product feature teams build on a uniform, resilient, and pre-audited substrate across Android, iOS, and React Native.
+    Mobile feature engineering teams are strictly required to integrate official <strong>Enterprise Core SDKs</strong> for cross-cutting platform concerns. Shared SDKs guarantee audited hardware cryptography, automated OAuth 2.0 PKCE token rotation, circuit breaker network failover, and WCAG AA accessibility across Android, iOS, and React Native.
   </p>
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Design &amp; Theming</div>
-      <div class="portal-cap-desc">Adaptive dark/light modes &bull; 8pt spacing grid &bull; Unified palettes</div>
+      <div class="portal-cap-title">Certified Security</div>
+      <div class="portal-cap-desc">KeyStore StrongBox &bull; Secure Enclave &bull; TLS Pinning</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Security &amp; Vault</div>
-      <div class="portal-cap-desc">KeyStore / Keychain &bull; AES-256-GCM &bull; Biometrics &bull; TLS Pinning</div>
+      <div class="portal-cap-title">Uniform Contracts</div>
+      <div class="portal-cap-desc">Android Gradle &bull; iOS SPM &bull; React Native npm</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Localization</div>
-      <div class="portal-cap-desc">Dynamic language switching &bull; RTL layout mirroring &bull; ICU plurals</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Push Notifications</div>
-      <div class="portal-cap-desc">FCM &amp; APNs routing &bull; Silent background sync &bull; Deep link dispatch</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Branding</div>
-      <div class="portal-cap-desc">White-label theming &bull; Dynamic app icons &bull; Multi-brand asset catalog</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Data Wipe</div>
-      <div class="portal-cap-desc">Remote MDM killswitch &bull; Hardware key shredding &bull; Zero residual storage</div>
+      <div class="portal-cap-title">Pre-Audited Quality</div>
+      <div class="portal-cap-desc">Automated CI gates &bull; Zero plaintext PII &bull; 8pt grid</div>
     </div>
   </div>
 </div>
+
+---
+
+## 1. Enterprise Shared SDK Catalog
+
+Filter by platform or search by capability. Click **"View Installation Instructions"** on any SDK card to inspect platform dependencies, file targets, and boilerplate implementation code in the pop-up modal:
+
+<SdkCatalog sdks={sdks} />
+
+---
+
+## 2. Shared SDK Ecosystem Architecture
+
+Shared enterprise SDKs operate as the foundational infrastructure layer between feature view models and native operating system services. Direct re-implementation of authentication, cryptography, telemetry logging, or HTTP client retry logic in feature repositories is strictly prohibited:
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-sdk-ecosystem-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">ENTERPRISE SDK ECOSYSTEM TOPOLOGY</span>
+    <label for="diagram-sdk-ecosystem-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+graph TD
+    subgraph Enterprise_App ["1. MOBILE FEATURE APPLICATIONS"]
+        FeatureUI["Feature Screens &amp; Compose/SwiftUI UI"]
+        FeatureVM["ViewModel / State Controllers"]
+    end
+
+    subgraph SDK_Catalog ["2. ENTERPRISE MASTER SHARED SDK CATALOG"]
+        AuthSDK["Core Auth &amp; Identity SDK<br/><b>OAuth 2.0 PKCE &bull; KeyStore Vault</b>"]
+        NetSDK["Resilient Network SDK<br/><b>Circuit Breaker &bull; TLS Pinning</b>"]
+        UISDK["Design System UI Kit<br/><b>Adaptive Dark/Light &bull; 8pt Grid</b>"]
+        ObsSDK["Observability &amp; RUM SDK<br/><b>Datadog Tracing &bull; Crash Reporting</b>"]
+        PushSDK["Push Messaging SDK<br/><b>FCM &bull; APNs &bull; Deep Link Router</b>"]
+        StoreSDK["Hardware Vault SDK<br/><b>StrongBox &bull; Secure Enclave</b>"]
+        LocaleSDK["Dynamic i18n &amp; RTL SDK<br/><b>Dynamic Locales &bull; ICU Plurals</b>"]
+        BrandSDK["Dynamic App Icons SDK<br/><b>Activity-Alias &bull; Multi-Brand</b>"]
+        WipeSDK["Enterprise Remote Wipe SDK<br/><b>Atomic Shredding &bull; 4-Stage Purge</b>"]
+    end
+
+    subgraph Registry ["3. ENTERPRISE PACKAGE REGISTRIES"]
+        MavenRepo["Enterprise Artifactory (Maven Gradle)"]
+        SPMRepo["Git Enterprise Package Index (SPM)"]
+        NPMRepo["Private Enterprise NPM Registry"]
+    end
+
+    FeatureUI --> UISDK
+    FeatureUI --> LocaleSDK
+    FeatureUI --> BrandSDK
+    FeatureVM --> AuthSDK
+    FeatureVM --> NetSDK
+    FeatureVM --> ObsSDK
+    FeatureVM --> PushSDK
+    FeatureVM --> WipeSDK
+
+    AuthSDK <--> StoreSDK
+    NetSDK <--> ObsSDK
+    WipeSDK --> StoreSDK
+
+    MavenRepo --> AndroidBuild["Android Native Target"]
+    SPMRepo --> iOSBuild["iOS Native Target"]
+    NPMRepo --> RNBuild["React Native Target"]
+
+    classDef appStyle fill:#0f2e1e,stroke:#22c55e,stroke-width:2px,color:#e2e8f0;
+    classDef sdkStyle fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#e2e8f0;
+    classDef regStyle fill:#2a2012,stroke:#f59e0b,stroke-width:2px,color:#fef3c7;
+
+    class FeatureUI,FeatureVM,AndroidBuild,iOSBuild,RNBuild appStyle;
+    class AuthSDK,NetSDK,UISDK,ObsSDK,PushSDK,StoreSDK,LocaleSDK,BrandSDK,WipeSDK sdkStyle;
+    class MavenRepo,SPMRepo,NPMRepo regStyle;
+
+    class Enterprise_App subPres;
+    class SDK_Catalog subDom;
+    class Registry subDat;
+```
+
+  </div>
+</div>
+
+---
+
+## 3. Package Registry Authentication Setup
+
+Before consuming enterprise SDKs, configure your platform package manager to authenticate with the private Enterprise Package Registry:
+
+<Tabs>
+  <TabItem label="Android (Gradle / settings.gradle.kts)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">settings.gradle.kts</span>
+  <span class="portal-file-tag">GRADLE REPOSITORY SETUP</span>
+</div>
+
+```kotlin
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            name = "EnterpriseArtifactory"
+            url = uri("https://artifactory.enterprise.internal/artifactory/mobile-maven-releases")
+            credentials {
+                username = System.getenv("ARTIFACTORY_USER") ?: extra["artifactoryUser"] as String
+                password = System.getenv("ARTIFACTORY_TOKEN") ?: extra["artifactoryToken"] as String
+            }
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="iOS (Swift Package Manager / .netrc)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">~/.netrc</span>
+  <span class="portal-file-tag">SPM CREDENTIAL CONFIG</span>
+</div>
+
+```bash
+# Add private Git registry credentials to your user keychain or ~/.netrc
+machine git.enterprise.internal
+    login oauth2
+    password YOUR_ENTERPRISE_PERSONAL_ACCESS_TOKEN
+```
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Package.swift</span>
+  <span class="portal-file-tag">SPM MANIFEST</span>
+</div>
+
+```swift
+// swift-tools-version: 5.9
+import PackageDescription
+
+let package = Package(
+    name: "EnterpriseFeatureApp",
+    platforms: [.iOS(.v16)],
+    dependencies: [
+        .package(url: "https://git.enterprise.internal/mobile/ios-core-auth.git", from: "2.4.0"),
+        .package(url: "https://git.enterprise.internal/mobile/ios-core-network.git", from: "1.8.2"),
+        .package(url: "https://git.enterprise.internal/mobile/ios-design-system.git", from: "3.1.0"),
+        .package(url: "https://git.enterprise.internal/mobile/ios-core-telemetry.git", from: "2.0.1"),
+        .package(url: "https://git.enterprise.internal/mobile/ios-security-vault.git", from: "2.2.0")
+    ],
+    targets: [
+        .target(
+            name: "EnterpriseFeatureApp",
+            dependencies: [
+                .product(name: "EnterpriseAuth", package: "ios-core-auth"),
+                .product(name: "EnterpriseNetwork", package: "ios-core-network"),
+                .product(name: "EnterpriseDesignSystem", package: "ios-design-system")
+            ]
+        )
+    ]
+)
+```
+
+  </TabItem>
+  <TabItem label="React Native (.npmrc)">
+
+<div class="portal-file-header">
+  <span class="portal-file-path">.npmrc</span>
+  <span class="portal-file-tag">NPM REGISTRY CONFIG</span>
+</div>
+
+```ini
+# Scoped package routing for enterprise mobile packages
+@enterprise:registry=https://npm.enterprise.internal/
+//npm.enterprise.internal/:_authToken=${ENTERPRISE_NPM_TOKEN}
+always-auth=true
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Enterprise SDK Compliance Rules
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">NON-NEGOTIABLE ARCHITECTURAL POLICIES</div>
+  <ul>
+    <li><strong>Zero In-House Cryptography or Token Refresh:</strong> All authentication flows, PKCE handshakes, and cryptographic storage operations must consume <code>core-auth</code> or <code>security-vault</code>. Custom implementations fail pull request automated scanning.</li>
+    <li><strong>Circuit Breaker Required for Remote Traffic:</strong> Direct unmonitored HTTP connections bypassing <code>core-network</code> without circuit breaker protections are blocked by Danger CI quality gates.</li>
+    <li><strong>Strict Version Pinning:</strong> SDK versions must specify exact patch or minor coordinates (e.g., <code>"2.4.0"</code>). Using wildcard ranges (<code>"*"</code>) or dynamic tags (<code>"latest"</code>) is strictly prohibited in enterprise production releases.</li>
+  </ul>
+</div>
+
+---
+
+## 5. Pre-Merge Quality Gate Verification Checklist
+
+Prior to merging any pull request consuming enterprise SDKs, complete and verify each mandatory engineering condition:
+
+<div class="portal-checklist-card">
+  <div class="portal-checklist-title">ENTERPRISE SDK INTEGRATION QUALITY GATE</div>
+  <label class="portal-checklist-item">
+    <input type="checkbox" />
+    <span><strong>Private Registry Auth Configured:</strong> <code>settings.gradle.kts</code>, <code>~/.netrc</code>, and <code>.npmrc</code> authenticate via pipeline environment tokens with zero checked-in plain-text secrets.</span>
+  </label>
+  <label class="portal-checklist-item">
+    <input type="checkbox" />
+    <span><strong>Explicit Version Coordinates:</strong> All dependencies specify fixed release version tags (e.g. <code>2.4.0</code>) with no loose wildcard tags.</span>
+  </label>
+  <label class="portal-checklist-item">
+    <input type="checkbox" />
+    <span><strong>Hardware-Backed Storage Only:</strong> Tokens and cryptographic credentials utilize KeyStore StrongBox or Secure Enclave abstractions rather than plaintext shared preferences.</span>
+  </label>
+  <label class="portal-checklist-item">
+    <input type="checkbox" />
+    <span><strong>Circuit Breaker Active:</strong> All remote network endpoints pass through resilient HTTP clients equipped with failover thresholds and exponential backoff retry policies.</span>
+  </label>
+  <label class="portal-checklist-item">
+    <input type="checkbox" />
+    <span><strong>Zero Plaintext PII Logging:</strong> Telemetry integrations via <code>core-telemetry</code> sanitize email addresses, credentials, and user tokens prior to Datadog dispatch.</span>
+  </label>
+</div>
+
+
+
+
