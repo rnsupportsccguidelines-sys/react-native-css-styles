@@ -1747,6 +1747,897 @@ Next Chapter: **05. Bitrise Web Console Setup (`05-bitrise-web-console-setup.mdx
 
 
 
+---------------------------------------------------------------------------------------
+
+
+---
+title: "05. Bitrise Web Console Setup"
+description: "Step-by-step walkthrough of the Bitrise web console: project registration, workspace ownership, SSH deploy keys, stack selection, and GitHub webhook routing."
+---
+
+import DiagramExpand from './DiagramExpand.astro';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
+    <span class="portal-hub-tag">CHAPTER 05 &bull; CONSOLE ONBOARDING</span>
+  </div>
+  <h1 class="portal-hero-title">Bitrise Web Console Setup</h1>
+  <p class="portal-hero-desc">
+    A guided visual walkthrough for registering your mobile repository within the Bitrise cloud platform. Learn how to configure workspace ownership, enforce irreversible project privacy boundaries, authorize SSH deploy keys, assign virtual machine stacks, and establish bidirectional GitHub webhooks.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Workspace Isolation</div>
+      <div class="portal-cap-desc">Governance ownership &bull; Access groups &bull; Billing allocation</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Privacy Protection</div>
+      <div class="portal-cap-desc">Immutable Private setting &bull; Masked logs &bull; Restricted artifacts</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">SSH Deploy Keys</div>
+      <div class="portal-cap-desc">Automated read-only key &bull; Fine-grained PAT &bull; Zero human keys</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Webhook Routing</div>
+      <div class="portal-cap-desc">Push events &bull; Pull Request events &bull; Automatic pipeline triggers</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Onboarding Overview
+
+Setting up your mobile repository in the Bitrise web console establishes the bridge between your remote Git host and cloud build runners:
+
+```
++-------------------------------------------------------------------------------+
+|                        BITRISE CLOUD ONBOARDING FLOW                          |
+|                                                                               |
+|  1. CHOOSE WORKSPACE    Select enterprise team workspace                      |
+|  2. SET PRIVACY         Select 'Private' (Irreversible security setting)      |
+|  3. CONNECT REPO        Provide Git SSH / HTTPS clone URL                     |
+|  4. SSH AUTHORIZATION   Auto-add read-only deploy key to GitHub repo          |
+|  5. SELECT BRANCH       Designate primary integration branch (main / develop) |
+|  6. SCAN & CONFIGURE    Project scanner validates stack (Linux / macOS)       |
+|  7. REGISTER WEBHOOK    Configure bidirectional GitHub event triggers         |
++-------------------------------------------------------------------------------+
+```
+
+---
+
+## 2. Step 1: Select Workspace &amp; Account Ownership
+
+1. Log into your Bitrise account: <code>https://app.bitrise.io</code>.
+2. In the top navigation bar or dashboard, click the **Add New App** button.
+3. Under **Project access**, select the **Workspace** that will own the application (e.g., <code>Mobile Platform Engineering</code>).
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT</span>
+    <span class="portal-screenshot-title">Bitrise Add New App - Workspace Selection</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    <strong>Where to capture:</strong> Open Bitrise &gt; Click <span class="portal-screenshot-path">Add New App</span> &gt; Step 1 (Choose Account &amp; Workspace). Highlight the Workspace dropdown showing your enterprise team selected.
+  </p>
+</div>
+
+---
+
+## 3. Step 2: Enforce the Privacy Setting (Private)
+
+Bitrise gives you two privacy choices during app initialization:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Privacy Option</th>
+        <th>Access Permissions</th>
+        <th>Enterprise Policy</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Private</strong></td>
+        <td>Accessible only to you, your Workspace members, and explicitly invited developers. Build logs, signing credentials, and artifacts are strictly guarded.</td>
+        <td><strong>MANDATORY</strong>: All commercial and enterprise repositories must select Private.</td>
+      </tr>
+      <tr>
+        <td><strong>Public</strong></td>
+        <td>Anyone with the URL can view commit messages, read full build logs, and download compiled APK/IPA artifacts without authentication.</td>
+        <td><strong>STRICTLY FORBIDDEN</strong>: Commercial source code and private keystores must never be exposed publicly.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">IMMUTABILITY WARNING</div>
+  <p class="portal-alert-desc">
+    You cannot change an application's privacy setting after project creation. If you accidentally register an enterprise repository as Public, you must delete the app immediately and re-enroll it as Private.
+  </p>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT</span>
+    <span class="portal-screenshot-title">Bitrise Privacy Selection - Private Option</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    <strong>Where to capture:</strong> Open Bitrise Add App Wizard &gt; Step 2 <span class="portal-screenshot-path">(Set privacy of the app)</span>. Highlight the <strong>Private</strong> card selected with the green outline.
+  </p>
+</div>
+
+---
+
+## 4. Step 3: Connect Repository &amp; Authorize SSH Keys
+
+### 4.1 Provide Repository URL
+
+1. In the repository connection step, select your Git provider (GitHub Enterprise) or select **Enter URL manually**.
+2. For private enterprise repositories, provide the SSH clone URL:
+   <code>git@git.enterprise.internal:mobile-engineering/my-mobile-app.git</code>
+
+### 4.2 Authorize Deploy Key
+
+Bitrise requires read-only clone access to fetch your source code during builds:
+
+1. Click **Auto-add SSH key**.
+2. Bitrise contacts GitHub via API and registers a unique, read-only **Deploy Key** directly in your repository settings (<code>Repository Settings &gt; Deploy Keys</code>).
+3. Alternatively, click **Copy SSH key**, open GitHub manually, navigate to <code>Settings &gt; Deploy Keys &gt; Add deploy key</code>, paste the public key, and click **Add key** (leave "Allow write access" unchecked).
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT</span>
+    <span class="portal-screenshot-title">Bitrise SSH Key Authorization</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    <strong>Where to capture:</strong> Open Bitrise Add App Wizard &gt; Step 3 <span class="portal-screenshot-path">(SSH key authorization)</span>. Capture the screen showing the <strong>Auto-add a generated SSH key</strong> button and the public key text field.
+  </p>
+</div>
+
+---
+
+## 5. Step 4: Branch Specification &amp; Stack Selection
+
+### 5.1 Specify Default Branch
+
+Enter the primary integration branch of your repository (e.g., <code>development</code> or <code>main</code>). Bitrise will use this branch to run its initial project validation scan.
+
+### 5.2 Configure Virtual Machine Stacks
+
+Once your repository is registered, navigate to:
+**Workflow Editor &gt; Stacks Tab**
+
+Configure the standard enterprise build environments:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Platform Target</th>
+        <th>Assigned Stack OS</th>
+        <th>Installed Toolchain Specifications</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Android Pipelines</strong></td>
+        <td>Linux Ubuntu (Standard)</td>
+        <td>Android SDK (Build-Tools 34.x), OpenJDK 17, Gradle 8.x, Fastlane.</td>
+      </tr>
+      <tr>
+        <td><strong>iOS / React Native</strong></td>
+        <td>macOS (Apple Silicon M-Series)</td>
+        <td>Xcode 16.x, Node.js 20.x, CocoaPods, Ruby, Fastlane.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT</span>
+    <span class="portal-screenshot-title">Bitrise Stacks Tab - Stack Selection</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    <strong>Where to capture:</strong> Open Bitrise App &gt; Click <span class="portal-screenshot-path">Workflow Editor &gt; Stacks Tab</span>. Highlight the default stack dropdown showing the macOS Apple Silicon Xcode version and Linux Android stack.
+  </p>
+</div>
+
+---
+
+## 6. Step 5: Register GitHub Webhooks
+
+Webhooks allow GitHub to send instantaneous HTTP notifications to Bitrise whenever code is pushed or a Pull Request is opened, eliminating the need for scheduled polling.
+
+### 6.1 Retrieve Your Bitrise Webhook Endpoint
+
+1. In your Bitrise app, navigate to **App Settings** (gear icon in the top right).
+2. In the left menu, click **Webhooks**.
+3. Under "Incoming Webhooks", select **GitHub** from the dropdown.
+4. Copy the unique **Webhook URL**:
+   <code>https://hooks.bitrise.io/h/github/app/a1b2c3d4e5f6g7h8/bitrise-hook</code>
+
+### 6.2 Register Webhook in GitHub Repository
+
+1. Open your GitHub repository in your browser: <code>https://git.enterprise.internal/mobile-engineering/my-mobile-app</code>.
+2. Click **Settings** (top navigation tab) &gt; **Webhooks** &gt; **Add webhook**.
+3. Fill in the fields:
+   * **Payload URL**: Paste the Bitrise webhook URL copied above.
+   * **Content type**: Select <code>application/json</code> (CRITICAL: Do not leave as form-urlencoded).
+   * **Secret**: Leave blank (unless configured in Bitrise Webhook Secret).
+4. Under "Which events would you like to trigger this webhook?", select **Let me select individual events**:
+   * Check **Pushes**
+   * Check **Pull requests**
+5. Check the **Active** box.
+6. Click **Add webhook**.
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT</span>
+    <span class="portal-screenshot-title">GitHub Webhooks - Add Webhook Configuration</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    <strong>Where to capture:</strong> In GitHub &gt; <span class="portal-screenshot-path">Repo Settings &gt; Webhooks &gt; Add webhook</span>. Capture the form showing the Payload URL filled with hooks.bitrise.io, Content Type set to application/json, and checkboxes for Pushes and Pull requests selected.
+  </p>
+</div>
+
+### 6.3 Verifying Webhook Connectivity
+
+Immediately after creation, inspect GitHub's **Recent Deliveries** section at the bottom of the webhook page:
+* A green checkmark with **HTTP 200 OK** confirms that Bitrise received the handshake ping.
+* Any future push to <code>develop</code>, <code>staging</code>, or <code>main</code> will trigger its respective workflow within 2 seconds.
+
+---
+
+## 7. Summary
+
+You have established full cloud console connectivity:
+* The application is registered under your enterprise Workspace with an immutable **Private** setting.
+* An automated, read-only SSH Deploy Key is authorized for repository access.
+* The Linux Android and macOS Apple Silicon stacks are assigned.
+* Bidirectional GitHub webhooks are active and routing `push` and `pull_request` events automatically.
+
+________________________________________________________________
+
+
+
+
+---
+title: "06. Code Signing & Secrets Management"
+description: "Master enterprise mobile security and release authorization on Bitrise: secret vaults, Android Keystore management, and Apple App Store Connect API Keys."
+---
+
+import DiagramExpand from './DiagramExpand.astro';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
+    <span class="portal-hub-tag">CHAPTER 06 &bull; SECURITY &amp; SIGNING</span>
+  </div>
+  <h1 class="portal-hero-title">Code Signing &amp; Secrets Management</h1>
+  <p class="portal-hero-desc">
+    Protect enterprise release keys and deployment credentials while achieving zero-touch, automated signing in cloud pipelines. Learn how to configure Bitrise encrypted secret vaults, provision release Android Keystores, and set up headless Apple App Store Connect API Keys (<code>.p8</code>) to eliminate manual 2FA session expirations.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Encrypted Secrets Vault</div>
+      <div class="portal-cap-desc">Runtime memory injection &bull; Automatic log masking &bull; Zero Git leaks</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Android Keystores</div>
+      <div class="portal-cap-desc">Cloud storage mounting &bull; Dynamic Gradle alias &bull; PEPK separation</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Apple .p8 API Keys</div>
+      <div class="portal-cap-desc">Headless signing &bull; Zero 2FA expiry &bull; Fastlane Deliver integration</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Access Governance</div>
+      <div class="portal-cap-desc">Protected secrets &bull; PR isolation &bull; Cryptographic release integrity</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. The Enterprise Secret Boundary
+
+In modern mobile DevSecOps, developers **never store production signing keys on local laptops**. All certificates, passwords, and API credentials are kept in encrypted Bitrise cloud stores:
+
+```
++-------------------------------------------------------------------------------+
+|                        BITRISE SECRET SECURITY BOUNDARY                       |
+|                                                                               |
+|  ENCRYPTED VAULT (Bitrise Secrets Tab)                                        |
+|  - $SLACK_WEBHOOK_URL                  - $GOOGLE_PLAY_SERVICE_ACCOUNT_URL     |
+|  - $DANGER_GITHUB_API_TOKEN            - $APP_STORE_CONNECT_API_KEY_URL       |
+|                                                                               |
+|  CODE SIGNING TAB (Hardware Mount)                                            |
+|  - Android Keystore (.jks / .keystore) -> Mounts to $BITRISEIO_..._URL        |
+|  - Apple API Key (AuthKey_*.p8)        -> Dynamic Fastlane / Deliver hook     |
+|                                                                               |
+|  RUNTIME ISOLATION                                                            |
+|  - Credentials exist only in virtual machine RAM during release jobs          |
+|  - Automatic log scrubbing masks all secret values from build transcripts     |
++-------------------------------------------------------------------------------+
+```
+
+---
+
+## 2. Step 1: Configuring the Secrets Tab
+
+Navigate to your application in Bitrise &gt; **Workflow Editor &gt; Secrets Tab**. Declare the following core environment secrets:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Secret Variable Key</th>
+        <th>Target Workflow</th>
+        <th>Description &amp; Security Role</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>$SLACK_WEBHOOK_URL</code></td>
+        <td><code>deploy-dev</code>, <code>deploy-staging-qa</code></td>
+        <td>Incoming webhook URL for sending real-time build notifications to Slack channels.</td>
+      </tr>
+      <tr>
+        <td><code>$DANGER_GITHUB_API_TOKEN</code></td>
+        <td><code>pr-checks</code></td>
+        <td>GitHub Personal Access Token (PAT) with <code>repo</code> scope for automated PR comments.</td>
+      </tr>
+      <tr>
+        <td><code>$FIREBASE_STAGING_APP_ID</code></td>
+        <td><code>deploy-staging-qa</code></td>
+        <td>Firebase Android / iOS Application ID for staging binary distribution.</td>
+      </tr>
+      <tr>
+        <td><code>$GOOGLE_PLAY_SERVICE_ACCOUNT_URL</code></td>
+        <td><code>release-prod</code></td>
+        <td>Google Cloud Service Account JSON key for deploying AABs to the Play Console Internal Track.</td>
+      </tr>
+      <tr>
+        <td><code>$APP_STORE_CONNECT_API_KEY_URL</code></td>
+        <td><code>release-prod</code></td>
+        <td>Apple App Store Connect API Key (<code>AuthKey_*.p8</code>) file storage URL.</td>
+      </tr>
+      <tr>
+        <td><code>$APP_STORE_CONNECT_KEY_ID</code></td>
+        <td><code>release-prod</code></td>
+        <td>10-character key identifier generated in the Apple Developer Portal.</td>
+      </tr>
+      <tr>
+        <td><code>$APP_STORE_CONNECT_ISSUER_ID</code></td>
+        <td><code>release-prod</code></td>
+        <td>UUID identifier of the enterprise App Store Connect issuer account.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">AUTOMATIC LOG MASKING</div>
+  <p class="portal-alert-desc">
+    Bitrise automatically scans build terminal outputs. If any script accidentally prints the value of a defined Secret, Bitrise immediately scrubs the string and replaces it with <code>[REDACTED]</code> in the published logs.
+  </p>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT</span>
+    <span class="portal-screenshot-title">Bitrise Secrets Tab - Masked Key Management</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    <strong>Where to capture:</strong> Open Bitrise &gt; <span class="portal-screenshot-path">Workflow Editor &gt; Secrets Tab</span>. Capture the list of secrets showing keys like <code>SLACK_WEBHOOK_URL</code> and <code>DANGER_GITHUB_API_TOKEN</code> with values masked as dots.
+  </p>
+</div>
+
+---
+
+## 3. Step 2: Android Keystore Configuration
+
+To sign production Android App Bundles (<code>.aab</code>) and staging APKs, upload your enterprise Keystore to the dedicated **Code Signing Tab**.
+
+### 3.1 Uploading Keystore Credentials
+
+1. Open **Workflow Editor &gt; Code Signing Tab**.
+2. In the **Android Keystore file** section, drag and drop your release <code>.jks</code> or <code>.keystore</code> file.
+3. Complete the credential fields:
+   * **Keystore password**: The master encryption password for the keystore file.
+   * **Keystore alias**: The unique key alias specified during key generation.
+   * **Private key password**: The password for the specific alias (often identical to keystore password).
+4. Click **Save metadata**.
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT</span>
+    <span class="portal-screenshot-title">Bitrise Code Signing - Android Keystore Upload</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    <strong>Where to capture:</strong> In Bitrise &gt; <span class="portal-screenshot-path">Workflow Editor &gt; Code Signing Tab</span> &gt; Android Keystore section. Capture the green card displaying the uploaded keystore file and confirmed alias name.
+  </p>
+</div>
+
+### 3.2 How the `sign-apk` Step Operates at Runtime
+
+When your workflow executes the <code>sign-apk@1</code> step, Bitrise performs the following sequence:
+
+1. Downloads the encrypted Keystore file into a temporary, isolated directory on the runner:
+   <code>/tmp/bitrise_signing_xxxx/release.keystore</code>
+2. Exports the temporary file path as <code>$BITRISEIO_ANDROID_KEYSTORE_URL</code>.
+3. Injects the credentials into environment variables:
+   * <code>$BITRISEIO_ANDROID_KEYSTORE_PASSWORD</code>
+   * <code>$BITRISEIO_ANDROID_KEYSTORE_ALIAS</code>
+   * <code>$BITRISEIO_ANDROID_KEY_PASSWORD</code>
+4. Signs the compiled binary using <code>apksigner</code> / <code>jarsigner</code> with v1, v2, and v3 signature schemes.
+5. Emits the signed binary to <code>$BITRISE_SIGNED_APK_PATH</code> or <code>$BITRISE_SIGNED_AAB_PATH</code>.
+6. Automatically shreds the temporary keystore file when the build terminates.
+
+---
+
+## 4. Step 3: Apple App Store Connect API Key (`.p8`)
+
+Historically, iOS code signing relied on developer Apple IDs combined with SMS 2-Factor Authentication. In enterprise automation, this caused frequent build failures when 2FA sessions expired every 30 days.
+
+Modern Bitrise pipelines use **App Store Connect API Keys (`.p8`)**, which provide permanent, headless authentication directly through Apple APIs.
+
+### 4.1 Generating the API Key in App Store Connect
+
+1. Log into **App Store Connect**: <code>https://appstoreconnect.apple.com</code>.
+2. In the top navigation, click **Users and Access**.
+3. Select the **Integrations** tab &gt; **App Store Connect API**.
+4. Click the **+** (Generate API Key) button.
+5. In the modal:
+   * **Name**: <code>Bitrise-CI-Delivery-Key</code>
+   * **Access**: Select **App Manager** (or Admin).
+6. Click **Generate**.
+7. Note the **Issuer ID** at the top of the page (UUID string).
+8. Note the **Key ID** on the generated row (10 alphanumeric characters).
+9. Click **Download API Key** to retrieve the <code>AuthKey_<KeyID>.p8</code> file.
+
+<div class="portal-alert-box">
+  <div class="portal-alert-title">ONE-TIME DOWNLOAD WARNING</div>
+  <p class="portal-alert-desc">
+    Apple only allows you to download the <code>.p8</code> file once. Store the downloaded file immediately in your enterprise secure password vault. If lost, the key cannot be recovered; you must revoke it and generate a new key pair.
+  </p>
+</div>
+
+---
+
+### 4.2 Uploading the Apple API Key to Bitrise
+
+1. Open your app in Bitrise &gt; **Workflow Editor &gt; Code Signing Tab**.
+2. Scroll to the **Apple Service Account API Keys** section.
+3. Click **Add API Key**.
+4. Fill in the parameters:
+   * **Name**: <code>Enterprise-AppStore-API-Key</code>
+   * **Key ID**: Enter the 10-character key ID from Apple (e.g., <code>2X9R4ABCD2</code>).
+   * **Issuer ID**: Enter the UUID from Apple (e.g., <code>57246542-96fe-1a63-e053-0824d011072a</code>).
+   * **Private Key**: Upload the <code>AuthKey_2X9R4ABCD2.p8</code> file.
+5. Click **Save**.
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT</span>
+    <span class="portal-screenshot-title">Bitrise Code Signing - Apple API Key (.p8)</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    <strong>Where to capture:</strong> In Bitrise &gt; <span class="portal-screenshot-path">Workflow Editor &gt; Code Signing Tab &gt; Apple Service Account API Keys</span>. Capture the green card displaying the Key ID and Issuer ID configured.
+  </p>
+</div>
+
+---
+
+## 5. Step 4: Connecting the Release Pipeline
+
+Once your secrets and signing keys are registered, the <code>release-prod</code> workflow connects them directly into build steps:
+
+<div class="portal-code-frame">
+  <div class="portal-code-header">
+    <span class="portal-file-badge">bitrise.yml (release-prod excerpt)</span>
+    <span class="portal-badge-hub">HEADLESS CODE SIGNING</span>
+  </div>
+  <pre class="portal-code-block"><code>workflows:
+  release-prod:
+    steps:
+    # 1. Compile &amp; Sign Android Production AAB
+    - android-build@1:
+        title: Build Production Android App Bundle (.aab)
+        inputs:
+        - project_location: $PROJECT_LOCATION
+        - module: $MODULE
+        - variant: prodRelease
+        - build_type: aab
+    - sign-apk@1: {}
+
+    # 2. Archive &amp; Sign iOS Production IPA with Apple API Key
+    - xcode-archive@5:
+        title: Archive Production iOS IPA
+        inputs:
+        - project_path: $BITRISE_PROJECT_PATH
+        - scheme: $BITRISE_SCHEME
+        - distribution_method: app-store
+        - automatic_code_signing: api-key
+
+    # 3. Deliver to Apple TestFlight
+    - deploy-to-itunesconnect-with-deliver@3:
+        inputs:
+        - api_key_url: $APP_STORE_CONNECT_API_KEY_URL
+        - api_issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        - api_key_id: $APP_STORE_CONNECT_KEY_ID
+        - ipa_path: $BITRISE_IPA_PATH
+        - submit_for_review: "no"</code></pre>
+</div>
+
+---
+
+## 6. Summary
+
+You have established cryptographic release governance:
+* Environment secrets are guarded in Bitrise vaults with automated transcript log masking.
+* Android Keystores are provisioned for memory-only mounting during compilation.
+* Apple App Store Connect API Keys (<code>.p8</code>) eliminate 2FA session expirations, enabling reliable, automated TestFlight delivery.
+* Developers never touch or export private release keys on personal machines.
+
+Next Chapter: **07. Real-Device Cloud Testing with Sauce Labs (`07-cloud-device-testing-saucelabs.mdx`)**.
+
+
+----------------------------------------
+
+
+
+
+---
+title: "07. Real-Device Cloud Testing with Sauce Labs"
+description: "Master automated physical device testing in Bitrise using Sauce Labs: saucelabs.request.yml, saucectl runner, parallel device pools, and artifact collection."
+---
+
+import DiagramExpand from './DiagramExpand.astro';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
+    <span class="portal-hub-tag">CHAPTER 07 &bull; DEVICE TESTING</span>
+  </div>
+  <h1 class="portal-hero-title">Real-Device Cloud Testing with Sauce Labs</h1>
+  <p class="portal-hero-desc">
+    Eliminate device fragmentation and hardware-specific runtime crashes by automating testing on physical Android and iOS hardware. Learn how to configure the Sauce Labs device cloud, structure <code>saucelabs.request.yml</code> and <code>.sauce/config.yml</code>, orchestrate the two-step Bitrise test workflow, and inspect video recordings and device telemetry.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Real-Device Farm</div>
+      <div class="portal-cap-desc">Thousands of physical iPhones &bull; Google Pixels &bull; Samsung Galaxies</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">2-Step Pipeline</div>
+      <div class="portal-cap-desc">Sauce Labs App Create &bull; Upload and Test &bull; Automatic ID export</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">saucectl CLI</div>
+      <div class="portal-cap-desc">Declarative runner &bull; Appium &bull; Espresso &bull; XCUITest orchestration</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Rich Artifacts</div>
+      <div class="portal-cap-desc">Full video replays &bull; Screenshots &bull; Console logs &bull; Network HAR</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Why Real-Device Cloud Testing Matters
+
+Simulators and emulators on developer laptops cannot accurately replicate physical device realities:
+* **OEM Customizations**: Samsung One UI, Xiaomi MIUI, and Google Pixel skins alter background task execution and push notifications.
+* **Hardware Sensors &amp; GPU Constraints**: Camera APIs, biometric sensors (Face ID, Fingerprint), and GPU rendering engines behave differently on physical chipsets.
+* **OS Version Fragmentation**: Testing simultaneously across Android 11 through 15 and iOS 16 through 18 ensures backward compatibility.
+
+Sauce Labs provides an enterprise cloud of real, physical mobile devices hosted in secure data centers, enabling automated regression tests on every staging build.
+
+---
+
+## 2. Architecture at a Glance (The 2-Step Bitrise Workflow)
+
+The integration splits into two distinct, governed steps within your Bitrise pipeline:
+
+<DiagramExpand title="SAUCE LABS TWO-STEP PIPELINE ARCHITECTURE">
+
+```mermaid
+graph TD
+    subgraph BuildPhase ["1. COMPILATION PHASE"]
+        Clone["git-clone &bull; npm ci"] --> Compile["android-build or xcode-archive"]
+        Compile --> ReadyBin["Compiled Binary Ready<br/>$BITRISE_APK_PATH or $BITRISE_IPA_PATH"]
+    end
+
+    subgraph Step1 ["2. STEP 1: SAUCE LABS APP CREATE"]
+        ReqFile["Read saucelabs.request.yml<br/>from project root"] --> Register["Register App in Sauce Labs Storage API"]
+        Register --> ExportIDs["Export Environment Variables:<br/>$SAUCE_APP_NAME &bull; $SAUCE_APP_ID &bull; $SAUCE_APP_FILE_NAME"]
+    end
+
+    subgraph Step2 ["3. STEP 2: SAUCE LABS UPLOAD AND TEST"]
+        UploadBin["Upload Binary via Storage API<br/>https://api.us-west-1.saucelabs.com"] --> RunTest["Execute saucectl test_command<br/>Appium / Espresso / XCUITest"]
+        RunTest --> StreamLogs["Stream Test Artifacts to Bitrise:<br/>Videos &bull; Screenshots &bull; HAR Network Logs"]
+    end
+
+    ReadyBin --> Step1
+    ExportIDs --> Step2
+```
+
+</DiagramExpand>
+
+---
+
+## 3. Step 1: Create the Request File (`saucelabs.request.yml`)
+
+Create a file named <code>saucelabs.request.yml</code> in the root directory of your repository. This file identifies your application in Sauce Labs storage:
+
+<div class="portal-code-frame">
+  <div class="portal-code-header">
+    <span class="portal-file-badge">saucelabs.request.yml</span>
+    <span class="portal-badge-hub">APP REGISTRATION CONTRACT</span>
+  </div>
+  <pre class="portal-code-block"><code>app_name: my-mobile-app
+platform: android # Allowed: android or ios
+owner_email: mobile-engineering@enterprise.internal
+team: mobile-platform
+description: Enterprise React Native mobile application provisioned via Bitrise CI/CD
+
+# Optional Metadata Fields
+business_unit: corporate
+environment: staging
+repository: https://git.enterprise.internal/mobile-engineering/my-mobile-app.git</code></pre>
+</div>
+
+### Field Validation Rules
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Constraint Rule</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>app_name</code></td>
+        <td>String</td>
+        <td>Must not be empty. Represents your application title in Sauce Labs App Storage.</td>
+      </tr>
+      <tr>
+        <td><code>platform</code></td>
+        <td>Enum</td>
+        <td>Must be exactly <code>android</code> or <code>ios</code>.</td>
+      </tr>
+      <tr>
+        <td><code>owner_email</code></td>
+        <td>Email</td>
+        <td>Must be a valid enterprise email address for test failure alerts.</td>
+      </tr>
+      <tr>
+        <td><code>team</code></td>
+        <td>String</td>
+        <td>Name of the owning mobile engineering squad.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 4. Step 2: Configure the Test Runner (`.sauce/config.yml`)
+
+Sauce Labs uses the declarative <code>saucectl</code> CLI to orchestrate test execution across real device pools.
+
+Create a folder named <code>.sauce/</code> in your repository root, and place a <code>config.yml</code> file inside it:
+
+<div class="portal-code-frame">
+  <div class="portal-code-header">
+    <span class="portal-file-badge">.sauce/config.yml</span>
+    <span class="portal-badge-hub">SAUCECTL RUNNER SPEC</span>
+  </div>
+  <pre class="portal-code-block"><code>apiVersion: v1alpha
+kind: espresso # Use xcuitest for iOS, or appium for cross-platform
+sauce:
+  region: us-west-1
+  concurrency: 2
+  metadata:
+    build: "Bitrise Build $BITRISE_BUILD_NUMBER"
+    tags:
+      - "staging"
+      - "regression"
+
+espresso:
+  app: storage:$SAUCE_APP_ID
+  testApp: storage:$SAUCE_TEST_APP_ID
+
+# Define Real Device Pools
+suites:
+  - name: "Pixel-Real-Device-Suite"
+    devices:
+      - name: "Google Pixel.*"
+        platformVersion: "14"
+    testOptions:
+      class:
+        - "com.enterprise.mobileapp.SmokeTests"
+
+  - name: "Samsung-Real-Device-Suite"
+    devices:
+      - name: "Samsung Galaxy S.*"
+        platformVersion: "13"</code></pre>
+</div>
+
+---
+
+## 5. Step 3: Configure Bitrise Secrets &amp; Steps
+
+### 5.1 Store Sauce Labs Credentials in Bitrise Secrets
+
+In Bitrise &gt; **Workflow Editor &gt; Secrets Tab**, declare your API credentials:
+* <code>$SAUCE_USERNAME</code>: Your Sauce Labs account username.
+* <code>$SAUCE_ACCESS_KEY</code>: Your Sauce Labs alphanumeric access key (found under User Settings &gt; Access Key).
+
+### 5.2 Add Steps to `bitrise.yml`
+
+Integrate the two steps into your <code>deploy-staging-qa</code> workflow:
+
+<div class="portal-code-frame">
+  <div class="portal-code-header">
+    <span class="portal-file-badge">bitrise.yml (Sauce Labs Steps)</span>
+    <span class="portal-badge-hub">STEP DEFINITION</span>
+  </div>
+  <pre class="portal-code-block"><code># 1. Register App in Sauce Labs Storage
+- git::https://git.enterprise.internal/mobile-engineering/bitrise-step-sauce-labs-app-create.git@v1:
+    title: Sauce Labs App Create
+    inputs:
+    - yaml_file_path: "saucelabs.request.yml"
+    - sauce_username: $SAUCE_USERNAME
+    - sauce_access_key: $SAUCE_ACCESS_KEY
+
+# 2. Upload Compiled Binary &amp; Execute Tests
+- git::https://git.enterprise.internal/mobile-engineering/bitrise-step-sauce-labs-upload-and-test.git@v1:
+    title: Sauce Labs Mobile Upload and Test
+    inputs:
+    - sauce_username: $SAUCE_USERNAME
+    - sauce_access_key: $SAUCE_ACCESS_KEY
+    - sauce_region: "us-west-1"
+    - app_path: $BITRISE_APK_PATH
+    - app_name: $SAUCE_APP_FILE_NAME
+    - test_command: "saucectl run --config .sauce/config.yml"
+    - working_dir: $BITRISE_SOURCE_DIR
+    - test_fail_on_failure: "yes"</code></pre>
+</div>
+
+---
+
+## 6. Variables Passed Between Steps
+
+The two steps communicate through environment variables dynamically exported during execution:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Variable Name</th>
+        <th>Exported By</th>
+        <th>Consumed By</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>$SAUCE_APP_ID</code></td>
+        <td><code>App Create</code></td>
+        <td><code>Upload and Test</code></td>
+        <td>Unique storage UUID assigned to the registered application in Sauce Labs.</td>
+      </tr>
+      <tr>
+        <td><code>$SAUCE_APP_NAME</code></td>
+        <td><code>App Create</code></td>
+        <td><code>Upload and Test</code></td>
+        <td>Canonical application title parsed from <code>saucelabs.request.yml</code>.</td>
+      </tr>
+      <tr>
+        <td><code>$SAUCE_APP_FILE_NAME</code></td>
+        <td><code>App Create</code></td>
+        <td><code>Upload and Test</code></td>
+        <td>Normalized binary filename (e.g., <code>my-mobile-app.apk</code>) used in cloud storage.</td>
+      </tr>
+      <tr>
+        <td><code>$CREATION_STATUS</code></td>
+        <td><code>App Create</code></td>
+        <td>Conditional steps</td>
+        <td>Status output (<code>created</code>, <code>already_exists</code>, or <code>failed</code>).</td>
+      </tr>
+      <tr>
+        <td><code>$SAUCE_TEST_EXIT_CODE</code></td>
+        <td><code>Upload and Test</code></td>
+        <td>Build summary</td>
+        <td>Exit code (<code>0</code> for pass, non-zero for test assertion failures).</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 7. Visual Reference: Sauce Labs Automated Dashboard
+
+When tests complete, full execution telemetry is published to the Sauce Labs web portal:
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT</span>
+    <span class="portal-screenshot-title">Sauce Labs - Automated Test Execution Dashboard</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    <strong>Where to capture:</strong> Open Sauce Labs &gt; <span class="portal-screenshot-path">Automated &gt; Test Results</span> &gt; Click the latest test session. Capture the dashboard showing the physical device name (e.g., Google Pixel 8), video player with scrubbing timeline, screenshots, and passing test assertions.
+  </p>
+</div>
+
+---
+
+## 8. Troubleshooting Quick Reference
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Symptom</th>
+        <th>Likely Root Cause</th>
+        <th>Resolution</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>401 Unauthorized during upload</code></td>
+        <td>Invalid or expired <code>$SAUCE_ACCESS_KEY</code> in Bitrise Secrets.</td>
+        <td>Open Sauce Labs &gt; User Settings &gt; Access Key. Regenerate key and update Bitrise secret.</td>
+      </tr>
+      <tr>
+        <td><code>App not found during test execution</code></td>
+        <td>Upload step failed or <code>$SAUCE_APP_ID</code> was not passed correctly.</td>
+        <td>Confirm upload step finished with HTTP 200 before test execution started.</td>
+      </tr>
+      <tr>
+        <td><code>Tests timeout waiting for a device</code></td>
+        <td>Requested device model is unavailable or concurrency limit reached.</td>
+        <td>Use wildcard regex (e.g. <code>Google Pixel.*</code>) instead of exact device IDs to pick available pool units.</td>
+      </tr>
+      <tr>
+        <td><code>saucectl: command not found</code></td>
+        <td>CLI runner not installed on the virtual machine stack.</td>
+        <td>Add an install script step before testing: <code>curl -L https://saucelabs.github.io/saucectl/install | bash</code>.</td>
+      </tr>
+      <tr>
+        <td><code>Wrong region error (HTTP 404)</code></td>
+        <td><code>sauce_region</code> mismatch between Bitrise step and Sauce Labs account data center.</td>
+        <td>Verify account data center (<code>us-west-1</code>, <code>us-east-4</code>, or <code>eu-central-1</code>) and align both configs.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 9. Summary
+
+You have established automated real-device validation:
+* The <code>saucelabs.request.yml</code> and <code>.sauce/config.yml</code> files declare app identity and device pool matrices.
+* Bitrise registers the binary and streams execution to physical Android and iOS hardware.
+* Video recordings, network HAR logs, and crash traces are captured automatically on every staging release.
+
+Next Chapter: **08. Automated Security Hardening with NowSecure (`08-security-hardening-nowsecure.mdx`)**.
+
+-------------------------------------------
 
 
 
