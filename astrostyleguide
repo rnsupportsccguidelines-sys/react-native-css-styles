@@ -30,3 +30,16 @@ const toggleId = id
     <slot />
   </div>
 </div>
+
+
+import DiagramExpand from '../../components/DiagramExpand.astro';
+## Hardware Security Lifecycle
+<DiagramExpand title="KEYSTORE ENCRYPTION LIFECYCLE">
+```mermaid
+sequenceDiagram
+    autonumber
+    App->>Vault: Request Master Key
+    Vault->>KeyStore: Hardware Unlock
+    KeyStore-->>App: AES-256 Session Token
+```
+</DiagramExpand>
