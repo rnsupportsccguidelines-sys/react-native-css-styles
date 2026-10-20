@@ -1,85 +1,863 @@
-<div class="portal-disclaimer-banner">
-  <div class="portal-disclaimer-icon">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-      <line x1="12" y1="9" x2="12" y2="13"/>
-      <line x1="12" y1="17" x2="12.01" y2="17"/>
-    </svg>
+---
+title: "Chapter 09: Zero-Touch Store Delivery (Google Play & Apple TestFlight)"
+description: "Master automated continuous delivery from Bitrise to Google Play Internal Testing tracks and Apple TestFlight using Service Accounts and App Store Connect API keys."
+---
+import DiagramExpand from './DiagramExpand.astro';
+
+<div class="portal-header">
+  <div class="portal-badge">ENTERPRISE CONTINUOUS DELIVERY</div>
+  <h1 class="portal-title">Zero-Touch Store Delivery (Google Play & TestFlight)</h1>
+  <p class="portal-subtitle">
+    Eliminate manual binary uploads, credential sharing, and version skew. Configure fully automated, cryptographically authenticated deployments from Bitrise to Google Play Console and Apple App Store Connect.
+  </p>
+</div>
+
+<div class="portal-alert-box info">
+  <div class="portal-alert-title">PREREQUISITE NOTICE</div>
+  <p>
+    This chapter builds directly upon the code signing keys, provisioning profiles, and keystores configured in <strong>Chapter 06</strong>. Ensure your Bitrise secrets library contains valid production keystores and distribution certificates before executing store deployment workflows.
+  </p>
+</div>
+
+## 1. The Zero-Touch Delivery Philosophy
+
+In manual development teams, deploying an update requires a developer to generate an APK, AAB, or IPA on their local laptop, log into web consoles (Google Play Console and App Store Connect) with personal credentials, manually fill out forms, drag-and-drop gigabyte-sized files over unstable Wi-Fi, and manually assign tester groups.
+
+This manual process introduces severe enterprise risks:
+* **Version Skew:** Developers accidentally upload debug variants or test binaries missing critical release flags.
+* **Credential Exposure:** Team members share master developer credentials or two-factor authentication (2FA) SMS codes.
+* **ProGuard Mapping Loss:** Deobfuscation files (`mapping.txt` and `dSYM.zip`) are lost or forgotten, rendering production crash analytics unreadable.
+* **Auditing Failure:** No tamper-proof log exists to prove which commit hash corresponds to the distributed binary.
+
+In a **Zero-Touch Delivery** pipeline, human developers never upload binaries. Merging an approved release branch automatically triggers Bitrise to compile, sign, attach debug symbols, authenticate via machine-to-machine service keys, and publish directly to designated internal testing tracks within minutes.
+
+<DiagramExpand id="diag-store-delivery-pipeline" title="Enterprise Zero-Touch Store Delivery Flow">
+
+```mermaid
+graph TD
+    classDef git fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    classDef ci fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff
+    classDef store fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff
+    classDef user fill:#162e20,stroke:#a855f7,stroke-width:2px,color:#ffffff
+
+    Git["Git Release Merge (release/v2.4.0)"] --> BitriseRelease["Bitrise Release Workflow"]
+    
+    subgraph BitriseRunner ["Bitrise Cloud Runner"]
+        BitriseRelease --> AndroidBuild["Build Signed AAB + R8 Mapping"]
+        BitriseRelease --> iOSBuild["Build Signed IPA + dSYM Bundle"]
+        AndroidBuild --> GooglePlayStep["google-play-deploy Step"]
+        iOSBuild --> TestFlightStep["deploy-to-itunesconnect Step"]
+    end
+
+    GooglePlayStep -->|GCP Service Account Auth| PlayAPI["Google Play Developer API"]
+    TestFlightStep -->|App Store Connect API Key| AppStoreAPI["App Store Connect API"]
+
+    PlayAPI --> PlayConsole["Google Play Console: Internal Track"]
+    AppStoreAPI --> TestFlightGroup["Apple TestFlight: Internal QA Group"]
+
+    PlayConsole --> AndroidTesters["Android QA Testers (Play Store App)"]
+    TestFlightGroup --> iOSTesters["iOS QA Testers (TestFlight App)"]
+
+    class Git git
+    class BitriseRelease,AndroidBuild,iOSBuild,GooglePlayStep,TestFlightStep ci
+    class PlayAPI,AppStoreAPI,PlayConsole,TestFlightGroup store
+    class AndroidTesters,iOSTesters user
+```
+
+</DiagramExpand>
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Attribute</th>
+        <th>Google Play Store Track</th>
+        <th>Apple TestFlight Group</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Target Track / Group</strong></td>
+        <td><code>internal</code> (Internal Testing)</td>
+        <td><code>QA-Internal-Testers</code> (Internal Testing)</td>
+      </tr>
+      <tr>
+        <td><strong>Review Required?</strong></td>
+        <td>No automated or human review</td>
+        <td>No review for Internal Testers (External requires Beta Review)</td>
+      </tr>
+      <tr>
+        <td><strong>Time to Device</strong></td>
+        <td>2 to 5 minutes post-upload</td>
+        <td>5 to 15 minutes post-upload (Apple asset processing)</td>
+      </tr>
+      <tr>
+        <td><strong>Maximum Testers</strong></td>
+        <td>100 email addresses per list</td>
+        <td>100 internal team members per App Store Connect account</td>
+      </tr>
+      <tr>
+        <td><strong>Artifact Type</strong></td>
+        <td>Android App Bundle (<code>.aab</code>)</td>
+        <td>iOS App Store Package (<code>.ipa</code>)</td>
+      </tr>
+      <tr>
+        <td><strong>Crash Symbol Artifact</strong></td>
+        <td>ProGuard / R8 <code>mapping.txt</code></td>
+        <td>Xcode <code>dSYM.zip</code> archive</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 2. Android: Google Play Developer API & Service Account
+
+To deploy Android App Bundles without human login or 2FA prompts, Bitrise communicates directly with the **Google Play Developer API** using an OAuth2 Service Account managed inside Google Cloud Platform (GCP).
+
+### Step 1: Link Google Cloud Project to Play Console
+1. Log into the **Google Play Console** using an Owner or Admin account.
+2. In the left navigation menu, navigate to **Settings** &gt; **Developer account** &gt; **API access**.
+3. If no Google Cloud project is linked, click **Choose a project to link** or **Create new Google Cloud project**. Link it to your enterprise cloud project.
+
+### Step 2: Create the Service Account in Google Cloud Console
+1. Navigate to the **Google Cloud Console** (`https://console.cloud.google.com/`) under the linked project.
+2. Open **IAM & Admin** &gt; **Service Accounts**.
+3. Click **Create Service Account**:
+   * **Service account name:** `bitrise-play-store-deployer`
+   * **Service account ID:** `bitrise-play-store-deployer`
+   * **Description:** Automated CI/CD binary deployment key for Bitrise runner.
+4. Click **Create and Continue**.
+5. In the **Grant this service account access to project** step, assign the role **Service Account User** (or continue without project-level roles, as permissions are granted in Play Console).
+6. Click **Done**.
+
+### Step 3: Generate the JSON Private Key
+1. In the Service Accounts list, locate `bitrise-play-store-deployer@<project-id>.iam.gserviceaccount.com`.
+2. Click the three-dots menu icon under **Actions** and select **Manage keys**.
+3. Click **Add Key** &gt; **Create new key**.
+4. Select **JSON** as the key type and click **Create**.
+5. Save the downloaded JSON file securely. The file structure matches the following standard schema:
+
+```json
+{
+  "type": "XXXXX",
+  "project_id": "XXXXX",
+  "private_key_id": "XXXXXX",
+  "private_key": "XXXXXX",
+  "client_email": "XXXXXXX",
+  "client_id": "XXXXXXX",
+  "auth_uri": "XXXXXXX",
+  "token_uri": "XXXXXXX",
+  "auth_provider_x509_cert_url": "XXXXXXX",
+  "client_x509_cert_url": "XXXXXXX"
+}
+```
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT PLACEHOLDER</span>
+    <span class="portal-screenshot-location">Google Cloud Console: IAM & Admin &gt; Service Accounts &gt; Keys</span>
   </div>
-  <div class="portal-disclaimer-content">
-    <div class="portal-disclaimer-title">NOTICE: UNDER ACTIVE DEVELOPMENT</div>
-    <p class="portal-disclaimer-text">
-      This portal overview screen is currently under active development. Please refer to the official <strong><a href="/mobile/onboarding/">Mobile Documentation</a></strong> for verified standards, architectures, and CI/CD pipelines.
-    </p>
+  <p class="portal-screenshot-caption">
+    <strong>Capture Focus:</strong> Show the Service Account details page displaying the <code>bitrise-play-store-deployer</code> email address, the active JSON key ID, and the key creation timestamp with status set to Active.
+  </p>
+</div>
+
+### Step 4: Grant Permissions in Google Play Console
+1. Return to the **Google Play Console** &gt; **Users and permissions**.
+2. Click **Invite new user**.
+3. In the **Email address** field, paste the exact service account email: `bitrise-play-store-deployer@<project-id>.iam.gserviceaccount.com`.
+4. Under **App permissions**, click **Add app** and select your mobile application.
+5. In the permissions dialog, check the following enterprise permissions:
+   * **Releases:**
+     * *Manage production tracks*
+     * *Manage testing tracks (internal, closed, open)*
+     * *Release apps to testing tracks*
+     * *Edit and delete draft releases*
+6. Click **Apply**, then click **Invite user** at the bottom right. No email verification is required; the service account is active immediately.
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT PLACEHOLDER</span>
+    <span class="portal-screenshot-location">Google Play Console: Users and Permissions &gt; User Details</span>
   </div>
+  <p class="portal-screenshot-caption">
+    <strong>Capture Focus:</strong> Display the permissions matrix granted to the Service Account email address, highlighting checked boxes for "Release apps to testing tracks" and "Manage testing tracks".
+  </p>
+</div>
+
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">THE INITIAL UPLOAD RULE</div>
+  <p>
+    The Google Play Developer API <strong>cannot</strong> create a brand-new application from scratch. You must manually upload your very first signed <code>.aab</code> file once through the Google Play Console web UI to register the package name, app icon, store listing, and privacy policy. All subsequent releases can be 100% automated via Bitrise.
+  </p>
+</div>
+
+---
+
+## 3. iOS: App Store Connect API Key & TestFlight Deliver
+
+For automated iOS delivery, Apple provides the **App Store Connect API**. Unlike legacy Apple ID username/password authentications that required constant 2FA verification codes, API keys are persistent, secure, machine-readable cryptographic tokens.
+
+### Step 1: Generate an App Store Connect API Key
+1. Log into **App Store Connect** (`https://appstoreconnect.apple.com/`) as an Account Holder or Admin.
+2. Select **Users and Access** from the top header navigation.
+3. Click the **Integrations** tab (or **Keys** tab in legacy consoles).
+4. Click the **Add (+)** button next to App Store Connect API:
+   * **Name:** `Bitrise-CI-CD-Deployer`
+   * **Access Role:** `App Manager` (allows uploading builds, creating release notes, and managing TestFlight tester groups)
+5. Click **Generate**.
+
+### Step 2: Extract Key Identifiers and Download Private Key
+After generation, the table will display:
+* **Issuer ID:** A standard UUID representing your Apple Developer Team (e.g., `57246542-96fe-1a63-e053-0824d011072a`).
+* **Key ID:** A 10-character alphanumeric identifier (e.g., `D3ABC12345`).
+* **Download API Key:** A link allowing you to download `AuthKey_D3ABC12345.p8`.
+
+<div class="portal-alert-box danger">
+  <div class="portal-alert-title">IRREVERSIBLE ONE-TIME DOWNLOAD</div>
+  <p>
+    Apple permits downloading the <code>.p8</code> private key file <strong>exactly once</strong>. Once the page is refreshed or left, the download button disappears forever. Store this file immediately in your enterprise password manager before closing the browser window.
+  </p>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT PLACEHOLDER</span>
+    <span class="portal-screenshot-location">App Store Connect: Users and Access &gt; Integrations &gt; App Store Connect API</span>
+  </div>
+  <p class="portal-screenshot-caption">
+    <strong>Capture Focus:</strong> Capture the API Keys table showing the Key Name, Key ID (10 characters), Issuer ID (UUID), and the role set to "App Manager".
+  </p>
+</div>
+
+### Step 3: Configure Bitrise Secrets for App Store Connect
+In your Bitrise Project Web Console, open **Workflows** &gt; **Secrets** tab and define:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Bitrise Secret Key</th>
+        <th>Value Type</th>
+        <th>Description / Example</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>APP_STORE_CONNECT_KEY_ID</code></td>
+        <td>Environment Variable</td>
+        <td>10-character Key ID (e.g., <code>D3ABC12345</code>)</td>
+      </tr>
+      <tr>
+        <td><code>APP_STORE_CONNECT_ISSUER_ID</code></td>
+        <td>Environment Variable</td>
+        <td>UUID from App Store Connect (e.g., <code>57246542-96fe-1a63-e053-0824d011072a</code>)</td>
+      </tr>
+      <tr>
+        <td><code>APP_STORE_CONNECT_API_KEY_P8</code></td>
+        <td>Secret Environment Variable</td>
+        <td>Full plaintext content of <code>AuthKey_D3ABC12345.p8</code> including header and footer</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 4. Production Release Workflows (`bitrise.yml`)
+
+The following complete, copy-paste ready Bitrise workflow definitions demonstrate how to compile signed release artifacts and distribute them directly to Google Play and Apple TestFlight.
+
+```yaml
+format_version: '11'
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+project_type: react-native
+
+app:
+  envs:
+    - PACKAGE_NAME: "com.enterprise.mobileapp"
+    - BUNDLE_ID: "com.enterprise.mobileapp"
+    - GOOGLE_PLAY_TRACK: "internal"
+
+workflows:
+  # =========================================================================
+  # WORKFLOW: Release Android to Google Play Internal Testing
+  # =========================================================================
+  release_android:
+    summary: Builds signed Android AAB and publishes to Google Play Internal track
+    steps:
+      - activate-ssh-key@4:
+          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+
+      - git-clone@8: {}
+
+      - yarn@0:
+          inputs:
+            - command: install --frozen-lockfile
+
+      - install-missing-android-tools@3:
+          inputs:
+            - gradlew_path: android/gradlew
+
+      # Inject dynamic build number into Android versionCode
+      - change-android-versioncode-and-versionname@1:
+          inputs:
+            - build_gradle_path: android/app/build.gradle
+            - new_version_code: $BITRISE_BUILD_NUMBER
+
+      # Download enterprise release keystore
+      - file-downloader@1:
+          inputs:
+            - source: $BITRISEIO_ANDROID_KEYSTORE_URL
+            - destination: android/app/release.keystore
+
+      # Download Google Play Service Account JSON key
+      - file-downloader@1:
+          inputs:
+            - source: $BITRISEIO_GPLAY_SERVICE_ACCOUNT_JSON_URL
+            - destination: /tmp/gplay-service-account.json
+
+      # Compile signed Release Android App Bundle (AAB)
+      - android-build@1:
+          inputs:
+            - project_location: android
+            - module: app
+            - variant: release
+            - build_type: aab
+            - app_path: android/app/build/outputs/bundle/release/app-release.aab
+
+      # Deploy AAB + ProGuard/R8 mapping.txt directly to Google Play Developer API
+      - google-play-deploy@3:
+          inputs:
+            - service_account_json_key_path: /tmp/gplay-service-account.json
+            - package_name: $PACKAGE_NAME
+            - app_path: $BITRISE_AAB_PATH
+            - mapping_file: android/app/build/outputs/mapping/release/mapping.txt
+            - track: $GOOGLE_PLAY_TRACK
+            - user_fraction: "1.0"
+            - whatsnew_dir: android/whatsnew
+
+      - deploy-to-bitrise-io@2:
+          inputs:
+            - notify_user_groups: none
+            - is_compress: "true"
+
+  # =========================================================================
+  # WORKFLOW: Release iOS to Apple TestFlight Internal QA
+  # =========================================================================
+  release_ios:
+    summary: Builds signed iOS IPA and publishes to Apple TestFlight via deliver
+    steps:
+      - activate-ssh-key@4:
+          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+
+      - git-clone@8: {}
+
+      - yarn@0:
+          inputs:
+            - command: install --frozen-lockfile
+
+      - cocoapods-install@2:
+          inputs:
+            - is_repo_update: false
+            - podfile_path: ios/Podfile
+
+      # Auto-sync provisioning profiles and certificates via App Store Connect API
+      - auto-provision-ios@3:
+          inputs:
+            - distribution_type: app-store
+            - api_key_path: $APP_STORE_CONNECT_API_KEY_P8
+            - key_id: $APP_STORE_CONNECT_KEY_ID
+            - issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+
+      # Set iOS CFBundleVersion to match Bitrise Build Number
+      - set-ios-info-plist-unified@1:
+          inputs:
+            - info_plist_file: ios/MobileApp/Info.plist
+            - bundle_version: $BITRISE_BUILD_NUMBER
+
+      # Archive signed iOS Application (.ipa) and dSYM symbols
+      - xcode-archive@4:
+          inputs:
+            - project_path: ios/MobileApp.xcworkspace
+            - scheme: MobileApp
+            - configuration: Release
+            - distribution_method: app-store
+            - automatic_code_signing: api-key
+
+      # Deploy to TestFlight via Fastlane deliver engine using API Key
+      - deploy-to-itunesconnect-with-deliver@3:
+          inputs:
+            - ipa_path: $BITRISE_IPA_PATH
+            - dsym_path: $BITRISE_DSYM_PATH
+            - api_key_path: $APP_STORE_CONNECT_API_KEY_P8
+            - key_id: $APP_STORE_CONNECT_KEY_ID
+            - issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+            - platform: ios
+            - skip_waiting_for_build_processing: "false"
+            - skip_metadata: "true"
+            - skip_screenshots: "true"
+            - team_id: $APPLE_TEAM_ID
+
+      - deploy-to-bitrise-io@2:
+          inputs:
+            - notify_user_groups: none
+```
+
+---
+
+## 5. Release Notes and Changelog Automation
+
+Both Google Play and TestFlight allow distributing release notes ("What's New") to testers so QA engineers understand which features, fixes, and ticket IDs are included in each build.
+
+### Android What's New Directory Structure
+The `google-play-deploy@3` step automatically detects language-specific release notes organized under an `android/whatsnew/` directory:
+
+```text
+android/
+├── app/
+│   ├── build.gradle
+│   └── src/
+└── whatsnew/
+    ├── whatsnew-en-US
+    ├── whatsnew-es-ES
+    └── whatsnew-de-DE
+```
+
+Each file contains plain text describing the release (maximum 500 characters per file):
+```text
+Release Build 248 (Sprint 42):
+- Feature: Added biometrics authentication support for Android 14.
+- Fix: Resolved memory leak during offline database synchronization.
+- Security: Patched deep-link intent vulnerabilities identified by NowSecure.
+```
+
+### Dynamic Git Changelog Script
+Rather than manually editing text files, add a brief **Script** step in Bitrise prior to the deployment step to auto-generate the changelog from Git commit messages since the last tag:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "=== Generating Release Changelog from Git Commits ==="
+mkdir -p android/whatsnew
+
+PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+if [ -z "$PREVIOUS_TAG" ]; then
+  CHANGELOG="Initial automated Bitrise release build #${BITRISE_BUILD_NUMBER}."
+else
+  CHANGELOG=$(git log "${PREVIOUS_TAG}..HEAD" --oneline --no-merges | head -n 5)
+fi
+
+echo "$CHANGELOG" > android/whatsnew/whatsnew-en-US
+echo "Generated release notes for build ${BITRISE_BUILD_NUMBER}:"
+cat android/whatsnew/whatsnew-en-US
+```
+
+---
+
+## 6. Verification and Troubleshooting Matrix
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Failure Symptom</th>
+        <th>Root Cause</th>
+        <th>Resolution</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>Google Play API: 403 Forbidden - App not found</code></td>
+        <td>The package name has never had an initial <code>.aab</code> uploaded manually via the web UI.</td>
+        <td>Log into Google Play Console and manually drag-and-drop your first signed release <code>.aab</code> into the Internal track to register the application.</td>
+      </tr>
+      <tr>
+        <td><code>Google Play API: 400 Invalid version code</code></td>
+        <td>The uploaded <code>versionCode</code> is lower than or equal to an existing artifact in Google Play.</td>
+        <td>Ensure <code>change-android-versioncode-and-versionname</code> uses <code>$BITRISE_BUILD_NUMBER</code> and that the build number exceeds existing release codes.</td>
+      </tr>
+      <tr>
+        <td><code>deliver: 401 Unauthorized - Invalid authentication token</code></td>
+        <td>The App Store Connect <code>.p8</code> API key content is corrupted or lines were truncated.</td>
+        <td>Verify the secret in Bitrise contains the complete key including <code>-----BEGIN PRIVATE KEY-----</code> and <code>-----END PRIVATE KEY-----</code> headers without trailing spaces.</td>
+      </tr>
+      <tr>
+        <td><code>TestFlight: Missing Compliance (Encryption)</code></td>
+        <td>Export compliance declaration missing from iOS <code>Info.plist</code>, blocking automated release.</td>
+        <td>Add <code>&lt;key&gt;ITSAppUsesNonExemptEncryption&lt;/key&gt;&lt;false/&gt;</code> to your <code>Info.plist</code> file.</td>
+      </tr>
+      <tr>
+        <td><code>dSYM missing warning in App Store Connect</code></td>
+        <td>Xcode archive did not package debug symbols or symbols were stripped during release build.</td>
+        <td>Ensure <code>DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"</code> is set in your Xcode Release build settings.</td>
+      </tr>
+    </tbody>
+  </table>
 </div>
 
 
-/* Disclaimer Banner & Warning Variant */
-.portal-alert-box.warning,
-.portal-disclaimer-banner {
-  background: rgba(250, 204, 21, 0.05) !important;
-  border: 1px solid rgba(250, 204, 21, 0.25) !important;
-  border-left: 4px solid var(--portal-gold, #facc15) !important;
-  border-radius: 8px !important;
-  padding: 14px 18px !important;
-  margin: 16px 0 24px 0 !important;
-  display: flex !important;
-  align-items: flex-start !important;
-  gap: 14px !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
 
-.portal-disclaimer-icon {
-  flex-shrink: 0 !important;
-  color: var(--portal-gold, #facc15) !important;
-  margin-top: 2px !important;
-}
 
-.portal-disclaimer-content {
-  flex: 1 !important;
-}
 
-.portal-disclaimer-title {
-  font-size: 0.84rem !important;
-  font-weight: 800 !important;
-  color: var(--portal-gold, #facc15) !important;
-  letter-spacing: 0.04em !important;
-  margin-bottom: 4px !important;
-  text-transform: uppercase !important;
-}
+-------------------------------
 
-.portal-disclaimer-text {
-  font-size: 0.88rem !important;
-  color: var(--portal-text-body, #e2e8f0) !important;
-  line-height: 1.5 !important;
-  margin: 0 !important;
-}
 
-.portal-disclaimer-text a {
-  color: var(--portal-accent, #22c55e) !important;
-  font-weight: 600 !important;
-  text-decoration: underline !important;
-  text-underline-offset: 3px !important;
-}
 
-.portal-disclaimer-text a:hover {
-  color: var(--portal-gold, #facc15) !important;
-}
+---
+title: "Chapter 10: The 7-Stage Verification Ladder & Troubleshooting Matrix"
+description: "Master the 7-stage mobile verification ladder, the One-Write Rule, and rapid triage protocols for the top 10 mobile CI/CD failure modes."
+---
+import DiagramExpand from './DiagramExpand.astro';
 
-/* Light Mode Overrides */
-html[data-theme='light'] .portal-alert-box.warning,
-html[data-theme='light'] .portal-disclaimer-banner {
-  background: #fefce8 !important;
-  border-color: #fde047 !important;
-  border-left-color: #ca8a04 !important;
-}
+<div class="portal-header">
+  <div class="portal-badge">ENTERPRISE TRIAGE &amp; RELIABILITY</div>
+  <h1 class="portal-title">The 7-Stage Verification Ladder &amp; Troubleshooting Matrix</h1>
+  <p class="portal-subtitle">
+    Transform opaque build failures into predictable, rapid fixes. Learn the formal 7-stage verification ladder, enforce the One-Write Rule, and resolve the top 10 production CI/CD errors in under 60 seconds.
+  </p>
+</div>
 
-html[data-theme='light'] .portal-disclaimer-title {
-  color: #a16207 !important;
-}
+<div class="portal-alert-box info">
+  <div class="portal-alert-title">THE CAPSTONE RELIABILITY STANDARD</div>
+  <p>
+    A professional mobile CI/CD pipeline is judged not only by how smoothly it succeeds, but by how transparently and deterministically it fails. This chapter defines the diagnostic contracts that prevent broken artifacts from ever reaching end users.
+  </p>
+</div>
 
-html[data-theme='light'] .portal-disclaimer-text {
-  color: #334155 !important;
-}
+## 1. The 7-Stage Mobile Verification Ladder
+
+In web engineering, deployment often finishes when a container starts serving HTTP traffic. In mobile engineering, distribution passes through a multi-tier cryptographic and store distribution pipeline before a single binary bit can execute on a tester's device.
+
+Enterprise mobile teams monitor deployments through the **7-Stage Verification Ladder**:
+
+<DiagramExpand id="diag-verification-ladder" title="The 7-Stage Mobile Verification Ladder">
+
+```mermaid
+graph TD
+    classDef stage fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    classDef error fill:#2d1515,stroke:#ef4444,stroke-width:2px,color:#ffffff
+
+    S1["Stage 1: BuildStarted"] --> S2["Stage 2: BuildSuccessful"]
+    S2 --> S3["Stage 3: ArtifactValidated"]
+    S3 --> S4["Stage 4: Uploaded"]
+    S4 --> S5["Stage 5: Signed"]
+    S5 --> S6["Stage 6: Enabled"]
+    S6 --> S7["Stage 7: UserVisible"]
+
+    S1 -. "Env or SSH Failure" .-> E1["Abort: Infrastructure Failure"]
+    S2 -. "Compilation or Lint Fail" .-> E2["Abort: Codebase Defect"]
+    S3 -. "Invalid Keystore or Bundle ID" .-> E3["Abort: Packaging Defect"]
+    S4 -. "API Auth or Network Timeout" .-> E4["Abort: Store API Failure"]
+    S5 -. "Apple DRM or Google Processing" .-> E5["Abort: Store Ingestion Error"]
+    S6 -. "Missing Compliance or Track Full" .-> E6["Abort: Governance Block"]
+    S7 -. "Crash on Launch" .-> E7["Immediate Roll-Forward Hotfix"]
+
+    class S1,S2,S3,S4,S5,S6,S7 stage
+    class E1,E2,E3,E4,E5,E6,E7 error
+```
+
+</DiagramExpand>
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Stage</th>
+        <th>System / Boundary</th>
+        <th>Verification Condition</th>
+        <th>Failure Indicator</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. BuildStarted</strong></td>
+        <td>Bitrise Agent</td>
+        <td>Runner VM allocated, SSH keys installed, repository cloned cleanly at target commit hash.</td>
+        <td>SSH git clone permission denied, stack boot timeout.</td>
+      </tr>
+      <tr>
+        <td><strong>2. BuildSuccessful</strong></td>
+        <td>Bitrise Compiler</td>
+        <td>Yarn dependencies resolved, TypeScript validated, Android Gradle / Xcode Archive completed with exit code 0.</td>
+        <td>Compiler error, OOM killed, missing CocoaPods dependency.</td>
+      </tr>
+      <tr>
+        <td><strong>3. ArtifactValidated</strong></td>
+        <td>Bitrise Runner</td>
+        <td>Binary inspected locally. Correct <code>versionCode</code> / <code>CFBundleVersion</code>, package name matches whitelist, <code>mapping.txt</code> or <code>dSYM</code> generated.</td>
+        <td>Unsigned APK, missing R8 deobfuscation map, wrong bundle ID.</td>
+      </tr>
+      <tr>
+        <td><strong>4. Uploaded</strong></td>
+        <td>Store Developer API</td>
+        <td>HTTP 200 received from Google Play Developer API or Apple Transporter. Full binary byte stream ingested.</td>
+        <td>401 Unauthorized API key, 403 Forbidden, connection reset.</td>
+      </tr>
+      <tr>
+        <td><strong>5. Signed</strong></td>
+        <td>Apple / Google Cloud</td>
+        <td>Store cloud completes static analysis, DRM stamping, dynamic asset slicing, and re-signing with store keys.</td>
+        <td>App Store Connect "Invalid Binary" status, asset validation failure.</td>
+      </tr>
+      <tr>
+        <td><strong>6. Enabled</strong></td>
+        <td>Store Web Console</td>
+        <td>Artifact promoted to designated track (e.g. <code>internal</code>) or TestFlight internal group. Export compliance approved.</td>
+        <td>"Missing Compliance" modal blocking release, track quota exceeded.</td>
+      </tr>
+      <tr>
+        <td><strong>7. UserVisible</strong></td>
+        <td>Physical Device</td>
+        <td>Testers receive store push notifications. Binary successfully installs and passes splash screen without crash.</td>
+        <td>Crash-on-launch (SIGSEGV / uncaught JS exception), installation loop.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 2. The One-Write Rule and Safe Rollback Protocol
+
+Unlike web deployments where servers can be instantly reverted to a previous container hash, mobile stores enforce a strict cryptographic constraint:
+
+<div class="portal-alert-box danger">
+  <div class="portal-alert-title">THE ONE-WRITE RULE</div>
+  <p>
+    <strong>Version codes and bundle versions are strictly monotonic and irreversible.</strong> Once a version code (e.g. <code>versionCode: 248</code>) has been submitted to Google Play or Apple App Store Connect, no binary with that version number or lower can ever be uploaded again, even if the release was deleted, rejected, or revoked.
+  </p>
+</div>
+
+### Why Rollbacks Do Not Exist in Mobile
+When a catastrophic bug reaches production in mobile apps, you **cannot** simply "rollback" the server:
+1. Physical devices cache the higher version number. The operating system package manager (Android Package Installer or iOS SpringBoard) refuses to install a binary with a lower version number over an existing higher version.
+2. Store APIs reject re-uploading an older binary without an incremented build number.
+
+### The Safe Roll-Forward Protocol
+When an artifact fails at Stage 6 or Stage 7:
+1. **Never attempt to overwrite the existing tag or build number.**
+2. Revert the faulty commit on the release branch using `git revert <commit_hash>`.
+3. Allow Bitrise to execute a new release build with an incremented `$BITRISE_BUILD_NUMBER` (e.g. build 249).
+4. Bitrise compiles, signs, and distributes the clean build to the internal testing track, instantly superseding the defective build.
+
+```bash
+# Emergency Roll-Forward Procedure
+git checkout release/v2.4.0
+git pull origin release/v2.4.0
+
+# Create a clean revert commit
+git revert 4f8a12b -m 1 --no-edit
+
+# Push to trigger automated Bitrise build #249
+git push origin release/v2.4.0
+```
+
+---
+
+## 3. Top 10 Mobile CI/CD Build Errors and 60-Second Fixes
+
+The following battle-tested troubleshooting matrix covers 95% of all build failures encountered by React Native engineers on Bitrise.
+
+### 1. Android NDK Architecture Mismatch
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>Execution failed for task ':react-native-reanimated:buildCMakeDebug[arm64-v8a]'. NDK at /opt/android-sdk/ndk/23.1.7779620 did not have a valid source.properties.</code></p>
+</div>
+
+* **Root Cause:** Bitrise Android stack updated its default NDK version, while `android/app/build.gradle` requested an incompatible legacy version.
+* **60-Second Fix:** Explicitly pin the NDK version in `android/app/build.gradle` matching the Bitrise system stack:
+  ```groovy
+  android {
+      ndkVersion = "25.1.8937393" // Match Bitrise installed Android NDK
+  }
+  ```
+
+---
+
+### 2. CocoaPods Lockfile Out of Sync
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>[!] The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.</code></p>
+</div>
+
+* **Root Cause:** A developer updated `package.json` locally on their laptop, committed the change, but forgot to run `pod install` inside the `ios/` directory, causing a mismatch with `ios/Podfile.lock`.
+* **60-Second Fix:** Run clean pod installation on your branch, commit the resulting `Podfile.lock`, and push:
+  ```bash
+  cd ios && rm -rf Pods Podfile.lock && pod install --repo-update && git commit -am "fix(ios): synchronize Podfile.lock" && git push
+  ```
+
+---
+
+### 3. Gradle JVM Heap Out of Memory (OOM)
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>Expiring Daemon because JVM heap space is exhausted. java.lang.OutOfMemoryError: GC overhead limit exceeded.</code></p>
+</div>
+
+* **Root Cause:** The default Gradle daemon allocation (1.5 GB) is insufficient for compiling large React Native multi-module codebases with R8 code shrinking enabled.
+* **60-Second Fix:** Increase Gradle heap allocation in `android/gradle.properties`:
+  ```properties
+  org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError
+  org.gradle.parallel=true
+  org.gradle.caching=true
+  ```
+
+---
+
+### 4. Apple Missing Distribution Certificate
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>Error: No signing certificate "Apple Distribution" found matching team ID "57246542" in keychain.</code></p>
+</div>
+
+* **Root Cause:** Bitrise step `xcode-archive` executed without downloading or unlocking the code signing certificate, or the certificate expired.
+* **60-Second Fix:** Ensure the `auto-provision-ios@3` step is positioned **immediately prior** to `xcode-archive@4` and uses valid `APP_STORE_CONNECT_API_KEY_P8` credentials.
+
+---
+
+### 5. Google Play API: 403 Forbidden
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>Google Play API: 403 Forbidden - The caller does not have permission for the requested project.</code></p>
+</div>
+
+* **Root Cause:** The Google Cloud Service Account email has not been granted release permissions inside Google Play Console, or the initial release was never uploaded manually.
+* **60-Second Fix:** Open Google Play Console &gt; **Users and permissions**, verify the service account email is listed under **Users**, and ensure the checkbox **Release apps to testing tracks** is checked.
+
+---
+
+### 6. Transporter 401 Unauthorized
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>[deliver] Transporter transfer failed. 401 Unauthorized: Invalid authentication token.</code></p>
+</div>
+
+* **Root Cause:** The `APP_STORE_CONNECT_API_KEY_P8` secret stored in Bitrise contains trailing whitespace, has lost newline characters, or the App Store Connect Key was revoked.
+* **60-Second Fix:** Open Bitrise **Secrets**, re-paste the full text of `AuthKey_*.p8` including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` headers, and verify that the Key ID matches the filename.
+
+---
+
+### 7. Gradle Wrapper Missing Execution Bit
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>bash: ./gradlew: Permission denied. Step failed with exit code 126.</code></p>
+</div>
+
+* **Root Cause:** A developer on Windows committed `android/gradlew` without Unix executable permissions (`+x`).
+* **60-Second Fix:** Update Git file permissions mode from your terminal:
+  ```bash
+  git update-index --chmod=+x android/gradlew
+  git commit -m "fix(ci): grant execute permissions to android/gradlew"
+  git push
+  ```
+
+---
+
+### 8. Danger.js GitHub API Rate Limit Exceeded
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>Danger failed: Error: API rate limit exceeded for user ID (403 Forbidden).</code></p>
+</div>
+
+* **Root Cause:** The `DANGER_GITHUB_API_TOKEN` environment variable was empty or missing, forcing Danger to make unauthenticated requests subject to GitHub's 60 req/hr IP rate limit.
+* **60-Second Fix:** Generate a fine-grained GitHub Personal Access Token (PAT) with `pull_requests: write` permissions and assign it to `DANGER_GITHUB_API_TOKEN` in Bitrise Secrets.
+
+---
+
+### 9. TestFlight Missing Export Compliance
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>TestFlight build status: Missing Compliance. Testing cannot begin until encryption information is provided.</code></p>
+</div>
+
+* **Root Cause:** Apple requires apps using standard HTTPS encryption to declare exemption status in `Info.plist`. Without this, builds halt waiting for human web console clicks.
+* **60-Second Fix:** Insert the compliance key into `ios/MobileApp/Info.plist`:
+  ```xml
+  <key>ITSAppUsesNonExemptEncryption</key>
+  <false/>
+  ```
+
+---
+
+### 10. Yarn Frozen Lockfile Assertion Failure
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">SYMPTOM</div>
+  <p><code>error Your lockfile needs to be updated, but --frozen-lockfile was specified.</code></p>
+</div>
+
+* **Root Cause:** Dependencies in `package.json` were modified manually in an editor without running `yarn install` locally to update `yarn.lock`.
+* **60-Second Fix:** Run `yarn install` locally, commit the synchronized `yarn.lock`, and push to your PR branch:
+  ```bash
+  yarn install
+  git commit -am "fix: synchronize yarn.lock with package.json"
+  git push
+  ```
+
+---
+
+## 4. Enterprise Pre-Merge & Post-Merge Sign-off Checklist
+
+Before merging release pull requests or distributing production updates, complete the following formal verification sign-off:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Phase</th>
+        <th>Verification Item</th>
+        <th>Verification Method</th>
+        <th>Owner</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Pre-Merge</strong></td>
+        <td>Danger.js bot has approved the PR</td>
+        <td>GitHub PR conversation tab displays green Danger checklist</td>
+        <td>PR Author</td>
+      </tr>
+      <tr>
+        <td><strong>Pre-Merge</strong></td>
+        <td>Modular test matrix passed</td>
+        <td>Bitrise `pr_check` status check is green across unit &amp; lint steps</td>
+        <td>CI System</td>
+      </tr>
+      <tr>
+        <td><strong>Pre-Merge</strong></td>
+        <td>No uncommitted lockfile changes</td>
+        <td>`git status` clean after `yarn install` and `pod install`</td>
+        <td>PR Author</td>
+      </tr>
+      <tr>
+        <td><strong>Post-Merge</strong></td>
+        <td>Release workflow execution</td>
+        <td>Bitrise `release_android` and `release_ios` exit with code 0</td>
+        <td>Release Lead</td>
+      </tr>
+      <tr>
+        <td><strong>Post-Merge</strong></td>
+        <td>Artifact signature verification</td>
+        <td>Bitrise deploy-to-bitrise-io step contains signed `.aab` and `.ipa`</td>
+        <td>Release Lead</td>
+      </tr>
+      <tr>
+        <td><strong>Post-Merge</strong></td>
+        <td>Store API ingestion confirmation</td>
+        <td>Google Play Console Internal track displays build #; TestFlight displays build #</td>
+        <td>QA Lead</td>
+      </tr>
+      <tr>
+        <td><strong>Post-Merge</strong></td>
+        <td>Smoke test on physical hardware</td>
+        <td>Install from Play Store / TestFlight on test devices; verify cold start</td>
+        <td>QA Team</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
