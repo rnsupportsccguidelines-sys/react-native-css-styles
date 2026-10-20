@@ -4,12 +4,33 @@ description: "Master automated continuous delivery from Bitrise to Google Play I
 ---
 import DiagramExpand from './DiagramExpand.astro';
 
-<div class="portal-header">
-  <div class="portal-badge">ENTERPRISE CONTINUOUS DELIVERY</div>
-  <h1 class="portal-title">Zero-Touch Store Delivery (Google Play & TestFlight)</h1>
-  <p class="portal-subtitle">
-    Eliminate manual binary uploads, credential sharing, and version skew. Configure fully automated, cryptographically authenticated deployments from Bitrise to Google Play Console and Apple App Store Connect.
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
+    <span class="portal-hub-tag">CHAPTER 09 &bull; STORE DISTRIBUTION</span>
+  </div>
+  <h1 class="portal-hero-title">Zero-Touch Store Delivery (Google Play &amp; Apple TestFlight)</h1>
+  <p class="portal-hero-desc">
+    Eliminate manual binary uploads, credential sharing, and version skew. Configure fully automated, cryptographically authenticated deployments from Bitrise to Google Play Console Internal Testing tracks and Apple App Store Connect TestFlight using Google Cloud Service Accounts and Apple API Keys.
   </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Google Play Developer API</div>
+      <div class="portal-cap-desc">GCP Service Account JSON &bull; Automated internal track deploy &bull; Zero manual uploads</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">App Store Connect API</div>
+      <div class="portal-cap-desc">Persistent AuthKey .p8 &bull; Key ID &amp; Issuer ID &bull; Fastlane deliver engine</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Instant QA Feedback</div>
+      <div class="portal-cap-desc">No review gates for internal tracks &bull; Devices notified in 5-10 minutes</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Deobfuscation Sync</div>
+      <div class="portal-cap-desc">Automated R8 mapping.txt &bull; Xcode dSYM archive attached automatically</div>
+    </div>
+  </div>
 </div>
 
 <div class="portal-alert-box info">
@@ -141,16 +162,16 @@ To deploy Android App Bundles without human login or 2FA prompts, Bitrise commun
 
 ```json
 {
-  "type": "XXXXX",
-  "project_id": "XXXXX",
-  "private_key_id": "XXXXXX",
-  "private_key": "XXXXXX",
-  "client_email": "XXXXXXX",
-  "client_id": "XXXXXXX",
-  "auth_uri": "XXXXXXX",
-  "token_uri": "XXXXXXX",
-  "auth_provider_x509_cert_url": "XXXXXXX",
-  "client_x509_cert_url": "XXXXXXX"
+"type": "xxxxx",
+"project_id": "xxxxx",
+"private_key_id": "xxxxx",
+"private_key": "xxxxx",
+"client_email": "xxxxx",
+"client_id": "xxxxx",
+"auth_uri": "xxxxx",
+"token_uri": "xxxxx",
+"auth_provider_x509_cert_url": "xxxxx",
+"client_x509_cert_url": "xxxxx"
 }
 ```
 
@@ -503,9 +524,7 @@ cat android/whatsnew/whatsnew-en-US
 
 
 
-
--------------------------------
-
+--------------------
 
 
 ---
@@ -514,12 +533,33 @@ description: "Master the 7-stage mobile verification ladder, the One-Write Rule,
 ---
 import DiagramExpand from './DiagramExpand.astro';
 
-<div class="portal-header">
-  <div class="portal-badge">ENTERPRISE TRIAGE &amp; RELIABILITY</div>
-  <h1 class="portal-title">The 7-Stage Verification Ladder &amp; Troubleshooting Matrix</h1>
-  <p class="portal-subtitle">
-    Transform opaque build failures into predictable, rapid fixes. Learn the formal 7-stage verification ladder, enforce the One-Write Rule, and resolve the top 10 production CI/CD errors in under 60 seconds.
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
+    <span class="portal-hub-tag">CHAPTER 10 &bull; TRIAGE &amp; RELIABILITY</span>
+  </div>
+  <h1 class="portal-hero-title">The 7-Stage Verification Ladder &amp; Troubleshooting Matrix</h1>
+  <p class="portal-hero-desc">
+    Transform opaque build failures into predictable, rapid fixes. Master the formal 7-stage verification ladder, enforce the One-Write Rule for immutable releases, and resolve the top 10 mobile CI/CD failure modes in under 60 seconds with battle-tested remediation protocols.
   </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">7-Stage Verification</div>
+      <div class="portal-cap-desc">BuildStarted &rarr; ArtifactValidated &rarr; Uploaded &rarr; Signed &rarr; UserVisible</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">The One-Write Rule</div>
+      <div class="portal-cap-desc">Strictly monotonic version codes &bull; Safe roll-forward protocols &bull; Zero rollbacks</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Top 10 Build Errors</div>
+      <div class="portal-cap-desc">NDK mismatch &bull; CocoaPods sync &bull; Gradle OOM &bull; Apple Cert &bull; Transporter 401</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Enterprise Sign-off</div>
+      <div class="portal-cap-desc">Comprehensive pre-merge &amp; post-merge verification checklist for release managers</div>
+    </div>
+  </div>
 </div>
 
 <div class="portal-alert-box info">
