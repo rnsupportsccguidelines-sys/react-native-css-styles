@@ -583,43 +583,37 @@ import DiagramExpand from './DiagramExpand.astro';
 Mobile observability connects user device interactions directly to backend microservices. When a user interacts with the app, the Datadog SDK records client-side RUM events, measures render vitals, attaches distributed trace headers to outgoing network requests, and correlates client telemetry with backend Kubernetes APM spans:
 
 <DiagramExpand id="diag-datadog-rum-architecture" title="Enterprise Mobile Observability &amp; Distributed Tracing Flow">
-
 ```mermaid
 graph TD
-    classDef client fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff
-    classDef trace fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff
-    classDef backend fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff
-    classDef dd fill:#1a1028,stroke:#a855f7,stroke-width:2px,color:#ffffff
-
     User["User Screen Interaction"] --> RUMEngine["Datadog Mobile RUM SDK"]
     
-    subgraph MobileDevice ["Mobile Application Layer (iOS / Android / RN)"]
-        RUMEngine --> ViewTracking["View Tracking (TTID / TTFD)"]
-        RUMEngine --> ActionTracking["User Tap & Gesture Logging"]
-        RUMEngine --> CrashRecorder["Crash Reporting (PLCrash / NDK)"]
-        RUMEngine --> HttpInterceptor["OkHttp / URLSession / Fetch Interceptor"]
+    subgraph MobileDevice ["1. Mobile Application Layer (iOS, Android, React Native)"]
+        RUMEngine --> ViewTracking["View Tracking (TTID and TTFD)"]
+        RUMEngine --> ActionTracking["User Tap and Gesture Logging"]
+        RUMEngine --> CrashRecorder["Crash Reporting (PLCrash, NDK)"]
+        RUMEngine --> HttpInterceptor["Network Interceptor (OkHttp, URLSession, Fetch)"]
     end
-
-    HttpInterceptor -->|Injected Trace Headers: x-datadog-trace-id| ApiGateway["Enterprise API Gateway"]
+    HttpInterceptor -->|"Injected Trace: x-datadog-trace-id"| ApiGateway["Enterprise API Gateway"]
     
-    subgraph CloudBackend ["Enterprise Kubernetes Microservices"]
-        ApiGateway --> MicroserviceA["Orders Service (Spring Boot / Node)"]
-        MicroserviceA --> MicroserviceB["Payments Service (Go / Java)"]
+    subgraph CloudBackend ["2. Enterprise Kubernetes Microservices"]
+        ApiGateway --> MicroserviceA["Orders Service (Spring Boot, Node.js)"]
+        MicroserviceA --> MicroserviceB["Payments Service (Go, Java)"]
     end
-
-    MobileDevice -->|Batched GZIP Telemetry (Intake API)| DatadogCloud["Datadog SaaS Platform (US1 / EU1)"]
-    CloudBackend -->|APM Server Traces & Spans| DatadogCloud
-
-    subgraph DatadogDashboard ["Datadog Unified Observability Console"]
-        DatadogCloud --> RumSessions["RUM Session Replay & Journeys"]
+    RUMEngine -->|"Batched Telemetry (GZIP Intake API)"| DatadogCloud["Datadog SaaS Platform (US1, EU1)"]
+    MicroserviceB -->|"APM Server Traces and Spans"| DatadogCloud
+    subgraph DatadogDashboard ["3. Datadog Unified Observability Console"]
+        DatadogCloud --> RumSessions["RUM Session Replay and Journeys"]
         DatadogCloud --> EndToEndTrace["Correlated End-to-End Flamegraph"]
-        DatadogCloud --> VitalsDashboard["Mobile Vitals (Slow / Frozen Frames)"]
+        DatadogCloud --> VitalsDashboard["Mobile Vitals (Slow and Frozen Frames)"]
     end
-
-    class User,RUMEngine,ViewTracking,ActionTracking,CrashRecorder client
-    class HttpInterceptor trace
-    class ApiGateway,MicroserviceA,MicroserviceB backend
-    class DatadogCloud,RumSessions,EndToEndTrace,VitalsDashboard dd
+    classDef client fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff;
+    classDef trace fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff;
+    classDef backend fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef dd fill:#1a1028,stroke:#a855f7,stroke-width:2px,color:#ffffff;
+    class User,RUMEngine,ViewTracking,ActionTracking,CrashRecorder client;
+    class HttpInterceptor trace;
+    class ApiGateway,MicroserviceA,MicroserviceB backend;
+    class DatadogCloud,RumSessions,EndToEndTrace,VitalsDashboard dd;
 ```
 
 </DiagramExpand>
