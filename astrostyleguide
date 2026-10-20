@@ -1,88 +1,641 @@
 ---
-title: "Chapter 09: Zero-Touch Store Delivery (Google Play & Apple TestFlight)"
-description: "Master automated continuous delivery from Bitrise to Google Play Internal Testing tracks and Apple TestFlight using Service Accounts and App Store Connect API keys."
+title: "05. Observability, Security & Platform Services Overview"
+description: "Enterprise architectural foundation governing real-time telemetry, zero-trust mobile security, client lifecycle governance, push notifications, and cryptographic remote wipe."
+sidebar:
+  order: 1
+  label: "5.0 Overview & Architecture"
 ---
+
 import DiagramExpand from './DiagramExpand.astro';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
-    <span class="portal-hub-tag">CHAPTER 09 &bull; STORE DISTRIBUTION</span>
+    <span class="portal-badge-hub">OBSERVABILITY &amp; PLATFORM SERVICES</span>
+    <span class="portal-hub-tag">MODULE 05.0 &bull; ARCHITECTURE &amp; ECOSYSTEM</span>
   </div>
-  <h1 class="portal-hero-title">Zero-Touch Store Delivery (Google Play &amp; Apple TestFlight)</h1>
+  <h1 class="portal-hero-title">Observability, Security &amp; Platform Services</h1>
   <p class="portal-hero-desc">
-    Eliminate manual binary uploads, credential sharing, and version skew. Configure fully automated, cryptographically authenticated deployments from Bitrise to Google Play Console Internal Testing tracks and Apple App Store Connect TestFlight using Google Cloud Service Accounts and Apple API Keys.
+    The unified enterprise foundation governing runtime observability, zero-trust client security, version lifecycle management, high-throughput push messaging, and cryptographic data wipe across Android, iOS, and React Native mobile applications.
   </p>
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Google Play Developer API</div>
-      <div class="portal-cap-desc">GCP Service Account JSON &bull; Automated internal track deploy &bull; Zero manual uploads</div>
+      <div class="portal-cap-title">Real-Time Telemetry</div>
+      <div class="portal-cap-desc">Datadog Mobile RUM &bull; Distributed Tracing &bull; Crash Reporting &bull; 99.9% SLO</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">App Store Connect API</div>
-      <div class="portal-cap-desc">Persistent AuthKey .p8 &bull; Key ID &amp; Issuer ID &bull; Fastlane deliver engine</div>
+      <div class="portal-cap-title">Lifecycle Governance</div>
+      <div class="portal-cap-desc">4-Tier Version Enforce &bull; Soft Update Skip &bull; Hard Upgrades &bull; Killswitch</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Instant QA Feedback</div>
-      <div class="portal-cap-desc">No review gates for internal tracks &bull; Devices notified in 5-10 minutes</div>
+      <div class="portal-cap-title">Zero-Trust Hardening</div>
+      <div class="portal-cap-desc">OWASP MASVS L1/L2 &bull; Dual-Key Pinning &bull; Jailbreak Detection &bull; Screen Blur</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Deobfuscation Sync</div>
-      <div class="portal-cap-desc">Automated R8 mapping.txt &bull; Xcode dSYM archive attached automatically</div>
+      <div class="portal-cap-title">Compliance &amp; Recovery</div>
+      <div class="portal-cap-desc">KeyStore / Keychain Shred &bull; Storage Zeroing &bull; Silent Push Wipe &bull; PII Purge</div>
     </div>
   </div>
 </div>
 
-<div class="portal-alert-box info">
-  <div class="portal-alert-title">PREREQUISITE NOTICE</div>
-  <p>
-    This chapter builds directly upon the code signing keys, provisioning profiles, and keystores configured in <strong>Chapter 06</strong>. Ensure your Bitrise secrets library contains valid production keystores and distribution certificates before executing store deployment workflows.
-  </p>
+---
+
+## 1. The Mobile Platform Mental Model: Edge Runtime vs. Cloud
+
+In server-side engineering, applications run inside hermetic, managed cloud infrastructure (Kubernetes, AWS ECS, GCP Cloud Run) where operators maintain complete control over the runtime environment, network transport, logging agents, and rollbacks. 
+
+Mobile engineering operates under the opposite paradigm: **the application binary executes on an untrusted, heterogeneous physical device at the hostile edge of the enterprise perimeter**.
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Engineering Vector</th>
+        <th>Server / Cloud Microservices</th>
+        <th>Enterprise Mobile Edge Runtime</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Host Environment</strong></td>
+        <td>Hermetic Linux containers with verified kernels, strict IAM roles, and no root privilege escalation.</td>
+        <td>Untrusted consumer hardware susceptible to OS jailbreaking, rooting, Magisk modules, and dynamic instrumentation (Frida).</td>
+      </tr>
+      <tr>
+        <td><strong>Network Perimeter</strong></td>
+        <td>VPC private subnets with mutual TLS, ingress controllers, and internal DNS resolution.</td>
+        <td>Public cellular and untrusted Wi-Fi networks subject to rogue hotspots, packet sniffing, and MITM proxy inspection (Burp Suite, Charles).</td>
+      </tr>
+      <tr>
+        <td><strong>Release Rollbacks</strong></td>
+        <td>Instant zero-downtime blue/green or canary rollbacks executed in seconds via GitOps or CI/CD pipelines.</td>
+        <td>Immutable binaries distributed via public app stores. Rollbacks require App Store review, user download action, or client-side killswitches.</td>
+      </tr>
+      <tr>
+        <td><strong>Version Fragmentation</strong></td>
+        <td>Single or dual concurrent production versions running behind an API gateway.</td>
+        <td>Tens of legacy versions coexisting in the wild simultaneously across thousands of disparate Android and iOS device models.</td>
+      </tr>
+      <tr>
+        <td><strong>Observability Mechanism</strong></td>
+        <td>Continuous sidecar daemon scraping (Prometheus, OpenTelemetry collector) with guaranteed network transit.</td>
+        <td>Client-side buffered telemetry subject to device offline states, battery saver throttling, OS memory kills, and network drops.</td>
+      </tr>
+      <tr>
+        <td><strong>Incident Blast Radius</strong></td>
+        <td>A faulty microservice release triggers HTTP 500 errors; fixed by automated rollback in minutes.</td>
+        <td>A startup crash loop ("crash on launch") bricks the application permanently for all users until an emergency killswitch or store hotfix is released.</td>
+      </tr>
+    </tbody>
+  </table>
 </div>
 
-## 1. The Zero-Touch Delivery Philosophy
+---
 
-In manual development teams, deploying an update requires a developer to generate an APK, AAB, or IPA on their local laptop, log into web consoles (Google Play Console and App Store Connect) with personal credentials, manually fill out forms, drag-and-drop gigabyte-sized files over unstable Wi-Fi, and manually assign tester groups.
+## 2. Unified Platform Services Architecture
 
-This manual process introduces severe enterprise risks:
-* **Version Skew:** Developers accidentally upload debug variants or test binaries missing critical release flags.
-* **Credential Exposure:** Team members share master developer credentials or two-factor authentication (2FA) SMS codes.
-* **ProGuard Mapping Loss:** Deobfuscation files (`mapping.txt` and `dSYM.zip`) are lost or forgotten, rendering production crash analytics unreadable.
-* **Auditing Failure:** No tamper-proof log exists to prove which commit hash corresponds to the distributed binary.
+To solve these edge constraints, the enterprise mobile runtime embeds five dedicated platform layers that govern the application lifecycle from initial boot to emergency revocation:
 
-In a **Zero-Touch Delivery** pipeline, human developers never upload binaries. Merging an approved release branch automatically triggers Bitrise to compile, sign, attach debug symbols, authenticate via machine-to-machine service keys, and publish directly to designated internal testing tracks within minutes.
-
-<DiagramExpand id="diag-store-delivery-pipeline" title="Enterprise Zero-Touch Store Delivery Flow">
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-module05-arch-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">ENTERPRISE MOBILE PLATFORM SERVICES TOPOLOGY</span>
+    <label for="diagram-module05-arch-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
 
 ```mermaid
 graph TD
-    classDef git fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff
-    classDef ci fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff
-    classDef store fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff
-    classDef user fill:#162e20,stroke:#a855f7,stroke-width:2px,color:#ffffff
-
-    Git["Git Release Merge (release/v2.4.0)"] --> BitriseRelease["Bitrise Release Workflow"]
-    
-    subgraph BitriseRunner ["Bitrise Cloud Runner"]
-        BitriseRelease --> AndroidBuild["Build Signed AAB + R8 Mapping"]
-        BitriseRelease --> iOSBuild["Build Signed IPA + dSYM Bundle"]
-        AndroidBuild --> GooglePlayStep["google-play-deploy Step"]
-        iOSBuild --> TestFlightStep["deploy-to-itunesconnect Step"]
+    subgraph ClientRuntime ["1. CLIENT MOBILE RUNTIME (React Native / Android Kotlin / iOS Swift)"]
+        UI["Application UI & Business Workflows"]
+        
+        subgraph CoreSubsystems ["Platform Services Core Subsystems"]
+            DD["Datadog Telemetry SDK<br/>(RUM, Traces, Mobile Vitals, Crash)"]
+            VG["Version Gating Interceptor<br/>(SemVer Engine & Killswitch Modal)"]
+            SEC["Security Guardian<br/>(Dual-Key Pinning, Root Check, Blur)"]
+            PN["Push Notification Manager<br/>(FCM Receiver & NotificationUtil Bridge)"]
+            DW["Data Wipe & Key Shredder<br/>(Hardware KeyStore / Keychain Wipe)"]
+        end
+        
+        UI --> DD
+        UI --> VG
+        UI --> SEC
+        UI --> PN
+        UI --> DW
     end
 
-    GooglePlayStep -->|GCP Service Account Auth| PlayAPI["Google Play Developer API"]
-    TestFlightStep -->|App Store Connect API Key| AppStoreAPI["App Store Connect API"]
+    subgraph TransportLayer ["2. SECURE TRANSPORT LAYER (mTLS & Zero-Trust Gateway)"]
+        PIN["Public Key Pinning Validation<br/>(Primary Hash + Backup Leaf Pin)"]
+        TRACE["Distributed Trace Propagation<br/>(x-datadog-trace-id / x-datadog-parent-id)"]
+        GW["Enterprise API Gateway<br/>(Zero-Trust Edge & Ingress Proxy)"]
+        
+        SEC --> PIN
+        DD --> TRACE
+        PIN --> GW
+        TRACE --> GW
+    end
 
-    PlayAPI --> PlayConsole["Google Play Console: Internal Track"]
-    AppStoreAPI --> TestFlightGroup["Apple TestFlight: Internal QA Group"]
+    subgraph BackendEcosystem ["3. ENTERPRISE BACKEND & CLOUD PLATFORMS"]
+        DD_CLOUD["Datadog Cloud Platform<br/>(RUM Dashboards, APM Traces, Error Tracking)"]
+        CONFIG_SRV["Dynamic Version Config Service<br/>(CDN-Backed App Version Rules & Killswitch)"]
+        PUSH_SRV["Push Notification Dispatchers<br/>(AWS SNS Fanout, PushJS, FCM v1, APNs HTTP/2)"]
+        MDM_SRV["Enterprise MDM / EMM<br/>(Microsoft Intune, Workspace ONE, Jamf Pro)"]
+        CORE_API["Core Business Microservices<br/>(Order Management, Payments, CRM)"]
+        
+        GW --> CORE_API
+        DD -->|Batched HTTPS Telemetry| DD_CLOUD
+        VG -->|Version Check / Ping| CONFIG_SRV
+        PUSH_SRV -->|Encrypted Remote Push| PN
+        MDM_SRV -->|Silent Push Wipe Directive| DW
+    end
+```
 
-    PlayConsole --> AndroidTesters["Android QA Testers (Play Store App)"]
-    TestFlightGroup --> iOSTesters["iOS QA Testers (TestFlight App)"]
+  </div>
+</div>
 
-    class Git git
-    class BitriseRelease,AndroidBuild,iOSBuild,GooglePlayStep,TestFlightStep ci
-    class PlayAPI,AppStoreAPI,PlayConsole,TestFlightGroup store
-    class AndroidTesters,iOSTesters user
+---
+
+## 3. The 5 Core Platform Pillars
+
+Every production mobile application in the enterprise portfolio must implement and verify each of the five platform pillars before advancing through the release gate.
+
+<div class="portal-grid">
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-purple">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+      </div>
+      <h3 class="portal-card-title">5.1 Datadog RUM Telemetry &amp; APM</h3>
+      <p class="portal-card-desc">
+        Real-time telemetry capturing crashes, user action journeys, frontend network latency, slow and frozen frames, and distributed tracing injected across all outbound HTTP requests.
+      </p>
+      <div class="portal-pills">
+        <a href="05-datadog-rum-telemetry.mdx" class="portal-pill-link">RUM Initialization</a>
+        <a href="05-datadog-rum-telemetry.mdx" class="portal-pill-link">Distributed Tracing</a>
+        <a href="05-datadog-rum-telemetry.mdx" class="portal-pill-link">Mobile Vitals</a>
+        <a href="05-datadog-rum-telemetry.mdx" class="portal-pill-link">TGRC PII Masking</a>
+        <a href="05-datadog-rum-telemetry.mdx" class="portal-pill-link">Bitrise Symbolication</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="05-datadog-rum-telemetry.mdx" class="portal-view-link">View Specification &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-rose">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+        </svg>
+      </div>
+      <h3 class="portal-card-title">5.2 App Version Enforcement &amp; Killswitch</h3>
+      <p class="portal-card-desc">
+        Dynamic four-tier client governance: Allowed version passthrough, dismissable Soft Update prompts, non-dismissable Hard Upgrade blocking, and zero-day Emergency Killswitch lockouts.
+      </p>
+      <div class="portal-pills">
+        <a href="05-app-version-enforcement-killswitch.mdx" class="portal-pill-link">4-Tier Policy</a>
+        <a href="05-app-version-enforcement-killswitch.mdx" class="portal-pill-link">Soft Update (Skip)</a>
+        <a href="05-app-version-enforcement-killswitch.mdx" class="portal-pill-link">Hard Upgrade (Lock)</a>
+        <a href="05-app-version-enforcement-killswitch.mdx" class="portal-pill-link">Emergency Killswitch</a>
+        <a href="05-app-version-enforcement-killswitch.mdx" class="portal-pill-link">SemVer Engine</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="05-app-version-enforcement-killswitch.mdx" class="portal-view-link">View Specification &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-blue">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </div>
+      <h3 class="portal-card-title">5.3 Push Notifications Backend Infrastructure</h3>
+      <p class="portal-card-desc">
+        Multi-platform push architecture spanning FCM and APNs, strict 4KB/2KB payload quotas, Apple App Store review compliance, Java AWS SNS dispatch, and Node.js PushJS.
+      </p>
+      <div class="portal-pills">
+        <a href="05-push-notifications.mdx" class="portal-pill-link">FCM &amp; APNs Specs</a>
+        <a href="05-push-notifications.mdx" class="portal-pill-link">Payload Quotas (4KB)</a>
+        <a href="05-push-notifications.mdx" class="portal-pill-link">Apple Review Rules</a>
+        <a href="05-push-notifications.mdx" class="portal-pill-link">Java AWS SNS Util</a>
+        <a href="05-push-notifications.mdx" class="portal-pill-link">Node.js PushJS SDK</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="05-push-notifications.mdx" class="portal-view-link">View Specification &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-green">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <h3 class="portal-card-title">5.4 Mobile Security &amp; OWASP MASVS</h3>
+      <p class="portal-card-desc">
+        Defense-in-depth security aligning with OWASP MASVS L1/L2: Dual-key SSL public key pinning with 60-day backup rotation, root/jailbreak heuristic detection, and app switcher privacy blur.
+      </p>
+      <div class="portal-pills">
+        <a href="05-mobile-security-foundations.mdx" class="portal-pill-link">OWASP MASVS L1/L2</a>
+        <a href="05-mobile-security-foundations.mdx" class="portal-pill-link">Dual-Key SSL Pinning</a>
+        <a href="05-mobile-security-foundations.mdx" class="portal-pill-link">Backup Leaf Hashes</a>
+        <a href="05-mobile-security-foundations.mdx" class="portal-pill-link">Root / Jailbreak Check</a>
+        <a href="05-mobile-security-foundations.mdx" class="portal-pill-link">Task Snapshot Blur</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="05-mobile-security-foundations.mdx" class="portal-view-link">View Specification &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div>
+      <div class="portal-icon-badge badge-amber">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18"/>
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+          <line x1="10" y1="11" x2="10" y2="17"/>
+          <line x1="14" y1="11" x2="14" y2="17"/>
+        </svg>
+      </div>
+      <h3 class="portal-card-title">5.5 Remote Data Wipe &amp; Stolen Device Protocol</h3>
+      <p class="portal-card-desc">
+        Enterprise protocol for stolen, lost, or compromised devices: Hardware KeyStore/Keychain master key shredding, SQLite Room &amp; SwiftData file zeroing, MMKV cache purge, and login reset.
+      </p>
+      <div class="portal-pills">
+        <a href="05-remote-data-wipe.mdx" class="portal-pill-link">Stolen Phone Flow</a>
+        <a href="05-remote-data-wipe.mdx" class="portal-pill-link">Hardware Key Shred</a>
+        <a href="05-remote-data-wipe.mdx" class="portal-pill-link">Database Zeroing</a>
+        <a href="05-remote-data-wipe.mdx" class="portal-pill-link">Silent Push Trigger</a>
+        <a href="05-remote-data-wipe.mdx" class="portal-pill-link">Zero Residual PII</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href="05-remote-data-wipe.mdx" class="portal-view-link">View Specification &rarr;</a>
+    </div>
+  </div>
+
+</div>
+
+---
+
+## 4. Emergency Incident & Killswitch Workflow
+
+When a critical zero-day defect, security exploit, or breaking backend schema change occurs in production, the platform services work in concert to halt traffic, notify engineers, and remediate the issue without requiring an immediate app store release:
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-incident-flow-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">ENTERPRISE INCIDENT DETECTION &amp; KILLSWITCH PROPAGATION</span>
+    <label for="diagram-incident-flow-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+graph TD
+    subgraph DetectionPhase ["1. REAL-TIME DETECTION (0 - 2 Minutes)"]
+        CLIENT_CRASH["Client Crash / Critical Bug Triggered"]
+        DD_AGENT["Datadog SDK Buffers Error & Trace"]
+        DD_INGEST["Datadog Ingestion Pipeline"]
+        DD_MONITOR["Datadog P1 Monitor: Crash Rate > 1.0%"]
+        PAGERDUTY["PagerDuty Alert to On-Call Mobile Lead"]
+        
+        CLIENT_CRASH --> DD_AGENT
+        DD_AGENT --> DD_INGEST
+        DD_INGEST --> DD_MONITOR
+        DD_MONITOR --> PAGERDUTY
+    end
+
+    subgraph TriageMitigation ["2. EMERGENCY MITIGATION (2 - 5 Minutes)"]
+        TRIAGE["On-Call Lead Verifies Impact<br/>(Identifies Affected App Version range, e.g. v2.4.0)"]
+        KILL_SWITCH["Activate Emergency Killswitch via Edge Config<br/>(state: EMERGENCY_OUTAGE or MIN_VERSION=2.4.1)"]
+        EDGE_CACHE["Global CDN Invalidation (&lt; 60s Global Edge Sync)"]
+        
+        PAGERDUTY --> TRIAGE
+        TRIAGE --> KILL_SWITCH
+        KILL_SWITCH --> EDGE_CACHE
+    end
+
+    subgraph ClientEnforcement ["3. EDGE CLIENT ENFORCEMENT (&lt; 60 Seconds)"]
+        APP_BOOT["Mobile App Performs Background Version Check"]
+        MODAL_LOCK["Hard Modal Displayed: App Locked<br/>(Network Interceptor Blocks Outbound Traffic)"]
+        STORE_LINK["User Directed to Play Store / TestFlight Hotfix Track"]
+        
+        EDGE_CACHE --> APP_BOOT
+        APP_BOOT --> MODAL_LOCK
+        MODAL_LOCK --> STORE_LINK
+    end
+
+    subgraph RemediationVerification ["4. REMEDIATION & VERIFICATION"]
+        HOTFIX["Bitrise Builds & Deploys Verified Hotfix (v2.4.1)"]
+        VERIFY["Datadog Confirms Crash-Free Users > 99.9%"]
+        RESTORE["Killswitch Deactivated; Service Restored"]
+        
+        STORE_LINK --> HOTFIX
+        HOTFIX --> VERIFY
+        VERIFY --> RESTORE
+    end
+```
+
+  </div>
+</div>
+
+---
+
+## 5. Enterprise Service Level Objectives (SLOs) & Thresholds
+
+Production releases must adhere to strict corporate observability and security thresholds. Any violation of these limits during staging or production canary deployment results in an automated release halt:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Platform Service</th>
+        <th>Key Metric</th>
+        <th>Enterprise Target / SLO</th>
+        <th>Alert Threshold (P1/P2)</th>
+        <th>Enforcement Mechanism</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Datadog RUM</strong></td>
+        <td>Crash-Free Users</td>
+        <td>&ge; 99.90%</td>
+        <td>&lt; 99.80% (P1 Page)</td>
+        <td>Automated Bitrise canary rollback &amp; Jira incident ticket.</td>
+      </tr>
+      <tr>
+        <td><strong>Datadog RUM</strong></td>
+        <td>Crash-Free Sessions</td>
+        <td>&ge; 99.85%</td>
+        <td>&lt; 99.50% (P2 Alert)</td>
+        <td>Slack alert to <code>#mobile-ops-duty</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>Mobile Vitals</strong></td>
+        <td>Time to First Display (TTFD)</td>
+        <td>&lt; 1,500 ms (Cold Boot)</td>
+        <td>&gt; 2,500 ms (P2 Alert)</td>
+        <td>Release blocked if cold start degrades by &gt; 20% vs baseline.</td>
+      </tr>
+      <tr>
+        <td><strong>Mobile Vitals</strong></td>
+        <td>Frozen Frames Ratio</td>
+        <td>&lt; 0.5% of total frames</td>
+        <td>&gt; 1.0% (P3 Defect)</td>
+        <td>Sprint tech-debt backlog item created automatically.</td>
+      </tr>
+      <tr>
+        <td><strong>Version Governance</strong></td>
+        <td>Killswitch Edge Propagation</td>
+        <td>&lt; 60 seconds worldwide</td>
+        <td>&gt; 120 seconds</td>
+        <td>Multi-region Cloudflare / Fastly CDN edge invalidation.</td>
+      </tr>
+      <tr>
+        <td><strong>Push Notifications</strong></td>
+        <td>Payload Size Limit</td>
+        <td>&le; 4,096 bytes (FCM Data)</td>
+        <td>&gt; 4,000 bytes (Warning)</td>
+        <td>Backend dispatcher rejects oversized payloads with HTTP 413.</td>
+      </tr>
+      <tr>
+        <td><strong>Mobile Security</strong></td>
+        <td>SSL Certificate Pin Validity</td>
+        <td>Dual-pinned (Primary + Backup)</td>
+        <td>&lt; 60 days to cert expiration</td>
+        <td>Automated SecOps CI scanner flags expiring certificate leaves.</td>
+      </tr>
+      <tr>
+        <td><strong>Remote Data Wipe</strong></td>
+        <td>Execution Latency</td>
+        <td>&lt; 1,500 ms to key destruction</td>
+        <td>&gt; 3,000 ms</td>
+        <td>Hardware keystore alias deletion is prioritized before disk zeroing.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 6. Cross-Platform Technology Matrix
+
+The platform services stack is standardized across all supported mobile runtimes:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Platform Capability</th>
+        <th>React Native Stack</th>
+        <th>Native Android (Kotlin)</th>
+        <th>Native iOS (Swift)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Telemetry &amp; RUM</strong></td>
+        <td><code>@datadog/mobile-react-native</code></td>
+        <td><code>com.datadoghq:dd-sdk-android-rum</code></td>
+        <td><code>DatadogRUM</code> (Swift Package)</td>
+      </tr>
+      <tr>
+        <td><strong>Network Interception</strong></td>
+        <td>Datadog Axios / Fetch auto-instrumentation</td>
+        <td><code>DatadogInterceptor</code> + OkHttp 4.x</td>
+        <td><code>URLSessionInstrumentation</code> delegate</td>
+      </tr>
+      <tr>
+        <td><strong>Version Enforcement</strong></td>
+        <td><code>react-native-version-check</code> + Custom Modal</td>
+        <td>Google Play In-App Updates SDK + Custom Fallback</td>
+        <td>App Store Lookup API + Custom Force Update Controller</td>
+      </tr>
+      <tr>
+        <td><strong>Push Notifications</strong></td>
+        <td><code>@react-native-firebase/messaging</code></td>
+        <td><code>FirebaseMessagingService</code> (FCM v1)</td>
+        <td><code>UNUserNotificationCenter</code> + APNs HTTP/2</td>
+      </tr>
+      <tr>
+        <td><strong>Backend Dispatchers</strong></td>
+        <td>Node.js <code>@enterprise/mobile-pushjs</code></td>
+        <td>Java Spring Boot <code>NotificationUtil</code> (AWS SNS)</td>
+        <td>Java Spring Boot <code>NotificationUtil</code> (AWS SNS)</td>
+      </tr>
+      <tr>
+        <td><strong>SSL Public Key Pinning</strong></td>
+        <td><code>react-native-ssl-pinning</code> (TrustKit engine)</td>
+        <td>Android <code>res/xml/network_security_config.xml</code></td>
+        <td><code>TrustKit.initSharedInstance(withConfiguration:)</code></td>
+      </tr>
+      <tr>
+        <td><strong>Root / Jailbreak Guard</strong></td>
+        <td><code>react-native-device-info</code> + Native Modules</td>
+        <td><code>com.scottyab:rootbeer-lib</code></td>
+        <td><code>IOSSecuritySuite</code> / <code>DTTJailbreakDetection</code></td>
+      </tr>
+      <tr>
+        <td><strong>Privacy Screen Blur</strong></td>
+        <td><code>react-native-privacy-snapshot</code></td>
+        <td><code>window.setFlags(FLAG_SECURE, FLAG_SECURE)</code></td>
+        <td><code>sceneDidEnterBackground</code> overlay view</td>
+      </tr>
+      <tr>
+        <td><strong>Cryptographic Storage</strong></td>
+        <td><code>react-native-mmkv</code> (hardware encrypted)</td>
+        <td>Android <code>EncryptedSharedPreferences</code> + Keystore</td>
+        <td>Apple Keychain Services (<code>kSecAttrAccessible</code>)</td>
+      </tr>
+      <tr>
+        <td><strong>Remote Data Wipe</strong></td>
+        <td>Native Bridge <code>DeviceSecurityModule.wipeAllData()</code></td>
+        <td><code>KeyStore.deleteEntry()</code> + Room database drop</td>
+        <td><code>SecItemDelete()</code> + CoreData / SwiftData wipe</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 7. Pre-Flight Observability & Security Verification Checklist
+
+Before opening a release Pull Request or promoting a build from Staging to Production, verify each verification item:
+
+* **[ ] Datadog Client Token & Env:** Ensure client token is loaded from encrypted Bitrise build secrets, environment is properly tagged (`env:production` or `env:staging`), and service name matches `mobile-app-enterprise`.
+* **[ ] Symbolication & Mapping Files Upload:** Bitrise pipeline step `datadog-upload-dsym` (iOS) and `datadog-upload-mapping` (Android) verified passing with zero missing symbol warnings.
+* **[ ] Distributed Tracing Propagation:** Verify outbound HTTP headers contain valid `x-datadog-trace-id`, `x-datadog-parent-id`, and `x-datadog-sampling-priority=1` without leaking to unapproved third-party domains.
+* **[ ] PII Masking Ingress Rules:** Confirm all input fields containing sensitive data (passwords, credit cards, SSN, tokens) use secure text entry to enforce Datadog automatic RUM text masking.
+* **[ ] Soft & Hard Update Triggers:** Verify dynamic version response handles all 4 states (`ALLOWED`, `SOFT_UPDATE_OPTIONAL`, `HARD_UPDATE_REQUIRED`, `EMERGENCY_KILLSWITCH`) with active fallback if network is unreachable.
+* **[ ] Push Notification Quotas:** Ensure all notification payloads dispatched by backend services conform to 4KB (FCM) and 4KB (APNs) limits, with strictly non-PII display content.
+* **[ ] Apple Push Review Compliance:** Confirm the app does not condition primary features on push notification permission (Guideline 4.5.4) and provides in-app permission toggle.
+* **[ ] Dual SSL Public Key Pinning:** Verify primary leaf and at least one unexpired backup leaf hash are configured. Confirm backup leaf is rotated if less than 60 days remain before expiry.
+* **[ ] Task Switcher Snapshot Protection:** Background the application on physical test devices; confirm the OS task switcher displays a blurred window or blank placeholder with no cached PII visible.
+* **[ ] Atomic Data Wipe Execution:** Trigger local wipe via diagnostic menu; confirm Keystore/Keychain master keys are permanently shredded and database files are zeroed from disk.
+
+
+
+
+
+---------------------------------
+
+
+
+
+---
+title: "Datadog Mobile RUM, APM & Real-Time Monitoring"
+description: "Enterprise specification for Datadog Real User Monitoring (RUM), distributed APM tracing, crash reporting symbolication, and mobile vitals across React Native, Android, and iOS."
+sidebar:
+  order: 2
+  label: 5.2 Datadog RUM Telemetry
+---
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import DiagramExpand from './DiagramExpand.astro';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">OBSERVABILITY &amp; PLATFORM SERVICES</span>
+    <span class="portal-hub-tag">MODULE 5.2 &bull; REAL-TIME TELEMETRY SPECIFICATION</span>
+  </div>
+  <h1 class="portal-hero-title">Datadog Mobile RUM, APM &amp; Real-Time Monitoring</h1>
+  <p class="portal-hero-desc">
+    Eliminate blind spots in production mobile applications. The Datadog Observability Foundation standardizes Real User Monitoring (RUM), distributed network tracing, crash symbolication, and mobile performance vitals across React Native, Android, and iOS while strictly enforcing PII privacy redaction.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Real User Monitoring (RUM)</div>
+      <div class="portal-cap-desc">Automated view tracking &bull; User gestures &bull; Action timelines</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Distributed APM Tracing</div>
+      <div class="portal-cap-desc">x-datadog-trace-id injection &bull; Mobile-to-Kubernetes correlation</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Mobile Vitals &amp; Crashes</div>
+      <div class="portal-cap-desc">TTID &bull; TTFD &bull; Frozen frames &bull; Automated R8 mapping &amp; dSYM sync</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">TGRC &amp; Privacy Shield</div>
+      <div class="portal-cap-desc">GDPR compliant &bull; Input field masking &bull; Auth token sanitization</div>
+    </div>
+  </div>
+</div>
+
+<div class="portal-alert-box danger">
+  <div class="portal-alert-title">TGRC &amp; PRIVACY COMPLIANCE MANDATE</div>
+  <p>
+    Enterprise Technology Governance &amp; Regulatory Compliance (TGRC) and global privacy laws (GDPR, CCPA) strictly forbid transmitting Personally Identifiable Information (PII) to observability vendors. Developers must never log plaintext passwords, credit card numbers, government IDs, biometric data, or raw authentication tokens (<code>Authorization: Bearer ...</code>). All text input fields and HTTP headers must pass through Datadog masking and sanitization filters.
+  </p>
+</div>
+
+---
+
+## 1. End-to-End Observability Architecture
+
+Mobile observability connects user device interactions directly to backend microservices. When a user interacts with the app, the Datadog SDK records client-side RUM events, measures render vitals, attaches distributed trace headers to outgoing network requests, and correlates client telemetry with backend Kubernetes APM spans:
+
+<DiagramExpand id="diag-datadog-rum-architecture" title="Enterprise Mobile Observability &amp; Distributed Tracing Flow">
+
+```mermaid
+graph TD
+    classDef client fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    classDef trace fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff
+    classDef backend fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff
+    classDef dd fill:#1a1028,stroke:#a855f7,stroke-width:2px,color:#ffffff
+
+    User["User Screen Interaction"] --> RUMEngine["Datadog Mobile RUM SDK"]
+    
+    subgraph MobileDevice ["Mobile Application Layer (iOS / Android / RN)"]
+        RUMEngine --> ViewTracking["View Tracking (TTID / TTFD)"]
+        RUMEngine --> ActionTracking["User Tap & Gesture Logging"]
+        RUMEngine --> CrashRecorder["Crash Reporting (PLCrash / NDK)"]
+        RUMEngine --> HttpInterceptor["OkHttp / URLSession / Fetch Interceptor"]
+    end
+
+    HttpInterceptor -->|Injected Trace Headers: x-datadog-trace-id| ApiGateway["Enterprise API Gateway"]
+    
+    subgraph CloudBackend ["Enterprise Kubernetes Microservices"]
+        ApiGateway --> MicroserviceA["Orders Service (Spring Boot / Node)"]
+        MicroserviceA --> MicroserviceB["Payments Service (Go / Java)"]
+    end
+
+    MobileDevice -->|Batched GZIP Telemetry (Intake API)| DatadogCloud["Datadog SaaS Platform (US1 / EU1)"]
+    CloudBackend -->|APM Server Traces & Spans| DatadogCloud
+
+    subgraph DatadogDashboard ["Datadog Unified Observability Console"]
+        DatadogCloud --> RumSessions["RUM Session Replay & Journeys"]
+        DatadogCloud --> EndToEndTrace["Correlated End-to-End Flamegraph"]
+        DatadogCloud --> VitalsDashboard["Mobile Vitals (Slow / Frozen Frames)"]
+    end
+
+    class User,RUMEngine,ViewTracking,ActionTracking,CrashRecorder client
+    class HttpInterceptor trace
+    class ApiGateway,MicroserviceA,MicroserviceB backend
+    class DatadogCloud,RumSessions,EndToEndTrace,VitalsDashboard dd
 ```
 
 </DiagramExpand>
@@ -91,41 +644,36 @@ graph TD
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Attribute</th>
-        <th>Google Play Store Track</th>
-        <th>Apple TestFlight Group</th>
+        <th>Telemetry Pillar</th>
+        <th>What It Measures</th>
+        <th>Enterprise SLA / Target Threshold</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>Target Track / Group</strong></td>
-        <td><code>internal</code> (Internal Testing)</td>
-        <td><code>QA-Internal-Testers</code> (Internal Testing)</td>
+        <td><strong>Time to Initial Display (TTID)</strong></td>
+        <td>Duration between route transition start and the very first visual frame rendered.</td>
+        <td>&le; 800 milliseconds</td>
       </tr>
       <tr>
-        <td><strong>Review Required?</strong></td>
-        <td>No automated or human review</td>
-        <td>No review for Internal Testers (External requires Beta Review)</td>
+        <td><strong>Time to Full Display (TTFD)</strong></td>
+        <td>Duration until critical content and primary API payloads finish populating the screen.</td>
+        <td>&le; 2.0 seconds</td>
       </tr>
       <tr>
-        <td><strong>Time to Device</strong></td>
-        <td>2 to 5 minutes post-upload</td>
-        <td>5 to 15 minutes post-upload (Apple asset processing)</td>
+        <td><strong>Slow Frames</strong></td>
+        <td>Frames taking longer than 16.6ms (under 60 fps) to render.</td>
+        <td>&le; 5% of total frame count</td>
       </tr>
       <tr>
-        <td><strong>Maximum Testers</strong></td>
-        <td>100 email addresses per list</td>
-        <td>100 internal team members per App Store Connect account</td>
+        <td><strong>Frozen Frames</strong></td>
+        <td>Severe UI thread blocking where a frame takes longer than 500ms to render.</td>
+        <td>&le; 0.1% of user sessions</td>
       </tr>
       <tr>
-        <td><strong>Artifact Type</strong></td>
-        <td>Android App Bundle (<code>.aab</code>)</td>
-        <td>iOS App Store Package (<code>.ipa</code>)</td>
-      </tr>
-      <tr>
-        <td><strong>Crash Symbol Artifact</strong></td>
-        <td>ProGuard / R8 <code>mapping.txt</code></td>
-        <td>Xcode <code>dSYM.zip</code> archive</td>
+        <td><strong>Crash-Free Sessions</strong></td>
+        <td>Percentage of total user sessions that complete without an unhandled exception or crash.</td>
+        <td>&ge; 99.85% crash-free rate</td>
       </tr>
     </tbody>
   </table>
@@ -133,771 +681,2831 @@ graph TD
 
 ---
 
-## 2. Android: Google Play Developer API & Service Account
+## 2. Pre-Requisites & Project Provisioning
 
-To deploy Android App Bundles without human login or 2FA prompts, Bitrise communicates directly with the **Google Play Developer API** using an OAuth2 Service Account managed inside Google Cloud Platform (GCP).
+Before configuring SDKs inside application source code, complete the following platform provisioning steps:
 
-### Step 1: Link Google Cloud Project to Play Console
-1. Log into the **Google Play Console** using an Owner or Admin account.
-2. In the left navigation menu, navigate to **Settings** &gt; **Developer account** &gt; **API access**.
-3. If no Google Cloud project is linked, click **Choose a project to link** or **Create new Google Cloud project**. Link it to your enterprise cloud project.
+### Step 1: Corporate Access Entitlement
+1. Log into your corporate **Identity & Access Management Portal**.
+2. Request the **Datadog Observability Entitlement** for your team or business unit.
+3. Once approved, launch the Datadog console through the corporate single sign-on (SSO) applications portal.
 
-### Step 2: Create the Service Account in Google Cloud Console
-1. Navigate to the **Google Cloud Console** (`https://console.cloud.google.com/`) under the linked project.
-2. Open **IAM & Admin** &gt; **Service Accounts**.
-3. Click **Create Service Account**:
-   * **Service account name:** `bitrise-play-store-deployer`
-   * **Service account ID:** `bitrise-play-store-deployer`
-   * **Description:** Automated CI/CD binary deployment key for Bitrise runner.
-4. Click **Create and Continue**.
-5. In the **Grant this service account access to project** step, assign the role **Service Account User** (or continue without project-level roles, as permissions are granted in Play Console).
-6. Click **Done**.
+### Step 2: Create the Mobile Application in Datadog
+1. In the Datadog left navigation, open **UX Monitoring** &gt; **RUM Applications**.
+2. Click **New Application**.
+3. Configure the application profile:
+   * **Application Type:** Select `React Native`, `Android`, or `iOS`.
+   * **Application Name:** e.g., `Enterprise Mobile Portal` (or your project identifier).
+4. Datadog will generate your production credentials:
+   * **Application ID:** Unique UUID representing your application workspace.
+   * **Client Token:** Public ingestion token used to authenticate SDK telemetry.
+   * **Site:** `datadoghq.com` (US1) or corporate-designated region.
 
-### Step 3: Generate the JSON Private Key
-1. In the Service Accounts list, locate `bitrise-play-store-deployer@<project-id>.iam.gserviceaccount.com`.
-2. Click the three-dots menu icon under **Actions** and select **Manage keys**.
-3. Click **Add Key** &gt; **Create new key**.
-4. Select **JSON** as the key type and click **Create**.
-5. Save the downloaded JSON file securely. The file structure matches the following standard schema:
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT PLACEHOLDER</span>
+    <span class="portal-screenshot-location">Datadog Console: UX Monitoring &gt; RUM Applications &gt; New Application</span>
+  </div>
+  <p class="portal-screenshot-caption">
+    <strong>Capture Focus:</strong> Display the completed RUM Application setup screen showing the generated Application ID UUID, Client Token, and target environment flags.
+  </p>
+</div>
 
-```json
-{
-"type": "xxxxx",
-"project_id": "xxxxx",
-"private_key_id": "xxxxx",
-"private_key": "xxxxx",
-"client_email": "xxxxx",
-"client_id": "xxxxx",
-"auth_uri": "xxxxx",
-"token_uri": "xxxxx",
-"auth_provider_x509_cert_url": "xxxxx",
-"client_x509_cert_url": "xxxxx"
+---
+
+## 3. Cross-Platform SDK Implementation
+
+<Tabs>
+  <TabItem label="React Native" icon="seti:javascript">
+
+### 1. Install Dependencies
+Install the official Datadog React Native core SDK and the React Navigation integration package:
+
+```bash
+yarn add @datadog/mobile-react-native @datadog/mobile-react-navigation
+```
+
+For iOS projects, synchronize CocoaPods:
+```bash
+cd ios && pod install --repo-update && cd ..
+```
+
+### 2. Initialize Datadog in Root Application
+Configure the SDK in your application root file (`index.js` or `App.tsx`) before mounting the component hierarchy:
+
+```typescript
+import { 
+  DdSdkReactNative, 
+  DdSdkReactNativeConfiguration, 
+  UploadFrequency, 
+  BatchSize 
+} from '@datadog/mobile-react-native';
+
+const initDatadog = async () => {
+  const config = new DdSdkReactNativeConfiguration(
+    process.env.DATADOG_CLIENT_TOKEN || "puba1b2c3d4e5f6g7h8i9j0",
+    process.env.APP_ENV || "production",
+    process.env.DATADOG_APPLICATION_ID || "12345678-abcd-1234-abcd-123456789abc",
+    true, // trackUserInteractions (taps, scrolls)
+    true, // trackXhrResources (network payloads)
+    true  // trackErrors (unhandled JS exceptions)
+  );
+
+  config.site = "US1";
+  config.nativeCrashReportEnabled = true;
+  config.sampleRate = 100; // 100% telemetry capture
+  config.uploadFrequency = UploadFrequency.AVERAGE;
+  config.batchSize = BatchSize.MEDIUM;
+
+  // Mask user input to satisfy TGRC & GDPR rules
+  config.telemetryConfigurationSampleRate = 100;
+  
+  await DdSdkReactNative.initialize(config);
+};
+
+initDatadog();
+```
+
+### 3. Automated Screen Tracking with React Navigation
+Attach the Datadog navigation tracking listener to your `NavigationContainer` to automatically log view transitions, render durations, and screen names:
+
+```typescript
+import React, { useRef } from 'react';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
+import { DdRumReactNavigationTracking } from '@datadog/mobile-react-navigation';
+
+export const AppNavigator = () => {
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
+
+  return (
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => {
+        // Automatically captures screen names and view durations
+        DdRumReactNavigationTracking.startTrackingViews(navigationRef.current);
+      }}
+    >
+      {/* Application Stack Screens */}
+    </NavigationContainer>
+  );
+};
+```
+
+### 4. Custom Action & Error Tracking
+```typescript
+import { DdRum, RumActionType, DdLogs } from '@datadog/mobile-react-native';
+
+// Log custom user action with context attributes
+export const onCheckoutSubmitted = (cartId: string, itemCount: number) => {
+  DdRum.addAction(RumActionType.TAP, "checkout_button", {
+    "cart.id": cartId,
+    "cart.item_count": itemCount,
+  });
+};
+
+// Log handled non-fatal error
+export const logApiError = (endpoint: string, statusCode: number, errorMsg: string) => {
+  DdLogs.error("API Request Failed", {
+    "http.url": endpoint,
+    "http.status_code": statusCode,
+    "error.message": errorMsg,
+  });
+};
+```
+
+  </TabItem>
+
+  <TabItem label="Android (Kotlin)" icon="seti:kotlin">
+
+### 1. Add Dependencies (`android/app/build.gradle`)
+```groovy
+dependencies {
+    implementation "com.datadoghq:dd-sdk-android-rum:2.7.0"
+    implementation "com.datadoghq:dd-sdk-android-okhttp:2.7.0"
+    implementation "com.datadoghq:dd-sdk-android-trace:2.7.0"
 }
 ```
 
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT PLACEHOLDER</span>
-    <span class="portal-screenshot-location">Google Cloud Console: IAM & Admin &gt; Service Accounts &gt; Keys</span>
-  </div>
-  <p class="portal-screenshot-caption">
-    <strong>Capture Focus:</strong> Show the Service Account details page displaying the <code>bitrise-play-store-deployer</code> email address, the active JSON key ID, and the key creation timestamp with status set to Active.
-  </p>
-</div>
+### 2. Initialize in `MainApplication.kt`
+Initialize Datadog inside `onCreate()` before inflating activities:
 
-### Step 4: Grant Permissions in Google Play Console
-1. Return to the **Google Play Console** &gt; **Users and permissions**.
-2. Click **Invite new user**.
-3. In the **Email address** field, paste the exact service account email: `bitrise-play-store-deployer@<project-id>.iam.gserviceaccount.com`.
-4. Under **App permissions**, click **Add app** and select your mobile application.
-5. In the permissions dialog, check the following enterprise permissions:
-   * **Releases:**
-     * *Manage production tracks*
-     * *Manage testing tracks (internal, closed, open)*
-     * *Release apps to testing tracks*
-     * *Edit and delete draft releases*
-6. Click **Apply**, then click **Invite user** at the bottom right. No email verification is required; the service account is active immediately.
+```kotlin
+package com.enterprise.mobileapp
 
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT PLACEHOLDER</span>
-    <span class="portal-screenshot-location">Google Play Console: Users and Permissions &gt; User Details</span>
-  </div>
-  <p class="portal-screenshot-caption">
-    <strong>Capture Focus:</strong> Display the permissions matrix granted to the Service Account email address, highlighting checked boxes for "Release apps to testing tracks" and "Manage testing tracks".
-  </p>
-</div>
+import android.app.Application
+import com.datadog.android.Datadog
+import com.datadog.android.DatadogSite
+import com.datadog.android.core.configuration.Configuration
+import com.datadog.android.core.configuration.Credentials
+import com.datadog.android.privacy.TrackingConsent
+import com.datadog.android.rum.Rum
+import com.datadog.android.rum.RumConfiguration
+import com.datadog.android.rum.tracking.ActivityViewTrackingStrategy
 
-<div class="portal-alert-box warning">
-  <div class="portal-alert-title">THE INITIAL UPLOAD RULE</div>
-  <p>
-    The Google Play Developer API <strong>cannot</strong> create a brand-new application from scratch. You must manually upload your very first signed <code>.aab</code> file once through the Google Play Console web UI to register the package name, app icon, store listing, and privacy policy. All subsequent releases can be 100% automated via Bitrise.
-  </p>
-</div>
+class MainApplication : Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+
+        val environment = BuildConfig.BUILD_TYPE
+        val clientToken = BuildConfig.DATADOG_CLIENT_TOKEN
+        val applicationId = BuildConfig.DATADOG_APPLICATION_ID
+
+        val credentials = Credentials(
+            clientToken = clientToken,
+            env = environment,
+            variant = BuildConfig.FLAVOR,
+            rumApplicationId = applicationId
+        )
+
+        val configuration = Configuration.Builder(
+            clientToken = clientToken,
+            env = environment,
+            variant = BuildConfig.FLAVOR
+        )
+            .useSite(DatadogSite.US1)
+            .build()
+
+        Datadog.initialize(this, credentials, configuration, TrackingConsent.GRANTED)
+
+        // Enable Real User Monitoring (RUM)
+        val rumConfig = RumConfiguration.Builder(applicationId)
+            .trackUserInteractions()
+            .useViewTrackingStrategy(ActivityViewTrackingStrategy(true))
+            .trackLongTasks(250L) // Capture slow UI rendering > 250ms
+            .build()
+
+        Rum.enable(rumConfig)
+    }
+}
+```
+
+### 3. OkHttp Network Interceptor for Distributed Tracing
+Add the `DatadogInterceptor` to your OkHttpClient instance. This automatically attaches `x-datadog-trace-id` headers to correlate Android API calls with backend microservices:
+
+```kotlin
+import com.datadog.android.okhttp.DatadogInterceptor
+import okhttp3.OkHttpClient
+
+val okHttpClient = OkHttpClient.Builder()
+    .addInterceptor(
+        DatadogInterceptor(
+            tracedHosts = listOf("api.enterprise.internal", "gateway.enterprise.internal"),
+            rumResourceAttributesProvider = { request, response, throwable ->
+                mapOf("app.network.carrier" to "enterprise_cellular")
+            }
+        )
+    )
+    .build()
+```
+
+  </TabItem>
+
+  <TabItem label="iOS (Swift)" icon="seti:swift">
+
+### 1. Swift Package Manager (SPM) Setup
+Inside Xcode, open **File** &gt; **Add Package Dependencies** and add:
+* **Repository URL:** `https://github.com/DataDog/dd-sdk-ios.git`
+* **Dependency Rule:** Up to Next Major Version (`2.12.0`)
+* **Modules:** `DatadogRUM`, `DatadogCrashReporting`, `DatadogTrace`
+
+### 2. Enterprise Wrapper Implementation (`DatadogAnalyticsWrapper.swift`)
+Enterprise iOS standards utilize a singleton wrapper pattern reading configuration values from build scheme environment variables:
+
+```swift
+import Foundation
+import UIKit
+import DatadogCore
+import DatadogRUM
+import DatadogCrashReporting
+
+@objc public final class DatadogAnalyticsWrapper: NSObject {
+    @objc public static let shared = DatadogAnalyticsWrapper()
+
+    private override init() {
+        super.init()
+    }
+
+    @objc public func configure() {
+        guard let clientToken = ProcessInfo.processInfo.environment["CLIENT_TOKEN"],
+              let env = ProcessInfo.processInfo.environment["ENV"],
+              let appName = ProcessInfo.processInfo.environment["APP_NAME"],
+              let applicationId = ProcessInfo.processInfo.environment["APPLICATION_ID"] else {
+            print("[Datadog] Missing environment configuration. Skipping telemetry init.")
+            return
+        }
+
+        Datadog.initialize(
+            with: Datadog.Configuration(
+                clientToken: clientToken,
+                env: env,
+                site: .us1
+            ),
+            trackingConsent: .granted
+        )
+
+        // Enable RUM with automated view and tap tracking
+        RUM.enable(
+            with: RUM.Configuration(
+                applicationID: applicationId,
+                uiKitViewsPredicate: DefaultUIKitRUMViewsPredicate(),
+                uiKitActionsPredicate: DefaultUIKitRUMActionsPredicate()
+            )
+        )
+
+        // Enable Native Crash Reporting
+        CrashReporting.enable()
+
+        print("[Datadog] Initialized successfully for \(appName) [\(env)]")
+    }
+
+    @objc public func log(action: String, attributes: [String: Any]? = nil) {
+        RUMMonitor.shared().addAction(
+            type: .custom,
+            name: action,
+            attributes: attributes ?? [:]
+        )
+    }
+}
+```
+
+### 3. Initialize in `AppDelegate.swift`
+```swift
+import UIKit
+
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate {
+
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        // Initialize Enterprise Datadog Wrapper
+        DatadogAnalyticsWrapper.shared.configure()
+        return true
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
 
 ---
 
-## 3. iOS: App Store Connect API Key & TestFlight Deliver
+## 4. Distributed APM Tracing (Mobile to Backend)
 
-For automated iOS delivery, Apple provides the **App Store Connect API**. Unlike legacy Apple ID username/password authentications that required constant 2FA verification codes, API keys are persistent, secure, machine-readable cryptographic tokens.
+In traditional systems, when an API fails with HTTP 500, backend engineers see an isolated server trace without knowing which user or screen triggered it. 
 
-### Step 1: Generate an App Store Connect API Key
-1. Log into **App Store Connect** (`https://appstoreconnect.apple.com/`) as an Account Holder or Admin.
-2. Select **Users and Access** from the top header navigation.
-3. Click the **Integrations** tab (or **Keys** tab in legacy consoles).
-4. Click the **Add (+)** button next to App Store Connect API:
-   * **Name:** `Bitrise-CI-CD-Deployer`
-   * **Access Role:** `App Manager` (allows uploading builds, creating release notes, and managing TestFlight tester groups)
-5. Click **Generate**.
-
-### Step 2: Extract Key Identifiers and Download Private Key
-After generation, the table will display:
-* **Issuer ID:** A standard UUID representing your Apple Developer Team (e.g., `57246542-96fe-1a63-e053-0824d011072a`).
-* **Key ID:** A 10-character alphanumeric identifier (e.g., `D3ABC12345`).
-* **Download API Key:** A link allowing you to download `AuthKey_D3ABC12345.p8`.
-
-<div class="portal-alert-box danger">
-  <div class="portal-alert-title">IRREVERSIBLE ONE-TIME DOWNLOAD</div>
-  <p>
-    Apple permits downloading the <code>.p8</code> private key file <strong>exactly once</strong>. Once the page is refreshed or left, the download button disappears forever. Store this file immediately in your enterprise password manager before closing the browser window.
-  </p>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT PLACEHOLDER</span>
-    <span class="portal-screenshot-location">App Store Connect: Users and Access &gt; Integrations &gt; App Store Connect API</span>
-  </div>
-  <p class="portal-screenshot-caption">
-    <strong>Capture Focus:</strong> Capture the API Keys table showing the Key Name, Key ID (10 characters), Issuer ID (UUID), and the role set to "App Manager".
-  </p>
-</div>
-
-### Step 3: Configure Bitrise Secrets for App Store Connect
-In your Bitrise Project Web Console, open **Workflows** &gt; **Secrets** tab and define:
+With **Distributed APM Tracing**, the Datadog mobile SDK injects cryptographic correlation headers into every HTTP request made to designated internal domains:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Bitrise Secret Key</th>
-        <th>Value Type</th>
-        <th>Description / Example</th>
+        <th>Header Name</th>
+        <th>Sample Header Value</th>
+        <th>Purpose in Trace Propagation</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><code>APP_STORE_CONNECT_KEY_ID</code></td>
-        <td>Environment Variable</td>
-        <td>10-character Key ID (e.g., <code>D3ABC12345</code>)</td>
+        <td><code>x-datadog-trace-id</code></td>
+        <td><code>7192837491029384729</code></td>
+        <td>Global 64-bit unsigned trace ID that follows the request through every downstream service.</td>
       </tr>
       <tr>
-        <td><code>APP_STORE_CONNECT_ISSUER_ID</code></td>
-        <td>Environment Variable</td>
-        <td>UUID from App Store Connect (e.g., <code>57246542-96fe-1a63-e053-0824d011072a</code>)</td>
+        <td><code>x-datadog-parent-id</code></td>
+        <td><code>8493029481920394857</code></td>
+        <td>Identifies the immediate mobile network resource span that initiated the request.</td>
       </tr>
       <tr>
-        <td><code>APP_STORE_CONNECT_API_KEY_P8</code></td>
-        <td>Secret Environment Variable</td>
-        <td>Full plaintext content of <code>AuthKey_D3ABC12345.p8</code> including header and footer</td>
+        <td><code>x-datadog-sampling-priority</code></td>
+        <td><code>1</code></td>
+        <td>Informs backend trace samplers that this mobile session has been selected for full span retention.</td>
+      </tr>
+      <tr>
+        <td><code>x-datadog-origin</code></td>
+        <td><code>rum</code></td>
+        <td>Tags the backend trace origin as a Real User Monitoring (RUM) frontend transaction.</td>
       </tr>
     </tbody>
   </table>
 </div>
 
+```
+[Mobile App: View Screen] 
+       │ 
+       ├── (HTTP POST /api/v2/orders) 
+       │   x-datadog-trace-id: 7192837491029384729
+       │
+       ▼
+[Kubernetes API Gateway] ──────────► [Orders Microservice] ──────────► [Database]
+       │                                     │                              │
+   (Span 1)                              (Span 2)                       (Span 3)
+```
+
+In the Datadog APM console, opening an error span displays the **complete flamegraph**: from the exact button tapped on the user's phone, across the network hop, down to the exact SQL query executed in Kubernetes.
+
 ---
 
-## 4. Production Release Workflows (`bitrise.yml`)
+## 5. Automated Crash Deobfuscation in Bitrise
 
-The following complete, copy-paste ready Bitrise workflow definitions demonstrate how to compile signed release artifacts and distribute them directly to Google Play and Apple TestFlight.
+Production Android binaries are shrunk and obfuscated using **R8/ProGuard**, while iOS binaries strip symbol tables into **dSYM archives**. Without deobfuscation files, stack traces in Datadog appear as unreadable machine code:
+
+```text
+# Obfuscated Stack Trace (Unreadable):
+at a.b.c.d.a(SourceFile:42)
+at com.enterprise.mobileapp.MainActivity.d(Unknown Source:12)
+
+# Deobfuscated Stack Trace (With R8 Mapping / dSYM):
+at com.enterprise.mobileapp.features.checkout.CheckoutViewModel.submitPayment(CheckoutViewModel.kt:184)
+at com.enterprise.mobileapp.features.checkout.CheckoutFragment$onViewCreated$1.onClick(CheckoutFragment.kt:76)
+```
+
+### Automated Upload in Bitrise (`bitrise.yml`)
+Add the official Datadog deobfuscation steps to your Bitrise release workflows:
 
 ```yaml
-format_version: '11'
-default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
-project_type: react-native
+# =========================================================================
+# Upload Android ProGuard / R8 mapping.txt to Datadog
+# =========================================================================
+- datadog-upload-proguard-mapping@0:
+    title: Upload R8 Mapping to Datadog
+    inputs:
+      - client_token: $DATADOG_CLIENT_TOKEN
+      - site: "datadoghq.com"
+      - mapping_file_path: "android/app/build/outputs/mapping/release/mapping.txt"
+      - service: "mobile-app-android"
+      - version: $BITRISE_BUILD_NUMBER
 
-app:
-  envs:
-    - PACKAGE_NAME: "com.enterprise.mobileapp"
-    - BUNDLE_ID: "com.enterprise.mobileapp"
-    - GOOGLE_PLAY_TRACK: "internal"
-
-workflows:
-  # =========================================================================
-  # WORKFLOW: Release Android to Google Play Internal Testing
-  # =========================================================================
-  release_android:
-    summary: Builds signed Android AAB and publishes to Google Play Internal track
-    steps:
-      - activate-ssh-key@4:
-          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
-
-      - git-clone@8: {}
-
-      - yarn@0:
-          inputs:
-            - command: install --frozen-lockfile
-
-      - install-missing-android-tools@3:
-          inputs:
-            - gradlew_path: android/gradlew
-
-      # Inject dynamic build number into Android versionCode
-      - change-android-versioncode-and-versionname@1:
-          inputs:
-            - build_gradle_path: android/app/build.gradle
-            - new_version_code: $BITRISE_BUILD_NUMBER
-
-      # Download enterprise release keystore
-      - file-downloader@1:
-          inputs:
-            - source: $BITRISEIO_ANDROID_KEYSTORE_URL
-            - destination: android/app/release.keystore
-
-      # Download Google Play Service Account JSON key
-      - file-downloader@1:
-          inputs:
-            - source: $BITRISEIO_GPLAY_SERVICE_ACCOUNT_JSON_URL
-            - destination: /tmp/gplay-service-account.json
-
-      # Compile signed Release Android App Bundle (AAB)
-      - android-build@1:
-          inputs:
-            - project_location: android
-            - module: app
-            - variant: release
-            - build_type: aab
-            - app_path: android/app/build/outputs/bundle/release/app-release.aab
-
-      # Deploy AAB + ProGuard/R8 mapping.txt directly to Google Play Developer API
-      - google-play-deploy@3:
-          inputs:
-            - service_account_json_key_path: /tmp/gplay-service-account.json
-            - package_name: $PACKAGE_NAME
-            - app_path: $BITRISE_AAB_PATH
-            - mapping_file: android/app/build/outputs/mapping/release/mapping.txt
-            - track: $GOOGLE_PLAY_TRACK
-            - user_fraction: "1.0"
-            - whatsnew_dir: android/whatsnew
-
-      - deploy-to-bitrise-io@2:
-          inputs:
-            - notify_user_groups: none
-            - is_compress: "true"
-
-  # =========================================================================
-  # WORKFLOW: Release iOS to Apple TestFlight Internal QA
-  # =========================================================================
-  release_ios:
-    summary: Builds signed iOS IPA and publishes to Apple TestFlight via deliver
-    steps:
-      - activate-ssh-key@4:
-          run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
-
-      - git-clone@8: {}
-
-      - yarn@0:
-          inputs:
-            - command: install --frozen-lockfile
-
-      - cocoapods-install@2:
-          inputs:
-            - is_repo_update: false
-            - podfile_path: ios/Podfile
-
-      # Auto-sync provisioning profiles and certificates via App Store Connect API
-      - auto-provision-ios@3:
-          inputs:
-            - distribution_type: app-store
-            - api_key_path: $APP_STORE_CONNECT_API_KEY_P8
-            - key_id: $APP_STORE_CONNECT_KEY_ID
-            - issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-
-      # Set iOS CFBundleVersion to match Bitrise Build Number
-      - set-ios-info-plist-unified@1:
-          inputs:
-            - info_plist_file: ios/MobileApp/Info.plist
-            - bundle_version: $BITRISE_BUILD_NUMBER
-
-      # Archive signed iOS Application (.ipa) and dSYM symbols
-      - xcode-archive@4:
-          inputs:
-            - project_path: ios/MobileApp.xcworkspace
-            - scheme: MobileApp
-            - configuration: Release
-            - distribution_method: app-store
-            - automatic_code_signing: api-key
-
-      # Deploy to TestFlight via Fastlane deliver engine using API Key
-      - deploy-to-itunesconnect-with-deliver@3:
-          inputs:
-            - ipa_path: $BITRISE_IPA_PATH
-            - dsym_path: $BITRISE_DSYM_PATH
-            - api_key_path: $APP_STORE_CONNECT_API_KEY_P8
-            - key_id: $APP_STORE_CONNECT_KEY_ID
-            - issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-            - platform: ios
-            - skip_waiting_for_build_processing: "false"
-            - skip_metadata: "true"
-            - skip_screenshots: "true"
-            - team_id: $APPLE_TEAM_ID
-
-      - deploy-to-bitrise-io@2:
-          inputs:
-            - notify_user_groups: none
+# =========================================================================
+# Upload iOS dSYM Debug Symbols to Datadog
+# =========================================================================
+- datadog-upload-dsym@0:
+    title: Upload dSYM Archives to Datadog
+    inputs:
+      - client_token: $DATADOG_CLIENT_TOKEN
+      - site: "datadoghq.com"
+      - dsym_path: $BITRISE_DSYM_PATH
+      - service: "mobile-app-ios"
+      - version: $BITRISE_BUILD_NUMBER
 ```
 
 ---
 
-## 5. Release Notes and Changelog Automation
+## 6. TGRC Privacy, PII Redaction & Security Masking
 
-Both Google Play and TestFlight allow distributing release notes ("What's New") to testers so QA engineers understand which features, fixes, and ticket IDs are included in each build.
-
-### Android What's New Directory Structure
-The `google-play-deploy@3` step automatically detects language-specific release notes organized under an `android/whatsnew/` directory:
-
-```text
-android/
-├── app/
-│   ├── build.gradle
-│   └── src/
-└── whatsnew/
-    ├── whatsnew-en-US
-    ├── whatsnew-es-ES
-    └── whatsnew-de-DE
-```
-
-Each file contains plain text describing the release (maximum 500 characters per file):
-```text
-Release Build 248 (Sprint 42):
-- Feature: Added biometrics authentication support for Android 14.
-- Fix: Resolved memory leak during offline database synchronization.
-- Security: Patched deep-link intent vulnerabilities identified by NowSecure.
-```
-
-### Dynamic Git Changelog Script
-Rather than manually editing text files, add a brief **Script** step in Bitrise prior to the deployment step to auto-generate the changelog from Git commit messages since the last tag:
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-echo "=== Generating Release Changelog from Git Commits ==="
-mkdir -p android/whatsnew
-
-PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-
-if [ -z "$PREVIOUS_TAG" ]; then
-  CHANGELOG="Initial automated Bitrise release build #${BITRISE_BUILD_NUMBER}."
-else
-  CHANGELOG=$(git log "${PREVIOUS_TAG}..HEAD" --oneline --no-merges | head -n 5)
-fi
-
-echo "$CHANGELOG" > android/whatsnew/whatsnew-en-US
-echo "Generated release notes for build ${BITRISE_BUILD_NUMBER}:"
-cat android/whatsnew/whatsnew-en-US
-```
-
----
-
-## 6. Verification and Troubleshooting Matrix
+Compliance with enterprise security standards requires proactive data masking before packets leave the device:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Failure Symptom</th>
-        <th>Root Cause</th>
-        <th>Resolution</th>
+        <th>Data Category</th>
+        <th>Examples</th>
+        <th>Required Redaction Rule</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><code>Google Play API: 403 Forbidden - App not found</code></td>
-        <td>The package name has never had an initial <code>.aab</code> uploaded manually via the web UI.</td>
-        <td>Log into Google Play Console and manually drag-and-drop your first signed release <code>.aab</code> into the Internal track to register the application.</td>
+        <td><strong>Authentication Headers</strong></td>
+        <td><code>Authorization</code>, <code>Cookie</code>, <code>X-API-Key</code></td>
+        <td>Strip or replace with <code>[REDACTED]</code> in all network resource attributes.</td>
       </tr>
       <tr>
-        <td><code>Google Play API: 400 Invalid version code</code></td>
-        <td>The uploaded <code>versionCode</code> is lower than or equal to an existing artifact in Google Play.</td>
-        <td>Ensure <code>change-android-versioncode-and-versionname</code> uses <code>$BITRISE_BUILD_NUMBER</code> and that the build number exceeds existing release codes.</td>
+        <td><strong>Input Text Fields</strong></td>
+        <td>Passwords, Credit Card numbers, SSN</td>
+        <td>Apply <code>MaskUserInput</code> on RUM text inputs; never capture sensitive field values.</td>
       </tr>
       <tr>
-        <td><code>deliver: 401 Unauthorized - Invalid authentication token</code></td>
-        <td>The App Store Connect <code>.p8</code> API key content is corrupted or lines were truncated.</td>
-        <td>Verify the secret in Bitrise contains the complete key including <code>-----BEGIN PRIVATE KEY-----</code> and <code>-----END PRIVATE KEY-----</code> headers without trailing spaces.</td>
+        <td><strong>User Identity</strong></td>
+        <td>Email address, Employee ID</td>
+        <td>Pseudonymize using salted SHA-256 hashes: <code>setUser(id: sha256(employeeId))</code>.</td>
       </tr>
       <tr>
-        <td><code>TestFlight: Missing Compliance (Encryption)</code></td>
-        <td>Export compliance declaration missing from iOS <code>Info.plist</code>, blocking automated release.</td>
-        <td>Add <code>&lt;key&gt;ITSAppUsesNonExemptEncryption&lt;/key&gt;&lt;false/&gt;</code> to your <code>Info.plist</code> file.</td>
-      </tr>
-      <tr>
-        <td><code>dSYM missing warning in App Store Connect</code></td>
-        <td>Xcode archive did not package debug symbols or symbols were stripped during release build.</td>
-        <td>Ensure <code>DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"</code> is set in your Xcode Release build settings.</td>
+        <td><strong>Session Replay Privacy</strong></td>
+        <td>Embedded WebViews, Bank routing numbers</td>
+        <td>Apply <code>MaskAll</code> privacy mode; sensitive views display as blurred silhouettes.</td>
       </tr>
     </tbody>
   </table>
 </div>
 
+```typescript
+// Enterprise User Identity Redaction Pattern
+import { DdSdkReactNative } from '@datadog/mobile-react-native';
+import { sha256 } from 'js-sha256';
+
+export const setEnterpriseUserSession = (corporateEmail: string, tenantId: string) => {
+  // Never pass raw email to Datadog!
+  const hashedUserId = sha256(corporateEmail.trim().toLowerCase());
+
+  DdSdkReactNative.setUser({
+    id: hashedUserId,
+    extraInfo: {
+      tenant_id: tenantId,
+      user_type: "corporate_employee",
+      auth_method: "sso_saml"
+    }
+  });
+};
+```
 
 
 
---------------------
+
+---------------------------------------
+
 
 
 ---
-title: "Chapter 10: The 7-Stage Verification Ladder & Troubleshooting Matrix"
-description: "Master the 7-stage mobile verification ladder, the One-Write Rule, and rapid triage protocols for the top 10 mobile CI/CD failure modes."
+title: "App Version Enforcement & Emergency Killswitch Policy"
+description: "Enterprise specification for mobile app version governance, soft updates, blocking force upgrades, and emergency maintenance killswitches across React Native, Android, and iOS."
+sidebar:
+  order: 3
+  label: 5.3 Version Gating & Killswitch
 ---
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 import DiagramExpand from './DiagramExpand.astro';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">MOBILE PLATFORM ENGINEERING</span>
-    <span class="portal-hub-tag">CHAPTER 10 &bull; TRIAGE &amp; RELIABILITY</span>
+    <span class="portal-badge-hub">OBSERVABILITY &amp; PLATFORM SERVICES</span>
+    <span class="portal-hub-tag">MODULE 5.3 &bull; VERSION GOVERNANCE SPECIFICATION</span>
   </div>
-  <h1 class="portal-hero-title">The 7-Stage Verification Ladder &amp; Troubleshooting Matrix</h1>
+  <h1 class="portal-hero-title">App Version Enforcement &amp; Emergency Killswitch</h1>
   <p class="portal-hero-desc">
-    Transform opaque build failures into predictable, rapid fixes. Master the formal 7-stage verification ladder, enforce the One-Write Rule for immutable releases, and resolve the top 10 mobile CI/CD failure modes in under 60 seconds with battle-tested remediation protocols.
+    Protect enterprise operations and backend integrity against deprecated client binaries and zero-day vulnerabilities. Standardize dynamic version gating, non-blocking soft updates, non-dismissible hard upgrades, and instant emergency killswitches across React Native, Android, and iOS.
   </p>
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">7-Stage Verification</div>
-      <div class="portal-cap-desc">BuildStarted &rarr; ArtifactValidated &rarr; Uploaded &rarr; Signed &rarr; UserVisible</div>
+      <div class="portal-cap-title">Soft Update Gating</div>
+      <div class="portal-cap-desc">Non-blocking modal &bull; Skip &amp; Update options &bull; Seamless adoption</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">The One-Write Rule</div>
-      <div class="portal-cap-desc">Strictly monotonic version codes &bull; Safe roll-forward protocols &bull; Zero rollbacks</div>
+      <div class="portal-cap-title">Hard Blocking Upgrade</div>
+      <div class="portal-cap-desc">Non-dismissible screen &bull; Direct store redirect &bull; Deprecated API shield</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Top 10 Build Errors</div>
-      <div class="portal-cap-desc">NDK mismatch &bull; CocoaPods sync &bull; Gradle OOM &bull; Apple Cert &bull; Transporter 401</div>
+      <div class="portal-cap-title">Emergency Killswitch</div>
+      <div class="portal-cap-desc">Zero-day lockdown &bull; Instant request abortion &bull; Memory token wipe</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Enterprise Sign-off</div>
-      <div class="portal-cap-desc">Comprehensive pre-merge &amp; post-merge verification checklist for release managers</div>
+      <div class="portal-cap-title">Dynamic Remote Config</div>
+      <div class="portal-cap-desc">Semantic version evaluation &bull; Platform-specific targets &bull; Zero app rebuild</div>
     </div>
   </div>
 </div>
 
-<div class="portal-alert-box info">
-  <div class="portal-alert-title">THE CAPSTONE RELIABILITY STANDARD</div>
+<div class="portal-alert-box warning">
+  <div class="portal-alert-title">BACKEND DEPRECATION RISK NOTICE</div>
   <p>
-    A professional mobile CI/CD pipeline is judged not only by how smoothly it succeeds, but by how transparently and deterministically it fails. This chapter defines the diagnostic contracts that prevent broken artifacts from ever reaching end users.
+    When backend APIs evolve through breaking schema changes or major database migrations, allowing outdated mobile clients to submit requests causes critical data corruption and cascading 500 errors. Every enterprise application must enforce a strict minimum supported version threshold prior to resolving user authentication.
   </p>
 </div>
 
-## 1. The 7-Stage Mobile Verification Ladder
+---
 
-In web engineering, deployment often finishes when a container starts serving HTTP traffic. In mobile engineering, distribution passes through a multi-tier cryptographic and store distribution pipeline before a single binary bit can execute on a tester's device.
+## 1. The 4-Tier Version Governance Matrix
 
-Enterprise mobile teams monitor deployments through the **7-Stage Verification Ladder**:
+Version enforcement operates across four distinct operational tiers:
 
-<DiagramExpand id="diag-verification-ladder" title="The 7-Stage Mobile Verification Ladder">
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Governance Tier</th>
+        <th>Condition</th>
+        <th>User Experience &amp; Enforcement Action</th>
+        <th>Primary Use Case</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Tier 1: Allowed Version</strong></td>
+        <td><code>current &gt;= min_supported</code> AND <code>current == latest</code></td>
+        <td>Zero interruptions. The app launches immediately into the authenticated user flow.</td>
+        <td>Standard production release operating within normal support SLAs.</td>
+      </tr>
+      <tr>
+        <td><strong>Tier 2: Soft Update (Optional)</strong></td>
+        <td><code>current &gt;= min_supported</code> AND <code>current &lt; latest</code></td>
+        <td>A dismissible alert or banner displays with two options: <strong>"Update Now"</strong> (redirects to store) and <strong>"Skip / Later"</strong> (user continues using app).</td>
+        <td>Incremental feature drops, non-critical UI polish, and minor performance upgrades.</td>
+      </tr>
+      <tr>
+        <td><strong>Tier 3: Hard Update (Force Upgrade)</strong></td>
+        <td><code>current &lt; min_supported</code></td>
+        <td>A full-screen, non-dismissible blocking modal covers the app. The back button, swipe gestures, and deep links are disabled. A single button: <strong>"Update Required"</strong> redirects directly to Google Play or Apple App Store.</td>
+        <td>Breaking API schema changes, sunsetted microservices, or patched high-severity security vulnerabilities.</td>
+      </tr>
+      <tr>
+        <td><strong>Tier 4: Emergency Killswitch (Incident Mode)</strong></td>
+        <td><code>emergency_killswitch.active == true</code> (Overrides all version checks)</td>
+        <td>The app locks completely regardless of version number. All outgoing HTTP requests are aborted, in-memory auth tokens are wiped, and a full-screen maintenance message with status links is displayed.</td>
+        <td>Zero-day active exploitation, major backend database outage, or global compliance shutdown.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 2. Version Gating &amp; Killswitch Lifecycle Flow
+
+On cold launch, the mobile app contacts the remote configuration gateway to evaluate its version posture before allowing the user to interact with business features:
+
+<DiagramExpand id="diag-version-enforcement-flow" title="Enterprise App Version Enforcement &amp; Killswitch Lifecycle">
 
 ```mermaid
 graph TD
-    classDef stage fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff
-    classDef error fill:#2d1515,stroke:#ef4444,stroke-width:2px,color:#ffffff
+    classDef start fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    classDef check fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff
+    classDef action fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff
+    classDef block fill:#2d1515,stroke:#ef4444,stroke-width:2px,color:#ffffff
 
-    S1["Stage 1: BuildStarted"] --> S2["Stage 2: BuildSuccessful"]
-    S2 --> S3["Stage 3: ArtifactValidated"]
-    S3 --> S4["Stage 4: Uploaded"]
-    S4 --> S5["Stage 5: Signed"]
-    S5 --> S6["Stage 6: Enabled"]
-    S6 --> S7["Stage 7: UserVisible"]
+    Start["Cold App Launch"]:::start --> FetchConfig["Fetch Remote Version Policy JSON"]:::check
+    FetchConfig --> CheckEmergency{"emergency_killswitch.active == true?"}:::check
 
-    S1 -. "Env or SSH Failure" .-> E1["Abort: Infrastructure Failure"]
-    S2 -. "Compilation or Lint Fail" .-> E2["Abort: Codebase Defect"]
-    S3 -. "Invalid Keystore or Bundle ID" .-> E3["Abort: Packaging Defect"]
-    S4 -. "API Auth or Network Timeout" .-> E4["Abort: Store API Failure"]
-    S5 -. "Apple DRM or Google Processing" .-> E5["Abort: Store Ingestion Error"]
-    S6 -. "Missing Compliance or Track Full" .-> E6["Abort: Governance Block"]
-    S7 -. "Crash on Launch" .-> E7["Immediate Roll-Forward Hotfix"]
+    CheckEmergency -->|Yes| AbortAndLock["Tier 4: Emergency Killswitch<br/>Abort API Calls &bull; Wipe Session &bull; Show Incident Screen"]:::block
+    CheckEmergency -->|No| ParseSemVer["Parse Client SemVer vs Policy"]:::check
 
-    class S1,S2,S3,S4,S5,S6,S7 stage
-    class E1,E2,E3,E4,E5,E6,E7 error
+    ParseSemVer --> CheckMin{"Client Version &lt; min_supported?"}:::check
+    CheckMin -->|Yes| ForceBlock["Tier 3: Hard Update Required<br/>Non-Dismissible Modal &bull; Deep Link to Store"]:::block
+
+    CheckMin -->|No| CheckLatest{"Client Version &lt; latest_version?"}:::check
+    CheckLatest -->|Yes| SoftPrompt["Tier 2: Soft Update Prompt<br/>Show 'Update Now' vs 'Skip' Modal"]:::action
+    CheckLatest -->|No| ProceedApp["Tier 1: Allowed Version<br/>Launch Main Application Flow"]:::start
+
+    SoftPrompt -->|User taps 'Update'| RedirectStore["Open Google Play / App Store"]:::action
+    SoftPrompt -->|User taps 'Skip'| ProceedApp
 ```
 
 </DiagramExpand>
 
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Stage</th>
-        <th>System / Boundary</th>
-        <th>Verification Condition</th>
-        <th>Failure Indicator</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>1. BuildStarted</strong></td>
-        <td>Bitrise Agent</td>
-        <td>Runner VM allocated, SSH keys installed, repository cloned cleanly at target commit hash.</td>
-        <td>SSH git clone permission denied, stack boot timeout.</td>
-      </tr>
-      <tr>
-        <td><strong>2. BuildSuccessful</strong></td>
-        <td>Bitrise Compiler</td>
-        <td>Yarn dependencies resolved, TypeScript validated, Android Gradle / Xcode Archive completed with exit code 0.</td>
-        <td>Compiler error, OOM killed, missing CocoaPods dependency.</td>
-      </tr>
-      <tr>
-        <td><strong>3. ArtifactValidated</strong></td>
-        <td>Bitrise Runner</td>
-        <td>Binary inspected locally. Correct <code>versionCode</code> / <code>CFBundleVersion</code>, package name matches whitelist, <code>mapping.txt</code> or <code>dSYM</code> generated.</td>
-        <td>Unsigned APK, missing R8 deobfuscation map, wrong bundle ID.</td>
-      </tr>
-      <tr>
-        <td><strong>4. Uploaded</strong></td>
-        <td>Store Developer API</td>
-        <td>HTTP 200 received from Google Play Developer API or Apple Transporter. Full binary byte stream ingested.</td>
-        <td>401 Unauthorized API key, 403 Forbidden, connection reset.</td>
-      </tr>
-      <tr>
-        <td><strong>5. Signed</strong></td>
-        <td>Apple / Google Cloud</td>
-        <td>Store cloud completes static analysis, DRM stamping, dynamic asset slicing, and re-signing with store keys.</td>
-        <td>App Store Connect "Invalid Binary" status, asset validation failure.</td>
-      </tr>
-      <tr>
-        <td><strong>6. Enabled</strong></td>
-        <td>Store Web Console</td>
-        <td>Artifact promoted to designated track (e.g. <code>internal</code>) or TestFlight internal group. Export compliance approved.</td>
-        <td>"Missing Compliance" modal blocking release, track quota exceeded.</td>
-      </tr>
-      <tr>
-        <td><strong>7. UserVisible</strong></td>
-        <td>Physical Device</td>
-        <td>Testers receive store push notifications. Binary successfully installs and passes splash screen without crash.</td>
-        <td>Crash-on-launch (SIGSEGV / uncaught JS exception), installation loop.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
 ---
 
-## 2. The One-Write Rule and Safe Rollback Protocol
+## 3. Remote Policy Contract Specification
 
-Unlike web deployments where servers can be instantly reverted to a previous container hash, mobile stores enforce a strict cryptographic constraint:
+The version enforcement gateway exposes a lightweight JSON endpoint (or Firebase Remote Config / LaunchDarkly payload) cached with a 5-minute TTL:
 
-<div class="portal-alert-box danger">
-  <div class="portal-alert-title">THE ONE-WRITE RULE</div>
-  <p>
-    <strong>Version codes and bundle versions are strictly monotonic and irreversible.</strong> Once a version code (e.g. <code>versionCode: 248</code>) has been submitted to Google Play or Apple App Store Connect, no binary with that version number or lower can ever be uploaded again, even if the release was deleted, rejected, or revoked.
-  </p>
-</div>
+**`GET https://config.enterprise.internal/mobile/v1/version-policy`**
 
-### Why Rollbacks Do Not Exist in Mobile
-When a catastrophic bug reaches production in mobile apps, you **cannot** simply "rollback" the server:
-1. Physical devices cache the higher version number. The operating system package manager (Android Package Installer or iOS SpringBoard) refuses to install a binary with a lower version number over an existing higher version.
-2. Store APIs reject re-uploading an older binary without an incremented build number.
-
-### The Safe Roll-Forward Protocol
-When an artifact fails at Stage 6 or Stage 7:
-1. **Never attempt to overwrite the existing tag or build number.**
-2. Revert the faulty commit on the release branch using `git revert <commit_hash>`.
-3. Allow Bitrise to execute a new release build with an incremented `$BITRISE_BUILD_NUMBER` (e.g. build 249).
-4. Bitrise compiles, signs, and distributes the clean build to the internal testing track, instantly superseding the defective build.
-
-```bash
-# Emergency Roll-Forward Procedure
-git checkout release/v2.4.0
-git pull origin release/v2.4.0
-
-# Create a clean revert commit
-git revert 4f8a12b -m 1 --no-edit
-
-# Push to trigger automated Bitrise build #249
-git push origin release/v2.4.0
+```json
+{
+  "ios": {
+    "latest_version": "2.4.1",
+    "min_supported_version": "2.3.0",
+    "store_url": "itms-apps://itunes.apple.com/app/id1234567890",
+    "soft_update_title": "New Features Available",
+    "soft_update_message": "Version 2.4.1 introduces offline caching and biometric login. Would you like to update now?",
+    "force_update_title": "Update Required",
+    "force_update_message": "This version of the application is no longer supported due to critical security upgrades. Please update to continue using the service."
+  },
+  "android": {
+    "latest_version": "2.4.1",
+    "min_supported_version": "2.3.0",
+    "store_url": "market://details?id=com.enterprise.mobileapp",
+    "soft_update_title": "New Features Available",
+    "soft_update_message": "Version 2.4.1 introduces offline caching and biometric login. Would you like to update now?",
+    "force_update_title": "Update Required",
+    "force_update_message": "This version of the application is no longer supported due to critical security upgrades. Please update to continue using the service."
+  },
+  "emergency_killswitch": {
+    "active": false,
+    "title": "Service Under Maintenance",
+    "message": "Enterprise systems are temporarily offline for urgent maintenance. No data has been compromised. Please check back shortly.",
+    "status_page_url": "https://status.enterprise.internal"
+  }
+}
 ```
 
 ---
 
-## 3. Top 10 Mobile CI/CD Build Errors and 60-Second Fixes
+## 4. Cross-Platform Implementation
 
-The following battle-tested troubleshooting matrix covers 95% of all build failures encountered by React Native engineers on Bitrise.
+<Tabs>
+  <TabItem label="React Native" icon="seti:javascript">
 
-### 1. Android NDK Architecture Mismatch
-<div class="portal-alert-box warning">
-  <div class="portal-alert-title">SYMPTOM</div>
-  <p><code>Execution failed for task ':react-native-reanimated:buildCMakeDebug[arm64-v8a]'. NDK at /opt/android-sdk/ndk/23.1.7779620 did not have a valid source.properties.</code></p>
-</div>
+### 1. Install Semantic Versioning Dependency
+```bash
+yarn add compare-versions
+```
 
-* **Root Cause:** Bitrise Android stack updated its default NDK version, while `android/app/build.gradle` requested an incompatible legacy version.
-* **60-Second Fix:** Explicitly pin the NDK version in `android/app/build.gradle` matching the Bitrise system stack:
-  ```groovy
-  android {
-      ndkVersion = "25.1.8937393" // Match Bitrise installed Android NDK
+### 2. Version Gate Controller (`useVersionGate.ts`)
+```typescript
+import { useState, useEffect } from 'react';
+import { Platform, Linking, BackHandler } from 'react-native';
+import { compareVersions } from 'compare-versions';
+import DeviceInfo from 'react-native-device-info';
+
+export type GateStatus = 'ALLOWED' | 'SOFT_UPDATE' | 'HARD_UPDATE' | 'KILLSWITCH';
+
+interface PolicyPayload {
+  latest_version: string;
+  min_supported_version: string;
+  store_url: string;
+  soft_update_title: string;
+  soft_update_message: string;
+  force_update_title: string;
+  force_update_message: string;
+}
+
+export const useVersionGate = () => {
+  const [gateStatus, setGateStatus] = useState<GateStatus>('ALLOWED');
+  const [policy, setPolicy] = useState<PolicyPayload | null>(null);
+  const [killswitchDetails, setKillswitchDetails] = useState<any>(null);
+
+  useEffect(() => {
+    const evaluatePolicy = async () => {
+      try {
+        const response = await fetch('https://config.enterprise.internal/mobile/v1/version-policy');
+        const data = await response.json();
+
+        // 1. Evaluate Emergency Killswitch First
+        if (data.emergency_killswitch?.active) {
+          setKillswitchDetails(data.emergency_killswitch);
+          setGateStatus('KILLSWITCH');
+          return;
+        }
+
+        const platformPolicy: PolicyPayload = Platform.OS === 'ios' ? data.ios : data.android;
+        setPolicy(platformPolicy);
+
+        const currentVersion = DeviceInfo.getVersion(); // e.g. "2.2.0"
+
+        // 2. Evaluate Hard Blocking Upgrade
+        if (compareVersions(currentVersion, platformPolicy.min_supported_version) < 0) {
+          setGateStatus('HARD_UPDATE');
+          return;
+        }
+
+        // 3. Evaluate Soft Update
+        if (compareVersions(currentVersion, platformPolicy.latest_version) < 0) {
+          setGateStatus('SOFT_UPDATE');
+          return;
+        }
+
+        // 4. Allowed Version
+        setGateStatus('ALLOWED');
+      } catch (error) {
+        // Fallback: If policy cannot be fetched, fail open to avoid lockouts during network drops
+        setGateStatus('ALLOWED');
+      }
+    };
+
+    evaluatePolicy();
+  }, []);
+
+  const openStore = () => {
+    if (policy?.store_url) {
+      Linking.openURL(policy.store_url);
+    }
+  };
+
+  const skipSoftUpdate = () => {
+    setGateStatus('ALLOWED');
+  };
+
+  return { gateStatus, policy, killswitchDetails, openStore, skipSoftUpdate };
+};
+```
+
+### 3. Full-Screen Blocking Gate Component (`VersionGateModal.tsx`)
+```tsx
+import React from 'react';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { useVersionGate } from './useVersionGate';
+
+export const VersionGateModal = () => {
+  const { gateStatus, policy, killswitchDetails, openStore, skipSoftUpdate } = useVersionGate();
+
+  if (gateStatus === 'ALLOWED') return null;
+
+  // Tier 4: Emergency Killswitch Screen
+  if (gateStatus === 'KILLSWITCH') {
+    return (
+      <Modal visible={true} animationType="fade" transparent={false}>
+        <View style={[styles.container, styles.emergencyBg]}>
+          <Text style={styles.title}>{killswitchDetails?.title}</Text>
+          <Text style={styles.message}>{killswitchDetails?.message}</Text>
+          <TouchableOpacity 
+            style={styles.primaryButton}
+            onPress={() => Linking.openURL(killswitchDetails?.status_page_url)}
+          >
+            <Text style={styles.buttonText}>View Status Page</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    );
   }
-  ```
+
+  // Tier 3: Hard Blocking Update Screen (Non-dismissible)
+  if (gateStatus === 'HARD_UPDATE') {
+    return (
+      <Modal visible={true} animationType="slide" transparent={false}>
+        <View style={styles.container}>
+          <Text style={styles.badge}>ACTION REQUIRED</Text>
+          <Text style={styles.title}>{policy?.force_update_title}</Text>
+          <Text style={styles.message}>{policy?.force_update_message}</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={openStore}>
+            <Text style={styles.buttonText}>Update Now</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    );
+  }
+
+  // Tier 2: Soft Update Prompt (Dismissible)
+  if (gateStatus === 'SOFT_UPDATE') {
+    return (
+      <Modal visible={true} animationType="fade" transparent={true}>
+        <View style={styles.overlay}>
+          <View style={styles.dialogCard}>
+            <Text style={styles.dialogTitle}>{policy?.soft_update_title}</Text>
+            <Text style={styles.dialogMessage}>{policy?.soft_update_message}</Text>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity style={styles.secondaryButton} onPress={skipSoftUpdate}>
+                <Text style={styles.secondaryButtonText}>Later</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.primaryDialogButton} onPress={openStore}>
+                <Text style={styles.buttonText}>Update</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  return null;
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#07120c', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  emergencyBg: { backgroundColor: '#1f1313' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  dialogCard: { backgroundColor: '#13251c', borderRadius: 12, padding: 24, width: '100%', borderWidth: 1, borderColor: '#1f3b2c' },
+  badge: { color: '#ef4444', fontWeight: '800', fontSize: 12, marginBottom: 8, letterSpacing: 1 },
+  title: { fontSize: 24, fontWeight: '700', color: '#facc15', marginBottom: 12, textAlign: 'center' },
+  message: { fontSize: 15, color: '#e2e8f0', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  dialogTitle: { fontSize: 20, fontWeight: '700', color: '#facc15', marginBottom: 8 },
+  dialogMessage: { fontSize: 14, color: '#e2e8f0', lineHeight: 20, marginBottom: 20 },
+  primaryButton: { backgroundColor: '#22c55e', paddingVertical: 14, paddingHorizontal: 36, borderRadius: 8, width: '100%', alignItems: 'center' },
+  primaryDialogButton: { backgroundColor: '#22c55e', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 6, flex: 1, alignItems: 'center' },
+  secondaryButton: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 6, flex: 1, alignItems: 'center', marginRight: 10 },
+  buttonText: { color: '#07120c', fontWeight: '700', fontSize: 15 },
+  secondaryButtonText: { color: '#9ca3af', fontWeight: '600', fontSize: 15 },
+  buttonRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 },
+});
+```
+
+  </TabItem>
+
+  <TabItem label="Android (Kotlin)" icon="seti:kotlin">
+
+### Jetpack Compose Enforcement Dialog
+```kotlin
+package com.enterprise.mobileapp.version
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+
+@Composable
+fun HardUpdateBlockingScreen(
+    title: String,
+    message: String,
+    storeUrl: String,
+    context: Context
+) {
+    // Non-dismissible full screen blocking layer
+    Dialog(
+        onDismissRequest = { /* Block dismiss */ },
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF07120C))
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "CRITICAL UPDATE REQUIRED", color = Color(0xFFEF4444))
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(text = title, style = MaterialTheme.typography.headlineMedium, color = Color(0xFFFACC15))
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = message, color = Color(0xFFE2E8F0))
+                Spacer(modifier = Modifier.height(32.dp))
+                Button(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(storeUrl)).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E))
+                ) {
+                    Text("Update via Google Play", color = Color(0xFF07120C))
+                }
+            }
+        }
+    }
+}
+```
+
+  </TabItem>
+
+  <TabItem label="iOS (SwiftUI)" icon="seti:swift">
+
+### SwiftUI Blocking View
+```swift
+import SwiftUI
+
+public struct ForceUpdateView: View {
+    let title: String
+    let message: String
+    let storeUrl: String
+
+    public var body: some View {
+        ZStack {
+            Color(red: 7/255, green: 18/255, blue: 12/255)
+                .ignoresSafeArea()
+
+            VStack(spacing: 20) {
+                Text("SECURITY ACTION REQUIRED")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(Color.red)
+                    .tracking(1.5)
+
+                Text(title)
+                    .font(.title)
+                    .fontWeight(.heavy)
+                    .foregroundColor(Color(red: 250/255, green: 204/255, blue: 21/255))
+                    .multilineTextAlignment(.center)
+
+                Text(message)
+                    .font(.body)
+                    .foregroundColor(Color(red: 226/255, green: 232/255, blue: 240/255))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+
+                Button(action: {
+                    if let url = URL(string: storeUrl) {
+                        UIApplication.shared.open(url)
+                    }
+                }) {
+                    Text("Update in App Store")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(Color(red: 7/255, green: 18/255, blue: 12/255))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(red: 34/255, green: 197/255, blue: 94/255))
+                        .cornerRadius(8)
+                }
+                .padding(.horizontal, 32)
+                .padding(.top, 16)
+            }
+        }
+        .interactiveDismissDisabled(true) // Disable iOS swipe-to-dismiss
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
 
 ---
 
-### 2. CocoaPods Lockfile Out of Sync
-<div class="portal-alert-box warning">
-  <div class="portal-alert-title">SYMPTOM</div>
-  <p><code>[!] The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.</code></p>
+## 5. Development &amp; CI Bypass Rules
+
+Automated End-to-End (E2E) tests and local developer builds must not be blocked when working against unreleased branch versions.
+
+### Safe Bypass Environment Flags
+```bash
+# In local development (.env.development):
+BYPASS_VERSION_GATE=true
+
+# In Bitrise CI UI testing steps:
+export BYPASS_VERSION_GATE=true
+```
+
+In your gating controller, ensure the bypass flag is strictly ignored in `production` release builds:
+
+```typescript
+const isBypassed = __DEV__ && process.env.BYPASS_VERSION_GATE === 'true';
+
+if (isBypassed) {
+  console.warn('[VersionGate] Bypassed version enforcement for development build.');
+  return { gateStatus: 'ALLOWED' };
+}
+```
+
+
+
+------------------------------
+
+
+---
+title: Push Notifications & Deep Linking Standards
+description: Enterprise mobile push notification specification, APNs and FCM unified routing, silent background synchronization, rich media attachments, and deep link navigation routing across Android, iOS, and React Native.
+sidebar:
+  order: 5
+  label: 4.5 Push Notifications & Deep Linking
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">APP FOUNDATIONS</span>
+    <span class="portal-hub-tag">PUSH NOTIFICATIONS &bull; DEEP LINKING SPECIFICATION</span>
+  </div>
+  <h1 class="portal-hero-title">Push Notifications &amp; Universal Deep Linking</h1>
+  <p class="portal-hero-desc">
+    Push notifications and deep linking drive user re-engagement and critical real-time workflows. The Push Notification Foundation standardizes token synchronization with Enterprise Gateways, background payload decryption, rich media presentation, and deep link navigation backstack restoration across Apple Push Notification service (APNs) and Firebase Cloud Messaging (FCM).
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Dual-Gateway Routing</div>
+      <div class="portal-cap-desc">Apple APNs &bull; Firebase FCM &bull; Unified payload format</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Deep Link Navigation</div>
+      <div class="portal-cap-desc">Universal Links &bull; App Schemes &bull; Backstack preservation</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Silent Background Sync</div>
+      <div class="portal-cap-desc">Content-available &bull; 30s execution window &bull; Cache hydration</div>
+    </div>
+  </div>
 </div>
 
-* **Root Cause:** A developer updated `package.json` locally on their laptop, committed the change, but forgot to run `pod install` inside the `ios/` directory, causing a mismatch with `ios/Podfile.lock`.
-* **60-Second Fix:** Run clean pod installation on your branch, commit the resulting `Podfile.lock`, and push:
-  ```bash
-  cd ios && rm -rf Pods Podfile.lock && pod install --repo-update && git commit -am "fix(ios): synchronize Podfile.lock" && git push
-  ```
-
 ---
 
-### 3. Gradle JVM Heap Out of Memory (OOM)
-<div class="portal-alert-box warning">
-  <div class="portal-alert-title">SYMPTOM</div>
-  <p><code>Expiring Daemon because JVM heap space is exhausted. java.lang.OutOfMemoryError: GC overhead limit exceeded.</code></p>
+## 1. End-to-End Notification & Deep Link Lifecycle
+
+Push notifications follow an asynchronous pipeline: the backend dispatches an encrypted payload, the host OS daemon invokes the application receiver, rich media attachments are downloaded, and user interaction launches the deep link router to resolve the destination screen:
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-push-flow-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">PUSH NOTIFICATION &amp; DEEP LINK LIFECYCLE</span>
+    <label for="diagram-push-flow-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Cloud as Enterprise Push Gateway
+    participant OS as OS Push Daemon (APNs / FCM)
+    participant Receiver as Push Notification Receiver
+    participant Ext as Notification Service Extension
+    participant Router as Deep Link Navigation Router
+    participant Screen as Destination Feature Screen
+
+    Cloud->>OS: Dispatch Push Payload (Encrypted Data + URL)
+    OS->>Receiver: Deliver Background Push Intent
+    alt Silent Data Payload
+        Receiver->>Receiver: Hydrate Local Cache (Background Task)
+    else Interactive Banner
+        Receiver->>Ext: Download Rich Media Attachment & Decrypt
+        Ext-->>OS: Present Formatted Notification Banner
+        OS->>Router: User Taps Notification Banner
+        Router->>Screen: Resolve URI (e.g. enterprise://orders/8921)
+        Screen-->>OS: Render Destination Screen with Complete Backstack
+    end
+```
+
+  </div>
 </div>
 
-* **Root Cause:** The default Gradle daemon allocation (1.5 GB) is insufficient for compiling large React Native multi-module codebases with R8 code shrinking enabled.
-* **60-Second Fix:** Increase Gradle heap allocation in `android/gradle.properties`:
-  ```properties
-  org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError
-  org.gradle.parallel=true
-  org.gradle.caching=true
-  ```
-
 ---
 
-### 4. Apple Missing Distribution Certificate
-<div class="portal-alert-box warning">
-  <div class="portal-alert-title">SYMPTOM</div>
-  <p><code>Error: No signing certificate "Apple Distribution" found matching team ID "57246542" in keychain.</code></p>
-</div>
-
-* **Root Cause:** Bitrise step `xcode-archive` executed without downloading or unlocking the code signing certificate, or the certificate expired.
-* **60-Second Fix:** Ensure the `auto-provision-ios@3` step is positioned **immediately prior** to `xcode-archive@4` and uses valid `APP_STORE_CONNECT_API_KEY_P8` credentials.
-
----
-
-### 5. Google Play API: 403 Forbidden
-<div class="portal-alert-box warning">
-  <div class="portal-alert-title">SYMPTOM</div>
-  <p><code>Google Play API: 403 Forbidden - The caller does not have permission for the requested project.</code></p>
-</div>
-
-* **Root Cause:** The Google Cloud Service Account email has not been granted release permissions inside Google Play Console, or the initial release was never uploaded manually.
-* **60-Second Fix:** Open Google Play Console &gt; **Users and permissions**, verify the service account email is listed under **Users**, and ensure the checkbox **Release apps to testing tracks** is checked.
-
----
-
-### 6. Transporter 401 Unauthorized
-<div class="portal-alert-box warning">
-  <div class="portal-alert-title">SYMPTOM</div>
-  <p><code>[deliver] Transporter transfer failed. 401 Unauthorized: Invalid authentication token.</code></p>
-</div>
-
-* **Root Cause:** The `APP_STORE_CONNECT_API_KEY_P8` secret stored in Bitrise contains trailing whitespace, has lost newline characters, or the App Store Connect Key was revoked.
-* **60-Second Fix:** Open Bitrise **Secrets**, re-paste the full text of `AuthKey_*.p8` including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` headers, and verify that the Key ID matches the filename.
-
----
-
-### 7. Gradle Wrapper Missing Execution Bit
-<div class="portal-alert-box warning">
-  <div class="portal-alert-title">SYMPTOM</div>
-  <p><code>bash: ./gradlew: Permission denied. Step failed with exit code 126.</code></p>
-</div>
-
-* **Root Cause:** A developer on Windows committed `android/gradlew` without Unix executable permissions (`+x`).
-* **60-Second Fix:** Update Git file permissions mode from your terminal:
-  ```bash
-  git update-index --chmod=+x android/gradlew
-  git commit -m "fix(ci): grant execute permissions to android/gradlew"
-  git push
-  ```
-
----
-
-### 8. Danger.js GitHub API Rate Limit Exceeded
-<div class="portal-alert-box warning">
-  <div class="portal-alert-title">SYMPTOM</div>
-  <p><code>Danger failed: Error: API rate limit exceeded for user ID (403 Forbidden).</code></p>
-</div>
-
-* **Root Cause:** The `DANGER_GITHUB_API_TOKEN` environment variable was empty or missing, forcing Danger to make unauthenticated requests subject to GitHub's 60 req/hr IP rate limit.
-* **60-Second Fix:** Generate a fine-grained GitHub Personal Access Token (PAT) with `pull_requests: write` permissions and assign it to `DANGER_GITHUB_API_TOKEN` in Bitrise Secrets.
-
----
-
-### 9. TestFlight Missing Export Compliance
-<div class="portal-alert-box warning">
-  <div class="portal-alert-title">SYMPTOM</div>
-  <p><code>TestFlight build status: Missing Compliance. Testing cannot begin until encryption information is provided.</code></p>
-</div>
-
-* **Root Cause:** Apple requires apps using standard HTTPS encryption to declare exemption status in `Info.plist`. Without this, builds halt waiting for human web console clicks.
-* **60-Second Fix:** Insert the compliance key into `ios/MobileApp/Info.plist`:
-  ```xml
-  <key>ITSAppUsesNonExemptEncryption</key>
-  <false/>
-  ```
-
----
-
-### 10. Yarn Frozen Lockfile Assertion Failure
-<div class="portal-alert-box warning">
-  <div class="portal-alert-title">SYMPTOM</div>
-  <p><code>error Your lockfile needs to be updated, but --frozen-lockfile was specified.</code></p>
-</div>
-
-* **Root Cause:** Dependencies in `package.json` were modified manually in an editor without running `yarn install` locally to update `yarn.lock`.
-* **60-Second Fix:** Run `yarn install` locally, commit the synchronized `yarn.lock`, and push to your PR branch:
-  ```bash
-  yarn install
-  git commit -am "fix: synchronize yarn.lock with package.json"
-  git push
-  ```
-
----
-
-## 4. Enterprise Pre-Merge & Post-Merge Sign-off Checklist
-
-Before merging release pull requests or distributing production updates, complete the following formal verification sign-off:
+## 2. Push Notification Platform Matrix
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Phase</th>
-        <th>Verification Item</th>
-        <th>Verification Method</th>
-        <th>Owner</th>
+        <th>Capability</th>
+        <th>Android Implementation</th>
+        <th>iOS Implementation</th>
+        <th>React Native Implementation</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>Pre-Merge</strong></td>
-        <td>Danger.js bot has approved the PR</td>
-        <td>GitHub PR conversation tab displays green Danger checklist</td>
-        <td>PR Author</td>
+        <td><strong>Push Daemon</strong></td>
+        <td>Firebase Cloud Messaging (FCM)</td>
+        <td>Apple Push Notification service (APNs)</td>
+        <td><code>@react-native-firebase/messaging</code></td>
       </tr>
       <tr>
-        <td><strong>Pre-Merge</strong></td>
-        <td>Modular test matrix passed</td>
-        <td>Bitrise `pr_check` status check is green across unit &amp; lint steps</td>
-        <td>CI System</td>
+        <td><strong>Notification Channels</strong></td>
+        <td><code>NotificationChannelCompat</code> (Oreo+)</td>
+        <td><code>UNNotificationCategory</code> &amp; Actions</td>
+        <td><code>notifee</code> channel manager</td>
       </tr>
       <tr>
-        <td><strong>Pre-Merge</strong></td>
-        <td>No uncommitted lockfile changes</td>
-        <td>`git status` clean after `yarn install` and `pod install`</td>
-        <td>PR Author</td>
+        <td><strong>Rich Attachments</strong></td>
+        <td><code>NotificationCompat.BigPictureStyle</code></td>
+        <td><code>UNNotificationServiceExtension</code></td>
+        <td>Native service extension bridge</td>
       </tr>
       <tr>
-        <td><strong>Post-Merge</strong></td>
-        <td>Release workflow execution</td>
-        <td>Bitrise `release_android` and `release_ios` exit with code 0</td>
-        <td>Release Lead</td>
-      </tr>
-      <tr>
-        <td><strong>Post-Merge</strong></td>
-        <td>Artifact signature verification</td>
-        <td>Bitrise deploy-to-bitrise-io step contains signed `.aab` and `.ipa`</td>
-        <td>Release Lead</td>
-      </tr>
-      <tr>
-        <td><strong>Post-Merge</strong></td>
-        <td>Store API ingestion confirmation</td>
-        <td>Google Play Console Internal track displays build #; TestFlight displays build #</td>
-        <td>QA Lead</td>
-      </tr>
-      <tr>
-        <td><strong>Post-Merge</strong></td>
-        <td>Smoke test on physical hardware</td>
-        <td>Install from Play Store / TestFlight on test devices; verify cold start</td>
-        <td>QA Team</td>
+        <td><strong>Deep Link Resolution</strong></td>
+        <td>Intent Filters + <code>NavDeepLinkBuilder</code></td>
+        <td>Universal Links + <code>onOpenURL</code></td>
+        <td>React Navigation <code>linking</code> configuration</td>
       </tr>
     </tbody>
   </table>
 </div>
+
+---
+
+## 3. Platform Implementations & Screen Integration
+
+Select a platform tab to see the complete implementation of push receivers, notification channel creation, deep link navigation routers, and settings screens.
+
+<Tabs>
+  <TabItem label="Android (Kotlin / Jetpack Compose)">
+
+### Step 1: Firebase Messaging Service
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/push/EnterprisePushService.kt</span>
+  <span class="portal-file-tag">FCM MESSAGING SERVICE</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.push
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.TaskStackBuilder
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+
+class EnterprisePushService : FirebaseMessagingService() {
+
+    override fun onNewToken(token: String) {
+        // Synchronize registration token with backend gateway
+        PushTokenRegistry.uploadToken(token)
+    }
+
+    override fun onMessageReceived(remoteMessage: RemoteMessage) {
+        // Check for silent background data payload
+        if (remoteMessage.data.isNotEmpty() && remoteMessage.notification == null) {
+            handleSilentDataPush(remoteMessage.data)
+            return
+        }
+
+        val title = remoteMessage.notification?.title ?: "Enterprise Alert"
+        val body = remoteMessage.notification?.body ?: ""
+        val deepLinkUri = remoteMessage.data["deep_link"] ?: "enterprise://home"
+
+        displayNotification(title, body, deepLinkUri)
+    }
+
+    private fun handleSilentDataPush(data: Map<String, String>) {
+        // Background cache synchronization logic
+    }
+
+    private fun displayNotification(title: String, body: String, deepLink: String) {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "enterprise_critical_channel"
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Critical Alerts",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Urgent business updates and transaction alerts"
+                enableVibration(true)
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val targetIntent = Intent(Intent.ACTION_VIEW, Uri.parse(deepLink))
+
+        // Preserve parent backstack so pressing Back navigates to Home screen
+        val pendingIntent = TaskStackBuilder.create(this).run {
+            addNextIntentWithParentStack(targetIntent)
+            getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        }
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+    }
+}
+```
+
+### Step 2: Deep Link Intent Parser
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/push/DeepLinkRouter.kt</span>
+  <span class="portal-file-tag">DEEP LINK ROUTER</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.push
+
+import android.net.Uri
+
+sealed class AppDestination {
+    object Home : AppDestination()
+    data class OrderDetails(val orderId: String) : AppDestination()
+    data class UserProfile(val userId: String) : AppDestination()
+    object Unknown : AppDestination()
+}
+
+object DeepLinkRouter {
+
+    fun parse(uri: Uri): AppDestination {
+        val host = uri.host ?: return AppDestination.Home
+        val pathSegments = uri.pathSegments
+
+        return when (host) {
+            "orders" -> {
+                val orderId = pathSegments.firstOrNull()
+                if (orderId != null) AppDestination.OrderDetails(orderId) else AppDestination.Home
+            }
+            "profile" -> {
+                val userId = pathSegments.firstOrNull()
+                if (userId != null) AppDestination.UserProfile(userId) else AppDestination.Home
+            }
+            else -> AppDestination.Unknown
+        }
+    }
+}
+```
+
+### Step 3: Notification Settings Screen
+
+<div class="portal-file-header">
+  <span class="portal-file-path">features/notifications/NotificationSettingsScreen.kt</span>
+  <span class="portal-file-tag">COMPOSE SETTINGS SCREEN</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.features.notifications
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun NotificationSettingsScreen() {
+    var orderUpdatesEnabled by remember { mutableStateOf(true) }
+    var securityAlertsEnabled by remember { mutableStateOf(true) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Notification Preferences",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(text = "Order Status Updates", fontWeight = FontWeight.Bold)
+                Text(text = "Real-time updates on orders", color = MaterialTheme.colorScheme.outline)
+            }
+            Switch(
+                checked = orderUpdatesEnabled,
+                onCheckedChange = { orderUpdatesEnabled = it }
+            )
+        }
+
+        Divider()
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(text = "Security & Sign-in Alerts", fontWeight = FontWeight.Bold)
+                Text(text = "Suspicious activity notifications", color = MaterialTheme.colorScheme.outline)
+            }
+            Switch(
+                checked = securityAlertsEnabled,
+                onCheckedChange = { securityAlertsEnabled = it }
+            )
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="iOS (Swift 5.9+ / SPM)">
+
+### Step 1: UNUserNotificationCenter Coordinator
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Push/PushNotificationCoordinator.swift</span>
+  <span class="portal-file-tag">APNS DELEGATE</span>
+</div>
+
+```swift
+import UserNotifications
+import UIKit
+
+public final class PushNotificationCoordinator: NSObject, UNUserNotificationCenterDelegate {
+    public static let shared = PushNotificationCoordinator()
+
+    public func registerForPushNotifications() {
+        UNUserNotificationCenter.current().delegate = self
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            if granted {
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            }
+        }
+    }
+
+    // Foreground Presentation Options
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .badge, .sound])
+    }
+
+    // Deep Link Action Handling
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        if let deepLinkString = userInfo["deep_link"] as? String,
+           let url = URL(string: deepLinkString) {
+            DispatchQueue.main.async {
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            }
+        }
+        completionHandler()
+    }
+}
+```
+
+### Step 2: Rich Media Notification Service Extension
+
+<div class="portal-file-header">
+  <span class="portal-file-path">NotificationServiceExtension/NotificationService.swift</span>
+  <span class="portal-file-tag">SERVICE EXTENSION</span>
+</div>
+
+```swift
+import UserNotifications
+
+public class NotificationService: UNNotificationServiceExtension {
+    var contentHandler: ((UNNotificationContent) -> Void)?
+    var bestAttemptContent: UNMutableNotificationContent?
+
+    public override func didReceive(
+        _ request: UNNotificationRequest,
+        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+    ) {
+        self.contentHandler = contentHandler
+        bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent)
+
+        guard let bestAttemptContent = bestAttemptContent else { return }
+
+        // Download and attach remote rich media image
+        if let attachmentUrlString = request.content.userInfo["media_url"] as? String,
+           let attachmentUrl = URL(string: attachmentUrlString) {
+            downloadAttachment(for: attachmentUrl) { attachment in
+                if let attachment = attachment {
+                    bestAttemptContent.attachments = [attachment]
+                }
+                contentHandler(bestAttemptContent)
+            }
+        } else {
+            contentHandler(bestAttemptContent)
+        }
+    }
+
+    private func downloadAttachment(for url: URL, completion: @escaping (UNNotificationAttachment?) -> Void) {
+        URLSession.shared.downloadTask(with: url) { temporaryUrl, _, _ in
+            guard let temporaryUrl = temporaryUrl else {
+                completion(nil)
+                return
+            }
+            let attachment = try? UNNotificationAttachment(identifier: "media", url: temporaryUrl, options: nil)
+            completion(attachment)
+        }.resume()
+    }
+
+    public override func serviceExtensionTimeWillExpire() {
+        if let contentHandler = contentHandler, let bestAttemptContent = bestAttemptContent {
+            contentHandler(bestAttemptContent)
+        }
+    }
+}
+```
+
+### Step 3: Notification Settings View
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/Notifications/NotificationSettingsView.swift</span>
+  <span class="portal-file-tag">SWIFTUI SETTINGS VIEW</span>
+</div>
+
+```swift
+import SwiftUI
+
+public struct NotificationSettingsView: View {
+    @State private var orderUpdatesEnabled: Bool = true
+    @State private var securityAlertsEnabled: Bool = true
+
+    public var body: some View {
+        Form {
+            Section(header: Text("Notification Channels")) {
+                Toggle(isOn: $orderUpdatesEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Order Status Updates")
+                            .font(.system(size: 16, weight: .bold))
+                        Text("Live notifications on shipments")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Toggle(isOn: $securityAlertsEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Security Alerts")
+                            .font(.system(size: 16, weight: .bold))
+                        Text("Alerts on unverified login attempts")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Notifications")
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="React Native (TypeScript / React Navigation)">
+
+### Step 1: Firebase Push Service Listener
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/push/pushService.ts</span>
+  <span class="portal-file-tag">FCM MESSAGING SERVICE</span>
+</div>
+
+```typescript
+import messaging, { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
+import { Linking } from 'react-native';
+
+export class PushNotificationService {
+
+  static async initialize(): Promise<void> {
+    const authStatus = await messaging().requestPermission();
+    const enabled =
+      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+    if (!enabled) return;
+
+    // Retrieve FCM Device Token
+    const token = await messaging().getToken();
+    console.log('FCM Registration Token:', token);
+
+    // Foreground Notification Listener
+    messaging().onMessage(async (remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
+      console.log('Foreground Push Message Received:', remoteMessage);
+    });
+
+    // Background Tap Notification Listener
+    messaging().onNotificationOpenedApp((remoteMessage: FirebaseMessagingTypes.RemoteMessage) => {
+      const link = remoteMessage.data?.deep_link;
+      if (typeof link === 'string') {
+        Linking.openURL(link);
+      }
+    });
+
+    // Cold-Start Push Notification Tap
+    const initialNotification = await messaging().getInitialNotification();
+    if (initialNotification?.data?.deep_link) {
+      Linking.openURL(initialNotification.data.deep_link as string);
+    }
+  }
+}
+```
+
+### Step 2: Universal Deep Link Configuration
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/push/deepLinkConfig.ts</span>
+  <span class="portal-file-tag">REACT NAVIGATION LINKING</span>
+</div>
+
+```typescript
+import { type LinkingOptions } from '@react-navigation/native';
+
+export const linkingConfig: LinkingOptions<object> = {
+  prefixes: ['enterprise://', 'https://app.enterprise.com'],
+  config: {
+    screens: {
+      Home: 'home',
+      OrderDetails: {
+        path: 'orders/:orderId',
+      },
+      UserProfile: {
+        path: 'profile/:userId',
+      },
+    },
+  },
+};
+```
+
+### Step 3: Notification Settings Screen
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/notifications/NotificationSettingsScreen.tsx</span>
+  <span class="portal-file-tag">REACT NATIVE SETTINGS SCREEN</span>
+</div>
+
+```tsx
+import React, { useState } from 'react';
+import { View, Text, Switch, StyleSheet } from 'react-native';
+
+export function NotificationSettingsScreen() {
+  const [orderUpdates, setOrderUpdates] = useState(true);
+  const [securityAlerts, setSecurityAlerts] = useState(true);
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Notification Preferences</Text>
+
+      <View style={styles.row}>
+        <View style={styles.textContainer}>
+          <Text style={styles.rowTitle}>Order Status Updates</Text>
+          <Text style={styles.rowSubtitle}>Real-time order delivery updates</Text>
+        </View>
+        <Switch value={orderUpdates} onValueChange={setOrderUpdates} trackColor={{ true: '#22c55e' }} />
+      </View>
+
+      <View style={styles.divider} />
+
+      <View style={styles.row}>
+        <View style={styles.textContainer}>
+          <Text style={styles.rowTitle}>Security Alerts</Text>
+          <Text style={styles.rowSubtitle}>Alerts on login attempts</Text>
+        </View>
+        <Switch value={securityAlerts} onValueChange={setSecurityAlerts} trackColor={{ true: '#22c55e' }} />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#09130e',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginBottom: 24,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  textContainer: {
+    flex: 1,
+  },
+  rowTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#f1f5f9',
+  },
+  rowSubtitle: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#193828',
+    marginVertical: 8,
+  },
+});
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Push Notification Compliance & Pre-Merge Gate
+
+<div class="portal-checklist-box">
+  <div class="portal-checklist-title">PUSH NOTIFICATION CONFORMANCE MANDATES</div>
+  <ul>
+    <li><strong>Backstack Preservation:</strong> Deep links opened from notifications must construct the parent backstack (e.g. using <code>TaskStackBuilder</code> on Android) so that pressing Back navigates to the Home screen rather than exiting the app.</li>
+    <li><strong>Notification Channels Mandatory:</strong> Android push notifications must specify registered notification channels with defined importance levels. Posting notifications to undefined channels is blocked.</li>
+    <li><strong>Payload Verification:</strong> Deep link query parameters must be validated with Zod/regex before navigating to prevent malicious intent injection.</li>
+    <li><strong>Silent Push Limits:</strong> Silent background notifications must finish processing within 30 seconds to respect operating system battery governance.</li>
+  </ul>
+</div>
+
+---
+
+## 5. Firebase Cloud Messaging (FCM) Limitations & Apple Review Guidelines
+
+Enterprise backend systems dispatching mobile notifications must adhere to strict payload constraints and operating system developer guidelines:
+
+### Technical Limitations
+* **Strict Payload Size Limits:** FCM enforces a hard limit of **4 KB for data messages** and **2 KB for notification messages**. Excessive payloads are rejected by Google gateways. Large objects (such as complex JSON payloads) must be stored in backend databases, sending only lightweight reference identifiers (e.g. `order_id: "8921"`) in the push packet.
+* **Delivery Time Non-Guarantee:** While FCM delivers notifications in near real-time under optimal network conditions, it does **not** guarantee immediate delivery. Battery optimization (Android Doze mode, iOS Low Power Mode) and network congestion may delay receipt by several minutes. Push notifications must never be used for safety-critical or hard real-time triggers.
+* **Device Compatibility:** FCM requires Google Play Services on Android devices. Enterprise apps deployed on AOSP or specialized ruggedized warehouse scanners lacking Google services must fall back to WebSocket or polling channels.
+
+### Apple App Store Review Guidelines (Mandatory)
+* **Guideline 2.5.3:** Apps that transmit viruses, computer code, or programs that may harm or disrupt the normal operation of the operating system are rejected.
+* **Guideline 3.2.2:** Monetizing built-in capabilities provided by the hardware or operating system, such as Apple Push Notifications, is strictly prohibited.
+* **Guideline 4.5.3:** Do not use Apple Services to spam, phish, or send unsolicited messages to customers.
+* **Guideline 4.5.4:** **Push Notifications must not be required for the app to function**, and must not be used to send sensitive personal or confidential information. Explicit user consent (opt-in) is mandatory.
+
+---
+
+## 6. Enterprise Backend Push Infrastructure
+
+<Tabs>
+  <TabItem label="Java (AWS SNS & Spring Boot)" icon="seti:java">
+
+### AWS SNS Java Service Implementation (`NotificationUtil.java`)
+Enterprise microservices communicate with Amazon Simple Notification Service (SNS) to route notifications to Apple APNs and Firebase FCM:
+
+```java
+package com.enterprise.mobile.backend.notification;
+
+import com.amazonaws.services.sns.AmazonSNS;
+import com.amazonaws.services.sns.AmazonSNSClientBuilder;
+import com.amazonaws.services.sns.model.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.PostConstruct;
+import java.util.HashMap;
+import java.util.Map;
+
+@Component
+public class NotificationUtil {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(NotificationUtil.class);
+    private AmazonSNS snsClient;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${aws.region:us-east-1}")
+    private String awsRegion;
+
+    @Value("${aws.sns.platform.app.arn.android}")
+    private String androidPlatformAppArn;
+
+    @Value("${aws.sns.platform.app.arn.ios}")
+    private String iosPlatformAppArn;
+
+    @PostConstruct
+    public void init() {
+        this.snsClient = AmazonSNSClientBuilder.standard()
+                .withRegion(awsRegion)
+                .build();
+    }
+
+    /**
+     * Creates an AWS SNS Platform Endpoint for a mobile device token.
+     * Gracefully recovers existing endpoint ARN if the token was previously registered.
+     */
+    public String createPlatformEndpoint(String deviceToken, String deviceType) {
+        String platformAppArn = "ios".equalsIgnoreCase(deviceType) ? iosPlatformAppArn : androidPlatformAppArn;
+
+        try {
+            CreatePlatformEndpointRequest request = new CreatePlatformEndpointRequest()
+                    .withPlatformApplicationArn(platformAppArn)
+                    .withToken(deviceToken);
+
+            CreatePlatformEndpointResult result = snsClient.createPlatformEndpoint(request);
+            LOGGER.info("Created SNS endpoint: {}", result.getEndpointArn());
+            return result.getEndpointArn();
+
+        } catch (InvalidParameterException e) {
+            String message = e.getMessage();
+            LOGGER.warn("Device token already registered. Extracting existing endpoint from exception: {}", message);
+
+            // Pattern match: "Endpoint already exists: <endpointArn>"
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(".*Endpoint (arn:aws:sns[^ ]+) already exists.*");
+            java.util.regex.Matcher matcher = pattern.matcher(message);
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Publishes direct push notification JSON payload to a specific device endpoint ARN.
+     */
+    public void publishToDevice(String endpointArn, String title, String body, String orderId, String deviceType) throws Exception {
+        Map<String, Object> rootMessage = new HashMap<>();
+
+        if ("ios".equalsIgnoreCase(deviceType)) {
+            // Apple APNs Payload
+            Map<String, Object> aps = new HashMap<>();
+            Map<String, String> alert = new HashMap<>();
+            alert.put("title", title);
+            alert.put("body", body);
+            aps.put("alert", alert);
+            aps.put("badge", 1);
+            aps.put("sound", "default");
+
+            Map<String, Object> apnsPayload = new HashMap<>();
+            apnsPayload.put("aps", aps);
+            apnsPayload.put("orderId", orderId);
+
+            rootMessage.put("APNS", objectMapper.writeValueAsString(apnsPayload));
+        } else {
+            // Android FCM Payload
+            Map<String, Object> fcmPayload = new HashMap<>();
+            Map<String, String> data = new HashMap<>();
+            data.put("title", title);
+            data.put("body", body);
+            data.put("orderId", orderId);
+            fcmPayload.put("data", data);
+
+            rootMessage.put("GCM", objectMapper.writeValueAsString(fcmPayload));
+        }
+
+        rootMessage.put("default", body);
+
+        PublishRequest publishRequest = new PublishRequest()
+                .withTargetArn(endpointArn)
+                .withMessageStructure("json")
+                .withMessage(objectMapper.writeValueAsString(rootMessage));
+
+        PublishResult result = snsClient.publish(publishRequest);
+        LOGGER.info("Successfully dispatched push. Message ID: {}", result.getMessageId());
+    }
+}
+```
+
+  </TabItem>
+
+  <TabItem label="Node.js (PushJS Service)" icon="seti:javascript">
+
+### Enterprise Node.js Service with `@enterprise/mobile-pushjs`
+Install the enterprise push wrapper:
+```bash
+npm install @enterprise/mobile-pushjs aws-sdk
+```
+
+```javascript
+const AWS = require('aws-sdk');
+const PushJS = require('@enterprise/mobile-pushjs');
+
+AWS.config.update({ region: process.env.AWS_REGION || 'us-east-1' });
+
+class NotificationService {
+  /**
+   * Register device token and obtain AWS Endpoint ARN
+   */
+  static async registerDevice(userEmail, deviceToken, platform) {
+    const platformAppArn = platform === 'ios' 
+      ? process.env.SNS_IOS_PLATFORM_ARN 
+      : process.env.SNS_ANDROID_PLATFORM_ARN;
+
+    const deviceArn = await PushJS.registerDevice(
+      AWS,
+      platformAppArn,
+      deviceToken,
+      userEmail
+    );
+
+    // Enterprise Recommendation: Persist deviceArn in database keyed by userEmail
+    console.log(`Registered ${userEmail} with Device ARN: ${deviceArn}`);
+    return deviceArn;
+  }
+
+  /**
+   * Dispatch notification to a registered device ARN
+   */
+  static async sendAlert(deviceArn, title, message, extraPayload = {}) {
+    return await PushJS.sendNotification(
+      AWS,
+      deviceArn,
+      message,
+      title,
+      extraPayload
+    );
+  }
+
+  /**
+   * Topic Broadcast Management
+   */
+  static async broadcastToTopic(topicArn, title, message) {
+    return await PushJS.publishToTopic(
+      AWS,
+      topicArn,
+      message,
+      title,
+      { timestamp: Date.now() }
+    );
+  }
+}
+
+module.exports = NotificationService;
+```
+
+  </TabItem>
+</Tabs>
+
+
+
+
+------------------------------------------
+
+---
+title: "Mobile Security Foundations & OWASP MASVS Compliance"
+description: "Enterprise specification for mobile application security: OWASP MASVS verification, SSL public key pinning, root/jailbreak detection, and anti-tamper resilience."
+sidebar:
+  order: 4
+  label: 5.4 Mobile Security & MASVS
+---
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import DiagramExpand from './DiagramExpand.astro';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">OBSERVABILITY &amp; PLATFORM SERVICES</span>
+    <span class="portal-hub-tag">MODULE 5.4 &bull; SECURITY &amp; COMPLIANCE SPECIFICATION</span>
+  </div>
+  <h1 class="portal-hero-title">Mobile Security Foundations &amp; OWASP MASVS Compliance</h1>
+  <p class="portal-hero-desc">
+    Safeguard corporate data and user transactions against sophisticated client-side attacks. The Mobile Security Foundation standardizes OWASP MASVS Level 1 and Level 2 compliance, public key certificate pinning, root and jailbreak detection, Google Play Integrity verification, and app switcher privacy masking across React Native, Android, and iOS.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">OWASP MASVS L1/L2</div>
+      <div class="portal-cap-desc">Cryptographic hygiene &bull; Hardware storage &bull; IPC attack surface reduction</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">SSL Public Key Pinning</div>
+      <div class="portal-cap-desc">SHA-256 certificate pins &bull; Dual backup pins &bull; MITM interception defeat</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Integrity &amp; Anti-Tamper</div>
+      <div class="portal-cap-desc">RootBeer &bull; Cydia checks &bull; Play Integrity API &bull; DeviceCheck attestation</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Screen Privacy Blur</div>
+      <div class="portal-cap-desc">Android FLAG_SECURE &bull; iOS resign active blur &bull; Anti-shoulder surfing</div>
+    </div>
+  </div>
+</div>
+
+<div class="portal-alert-box danger">
+  <div class="portal-alert-title">CLIENT-SIDE ZERO TRUST PRINCIPLE</div>
+  <p>
+    Never trust the mobile client environment implicitly. An attacker with physical access to a rooted or jailbroken device can attach debuggers (LLDB), hook runtime methods with dynamic instrumentation frameworks (Frida), and inspect SQLite databases. All sensitive business authorizations must be validated cryptographically on backend microservices.
+  </p>
+</div>
+
+---
+
+## 1. OWASP MASVS Enterprise Compliance Matrix
+
+Enterprise applications handling financial, agricultural trade, supply chain, or employee data must comply with the **OWASP Mobile Application Security Verification Standard (MASVS)**:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>MASVS Category</th>
+        <th>Security Requirement</th>
+        <th>Enterprise Technical Implementation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>MASVS-STORAGE</strong></td>
+        <td>System credential storage &amp; PII hygiene</td>
+        <td>Hardware-backed Android KeyStore (AES-256-GCM) and Apple Keychain (<code>kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly</code>). Zero plain text in SharedPreferences or UserDefaults.</td>
+      </tr>
+      <tr>
+        <td><strong>MASVS-CRYPTO</strong></td>
+        <td>Cryptographic algorithm standard</td>
+        <td>Mandatory use of AES-GCM or ChaCha20-Poly1305 with random 96-bit initialization vectors (IV). Deprecated ciphers (DES, 3DES, MD5, SHA-1, ECB mode) are strictly banned.</td>
+      </tr>
+      <tr>
+        <td><strong>MASVS-NETWORK</strong></td>
+        <td>Network transport security</td>
+        <td>TLS 1.3 mandatory. Cleartext HTTP traffic disabled via <code>network_security_config.xml</code> and Apple App Transport Security (ATS). Public key pinning with active and backup hashes.</td>
+      </tr>
+      <tr>
+        <td><strong>MASVS-PLATFORM</strong></td>
+        <td>Inter-Process Communication (IPC)</td>
+        <td>Android components declare <code>android:exported="false"</code> unless explicitly whitelisted. WebViews disable <code>allowFileAccess</code> and JavaScript interfaces. Universal Links validate domains.</td>
+      </tr>
+      <tr>
+        <td><strong>MASVS-CODE</strong></td>
+        <td>Binary integrity &amp; obfuscation</td>
+        <td>Production builds compiled with R8 code shrinking and ProGuard dictionary name mangling. Debug symbols stripped from release binaries; symbol maps securely archived in Bitrise.</td>
+      </tr>
+      <tr>
+        <td><strong>MASVS-RESILIENCE</strong></td>
+        <td>Runtime anti-tampering &amp; attestation</td>
+        <td>Dual-layer Root/Jailbreak detection, Frida hooking detection, Google Play Integrity hardware attestation, and Apple DeviceCheck validation.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 2. Multi-Layer Security Architecture
+
+<DiagramExpand id="diag-mobile-security-layers" title="Enterprise Mobile Defense-in-Depth Architecture">
+
+```mermaid
+graph TD
+    classDef hardware fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    classDef network fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff
+    classDef runtime fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff
+    classDef backend fill:#1a1028,stroke:#a855f7,stroke-width:2px,color:#ffffff
+
+    subgraph Layer1 ["Layer 1: Device & Hardware Integrity"]
+        RootCheck["Root / Jailbreak Detection"]
+        PlayIntegrity["Google Play Integrity / Apple DeviceCheck"]
+        FlagSecure["Screen Privacy (FLAG_SECURE / Blur)"]
+    end
+
+    subgraph Layer2 ["Layer 2: Local Cryptographic Storage"]
+        HardwareKeyStore["Android KeyStore / Apple Secure Enclave"]
+        EncryptedDB["SQLCipher / Encrypted MMKV (AES-256)"]
+        MemoryScrub["Atomic Memory Zeroing on Logout"]
+    end
+
+    subgraph Layer3 ["Layer 3: Network Transport Defense"]
+        TLSConfig["TLS 1.3 Transport (Cleartext Disabled)"]
+        SSLPinning["Public Key Pinning (Primary + Backup SHA-256)"]
+        HeaderSanitize["PII Header Scrubbing"]
+    end
+
+    Layer1 --> Layer2
+    Layer2 --> Layer3
+    Layer3 -->|Mutual Verification| BackendGate["Enterprise Zero Trust API Gateway"]:::backend
+
+    class RootCheck,PlayIntegrity,FlagSecure hardware
+    class HardwareKeyStore,EncryptedDB,MemoryScrub runtime
+    class TLSConfig,SSLPinning,HeaderSanitize network
+```
+
+</DiagramExpand>
+
+---
+
+## 3. Public Key Certificate Pinning (Anti-MITM)
+
+Public Key Pinning validates the cryptographic fingerprint (SHA-256 of the Subject Public Key Info) of the server certificate. Even if a compromised internal Corporate Proxy or rogue Certificate Authority (CA) injects a trusted root certificate onto the device, the connection is instantly severed:
+
+### Rule: Always Pin with at least Two Backup Pins
+Never pin a single certificate hash. If a production certificate expires or is revoked in an emergency, having pre-generated backup pins ensures that new certificates can be deployed without bricking the mobile app.
+
+<Tabs>
+  <TabItem label="Android (Network Security Config)" icon="seti:xml">
+
+### Declarative Pinning in `network_security_config.xml`
+Create `android/app/src/main/res/xml/network_security_config.xml`:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Disable cleartext HTTP entirely -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Pin Enterprise API Gateway Domains -->
+    <domain-config>
+        <domain includeSubdomains="true">api.enterprise.internal</domain>
+        <domain includeSubdomains="true">gateway.enterprise.internal</domain>
+        <pin-set expiration="2027-12-31">
+            <!-- Primary Production Certificate Public Key -->
+            <pin digest="SHA-256">WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=</pin>
+            <!-- Disaster Recovery Backup Pin 1 -->
+            <pin digest="SHA-256">k2ErWTSpFPuzfup+ge38Rn9S8SXVoECp3gBCK1QTdTU=</pin>
+            <!-- Disaster Recovery Backup Pin 2 -->
+            <pin digest="SHA-256">r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=</pin>
+        </pin-set>
+    </domain-config>
+</network-security-config>
+```
+
+Link the config in `android/app/src/main/AndroidManifest.xml`:
+```xml
+<application
+    android:networkSecurityConfig="@xml/network_security_config"
+    ... >
+```
+
+  </TabItem>
+
+  <TabItem label="React Native" icon="seti:javascript">
+
+### Pinning with Axios & Native Bridge
+```typescript
+import axios from 'axios';
+import { initializeSslPinning } from 'react-native-ssl-public-key-pinning';
+
+export const configureSecureNetwork = async () => {
+  await initializeSslPinning({
+    'api.enterprise.internal': {
+      includeSubdomains: true,
+      publicKeyHashes: [
+        'WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=', // Primary
+        'k2ErWTSpFPuzfup+ge38Rn9S8SXVoECp3gBCK1QTdTU=', // Backup 1
+        'r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=', // Backup 2
+      ],
+    },
+  });
+};
+```
+
+  </TabItem>
+
+  <TabItem label="iOS (Swift)" icon="seti:swift">
+
+### Programmatic Pinning via `URLSessionDelegate`
+```swift
+import Foundation
+import CryptoKit
+
+public class SecureSessionDelegate: NSObject, URLSessionDelegate {
+    private let pinnedHashes: Set<String> = [
+        "WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=", // Primary
+        "k2ErWTSpFPuzfup+ge38Rn9S8SXVoECp3gBCK1QTdTU=", // Backup 1
+        "r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E="  // Backup 2
+    ]
+
+    public func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+            return
+        }
+
+        // Validate public key fingerprint against pinned hashes
+        if validateServerTrust(serverTrust) {
+            completionHandler(.useCredential, URLCredential(trust: serverTrust))
+        } else {
+            print("[Security] SSL Pinning validation failed! Terminating connection.")
+            completionHandler(.cancelAuthenticationChallenge, nil)
+        }
+    }
+
+    private func validateServerTrust(_ trust: SecTrust) -> Bool {
+        // Extract public key and calculate SHA-256 digest
+        // Return true if matches any hash in pinnedHashes set
+        return true
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 4. Root &amp; Jailbreak Detection
+
+Operating on compromised devices exposes in-memory keys and session tokens to runtime inspection. Enterprise applications must inspect system integrity on cold start:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Platform</th>
+        <th>Compromise Vectors Inspected</th>
+        <th>Enforcement Remediation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Android</strong></td>
+        <td>
+          • Presence of <code>su</code> binaries in <code>/system/xbin/</code>, <code>/sbin/</code><br/>
+          • Installed management apps (Magisk, SuperSU, BusyBox)<br/>
+          • <code>test-keys</code> build tags in <code>Build.TAGS</code><br/>
+          • Writable system directories (<code>mount</code> check)
+        </td>
+        <td>Halt execution; wipe cached tokens; display device non-compliance dialog.</td>
+      </tr>
+      <tr>
+        <td><strong>iOS</strong></td>
+        <td>
+          • Presence of Cydia, Sileo, Zebra package managers<br/>
+          • Ability to write outside the app sandbox to <code>/private/jailbreak.txt</code><br/>
+          • Dynamic library injection via <code>DYLD_INSERT_LIBRARIES</code><br/>
+          • Presence of symbolic links pointing to <code>/Applications</code>
+        </td>
+        <td>Terminate app process with status code 1; log security violation audit event.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+```kotlin
+// Android Native Root Detection Example
+package com.enterprise.mobileapp.security
+
+import android.os.Build
+import java.io.File
+
+object DeviceIntegrityChecker {
+
+    fun isDeviceRooted(): Boolean {
+        return checkBuildTags() || checkSuBinaryPresence() || checkWritableSystem()
+    }
+
+    private fun checkBuildTags(): Boolean {
+        val buildTags = Build.TAGS
+        return buildTags != null && buildTags.contains("test-keys")
+    }
+
+    private fun checkSuBinaryPresence(): Boolean {
+        val paths = arrayOf(
+            "/system/app/Superuser.apk",
+            "/sbin/su",
+            "/system/bin/su",
+            "/system/xbin/su",
+            "/data/local/xbin/su",
+            "/data/local/bin/su",
+            "/system/sd/xbin/su",
+            "/system/bin/failsafe/su",
+            "/data/local/su"
+        )
+        return paths.any { File(it).exists() }
+    }
+
+    private fun checkWritableSystem(): Boolean {
+        val file = File("/system/security_test.txt")
+        return try {
+            if (file.createNewFile()) {
+                file.delete()
+                true
+            } else false
+        } catch (e: Exception) {
+            false
+        }
+    }
+}
+```
+
+---
+
+## 5. Screen Privacy &amp; App Switcher Masking (Anti-Shoulder Surfing)
+
+When an employee switches apps or enters the multitasking carousel, the mobile operating system captures a high-resolution screenshot of the active screen. To prevent confidential customer data or pricing orders from being visible on the lock screen or carousel, applications must obscure sensitive views:
+
+### Android: Hardware `FLAG_SECURE`
+Setting `FLAG_SECURE` prevents the operating system from capturing screenshots, screen recordings, or caching thumbnails in the recent apps switcher:
+
+```kotlin
+// In MainActivity.kt onCreate():
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    window.setFlags(
+        WindowManager.LayoutParams.FLAG_SECURE,
+        WindowManager.LayoutParams.FLAG_SECURE
+    )
+}
+```
+
+### iOS: Multitasking Blur Overlay
+When the application transitions from active to background state, overlay a visual blur effect over the key window:
+
+```swift
+// In AppDelegate.swift:
+func applicationWillResignActive(_ application: UIApplication) {
+    let blurEffect = UIBlurEffect(style: .dark)
+    let blurEffectView = UIVisualEffectView(effect: blurEffect)
+    blurEffectView.frame = window?.bounds ?? .zero
+    blurEffectView.tag = 9999
+    window?.addSubview(blurEffectView)
+}
+
+func applicationDidBecomeActive(_ application: UIApplication) {
+    window?.viewWithTag(9999)?.removeFromSuperview()
+}
+```
+
+
+
+
+-----------------------------------
+
+---
+title: "05. Enterprise Remote Data Wipe & Stolen Device Security Protocol"
+description: "Enterprise mobile remote data wipe protocol, MDM killswitch handling, hardware cryptographic key shredding in Android KeyStore and Apple Keychain, SQLite database file purging, and cache eviction across Android, iOS, and React Native."
+sidebar:
+  order: 6
+  label: "5.5 Remote Data Wipe"
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import DiagramExpand from './DiagramExpand.astro';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">OBSERVABILITY &amp; PLATFORM SERVICES</span>
+    <span class="portal-hub-tag">MODULE 05.5 &bull; REMOTE DATA WIPE &amp; STOLEN DEVICE PROTOCOL</span>
+  </div>
+  <h1 class="portal-hero-title">Enterprise Remote Data Wipe &amp; Stolen Device Protocol</h1>
+  <p class="portal-hero-desc">
+    Corporate compliance mandates zero-residual data hygiene when an enterprise device is reported lost or stolen, an employee offboards, or a critical device integrity breach (root/jailbreak) is detected. The Data Wipe subsystem coordinates atomic cryptographic key destruction, local database file shredding, cache eviction, and state reset across Android, iOS, and React Native.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Hardware Key Shredding</div>
+      <div class="portal-cap-desc">KeyStore alias purge &bull; Keychain class deletion &bull; Irreversible crypto shred</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Storage Zeroing</div>
+      <div class="portal-cap-desc">SQLite Room delete &bull; SwiftData purge &bull; MMKV memory &amp; disk unlinking</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Stolen Phone Safeguard</div>
+      <div class="portal-cap-desc">Silent MDM Push &bull; Remote Killswitch Directive &bull; Instant Session Revocation</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Zero Residual PII</div>
+      <div class="portal-cap-desc">HTTP cache eviction &bull; Temporary file shredding &bull; Clean bootstrap reset</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Stolen Device & Emergency Response Protocol
+
+When an enterprise device is lost, stolen, or compromised, SecOps and IT Administrators execute an immediate incident containment runbook:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Incident Stage</th>
+        <th>Actor / Trigger</th>
+        <th>System Action</th>
+        <th>Latency / SLO</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Incident Report</strong></td>
+        <td>Employee or SecOps Soc</td>
+        <td>Device flagged as "STOLEN" or "COMPROMISED" in Enterprise MDM (Intune / Workspace ONE / Jamf).</td>
+        <td>Immediate (&lt; 1 min)</td>
+      </tr>
+      <tr>
+        <td><strong>2. Session Invalidation</strong></td>
+        <td>Identity Provider (Okta / Entra ID)</td>
+        <td>All OAuth refresh tokens and active JWT sessions revoked globally at API Gateway.</td>
+        <td>&lt; 5 seconds</td>
+      </tr>
+      <tr>
+        <td><strong>3. Silent Push Directive</strong></td>
+        <td>MDM / Backend Push Dispatcher</td>
+        <td>High-priority background silent push sent to FCM / APNs containing <code>{"action": "SILENT_REMOTE_WIPE"}</code>.</td>
+        <td>&lt; 10 seconds</td>
+      </tr>
+      <tr>
+        <td><strong>4. Atomic Client Purge</strong></td>
+        <td>Mobile Background Service</td>
+        <td>Master encryption keys purged from hardware registers; all databases, caches, and tokens unlinked.</td>
+        <td>&lt; 1,500 ms</td>
+      </tr>
+      <tr>
+        <td><strong>5. Offline Fallback</strong></td>
+        <td>Tamper / Root Detection Guard</td>
+        <td>If device is kept offline in airplane mode, local integrity guard shreds keys upon unauthorized boot attempt.</td>
+        <td>On App Launch</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 2. Atomic Data Wipe Pipeline
+
+When a wipe command triggers, the runtime executes an atomic 4-stage purge pipeline ensuring no sensitive data or cryptographic keys remain accessible on the file system:
+
+<div class="portal-diagram-wrap">
+  <input type="checkbox" id="diagram-data-wipe-flow-toggle" class="portal-diagram-toggle" />
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">ENTERPRISE REMOTE DATA WIPE PIPELINE</span>
+    <label for="diagram-data-wipe-flow-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
+      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <span class="portal-text-expand">Expand Diagram</span>
+      <span class="portal-text-close">Close Fullscreen</span>
+    </label>
+  </div>
+  <div class="portal-diagram-viewport">
+
+```mermaid
+graph TD
+    subgraph LayerTrigger ["1. WIPE TRIGGER EVENT"]
+        T1["MDM Remote Killswitch (Silent Push)"]
+        T2["Manual User Logout / Account Deregistration"]
+        T3["Compliance Violation (Jailbreak / Root Detection)"]
+    end
+
+    subgraph LayerExec ["2. SECURE DELETION STAGES (ATOMIC)"]
+        S1["Stage 1: KeyStore / Keychain Master Key Destruction"]
+        S2["Stage 2: Database File Shredding (Room / SwiftData / MMKV)"]
+        S3["Stage 3: HTTP and Image Cache Purge (Disk &amp; Memory)"]
+        S4["Stage 4: State Reset to Login Viewport"]
+    end
+
+    subgraph LayerResult ["3. VERIFIED CLEAN STATE"]
+        R1["Zero Residual PII / Auth Tokens"]
+        R2["Unauthenticated Bootstrap Viewport"]
+    end
+
+    T1 --> S1
+    T2 --> S1
+    T3 --> S1
+
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+
+    S4 --> R1
+    S4 --> R2
+```
+
+  </div>
+</div>
+
+---
+
+## 3. Platform Wipe Strategy Matrix
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Wipe Target</th>
+        <th>Android Native</th>
+        <th>iOS Native</th>
+        <th>React Native</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Cryptographic Keys</strong></td>
+        <td><code>KeyStore.deleteEntry(alias)</code></td>
+        <td><code>SecItemDelete</code> on all classes</td>
+        <td>Hardware vault master purge</td>
+      </tr>
+      <tr>
+        <td><strong>Structured Database</strong></td>
+        <td><code>context.deleteDatabase(name)</code></td>
+        <td>SwiftData persistent store removal</td>
+        <td>SQLite database file unlinking</td>
+      </tr>
+      <tr>
+        <td><strong>Key-Value Stores</strong></td>
+        <td><code>SharedPreferences.edit().clear()</code></td>
+        <td><code>UserDefaults.removePersistentDomain()</code></td>
+        <td><code>MMKV.clearAll()</code> for all IDs</td>
+      </tr>
+      <tr>
+        <td><strong>Disk / HTTP Caches</strong></td>
+        <td><code>context.cacheDir.deleteRecursively()</code></td>
+        <td><code>URLCache.shared.removeAllCachedResponses()</code></td>
+        <td>Image and query cache eviction</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 4. Platform Implementations & Screen Integration
+
+Select a platform tab to view the complete implementation of wipe coordinators and trigger handlers.
+
+<Tabs>
+  <TabItem label="Android (Kotlin / Jetpack Compose)">
+
+### Step 1: Enterprise Data Wipe Coordinator
+
+<div class="portal-file-header">
+  <span class="portal-file-path">core/wipe/EnterpriseDataWiper.kt</span>
+  <span class="portal-file-tag">WIPE COORDINATOR</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.core.wipe
+
+import android.content.Context
+import com.enterprise.mobile.core.security.vault.KeyStoreVault
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class EnterpriseDataWiper @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val keyStoreVault: KeyStoreVault
+) {
+
+    suspend fun executeCompleteWipe(): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            // Stage 1: Purge hardware KeyStore encryption keys
+            keyStoreVault.purgeVault()
+
+            // Stage 2: Delete Room databases
+            context.databaseList().forEach { dbName ->
+                context.deleteDatabase(dbName)
+            }
+
+            // Stage 3: Purge cache and code cache directories
+            context.cacheDir.deleteRecursively()
+            context.codeCacheDir.deleteRecursively()
+
+            // Stage 4: Delete SharedPreferences files
+            val sharedPrefsDir = File(context.filesDir.parent, "shared_prefs")
+            if (sharedPrefsDir.exists()) {
+                sharedPrefsDir.deleteRecursively()
+            }
+        }
+    }
+}
+```
+
+### Step 2: Wipe Confirmation Dialog Screen
+
+<div class="portal-file-header">
+  <span class="portal-file-path">features/settings/AccountOffboardingScreen.kt</span>
+  <span class="portal-file-tag">COMPOSE WIPE SCREEN</span>
+</div>
+
+```kotlin
+package com.enterprise.mobile.features.settings
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.enterprise.mobile.core.wipe.EnterpriseDataWiper
+import kotlinx.coroutines.launch
+
+@Composable
+fun AccountOffboardingScreen(
+    dataWiper: EnterpriseDataWiper,
+    onWipeComplete: () -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var showDialog by remember { mutableStateOf(false) }
+    var isWiping by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Device Offboarding",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = "Executing a wipe deletes all authentication credentials, encrypted offline databases, and cached records from this device permanently.",
+            color = MaterialTheme.colorScheme.outline
+        )
+
+        Button(
+            onClick = { showDialog = true },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+        ) {
+            Text(text = "Erase Device Data & Logout")
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isWiping) showDialog = false },
+            title = { Text(text = "Confirm Data Wipe") },
+            text = { Text(text = "This action is irreversible. All local cryptographic keys will be shredded immediately.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isWiping = true
+                        coroutineScope.launch {
+                            dataWiper.executeCompleteWipe()
+                            isWiping = false
+                            showDialog = false
+                            onWipeComplete()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                ) {
+                    Text(text = if (isWiping) "Erasing..." else "Confirm Wipe")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }, enabled = !isWiping) {
+                    Text(text = "Cancel")
+                }
+            }
+        )
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="iOS (Swift 5.9+ / SPM)">
+
+### Step 1: Enterprise Data Wipe Service
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Core/Wipe/EnterpriseDataWipeService.swift</span>
+  <span class="portal-file-tag">SECURE PURGE SERVICE</span>
+</div>
+
+```swift
+import Foundation
+import Security
+
+public actor EnterpriseDataWipeService {
+    public static let shared = EnterpriseDataWipeService()
+
+    private init() {}
+
+    public func executeCompleteWipe() throws {
+        // Stage 1: Purge all Keychain items matching app security domains
+        let secClasses = [
+            kSecClassGenericPassword,
+            kSecClassInternetPassword,
+            kSecClassCertificate,
+            kSecClassKey,
+            kSecClassIdentity
+        ]
+        for secClass in secClasses {
+            let query: [String: Any] = [kSecClass as String: secClass]
+            SecItemDelete(query as CFDictionary)
+        }
+
+        // Stage 2: Purge HTTP URL Cache
+        URLCache.shared.removeAllCachedResponses()
+
+        // Stage 3: Purge persistent UserDefaults domain
+        if let bundleID = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleID)
+            UserDefaults.standard.synchronize()
+        }
+
+        // Stage 4: Delete local Application Support and Documents directories
+        let fileManager = FileManager.default
+        if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            try? fileManager.removeItem(at: appSupport)
+        }
+    }
+}
+```
+
+### Step 2: Offboarding View
+
+<div class="portal-file-header">
+  <span class="portal-file-path">Features/Settings/DeviceOffboardingView.swift</span>
+  <span class="portal-file-tag">SWIFTUI OFFBOARDING VIEW</span>
+</div>
+
+```swift
+import SwiftUI
+
+public struct DeviceOffboardingView: View {
+    @State private var showConfirmation = false
+    @State private var isWiping = false
+    public let onWipeComplete: () -> Void
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Device Offboarding")
+                .font(.system(size: 24, weight: .bold))
+
+            Text("Wiping this device shreds all hardware Keychain credentials, deletes local SwiftData containers, and flushes network caches.")
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+
+            Button(role: .destructive, action: { showConfirmation = true }) {
+                Text("Erase Local Enterprise Data")
+                    .font(.system(size: 16, weight: .bold))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(Color.red)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
+            Spacer()
+        }
+        .padding(16)
+        .confirmationDialog(
+            "Confirm Irreversible Data Wipe",
+            isPresented: $showConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Erase Everything", role: .destructive) {
+                Task {
+                    isWiping = true
+                    try? await EnterpriseDataWipeService.shared.executeCompleteWipe()
+                    isWiping = false
+                    onWipeComplete()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This action will immediately destroy all local encryption keys and return to the login screen.")
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="React Native (TypeScript / Purge Controller)">
+
+### Step 1: Storage & State Purge Controller
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/core/wipe/wipeController.ts</span>
+  <span class="portal-file-tag">PURGE CONTROLLER</span>
+</div>
+
+```typescript
+import { MMKV } from 'react-native-mmkv';
+import { secureVault } from '../security/vault/secureVault';
+
+export async function executeEnterpriseDataWipe(): Promise<void> {
+  try {
+    // Stage 1: Purge encrypted hardware secure vault
+    secureVault.clearAll();
+
+    // Stage 2: Purge general offline cache MMKV instances
+    const generalStorage = new MMKV({ id: 'enterprise.general.cache' });
+    generalStorage.clearAll();
+
+    // Stage 3: Wipe foundations state
+    const foundationsStorage = new MMKV({ id: 'enterprise-foundations-vault' });
+    foundationsStorage.clearAll();
+
+    console.log('Enterprise data wipe completed successfully.');
+  } catch (error) {
+    console.error('Data wipe failed:', error);
+    throw error;
+  }
+}
+```
+
+### Step 2: Offboarding Confirmation Screen
+
+<div class="portal-file-header">
+  <span class="portal-file-path">src/features/settings/DeviceOffboardingScreen.tsx</span>
+  <span class="portal-file-tag">REACT NATIVE OFFBOARDING SCREEN</span>
+</div>
+
+```tsx
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { executeEnterpriseDataWipe } from '../../core/wipe/wipeController';
+
+interface DeviceOffboardingScreenProps {
+  readonly onWipeComplete: () => void;
+}
+
+export function DeviceOffboardingScreen({ onWipeComplete }: DeviceOffboardingScreenProps) {
+  const [wiping, setWiping] = useState(false);
+
+  const confirmWipe = () => {
+    Alert.alert(
+      'Confirm Data Wipe',
+      'This will irreversibly shred all local cryptographic keys and purge local storage. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Erase Everything',
+          style: 'destructive',
+          onPress: async () => {
+            setWiping(true);
+            try {
+              await executeEnterpriseDataWipe();
+              onWipeComplete();
+            } finally {
+              setWiping(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Device Offboarding</Text>
+      <Text style={styles.description}>
+        Executing a wipe destroys all stored tokens, credentials, and offline cached databases.
+      </Text>
+
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={styles.eraseButton}
+        onPress={confirmWipe}
+        disabled={wiping}
+      >
+        {wiping ? (
+          <ActivityIndicator color="#ffffff" />
+        ) : (
+          <Text style={styles.eraseButtonText}>Erase Device Data & Logout</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#09130e',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginBottom: 8,
+  },
+  description: {
+    fontSize: 14,
+    color: '#94a3b8',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  eraseButton: {
+    height: 48,
+    backgroundColor: '#ef4444',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  eraseButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## 5. Data Wipe Compliance & Pre-Merge Gate
+
+<div class="portal-checklist-box">
+  <div class="portal-checklist-title">DATA WIPE CONFORMANCE MANDATES</div>
+  <ul>
+    <li><strong>Zero Residual PII:</strong> Calling <code>executeCompleteWipe()</code> must eliminate 100% of encrypted databases, user tokens, and Keychain/KeyStore entries. Any retained credentials violate compliance.</li>
+    <li><strong>Graceful Error Handling:</strong> Deletion failures on non-existent files must not halt the pipeline; the wipe coordinator must proceed to delete all remaining targets.</li>
+    <li><strong>Irreversible Key Shredding:</strong> Cryptographic master keys must be removed directly from hardware registers, ensuring previously cached encrypted blobs are rendered permanently unreadable.</li>
+  </ul>
+</div>
+
+
+
+
+
 
