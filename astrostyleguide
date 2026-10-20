@@ -344,7 +344,9 @@ Before triggering a production build or opening a store deployment request, veri
 
 
 
------------------------
+--------------------------
+
+
 
 
 ---
@@ -389,6 +391,56 @@ sidebar:
 ## 1. Enterprise App Store Architecture & Variants
 
 In accordance with corporate mobility governance, **any application built exclusively for internal enterprise employees must be hosted on the Enterprise App Store**, rather than published to public commercial app stores (Google Play or Apple App Store).
+
+<div class="portal-diagram-wrap">
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">ENTERPRISE DISTRIBUTION TOPOLOGY</span>
+    <h3 class="portal-diagram-title">Enterprise App Store Build, Distribution &amp; Zero-Trust Verification Architecture</h3>
+  </div>
+  <div class="portal-diagram-viewport">
+```mermaid
+graph TD
+    subgraph CI_Pipeline ["1. CI/CD Build & Signing Pipeline"]
+        SRC["Mobile Code Repository (GitHub)"] --> CI_BUILD["Bitrise Hermetic Build Runner"]
+        CI_BUILD --> SIGN_INHOUSE["Sign with Apple Enterprise In-House (.p12)<br/>or Android Unified Release Keystore (.jks)"]
+    end
+
+    subgraph Store_Tiers ["2. Enterprise App Store Variants (Apperian / MDM)"]
+        SIGN_INHOUSE --> QA_STORE["Enterprise QA Store<br/>(Engineering Sprint & Smoke Testing)"]
+        SIGN_INHOUSE --> UAT_STORE["Enterprise UAT Store<br/>(Business Stakeholder Sign-Off)"]
+        SIGN_INHOUSE --> PROD_STORE["Enterprise PROD Store<br/>(Global Workforce Deployment)"]
+    end
+
+    subgraph User_Device ["3. Device Provisioning & Onboarding"]
+        EMP["Employee Mobile Device"] -->|Scan QR / Open Mobile Safari| CATALOG["Private App Store Catalog Web Portal"]
+        CATALOG -->|Select App & Download| OTA_PLIST["OTA Manifest (itms-services://)"]
+        OTA_PLIST --> INSTALL["Container Installation on Device"]
+    end
+
+    subgraph Trust_Auth ["4. Trust & Identity Governance Gate"]
+        INSTALL --> IOS_TRUST["iOS Device Settings:<br/>Trust Enterprise Developer Certificate"]
+        IOS_TRUST --> SSO_AUTH["Entitlements Gate (access.enterprise.internal):<br/>Validate Active Directory / Okta Group RBAC"]
+        SSO_AUTH --> APP_ACTIVE["Enterprise Application Active & Operational"]
+    end
+
+    QA_STORE --> CATALOG
+    UAT_STORE --> CATALOG
+    PROD_STORE --> CATALOG
+
+    classDef ci fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff;
+    classDef store fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff;
+    classDef device fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef gate fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#ffffff;
+    classDef success fill:#1f3b2c,stroke:#22c55e,stroke-width:2px,color:#22c55e;
+
+    class SRC,CI_BUILD,SIGN_INHOUSE ci;
+    class QA_STORE,UAT_STORE,PROD_STORE store;
+    class EMP,CATALOG,OTA_PLIST,INSTALL device;
+    class IOS_TRUST,SSO_AUTH gate;
+    class APP_ACTIVE success;
+```
+  </div>
+</div>
 
 The enterprise maintains **three distinct App Store variants** tailored to each stage of the delivery lifecycle:
 
@@ -594,7 +646,9 @@ Deploying any mobile application to the **Enterprise UAT** or **Enterprise PROD*
 
 
 
-----------------------------
+
+--------------------------------------
+
 
 
 
@@ -787,6 +841,54 @@ Google Play Console -> App Content -> App Access -> "All or some functionality i
 
 Enterprise Android apps deploy through progressive testing tracks before reaching 100% of global production users:
 
+<div class="portal-diagram-wrap">
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">PROGRESSIVE RELEASE PIPELINE</span>
+    <h3 class="portal-diagram-title">Google Play Testing Tracks &amp; Phased Staged Rollout Architecture</h3>
+  </div>
+  <div class="portal-diagram-viewport">
+```mermaid
+graph TD
+    AAB["Signed Android App Bundle (.aab)<br/>+ Proguard / R8 mapping.txt"] --> FASTLANE["Fastlane supply / Google Play Developer API"]
+    
+    subgraph TestingTracks ["1. Pre-Release Testing Tracks"]
+        FASTLANE --> TRACK_INTERNAL["Internal App Sharing<br/>(Instant Dev/QA Smoke Testing)"]
+        FASTLANE --> TRACK_CLOSED["Closed Testing Track<br/>(Targeted QA & Automation Fleet)"]
+        TRACK_CLOSED --> PRE_LAUNCH["Google Pre-Launch Report<br/>(Firebase Test Lab Device Matrix)"]
+    end
+
+    subgraph ProductionRollout ["2. Production Staged Rollout Stages"]
+        PRE_LAUNCH -->|Pass: Zero High-Severity Issues| STAGE_1["Day 1: 1% Staged Rollout"]
+        STAGE_1 --> STAGE_5["Day 2: 5% Staged Rollout"]
+        STAGE_5 --> STAGE_20["Day 3: 20% Staged Rollout"]
+        STAGE_20 --> STAGE_50["Day 4: 50% Staged Rollout"]
+        STAGE_50 --> STAGE_100["Day 5: 100% Full Production"]
+    end
+
+    subgraph TelemetryGates ["3. Real-Time Telemetry Gates (Datadog & Android Vitals)"]
+        STAGE_1 -.-> HEALTH_CHECK{"Health Gate:<br/>Crash Rate &lt; 1.09%<br/>ANR &lt; 0.47%"}
+        STAGE_5 -.-> HEALTH_CHECK
+        STAGE_20 -.-> HEALTH_CHECK
+        STAGE_50 -.-> HEALTH_CHECK
+        HEALTH_CHECK -->|Vitals Healthy| NEXT_RAMP["Approve Next Rollout Tier"]
+        HEALTH_CHECK -->|Vitals Threshold Breached| HALT["Halt Rollout Immediately<br/>&amp; Dispatch Hotfix"]
+    end
+
+    classDef build fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff;
+    classDef track fill:#1c2d22,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef rollout fill:#102217,stroke:#facc15,stroke-width:2px,color:#ffffff;
+    classDef gate fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#ffffff;
+    classDef alert fill:#381515,stroke:#ef4444,stroke-width:2px,color:#ffffff;
+
+    class AAB,FASTLANE build;
+    class TRACK_INTERNAL,TRACK_CLOSED,PRE_LAUNCH track;
+    class STAGE_1,STAGE_5,STAGE_20,STAGE_50,STAGE_100 rollout;
+    class HEALTH_CHECK,NEXT_RAMP gate;
+    class HALT alert;
+```
+  </div>
+</div>
+
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
@@ -857,9 +959,13 @@ lane :deploy_google_play do
   )
 end
 ```
+
+
+
+
+
+
 --------------------------------
-
-
 
 
 ---
@@ -1115,6 +1221,57 @@ Apple enforces exact pixel dimensions for all uploaded screenshots. Images must 
 
 To mitigate production incident blast radiuses, applications distribute through TestFlight before executing a staged production release:
 
+<div class="portal-diagram-wrap">
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">APPLE RELEASE LIFECYCLE</span>
+    <h3 class="portal-diagram-title">Apple App Store Connect, TestFlight &amp; 7-Day Phased Rollout Architecture</h3>
+  </div>
+  <div class="portal-diagram-viewport">
+```mermaid
+graph TD
+    IPA["Signed iOS Distribution Binary (.ipa)<br/>+ dSYM Crash Symbols"] --> UPLOAD["Apple Transporter App / Fastlane deliver"]
+    
+    subgraph AppStoreConnect ["1. App Store Connect Ingestion & Processing"]
+        UPLOAD --> PROC["Automated Ingestion Processing<br/>(Asset validation &amp; bitcode/symbol extraction)"]
+        PROC --> READY["Build Ready for Testing / Release"]
+    end
+
+    subgraph TestFlightCohort ["2. TestFlight Progressive Beta Tracks"]
+        READY --> TF_INTERNAL["TestFlight Internal Cohort<br/>(Instant availability &bull; No review gate)"]
+        READY --> TF_EXTERNAL["TestFlight External Public Beta<br/>(Requires Beta App Review sign-off)"]
+    end
+
+    subgraph AppleReview ["3. App Store Review Gate"]
+        TF_EXTERNAL -->|Production Candidate| REVIEW_SUBMIT["Submit for App Store Review<br/>(15-Point Pre-flight Checklist)"]
+        REVIEW_SUBMIT --> APPLE_REVIEWER["Apple Review Board Assessment<br/>(Human UI/UX &amp; Demo Credentials Testing)"]
+        APPLE_REVIEWER -->|Approved| PHASED_GATE["Enable 7-Day Phased Release"]
+    end
+
+    subgraph PhasedRelease ["4. 7-Day Progressive Production Rollout"]
+        PHASED_GATE --> D1["Day 1: 1%"]
+        D1 --> D2["Day 2: 2%"]
+        D2 --> D3["Day 3: 5%"]
+        D3 --> D4["Day 4: 10%"]
+        D4 --> D5["Day 5: 20%"]
+        D5 --> D6["Day 6: 50%"]
+        D6 --> D7["Day 7: 100% Global Saturation"]
+    end
+
+    classDef source fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff;
+    classDef connect fill:#1c2d22,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef testflight fill:#102217,stroke:#a855f7,stroke-width:2px,color:#ffffff;
+    classDef review fill:#25153a,stroke:#facc15,stroke-width:2px,color:#ffffff;
+    classDef rollout fill:#1f3b2c,stroke:#22c55e,stroke-width:2px,color:#22c55e;
+
+    class IPA,UPLOAD source;
+    class PROC,READY connect;
+    class TF_INTERNAL,TF_EXTERNAL testflight;
+    class REVIEW_SUBMIT,APPLE_REVIEWER,PHASED_GATE review;
+    class D1,D2,D3,D4,D5,D6,D7 rollout;
+```
+  </div>
+</div>
+
 ### TestFlight Testing Tracks:
 * **Internal Testing:** Up to 100 internal organization developers and product leads. Builds become available immediately upon processing with zero review requirements.
 * **External Testing:** Up to 10,000 external pilot users. The initial build requires lightweight Beta App Review by Apple before distribution begins.
@@ -1174,9 +1331,9 @@ When releasing an update to production, developers must enable **Phased Release 
 
 
 
---------------------------------
 
 
+--------------------------------_
 
 ---
 title: "06.4 Code Signing, Certificates & TGRC Approvals"
@@ -1220,6 +1377,48 @@ sidebar:
 ## 1. Application Signing Architecture: Android & iOS
 
 To safeguard binary integrity and prevent unauthorized code injection, all mobile builds must be cryptographically signed using enterprise-governed digital certificates before deployment:
+
+<div class="portal-diagram-wrap">
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">CRYPTOGRAPHIC SIGNING TOPOLOGY</span>
+    <h3 class="portal-diagram-title">Enterprise Mobile Code Signing Hierarchy &amp; TGRC Governance Architecture</h3>
+  </div>
+  <div class="portal-diagram-viewport">
+```mermaid
+graph TD
+    DEV["Developer / Release Engineer"] --> REQ["Certificate Request Portal (myid.enterprise.internal)"]
+    
+    subgraph GovernanceGate ["1. TGRC Security & Regulatory Pre-Flight Gate"]
+        REQ --> TGRC["TGRC Deployment Gateway<br/>(Excel Manifest &amp; Vulnerability Scan Sign-Off)"]
+        TGRC --> VAULT["Encrypted CI/CD Vault<br/>(Bitrise Secrets &amp; Cloud KMS)"]
+    end
+
+    subgraph SigningVaults ["2. Cryptographic Code Signing Hierarchy"]
+        VAULT --> ANDROID_KEY["Android Unified Keystore (.jks)<br/>(Single Corporate Signing Certificate)"]
+        VAULT --> IOS_INHOUSE["iOS Apple Developer Enterprise (.p12)<br/>(In-House Distribution Certificate)"]
+        VAULT --> IOS_PUBLIC["iOS Apple Developer Program (.p12)<br/>(Public Commercial Distribution Profile)"]
+    end
+
+    subgraph TargetDistribution ["3. Governed Distribution Pathways"]
+        ANDROID_KEY -->|Unified Dual-Purpose Signing| ANDROID_INTERNAL["Enterprise App Store (QA/UAT/PROD)"]
+        ANDROID_KEY -->|Unified Dual-Purpose Signing| ANDROID_PUBLIC["Public Google Play Console"]
+        
+        IOS_INHOUSE -->|In-House Ad-Hoc/Enterprise| IOS_INTERNAL["Enterprise App Store (Employees Only)"]
+        IOS_PUBLIC -->|Commercial App Store Review| IOS_PUBLIC_STORE["Apple App Store &amp; TestFlight"]
+    end
+
+    classDef dev fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff;
+    classDef gate fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#ffffff;
+    classDef vault fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff;
+    classDef target fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+
+    class DEV,REQ dev;
+    class TGRC,VAULT gate;
+    class ANDROID_KEY,IOS_INHOUSE,IOS_PUBLIC vault;
+    class ANDROID_INTERNAL,ANDROID_PUBLIC,IOS_INTERNAL,IOS_PUBLIC_STORE target;
+```
+  </div>
+</div>
 
 <div class="portal-table-wrap">
   <table class="portal-table">
@@ -1398,3 +1597,430 @@ workflows:
     Replace this placeholder with the Bitrise Web Console screenshot displaying the Code Signing tab with configured .p12 certificates, provisioning profiles, and Android keystore: <span class="portal-screenshot-path">docs/assets/distribution/bitrise-code-signing-vault.png</span>.
   </p>
 </div>
+
+
+
+---------------------------------
+
+
+
+---
+title: "06.5 MDM Remote Wipe Protocol & Apperian Operations"
+description: "Administrative runbook and operational procedures for enterprise device lifecycle management, remote data wiping via Apperian/MDM console, client-side container purging, and user termination handling."
+sidebar:
+  order: 6
+  label: "6.5 MDM Remote Wipe Protocol"
+---
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">APP STORE &amp; DISTRIBUTION</span>
+    <span class="portal-hub-tag">MODULE 06.5 &bull; MDM RUNBOOK &amp; DATA WIPE</span>
+  </div>
+  <h1 class="portal-hero-title">MDM Remote Wipe Protocol &amp; Apperian Operations</h1>
+  <p class="portal-hero-desc">
+    The complete enterprise administrative standard and operational runbook for executing remote application data wipes, managing lost or stolen corporate mobile assets, purging secure enterprise containers, and enforcing offboarding revocation.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">8-Step Console Runbook</div>
+      <div class="portal-cap-desc">Standardized Apperian/MDM procedure &bull; Helpdesk &amp; SecOps authorization</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Client-Side Quitting Alert</div>
+      <div class="portal-cap-desc">System modal: <code>The data for this application has been wiped.quitting...</code> &bull; Immediate app termination</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Selective Container Purge</div>
+      <div class="portal-cap-desc">Destroys SQLCipher databases, Keychain items, and tokens without affecting personal photos or apps</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Audit &amp; Compliance Trail</div>
+      <div class="portal-cap-desc">Real-time syslog ingestion &bull; SOC 2, ISO 27001, and GDPR compliance validation</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Remote Data Wipe Sequence Architecture
+
+When an enterprise device is flagged as lost, stolen, or compromised—or during immediate employee offboarding—the SecOps or IT Helpdesk team triggers an administrative application wipe through the MDM Management Console:
+
+<div class="portal-diagram-wrap">
+  <div class="portal-diagram-header">
+    <span class="portal-diagram-badge">SEQUENCE ARCHITECTURE</span>
+    <h3 class="portal-diagram-title">MDM Remote Container Wipe &amp; Client Quitting Protocol</h3>
+  </div>
+  <div class="portal-diagram-viewport">
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Admin as IT Help Desk / SecOps
+  participant MDM as MDM / Apperian Console
+  participant APNS as Apple APNs / Google FCM
+  participant AppWrapper as Enterprise App Container (SDK)
+  participant LocalStore as Encrypted Local Storage (Keyring / DB)
+  actor User as Mobile Device User
+
+  Admin->>MDM: 1. Locate User & Device in Users Directory
+  Admin->>MDM: 2. Click "Clear Data" for Target Application
+  Admin->>MDM: 3. Confirm Remote Wipe Modal
+  MDM->>APNS: 4. Dispatch High-Priority Silent Wipe Payload
+  APNS->>AppWrapper: 5. Deliver Push Command (or on App Launch)
+  AppWrapper->>LocalStore: 6. Securely Shred Cryptographic Keys & Local DBs
+  LocalStore-->>AppWrapper: 7. Storage Zeroized
+  AppWrapper->>User: 8. Present Blocking Modal ("The data for this application has been wiped.quitting...")
+  AppWrapper->>AppWrapper: 9. Force Kill Process / Exit to OS Home
+  AppWrapper->>MDM: 10. Transmit Wipe Acknowledgment & Audit Event
+```
+  </div>
+</div>
+
+---
+
+## 2. 8-Step Apperian / MDM Console Administrative Runbook
+
+Authorized Tier-2 IT Support, Mobile Center of Excellence (CoE) engineers, and SecOps operators must strictly follow this 8-step workflow when executing an application data wipe:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Step</th>
+        <th>Console Stage</th>
+        <th>Operator Action</th>
+        <th>Expected Console State</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>01</strong></td>
+        <td><strong>Console Authentication</strong></td>
+        <td>Navigate to <code>https://mdm.enterprise.internal</code> and authenticate using corporate SSO with hardware security key (FIDO2/WebAuthn).</td>
+        <td>Admin Dashboard displays active devices, managed applications, and pending operational requests.</td>
+      </tr>
+      <tr>
+        <td><strong>02</strong></td>
+        <td><strong>Navigation to Users</strong></td>
+        <td>Click on <strong>Users</strong> in the primary left-hand navigation sidebar.</td>
+        <td>Displays the global enterprise user directory table with pagination and filter controls.</td>
+      </tr>
+      <tr>
+        <td><strong>03</strong></td>
+        <td><strong>User Account Search</strong></td>
+        <td>Enter the employee's Corporate Email, Network Username, or Employee ID in the search query field and press Enter.</td>
+        <td>User profile summary card appears showing name, department, status (Active/Suspended), and total enrolled devices.</td>
+      </tr>
+      <tr>
+        <td><strong>04</strong></td>
+        <td><strong>Access Devices Tab</strong></td>
+        <td>Click on the user's name to open their detailed profile, then select the <strong>Devices</strong> section.</td>
+        <td>List of all mobile devices (iOS, iPadOS, Android) currently or previously registered to this employee.</td>
+      </tr>
+      <tr>
+        <td><strong>05</strong></td>
+        <td><strong>Identify Target Device</strong></td>
+        <td>Match the device using Device Name, Hardware Model, Operating System version, or Hardware UDID/IMEI. Click to open device inspection.</td>
+        <td>Device details blade expands showing enrollment date, compliance status, battery/network state, and installed managed apps.</td>
+      </tr>
+      <tr>
+        <td><strong>06</strong></td>
+        <td><strong>Inspect Installed Applications</strong></td>
+        <td>Navigate to the <strong>Installed Applications</strong> table within the selected device record.</td>
+        <td>Table listing all enterprise wrapped and distributed apps (e.g., Enterprise Sales Hub, Logistics Portal, Supply Chain Scanner).</td>
+      </tr>
+      <tr>
+        <td><strong>07</strong></td>
+        <td><strong>Trigger "Clear Data"</strong></td>
+        <td>Locate the target application row and click the red <strong>Clear Data</strong> (or <strong>Wipe Application Data</strong>) button.</td>
+        <td>A high-severity confirmation modal window pops up requiring operator verification.</td>
+      </tr>
+      <tr>
+        <td><strong>08</strong></td>
+        <td><strong>Confirm &amp; Dispatch Payload</strong></td>
+        <td>Review the application bundle ID and device serial, enter the mandatory ServiceNow Incident or Security Ticket number, and click <strong>Confirm Clear Data</strong>.</td>
+        <td>Status transitions to <code>Wipe Command Queued &rarr; Sent &rarr; Acknowledged</code>. Audit record generated.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <span class="portal-screenshot-title">MDM Admin Console - Users Directory &amp; Device Search Screen</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    Replace this placeholder with the Apperian / MDM Web Console screenshot showing the Users tab, search input with target employee, and registered device cards: <span class="portal-screenshot-path">docs/assets/distribution/mdm-user-device-search.png</span>.
+  </p>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <span class="portal-screenshot-title">MDM Installed Applications &amp; "Clear Data" Action Trigger</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    Replace this placeholder with the Apperian / MDM device management view showing the list of installed enterprise apps and the red "Clear Data" button: <span class="portal-screenshot-path">docs/assets/distribution/mdm-installed-apps-clear-data.png</span>.
+  </p>
+</div>
+
+---
+
+## 3. Client-Side Experience & Quitting Alert Protocol
+
+When the wipe payload arrives on the mobile device, the enterprise container wrapper guarantees zero data retention through an immutable shredding routine:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Execution Phase</th>
+        <th>System / Container Action</th>
+        <th>User Experience Impact</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Interception</strong></td>
+        <td>The Enterprise SDK wrapper intercepts the silent push payload or evaluates the wipe flag during initial app bootstrap.</td>
+        <td>Background execution or immediate splash screen freeze. Normal UI interaction is halted.</td>
+      </tr>
+      <tr>
+        <td><strong>2. Cryptographic Eviction</strong></td>
+        <td>Deletes the AES-256 database master key from iOS Keychain or Android Keystore, corrupting SQLCipher headers.</td>
+        <td>Silent and instantaneous (&lt; 150 ms). All cached offline data, documents, and records become unrecoverable.</td>
+      </tr>
+      <tr>
+        <td><strong>3. Storage Purging</strong></td>
+        <td>Recursively deletes application sandbox directories: <code>/Documents</code>, <code>/Library/Caches</code>, <code>/Application Support</code>, and <code>shared_preferences</code>.</td>
+        <td>Local sandbox is completely restored to clean-install state.</td>
+      </tr>
+      <tr>
+        <td><strong>4. Alert Presentation</strong></td>
+        <td>Surfaces a modal dialog over the active window. Dialog text: <code>The data for this application has been wiped.quitting...</code></td>
+        <td>User sees the prompt shown below. No cancel button exists; only a single <strong>OK</strong> button is presented.</td>
+      </tr>
+      <tr>
+        <td><strong>5. Process Termination</strong></td>
+        <td>Upon tapping OK (or after a 5-second timeout), the app invokes <code>exit(0)</code> / <code>finishAffinity()</code> to immediately close.</td>
+        <td>The mobile OS returns the user directly to the home screen.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <span class="portal-screenshot-title">MDM Clear Data Confirmation Dialog (Console View)</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    Replace this placeholder with the console confirmation dialog asking "Are you sure you want to clear data for this application?": <span class="portal-screenshot-path">docs/assets/distribution/mdm-clear-data-modal.png</span>.
+  </p>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <span class="portal-screenshot-title">Mobile Device Alert Screen - "Data Wiped - Quitting" Dialog</span>
+  </div>
+  <p class="portal-screenshot-desc">
+    Replace this placeholder with the mobile client screen displaying the native modal dialog: "The data for this application has been wiped.quitting...": <span class="portal-screenshot-path">docs/assets/distribution/mobile-client-wiped-quitting-alert.png</span>.
+  </p>
+</div>
+
+---
+
+## 4. Selective Container Wipe vs. Full Factory Reset
+
+Enterprise mobility supports two tiers of remote wipe actions based on device ownership (BYOD vs. Corporate-Owned):
+
+<div class="portal-cards-grid">
+  <div class="portal-card">
+    <div class="portal-card-topbar">
+      <span class="portal-card-badge">BYOD &bull; CONTAINER ONLY</span>
+      <span class="portal-card-badge-status status-active">DEFAULT</span>
+    </div>
+    <div class="portal-card-title">Selective Application Wipe ("Clear Data")</div>
+    <p class="portal-card-desc">
+      Only purges data inside the enterprise application sandbox. Personal photos, personal apps, text messages, and personal device settings are <strong>completely untouched</strong>. Used when an employee leaves the company or unenrolls their personal phone.
+    </p>
+    <div class="portal-card-pills">
+      <span class="portal-card-pill">App Sandbox Only</span>
+      <span class="portal-card-pill">Zero Personal Impact</span>
+      <span class="portal-card-pill">GDPR Privacy Compliant</span>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div class="portal-card-topbar">
+      <span class="portal-card-badge">CORPORATE ASSET &bull; FULL OS</span>
+      <span class="portal-card-badge-status status-planned">RESTRICTED</span>
+    </div>
+    <div class="portal-card-title">Full Device Factory Reset ("Erase Device")</div>
+    <p class="portal-card-desc">
+      Issues an operating-system level command that restores the entire physical device to factory defaults. Destroys all OS partitions, eSIM profiles, and storage sectors. <strong>Restricted strictly to corporate-owned, DEP/Supervised hardware</strong> reported stolen.
+    </p>
+    <div class="portal-card-pills">
+      <span class="portal-card-pill">Full OS Re-flash</span>
+      <span class="portal-card-pill">Hardware Supervised</span>
+      <span class="portal-card-pill">SecOps Manager Sign-off</span>
+    </div>
+  </div>
+</div>
+
+---
+
+## 5. Security Operations & Emergency Offboarding SOP
+
+When an employee departs or a critical device loss occurs, the following Service Level Agreements (SLAs) apply:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Incident Type</th>
+        <th>Trigger Channel</th>
+        <th>Target SLA</th>
+        <th>Mandatory Approver</th>
+        <th>Audit Requirement</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Lost / Stolen BYOD</strong></td>
+        <td>ServiceNow Portal Self-Service or Helpdesk Call</td>
+        <td>&lt; 15 minutes</td>
+        <td>Help Desk Tier-2</td>
+        <td>ServiceNow Incident Ticket</td>
+      </tr>
+      <tr>
+        <td><strong>Lost / Stolen Corporate Device</strong></td>
+        <td>Global Security Operations Center (GSOC) Hotline</td>
+        <td>&lt; 10 minutes</td>
+        <td>SecOps Incident Commander</td>
+        <td>GSOC P1 Security Record</td>
+      </tr>
+      <tr>
+        <td><strong>Involuntary Employee Offboarding</strong></td>
+        <td>HR Information System (Workday API) Automated Webhook</td>
+        <td>Instant (&lt; 60 seconds)</td>
+        <td>Automated IAM Pipeline</td>
+        <td>Active Directory Revocation Log</td>
+      </tr>
+      <tr>
+        <td><strong>Compromised / Jailbroken Device Alert</strong></td>
+        <td>Datadog Security / MDM Compliance Engine Trigger</td>
+        <td>Instant (&lt; 30 seconds)</td>
+        <td>Automated Zero Trust Gateway</td>
+        <td>SIEM Compliance Alert</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 6. Implementation Reference: Native Wrapper Wipe Interceptor
+
+For internal developers packaging apps with the enterprise SDK wrapper, the client-side lifecycle hook is implemented as follows:
+
+<Tabs>
+  <TabItem label="iOS (Swift / Apperian Wrapper)">
+
+```swift
+import Foundation
+import UIKit
+
+@objc public class EnterpriseDataWipeManager: NSObject {
+    public static let shared = EnterpriseDataWipeManager()
+    
+    public func handleRemoteWipeCommand(completion: @escaping () -> Void) {
+        NSLog("[SECURITY] Remote wipe signal received from MDM gateway.")
+        
+        // 1. Purge keychain credentials
+        KeychainHelper.wipeAllEnterpriseKeys()
+        
+        // 2. Erase encrypted SQLite databases
+        let fileManager = FileManager.default
+        if let docsUrl = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+            try? fileManager.removeItem(at: docsUrl)
+        }
+        
+        // 3. Reset user defaults
+        if let bundleId = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleId)
+        }
+        
+        // 4. Surface blocking native alert dialog
+        DispatchQueue.main.async {
+            let alert = UIAlertController(
+                title: "Application Security Notice",
+                message: "The data for this application has been wiped.quitting...",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .destructive) { _ in
+                exit(0)
+            })
+            
+            if let rootVC = UIApplication.shared.windows.first(where: { $0.isKeyWindow })?.rootViewController {
+                rootVC.present(alert, animated: true, completion: nil)
+            }
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="Android (Kotlin / MDM Receiver)">
+
+```kotlin
+package com.enterprise.mobile.security
+
+import android.app.Activity
+import android.app.AlertDialog
+import android.content.Context
+import android.os.Process
+import java.io.File
+
+object EnterpriseDataWipeManager {
+
+    fun executeContainerWipe(context: Context, currentActivity: Activity?) {
+        // 1. Shred encrypted local databases
+        context.databaseList().forEach { dbName ->
+            context.deleteDatabase(dbName)
+        }
+
+        // 2. Clear app shared preferences & cache
+        context.cacheDir.deleteRecursively()
+        File(context.filesDir.parent, "shared_prefs").deleteRecursively()
+
+        // 3. Present blocking system alert dialog
+        currentActivity?.runOnUiThread {
+            AlertDialog.Builder(currentActivity)
+                .setTitle("Application Security Alert")
+                .setMessage("The data for this application has been wiped.quitting...")
+                .setCancelable(false)
+                .setPositiveButton("OK") { _, _ ->
+                    currentActivity.finishAffinity()
+                    Process.killProcess(Process.myPid())
+                }
+                .show()
+        } ?: run {
+            // If backgrounded, kill immediately
+            Process.killProcess(Process.myPid())
+        }
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+
+
+
+
+
