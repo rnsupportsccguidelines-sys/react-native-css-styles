@@ -1,10 +1,28 @@
+<!-- ============================================================================== -->
+<!-- ENTERPRISE MOBILE PORTAL: MODULE 06 - APP STORE & DISTRIBUTION MASTER BUNDLE  -->
+<!-- ALL SECTIONS CONSOLIDATED IN ORDER (6.0 TO 6.5) WITH DELIMITER COMMENTS       -->
+<!-- STANDARDIZED WITH: import DiagramExpand from './DiagramExpand.astro';         -->
+<!-- USE THIS FILE TO EASILY COPY-PASTE INTO YOUR GIT REPOSITORY OR WIKI           -->
+<!-- ============================================================================== -->
+
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+<!-- START OF SECTION 6.0: APP STORE & DISTRIBUTION OVERVIEW -->
+<!-- SOURCE FILE: 06-app-store-distribution-overview.mdx -->
+<!-- RECOMMENDED GIT TARGET: docs/distribution/06-app-store-distribution-overview.mdx -->
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+
 ---
 title: "06. App Store & Distribution Overview & Mental Model"
 description: "Foundations of enterprise mobile deployment: navigating Public App Stores (Apple & Google Play) vs. Private Enterprise Distribution (MDM / Enterprise App Store), release tracks, code signing vaults, and TGRC governance."
+---
 sidebar:
   order: 1
   label: "6.0 Overview & Architecture"
 ---
+
+import DiagramExpand from './DiagramExpand.astro';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
@@ -91,18 +109,7 @@ In enterprise mobility, software release engineering bifurcates into two distinc
 
 Every enterprise mobile build transitions from source control through Bitrise CI/CD into automated signing vaults, passes through TGRC governance, and branches into the appropriate distribution channel:
 
-<div class="portal-diagram-wrap">
-  <input type="checkbox" id="diagram-distribution-topology-toggle" class="portal-diagram-toggle" />
-  <div class="portal-diagram-header">
-    <span class="portal-diagram-badge">ENTERPRISE MOBILE PUBLISHING &amp; DISTRIBUTION TOPOLOGY</span>
-    <label for="diagram-distribution-topology-toggle" class="portal-expand-btn" title="Toggle Fullscreen">
-      <svg class="portal-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-      <svg class="portal-icon-close" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-      <span class="portal-text-expand">Expand Diagram</span>
-      <span class="portal-text-close">Close Fullscreen</span>
-    </label>
-  </div>
-  <div class="portal-diagram-viewport">
+<DiagramExpand title="ENTERPRISE MOBILE PUBLISHING &amp; DISTRIBUTION TOPOLOGY">
 
 ```mermaid
 graph TD
@@ -153,8 +160,7 @@ graph TD
     class EMP_DEVICES,EXT_USERS,EXT_IOS_USERS endpoint;
 ```
 
-  </div>
-</div>
+</DiagramExpand>
 
 <div class="portal-screenshot-box">
   <div class="portal-screenshot-header">
@@ -341,21 +347,28 @@ Before triggering a production build or opening a store deployment request, veri
 * **[ ] Entitlements & Identity Setup:** For internal enterprise business apps, identity groups and entitlement owners configured in `access.enterprise.internal`.
 * **[ ] Code Signing Vault Verification:** Android Release Keystore (`.jks`) and Apple Distribution Certificate (`.p12`) confirmed valid with at least 60 days remaining before expiration.
 
+<!-- ============================================================================== -->
+<!-- END OF SECTION 6.0: APP STORE & DISTRIBUTION OVERVIEW -->
+<!-- ============================================================================== -->
 
-
-
---------------------------
-
-
-
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+<!-- START OF SECTION 6.1: ENTERPRISE APP STORE & PRIVATE MDM (QA, UAT, PROD) -->
+<!-- SOURCE FILE: 06-enterprise-app-store.mdx -->
+<!-- RECOMMENDED GIT TARGET: docs/distribution/06-enterprise-app-store.mdx -->
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
 
 ---
 title: "06.1 Enterprise App Store & Private MDM (QA, UAT, PROD)"
 description: "Enterprise operational standard for private mobile application distribution: managing QA, UAT, and Production app store variants, QR code provisioning, iOS enterprise certificate trust, and identity entitlements."
+---
 sidebar:
   order: 2
   label: "6.1 Enterprise App Store"
 ---
+
+import DiagramExpand from './DiagramExpand.astro';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
@@ -392,12 +405,8 @@ sidebar:
 
 In accordance with corporate mobility governance, **any application built exclusively for internal enterprise employees must be hosted on the Enterprise App Store**, rather than published to public commercial app stores (Google Play or Apple App Store).
 
-<div class="portal-diagram-wrap">
-  <div class="portal-diagram-header">
-    <span class="portal-diagram-badge">ENTERPRISE DISTRIBUTION TOPOLOGY</span>
-    <h3 class="portal-diagram-title">Enterprise App Store Build, Distribution &amp; Zero-Trust Verification Architecture</h3>
-  </div>
-  <div class="portal-diagram-viewport">
+<DiagramExpand title="ENTERPRISE APP STORE BUILD, DISTRIBUTION &amp; ZERO-TRUST ARCHITECTURE">
+
 ```mermaid
 graph TD
     subgraph CI_Pipeline ["1. CI/CD Build & Signing Pipeline"]
@@ -439,8 +448,8 @@ graph TD
     class IOS_TRUST,SSO_AUTH gate;
     class APP_ACTIVE success;
 ```
-  </div>
-</div>
+
+</DiagramExpand>
 
 The enterprise maintains **three distinct App Store variants** tailored to each stage of the delivery lifecycle:
 
@@ -642,25 +651,28 @@ Deploying any mobile application to the **Enterprise UAT** or **Enterprise PROD*
    * Datadog RUM client tokens and PII sanitization proof.
 3. **Turnaround SLA:** TGRC typically reviews and approves submissions within **24 to 48 hours**. Emergency security hotfixes can request expedited approval via the on-call TGRC duty lead.
 
+<!-- ============================================================================== -->
+<!-- END OF SECTION 6.1: ENTERPRISE APP STORE & PRIVATE MDM (QA, UAT, PROD) -->
+<!-- ============================================================================== -->
 
-
-
-
-
---------------------------------------
-
-
-
-
-
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+<!-- START OF SECTION 6.2: GOOGLE PLAY STORE PUBLISHING & STAGED ROLLOUTS -->
+<!-- SOURCE FILE: 06-google-play-publish.mdx -->
+<!-- RECOMMENDED GIT TARGET: docs/distribution/06-google-play-publish.mdx -->
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
 
 ---
 title: "06.2 Google Play Store Deployment & Asset Specifications"
 description: "Enterprise operational standard for Android Google Play deployment: metadata character limits, 512x512 app icons, 1024x500 feature graphics, testing tracks, and staged rollouts."
+---
 sidebar:
   order: 3
   label: "6.2 Google Play Deployment"
 ---
+
+import DiagramExpand from './DiagramExpand.astro';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
@@ -841,12 +853,8 @@ Google Play Console -> App Content -> App Access -> "All or some functionality i
 
 Enterprise Android apps deploy through progressive testing tracks before reaching 100% of global production users:
 
-<div class="portal-diagram-wrap">
-  <div class="portal-diagram-header">
-    <span class="portal-diagram-badge">PROGRESSIVE RELEASE PIPELINE</span>
-    <h3 class="portal-diagram-title">Google Play Testing Tracks &amp; Phased Staged Rollout Architecture</h3>
-  </div>
-  <div class="portal-diagram-viewport">
+<DiagramExpand title="GOOGLE PLAY TESTING TRACKS &amp; PHASED STAGED ROLLOUT ARCHITECTURE">
+
 ```mermaid
 graph TD
     AAB["Signed Android App Bundle (.aab)<br/>+ Proguard / R8 mapping.txt"] --> FASTLANE["Fastlane supply / Google Play Developer API"]
@@ -886,8 +894,8 @@ graph TD
     class HEALTH_CHECK,NEXT_RAMP gate;
     class HALT alert;
 ```
-  </div>
-</div>
+
+</DiagramExpand>
 
 <div class="portal-table-wrap">
   <table class="portal-table">
@@ -960,21 +968,28 @@ lane :deploy_google_play do
 end
 ```
 
+<!-- ============================================================================== -->
+<!-- END OF SECTION 6.2: GOOGLE PLAY STORE PUBLISHING & STAGED ROLLOUTS -->
+<!-- ============================================================================== -->
 
-
-
-
-
---------------------------------
-
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+<!-- START OF SECTION 6.3: APPLE APP STORE, TRANSPORTER & TESTFLIGHT -->
+<!-- SOURCE FILE: 06-apple-app-store.mdx -->
+<!-- RECOMMENDED GIT TARGET: docs/distribution/06-apple-app-store.mdx -->
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
 
 ---
 title: "06.3 Apple App Store & TestFlight Deployment Requirements"
 description: "Enterprise operational standard for iOS App Store and TestFlight deployment: the 15-point release checklist, Transporter desktop IPA upload, multi-device screenshot dimensions, and phased releases."
+---
 sidebar:
   order: 4
   label: "6.3 Apple App Store"
 ---
+
+import DiagramExpand from './DiagramExpand.astro';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
@@ -1221,12 +1236,8 @@ Apple enforces exact pixel dimensions for all uploaded screenshots. Images must 
 
 To mitigate production incident blast radiuses, applications distribute through TestFlight before executing a staged production release:
 
-<div class="portal-diagram-wrap">
-  <div class="portal-diagram-header">
-    <span class="portal-diagram-badge">APPLE RELEASE LIFECYCLE</span>
-    <h3 class="portal-diagram-title">Apple App Store Connect, TestFlight &amp; 7-Day Phased Rollout Architecture</h3>
-  </div>
-  <div class="portal-diagram-viewport">
+<DiagramExpand title="APPLE APP STORE CONNECT, TESTFLIGHT &amp; 7-DAY PHASED ROLLOUT ARCHITECTURE">
+
 ```mermaid
 graph TD
     IPA["Signed iOS Distribution Binary (.ipa)<br/>+ dSYM Crash Symbols"] --> UPLOAD["Apple Transporter App / Fastlane deliver"]
@@ -1269,8 +1280,8 @@ graph TD
     class REVIEW_SUBMIT,APPLE_REVIEWER,PHASED_GATE review;
     class D1,D2,D3,D4,D5,D6,D7 rollout;
 ```
-  </div>
-</div>
+
+</DiagramExpand>
 
 ### TestFlight Testing Tracks:
 * **Internal Testing:** Up to 100 internal organization developers and product leads. Builds become available immediately upon processing with zero review requirements.
@@ -1328,20 +1339,28 @@ When releasing an update to production, developers must enable **Phased Release 
   </table>
 </div>
 
+<!-- ============================================================================== -->
+<!-- END OF SECTION 6.3: APPLE APP STORE, TRANSPORTER & TESTFLIGHT -->
+<!-- ============================================================================== -->
 
-
-
-
-
---------------------------------_
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+<!-- START OF SECTION 6.4: CODE SIGNING, CERTIFICATES & TGRC APPROVALS -->
+<!-- SOURCE FILE: 06-certs-and-signing.mdx -->
+<!-- RECOMMENDED GIT TARGET: docs/distribution/06-certs-and-signing.mdx -->
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
 
 ---
 title: "06.4 Code Signing, Certificates & TGRC Approvals"
 description: "Enterprise cryptographic code signing governance: Android unified keystores, Apple Enterprise vs. Public distribution certificates, internal certificate request portals, and TGRC pre-deployment approvals."
+---
 sidebar:
   order: 5
   label: "6.4 Code Signing & TGRC"
 ---
+
+import DiagramExpand from './DiagramExpand.astro';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
@@ -1378,12 +1397,8 @@ sidebar:
 
 To safeguard binary integrity and prevent unauthorized code injection, all mobile builds must be cryptographically signed using enterprise-governed digital certificates before deployment:
 
-<div class="portal-diagram-wrap">
-  <div class="portal-diagram-header">
-    <span class="portal-diagram-badge">CRYPTOGRAPHIC SIGNING TOPOLOGY</span>
-    <h3 class="portal-diagram-title">Enterprise Mobile Code Signing Hierarchy &amp; TGRC Governance Architecture</h3>
-  </div>
-  <div class="portal-diagram-viewport">
+<DiagramExpand title="ENTERPRISE MOBILE CODE SIGNING HIERARCHY &amp; TGRC GOVERNANCE ARCHITECTURE">
+
 ```mermaid
 graph TD
     DEV["Developer / Release Engineer"] --> REQ["Certificate Request Portal (myid.enterprise.internal)"]
@@ -1417,8 +1432,8 @@ graph TD
     class ANDROID_KEY,IOS_INHOUSE,IOS_PUBLIC vault;
     class ANDROID_INTERNAL,ANDROID_PUBLIC,IOS_INTERNAL,IOS_PUBLIC_STORE target;
 ```
-  </div>
-</div>
+
+</DiagramExpand>
 
 <div class="portal-table-wrap">
   <table class="portal-table">
@@ -1598,19 +1613,29 @@ workflows:
   </p>
 </div>
 
+<!-- ============================================================================== -->
+<!-- END OF SECTION 6.4: CODE SIGNING, CERTIFICATES & TGRC APPROVALS -->
+<!-- ============================================================================== -->
 
-
----------------------------------
-
-
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+<!-- START OF SECTION 6.5: MDM REMOTE WIPE PROTOCOL & APPERIAN OPERATIONS -->
+<!-- SOURCE FILE: 06-mdm-remote-wipe-protocol.mdx -->
+<!-- RECOMMENDED GIT TARGET: docs/distribution/06-mdm-remote-wipe-protocol.mdx -->
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
 
 ---
 title: "06.5 MDM Remote Wipe Protocol & Apperian Operations"
 description: "Administrative runbook and operational procedures for enterprise device lifecycle management, remote data wiping via Apperian/MDM console, client-side container purging, and user termination handling."
+---
 sidebar:
   order: 6
   label: "6.5 MDM Remote Wipe Protocol"
 ---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import DiagramExpand from './DiagramExpand.astro';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
@@ -1647,12 +1672,8 @@ sidebar:
 
 When an enterprise device is flagged as lost, stolen, or compromised—or during immediate employee offboarding—the SecOps or IT Helpdesk team triggers an administrative application wipe through the MDM Management Console:
 
-<div class="portal-diagram-wrap">
-  <div class="portal-diagram-header">
-    <span class="portal-diagram-badge">SEQUENCE ARCHITECTURE</span>
-    <h3 class="portal-diagram-title">MDM Remote Container Wipe &amp; Client Quitting Protocol</h3>
-  </div>
-  <div class="portal-diagram-viewport">
+<DiagramExpand title="MDM REMOTE CONTAINER WIPE &amp; CLIENT QUITTING PROTOCOL">
+
 ```mermaid
 sequenceDiagram
   autonumber
@@ -1674,8 +1695,8 @@ sequenceDiagram
   AppWrapper->>AppWrapper: 9. Force Kill Process / Exit to OS Home
   AppWrapper->>MDM: 10. Transmit Wipe Acknowledgment & Audit Event
 ```
-  </div>
-</div>
+
+</DiagramExpand>
 
 ---
 
@@ -2019,8 +2040,7 @@ object EnterpriseDataWipeManager {
   </TabItem>
 </Tabs>
 
-
-
-
-
+<!-- ============================================================================== -->
+<!-- END OF SECTION 6.5: MDM REMOTE WIPE PROTOCOL & APPERIAN OPERATIONS -->
+<!-- ============================================================================== -->
 
