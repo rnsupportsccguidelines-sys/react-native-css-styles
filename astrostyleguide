@@ -1,325 +1,23 @@
 ---
-title: "Mobile Engineering Support & Escalation Hub"
-description: "Direct support channels, live engineering chat, ServiceNow/Jira ticket queues, architecture office hours, and P1 production incident escalation for the Enterprise Mobile Platform."
-sidebar:
-  order: 1
-  label: "Support Channels"
----
-
-import DiagramExpand from './DiagramExpand.astro';
-
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">[SUPPORT &amp; ESCALATION HUB]</span>
-    <span class="portal-hub-tag">LIVE ENGINEERING HELPDESK &bull; SLA GOVERNED</span>
-  </div>
-  <div class="portal-hero-title">Enterprise Mobile Engineering Support</div>
-  <div class="portal-hero-desc">
-    Connect directly with the Mobile Platform Core Team for build troubleshooting, SDK integration guidance, code signing entitlements, and production incident response. Use the highlighted support channels below to reach on-call platform engineers immediately.
-  </div>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">&lt; 15 Min P1 SLA</div>
-      <div class="portal-cap-desc">24x7 on-call response for production outages &amp; killswitch triggers</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Live Chat Triage</div>
-      <div class="portal-cap-desc">Real-time help in <code>#mobile-platform-support</code> during business hours</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Architecture Clinic</div>
-      <div class="portal-cap-desc">Weekly live design reviews &amp; PR pairing with Principal Architects</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Modular FAQ Base</div>
-      <div class="portal-cap-desc">Self-service runbooks loaded directly from markdown FAQ packs</div>
-    </div>
-  </div>
-</div>
-
-## Direct Support Channels (Priority Access)
-
-<div class="portal-support-spotlight">
-  <div class="portal-support-spotlight-header">
-    <div>
-      <div style="font-size: 1.2rem; font-weight: 800; color: var(--portal-gold, #f3d17b);">
-        Official Mobile Platform Support Channels
-      </div>
-      <div style="font-size: 0.88rem; color: var(--portal-text-body, #cbd5e1); margin-top: 2px;">
-        Select the appropriate channel below based on your issue severity and engineering domain.
-      </div>
-    </div>
-    <span class="portal-support-live-pill">
-      <span class="portal-support-pulse"></span>
-      ON-CALL ENGINEER ACTIVE
-    </span>
-  </div>
-
-  <div class="portal-support-grid">
-
-    <div class="portal-support-card">
-      <div>
-        <div class="portal-route-topbar">
-          <div class="portal-icon-badge badge-green">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-          </div>
-          <div>
-            <div style="font-size: 1.05rem; font-weight: 800; color: var(--portal-gold, #f3d17b);">
-              #mobile-platform-support
-            </div>
-            <div style="font-size: 0.75rem; font-weight: 700; color: #4ade80;">
-              PRIMARY CHANNEL &bull; TEAMS / SLACK &bull; &lt; 2 HR RESPONSE
-            </div>
-          </div>
-        </div>
-        <p style="font-size: 0.88rem; color: var(--portal-text-body, #cbd5e1); line-height: 1.5; margin: 8px 0 0 0;">
-          Day-to-day developer support for Android, iOS, and React Native SDKs, Bitrise CI pipeline failures, <code>camp.yml</code> configuration, and SonarQube coverage gates.
-        </p>
-      </div>
-      <a href="https://teams.enterprise.internal/l/channel/mobile-platform-support" target="_blank" rel="noopener noreferrer" class="portal-support-cta">
-        Open #mobile-platform-support Channel &rarr;
-      </a>
-    </div>
-
-    <div class="portal-support-card card-urgent">
-      <div>
-        <div class="portal-route-topbar">
-          <div class="portal-icon-badge badge-rose">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-          </div>
-          <div>
-            <div style="font-size: 1.05rem; font-weight: 800; color: #fda4af;">
-              P1 Production Incident Bridge
-            </div>
-            <div style="font-size: 0.75rem; font-weight: 700; color: #fb7185;">
-              CRITICAL OUTAGES &bull; 24x7 PAGERDUTY &bull; &lt; 15 MIN SLA
-            </div>
-          </div>
-        </div>
-        <p style="font-size: 0.88rem; color: var(--portal-text-body, #cbd5e1); line-height: 1.5; margin: 8px 0 0 0;">
-          Immediate escalation for production crash spikes (&lt; 99.5% crash-free), emergency app version killswitch activation, certificate expiration, or MDM remote wipe incidents.
-        </p>
-      </div>
-      <a href="https://incident.enterprise.internal/mobile-p1" target="_blank" rel="noopener noreferrer" class="portal-support-cta cta-urgent">
-        Trigger P1 Production War Room &rarr;
-      </a>
-    </div>
-
-    <div class="portal-support-card">
-      <div>
-        <div class="portal-route-topbar">
-          <div class="portal-icon-badge badge-blue">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-          </div>
-          <div>
-            <div style="font-size: 1.05rem; font-weight: 800; color: var(--portal-gold, #f3d17b);">
-              Jira &amp; ServiceNow Engineering Queue
-            </div>
-            <div style="font-size: 0.75rem; font-weight: 700; color: #60a5fa;">
-              PROVISIONING &amp; BUGS &bull; PROJECT KEY: MOBPLAT
-            </div>
-          </div>
-        </div>
-        <p style="font-size: 0.88rem; color: var(--portal-text-body, #cbd5e1); line-height: 1.5; margin: 8px 0 0 0;">
-          Submit structured requests for new Bitrise repository onboarding, Apple App Store / Google Play provisioning profiles, SDK bug reports, and feature requests.
-        </p>
-      </div>
-      <a href="https://jira.enterprise.internal/projects/MOBPLAT" target="_blank" rel="noopener noreferrer" class="portal-support-cta">
-        Create MOBPLAT Support Ticket &rarr;
-      </a>
-    </div>
-
-    <div class="portal-support-card">
-      <div>
-        <div class="portal-route-topbar">
-          <div class="portal-icon-badge badge-purple">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-          </div>
-          <div>
-            <div style="font-size: 1.05rem; font-weight: 800; color: var(--portal-gold, #f3d17b);">
-              Mobile Architecture Office Hours
-            </div>
-            <div style="font-size: 0.75rem; font-weight: 700; color: #c084fc;">
-              LIVE CONSULTATION &bull; TUESDAYS &amp; THURSDAYS 10:00 AM CST
-            </div>
-          </div>
-        </div>
-        <p style="font-size: 0.88rem; color: var(--portal-text-body, #cbd5e1); line-height: 1.5; margin: 8px 0 0 0;">
-          Book a 30-minute consultation with Principal Mobile Architects for Clean Architecture reviews, Offline Outbox design, and GenAI / Bitrise MCP onboarding.
-        </p>
-      </div>
-      <a href="https://bookings.enterprise.internal/mobile-architecture-clinic" target="_blank" rel="noopener noreferrer" class="portal-support-cta">
-        Book Architecture Office Hours &rarr;
-      </a>
-    </div>
-
-  </div>
-</div>
-
----
-
-## Support Severity Levels &amp; SLA Matrix
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Severity Tier</th>
-        <th>Incident Scope &amp; Criteria</th>
-        <th>Primary Escalation Channel</th>
-        <th>Initial Response SLA</th>
-        <th>Target Resolution</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>P1 - Critical</strong></td>
-        <td>Production app crash loop, authentication outage, security breach, or emergency killswitch activation.</td>
-        <td><strong>P1 Incident Bridge</strong> (PagerDuty + War Room)</td>
-        <td><code>&lt; 15 Minutes</code> (24x7)</td>
-        <td><code>&lt; 2 Hours</code> (Hotfix / Rollback)</td>
-      </tr>
-      <tr>
-        <td><strong>P2 - High</strong></td>
-        <td>Bitrise CI/CD release pipeline blocked across multiple teams, or expired enterprise signing certificate.</td>
-        <td><strong><code>#mobile-platform-support</code></strong> + Jira <code>MOBPLAT</code></td>
-        <td><code>&lt; 1 Hour</code> (Business Hours)</td>
-        <td><code>&lt; 4 Hours</code></td>
-      </tr>
-      <tr>
-        <td><strong>P3 - Medium</strong></td>
-        <td>Single repository build failure, SDK integration bug, SonarQube coverage gate issue, or Bitrise MCP token error.</td>
-        <td><strong><code>#mobile-platform-support</code></strong></td>
-        <td><code>&lt; 2 Hours</code> (Business Hours)</td>
-        <td><code>1 - 2 Business Days</code></td>
-      </tr>
-      <tr>
-        <td><strong>P4 - Low</strong></td>
-        <td>New app onboarding request, architecture review, documentation update, or non-blocking feature inquiry.</td>
-        <td><strong>Jira <code>MOBPLAT</code></strong> or <strong>Office Hours</strong></td>
-        <td><code>&lt; 1 Business Day</code></td>
-        <td><code>Scheduled Sprint</code></td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
----
-
-## Support Triage &amp; Escalation Workflow
-
-<DiagramExpand title="ENTERPRISE MOBILE SUPPORT TRIAGE &amp; ESCALATION TOPOLOGY">
-
-```mermaid
-graph TD
-    subgraph Intake ["1. DEVELOPER ISSUE INTAKE"]
-        Dev["Mobile Engineer<br/>Android &bull; iOS &bull; React Native"]
-        SelfService["Step 1: Search Portal &amp; FAQs<br/>/mobile/support/engineering-faqs/"]
-        Dev --> SelfService
-    end
-
-    subgraph Classification ["2. SEVERITY CLASSIFICATION"]
-        SelfService -->|Unresolved| CheckSev{"Production Outage<br/>or Release Blocked?"}
-        CheckSev -->|Yes: Production Impact| P1Bridge["P1 War Room &amp; PagerDuty<br/>incident.enterprise.internal/mobile-p1"]
-        CheckSev -->|No: CI / SDK / Setup Issue| ChatChannel["#mobile-platform-support<br/>Live On-Call Triage"]
-        CheckSev -->|New Repo / Provisioning| JiraQueue["Jira Queue: MOBPLAT<br/>Automated Provisioning Workflow"]
-    end
-
-    subgraph Resolution ["3. PLATFORM ENGINEERING RESOLUTION"]
-        P1Bridge --> Killswitch["Activate Remote Killswitch /<br/>Emergency Bitrise Hotfix"]
-        ChatChannel --> FixRunbook["Resolve &amp; Publish New<br/>Markdown FAQ Entry (.md)"]
-        JiraQueue --> Provision["Provision Bitrise Vault /<br/>App Store Certificates"]
-    end
-
-    classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
-    classDef iosNode fill:#25153a,stroke:#a855f7,stroke-width:1.5px,color:#d8b4fe;
-    classDef rnNode fill:#31141e,stroke:#f43f5e,stroke-width:1.5px,color:#fda4af;
-    classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
-
-    class Dev,SelfService platformNode;
-    class CheckSev,ChatChannel,JiraQueue iosNode;
-    class P1Bridge,Killswitch rnNode;
-    class FixRunbook,Provision cloudNode;
-```
-
-</DiagramExpand>
-
----
-
-## What to Include When Requesting Support
-
-Before posting in `#mobile-platform-support` or opening a `MOBPLAT` ticket, include the following diagnostic details to accelerate resolution:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Issue Category</th>
-        <th>Required Diagnostic Artifacts</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Bitrise CI/CD Failure</strong></td>
-        <td>Bitrise Build URL, failing workflow name (e.g., <code>deploy-staging-qa</code>), and the <code>camp.yml</code> file from your branch.</td>
-      </tr>
-      <tr>
-        <td><strong>SDK / Architecture Bug</strong></td>
-        <td>Platform (Android / iOS / RN), SDK version from <code>gradle/libs.versions.toml</code> or <code>Package.resolved</code>, and stack trace.</td>
-      </tr>
-      <tr>
-        <td><strong>Access &amp; Entitlements</strong></td>
-        <td>Request ID from <code>access.enterprise.internal</code> and corporate SSO email address.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-
------------------_
-
-
-
----
 title: "Mobile Engineering FAQs & Troubleshooting Knowledge Base"
-description: "Centralized FAQ hub that dynamically loads modular Markdown (.md) FAQ packs across Onboarding, Clean Architecture, Bitrise CI/CD, and Security."
+description: "Centralized FAQ hub with built-in domain accordions and automatic rendering for any Markdown (.md) files dropped into the faqs/ folder."
 sidebar:
   order: 2
   label: "Engineering FAQs"
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
-import FaqOnboarding from './faqs/faq-onboarding-setup.md';
-import FaqArchitecture from './faqs/faq-architecture-sdks.md';
-import FaqBitriseCicd from './faqs/faq-bitrise-cicd.md';
-import FaqSecurityDist from './faqs/faq-security-distribution.md';
 
-export const allFaqFiles = import.meta.glob('./faqs/*.md', { eager: true });
+export const customMarkdownFaqs = import.meta.glob('./faqs/*.md', { eager: true });
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
     <span class="portal-badge-hub">[SUPPORT &amp; KNOWLEDGE BASE]</span>
-    <span class="portal-hub-tag">MODULAR MARKDOWN FAQ LOADER</span>
+    <span class="portal-hub-tag">SELF-SERVICE RUNBOOKS &bull; AUTO-MD LOADER</span>
   </div>
   <div class="portal-hero-title">Engineering FAQs &amp; Self-Service Runbooks</div>
   <div class="portal-hero-desc">
-    Browse frequently asked questions and verified engineering resolutions across workstation setup, Clean Architecture, Bitrise CI/CD, and App Store distribution. Each category below is loaded directly from modular <code>.md</code> files in the <code>faqs/</code> directory so teams can add or update FAQs without touching layout code.
+    Browse frequently asked questions and verified engineering resolutions across workstation setup, Clean Architecture, Bitrise CI/CD, and App Store distribution. You can also drop any custom <code>.md</code> FAQ files into the <code>faqs/</code> subfolder and they will render automatically without manual imports.
   </div>
 </div>
 
@@ -345,295 +43,156 @@ export const allFaqFiles = import.meta.glob('./faqs/*.md', { eager: true });
   </div>
 </div>
 
-## Browse FAQs by Engineering Domain (Loaded from `.md` Files)
+## Browse Core FAQs by Engineering Domain
 
 <Tabs>
   <TabItem label="Onboarding & Setup">
-    <FaqOnboarding />
+    <details class="portal-faq-item" open>
+      <summary class="portal-faq-question">
+        <span>1. Why does Gradle or CocoaPods fail with "PKIX path building failed" or SSL certificate errors on my corporate laptop?</span>
+        <span class="portal-file-tag">WORKSTATION &bull; SSL</span>
+      </summary>
+      <div class="portal-faq-answer">
+        Corporate network traffic is inspected by the enterprise TLS proxy. You must install the Enterprise Root CA certificate into both the macOS System Keychain and your active Java runtime (<code>cacerts</code>), and export <code>NODE_EXTRA_CA_CERTS</code> in your <code>~/.zshrc</code> profile. Refer to the <a href="/mobile/onboarding/machine-setup/">Machine Setup Guide</a> for the automated bootstrap script.
+      </div>
+    </details>
+
+    <details class="portal-faq-item">
+      <summary class="portal-faq-question">
+        <span>2. How do I obtain credentials for the internal Artifactory Maven, SPM, and NPM registries?</span>
+        <span class="portal-file-tag">ACCESS &bull; ARTIFACTORY</span>
+      </summary>
+      <div class="portal-faq-answer">
+        Request the <strong>Mobile Engineering - Artifactory Read</strong> entitlement via <code>access.enterprise.internal</code>. Once approved, generate an identity token from the Artifactory profile page and store it in <code>~/.gradle/gradle.properties</code>, <code>~/.netrc</code> (for Swift Package Manager), and <code>~/.npmrc</code>.
+      </div>
+    </details>
+
+    <details class="portal-faq-item">
+      <summary class="portal-faq-question">
+        <span>3. Which JDK and Xcode versions are officially supported for local builds?</span>
+        <span class="portal-file-tag">TOOLCHAIN</span>
+      </summary>
+      <div class="portal-faq-answer">
+        All Android and React Native projects require <strong>JDK 17 (Eclipse Temurin)</strong>. All iOS projects require <strong>Xcode 16.x</strong> managed via <code>xcodes</code> or the corporate Self-Service app to match the active Bitrise CI build stack.
+      </div>
+    </details>
   </TabItem>
 
   <TabItem label="Architecture & SDKs">
-    <FaqArchitecture />
+    <details class="portal-faq-item" open>
+      <summary class="portal-faq-question">
+        <span>1. Can I import Retrofit, URLSession, or Room directly inside a Domain UseCase class?</span>
+        <span class="portal-file-tag">CLEAN ARCHITECTURE</span>
+      </summary>
+      <div class="portal-faq-answer">
+        No. The <strong>Domain Layer</strong> must remain 100% pure Kotlin, Swift, or TypeScript with zero platform or networking framework imports. Define repository interfaces in the Domain layer and implement them inside the <strong>Data Layer</strong>.
+      </div>
+    </details>
+
+    <details class="portal-faq-item">
+      <summary class="portal-faq-question">
+        <span>2. When should the Enterprise Circuit Breaker trip to the OPEN state?</span>
+        <span class="portal-file-tag">RESILIENCE</span>
+      </summary>
+      <div class="portal-faq-answer">
+        By default, the Enterprise Circuit Breaker transitions from <code>CLOSED</code> to <code>OPEN</code> when 5 consecutive <code>5xx</code> or network timeout failures occur within a 30-second rolling window. While <code>OPEN</code>, calls fail-fast immediately to the local Room/CoreData/SQLite cache for 60 seconds before probing in <code>HALF_OPEN</code>.
+      </div>
+    </details>
+
+    <details class="portal-faq-item">
+      <summary class="portal-faq-question">
+        <span>3. What happens if the remote Feature Flag service is unreachable on app startup?</span>
+        <span class="portal-file-tag">FEATURE FLAGS</span>
+      </summary>
+      <div class="portal-faq-answer">
+        Every feature flag evaluation must define a deterministic offline default value packaged inside the binary. If <code>feature-flags.enterprise.internal</code> times out (exceeds 1500ms), the SDK immediately serves the last cached state or compiled fallback without blocking UI rendering.
+      </div>
+    </details>
   </TabItem>
 
   <TabItem label="Bitrise CI/CD & Quality">
-    <FaqBitriseCicd />
+    <details class="portal-faq-item" open>
+      <summary class="portal-faq-question">
+        <span>1. Why is my Pull Request blocked by "SonarQube Quality Gate Failed: New Code Coverage &lt; 80%"?</span>
+        <span class="portal-file-tag">QUALITY GATE &bull; 80%</span>
+      </summary>
+      <div class="portal-faq-answer">
+        Enterprise mobile governance requires a minimum of <strong>80% line and branch diff coverage</strong> on all new or modified code. Ensure unit tests cover success, empty, and error states using JUnit 5 + Turbine (Android), XCTest (iOS), or Jest (React Native).
+      </div>
+    </details>
+
+    <details class="portal-faq-item">
+      <summary class="portal-faq-question">
+        <span>2. Where do I configure build flavors, target schemes, and signing profiles for CI?</span>
+        <span class="portal-file-tag">CAMP.YML &bull; BITRISE</span>
+      </summary>
+      <div class="portal-faq-answer">
+        All repository-specific build parameters are declared in <code>camp.yml</code> at the root of your repository. The shared Bitrise pipelines dynamically read <code>camp.yml</code> to execute linting, unit tests, NowSecure scans, and store deployments.
+      </div>
+    </details>
+
+    <details class="portal-faq-item">
+      <summary class="portal-faq-question">
+        <span>3. How can I inspect a failed Bitrise build log directly from VS Code or Android Studio?</span>
+        <span class="portal-file-tag">BITRISE MCP</span>
+      </summary>
+      <div class="portal-faq-answer">
+        Configure the <a href="/mobile/genai/bitrise-mcp/">Bitrise MCP Server</a> via the TrueFoundry MCP Gateway and prompt GitHub Copilot Chat with: <code>"@bitrise why did the last build on my branch fail?"</code>
+      </div>
+    </details>
   </TabItem>
 
   <TabItem label="Security & Distribution">
-    <FaqSecurityDist />
+    <details class="portal-faq-item" open>
+      <summary class="portal-faq-question">
+        <span>1. How should mobile apps respond when an MDM Remote Wipe command is received?</span>
+        <span class="portal-file-tag">MDM REMOTE WIPE</span>
+      </summary>
+      <div class="portal-faq-answer">
+        Upon receiving the MDM wipe broadcast, the application must immediately revoke active OAuth refresh tokens, shred cryptographic keys in Android KeyStore / iOS Keychain, delete all local SQLite/Room/CoreData files, display <code>"The data for this application has been wiped.quitting..."</code>, and terminate the process.
+      </div>
+    </details>
+
+    <details class="portal-faq-item">
+      <summary class="portal-faq-question">
+        <span>2. Can developers export production iOS Distribution Certificates or Android Upload Keystores to their local laptops?</span>
+        <span class="portal-file-tag">CODE SIGNING</span>
+      </summary>
+      <div class="portal-faq-answer">
+        No. Production signing credentials are strictly isolated inside the <strong>Bitrise Secret Vault</strong> and <strong>Cloud KMS</strong>. Local development builds use automatic debug signing or developer provisioning profiles only.
+      </div>
+    </details>
+
+    <details class="portal-faq-item">
+      <summary class="portal-faq-question">
+        <span>3. How do we trigger an emergency Force-Update or Killswitch for a vulnerable app version in production?</span>
+        <span class="portal-file-tag">KILLSWITCH &bull; P1</span>
+      </summary>
+      <div class="portal-faq-answer">
+        Update the minimum required semantic version (<code>min_supported_version</code>) or enable <code>killswitch_active: true</code> in the remote configuration payload. Open a P1 incident in the Mobile Support War Room for immediate Platform Architecture approval.
+      </div>
+    </details>
   </TabItem>
 </Tabs>
 
----
-
-## Auto-Loaded FAQ Directory (`faqs/*.md` Dynamic Loader)
-
-Every `.md` file placed inside `src/content/docs/mobile/support/faqs/` is automatically discovered and rendered below via `import.meta.glob('./faqs/*.md', { eager: true })`. To add a new FAQ pack, simply drop a new `.md` file into the `faqs/` folder:
-
-{Object.entries(allFaqFiles).map(([filePath, mod]) => {
-  const FaqContent = mod.default;
-  const title = mod.frontmatter?.title || filePath.replace('./faqs/', '').replace('.md', '');
-  return (
-    <div class="portal-card" style="margin-bottom: 18px;">
-      <div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--portal-card-border, #1f3b2c); padding-bottom: 10px;">
-          <span style="font-size: 1.05rem; font-weight: 800; color: var(--portal-gold, #f3d17b);">{title}</span>
-          <code style="font-size: 0.75rem;">{filePath.replace('./', '')}</code>
+{Object.keys(customMarkdownFaqs).length > 0 && (
+  <div>
+    <hr />
+    <h2>Additional Markdown FAQ Packs (Auto-Loaded from <code>./faqs/*.md</code>)</h2>
+    {Object.entries(customMarkdownFaqs).map(([filePath, mod]) => {
+      const title = mod.frontmatter?.title || filePath.replace('./faqs/', '').replace('.md', '');
+      const htmlContent = typeof mod.compiledContent === 'function' ? mod.compiledContent() : '';
+      return (
+        <div class="portal-card" style="margin-bottom: 18px;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--portal-card-border, #1f3b2c); padding-bottom: 10px;">
+              <span style="font-size: 1.05rem; font-weight: 800; color: var(--portal-gold, #f3d17b);">{title}</span>
+              <code style="font-size: 0.75rem;">{filePath.replace('./', '')}</code>
+            </div>
+            <div set:html={htmlContent} />
+          </div>
         </div>
-        <FaqContent />
-      </div>
-    </div>
-  );
-})}
-
----
-
-## Loaded Markdown FAQ Files Registry
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Markdown File Name (No Numbers)</th>
-        <th>Folder Location</th>
-        <th>Domain Covered</th>
-        <th>How It Loads</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong><code>faq-onboarding-setup.md</code></strong></td>
-        <td><code>src/content/docs/mobile/support/faqs/faq-onboarding-setup.md</code></td>
-        <td>Corporate SSL proxy certs, Artifactory credentials, JDK 17 &amp; Xcode 16 toolchain.</td>
-        <td>Imported as <code>&lt;FaqOnboarding /&gt;</code> &amp; auto-globbed</td>
-      </tr>
-      <tr>
-        <td><strong><code>faq-architecture-sdks.md</code></strong></td>
-        <td><code>src/content/docs/mobile/support/faqs/faq-architecture-sdks.md</code></td>
-        <td>Clean Architecture layer rules, Circuit Breaker thresholds, and Feature Flag fallbacks.</td>
-        <td>Imported as <code>&lt;FaqArchitecture /&gt;</code> &amp; auto-globbed</td>
-      </tr>
-      <tr>
-        <td><strong><code>faq-bitrise-cicd.md</code></strong></td>
-        <td><code>src/content/docs/mobile/support/faqs/faq-bitrise-cicd.md</code></td>
-        <td>SonarQube 80% diff coverage gate, <code>camp.yml</code> spec, and Bitrise MCP debugging.</td>
-        <td>Imported as <code>&lt;FaqBitriseCicd /&gt;</code> &amp; auto-globbed</td>
-      </tr>
-      <tr>
-        <td><strong><code>faq-security-distribution.md</code></strong></td>
-        <td><code>src/content/docs/mobile/support/faqs/faq-security-distribution.md</code></td>
-        <td>MDM Remote Wipe compliance, KMS signing isolation, and production killswitch triggers.</td>
-        <td>Imported as <code>&lt;FaqSecurityDist /&gt;</code> &amp; auto-globbed</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-
------------------
-
-/* ==============================================================================
-   SCREENSHOT PREVIEW IMAGE ENHANCEMENTS
-   ============================================================================== */
-.portal-screenshot-preview,
-.portal-screenshot-box img {
-  display: block !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  height: auto !important;
-  margin-top: 14px !important;
-  border-radius: 8px !important;
-  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
-  object-fit: contain !important;
-}
-
-/* ==============================================================================
-   18. PREMIUM SUPPORT CHANNEL SPOTLIGHT & FAQ KNOWLEDGE BASE
-   ============================================================================== */
-.portal-support-spotlight {
-  position: relative !important;
-  background: linear-gradient(135deg, rgba(16, 46, 28, 0.96) 0%, rgba(9, 19, 14, 0.98) 100%) !important;
-  border: 2px solid var(--portal-accent, #22c55e) !important;
-  border-radius: 16px !important;
-  padding: 26px 28px !important;
-  margin: 20px 0 32px 0 !important;
-  box-shadow: 0 12px 36px rgba(34, 197, 94, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-  box-sizing: border-box !important;
-}
-
-html[data-theme='light'] .portal-support-spotlight {
-  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%) !important;
-  border: 2px solid #007a3d !important;
-  box-shadow: 0 10px 30px rgba(0, 122, 61, 0.12) !important;
-}
-
-.portal-support-spotlight-header {
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  flex-wrap: wrap !important;
-  gap: 12px !important;
-  margin-bottom: 18px !important;
-  padding-bottom: 14px !important;
-  border-bottom: 1px solid rgba(34, 197, 94, 0.25) !important;
-}
-
-.portal-support-live-pill {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  background: rgba(34, 197, 94, 0.18) !important;
-  border: 1px solid var(--portal-accent, #22c55e) !important;
-  color: #4ade80 !important;
-  font-size: 0.76rem !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.06em !important;
-  padding: 5px 12px !important;
-  border-radius: 9999px !important;
-  text-transform: uppercase !important;
-}
-
-html[data-theme='light'] .portal-support-live-pill {
-  background: #dcfce7 !important;
-  color: #15803d !important;
-  border-color: #16a34a !important;
-}
-
-.portal-support-pulse {
-  width: 8px !important;
-  height: 8px !important;
-  border-radius: 50% !important;
-  background: #22c55e !important;
-  box-shadow: 0 0 8px #22c55e !important;
-  display: inline-block !important;
-}
-
-.portal-support-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
-  gap: 18px !important;
-  margin: 16px 0 8px 0 !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-@media (max-width: 860px) {
-  .portal-support-grid {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-.portal-support-card {
-  background: rgba(13, 25, 18, 0.88) !important;
-  border: 1.5px solid rgba(34, 197, 94, 0.35) !important;
-  border-radius: 12px !important;
-  padding: 20px 22px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: space-between !important;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease !important;
-  box-sizing: border-box !important;
-}
-
-html[data-theme='light'] .portal-support-card {
-  background: #ffffff !important;
-  border: 1.5px solid #bbf7d0 !important;
-}
-
-.portal-support-card:hover {
-  transform: translateY(-3px) !important;
-  border-color: #4ade80 !important;
-  box-shadow: 0 10px 28px rgba(34, 197, 94, 0.22) !important;
-}
-
-.portal-support-card.card-urgent {
-  border-color: rgba(244, 63, 94, 0.5) !important;
-}
-
-.portal-support-card.card-urgent:hover {
-  border-color: #f43f5e !important;
-  box-shadow: 0 10px 28px rgba(244, 63, 94, 0.25) !important;
-}
-
-.portal-support-cta {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 8px !important;
-  width: 100% !important;
-  padding: 11px 16px !important;
-  margin-top: 14px !important;
-  border-radius: 8px !important;
-  font-size: 0.88rem !important;
-  font-weight: 700 !important;
-  text-decoration: none !important;
-  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
-  color: #05130b !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.3) !important;
-  transition: all 0.18s ease !important;
-  box-sizing: border-box !important;
-}
-
-.portal-support-cta:hover {
-  background: linear-gradient(135deg, #4ade80, #22c55e) !important;
-  color: #05130b !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45) !important;
-}
-
-.portal-support-cta.cta-urgent {
-  background: linear-gradient(135deg, #f43f5e, #e11d48) !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35) !important;
-}
-
-.portal-support-cta.cta-urgent:hover {
-  background: linear-gradient(135deg, #fb7185, #f43f5e) !important;
-  color: #ffffff !important;
-}
-
-/* Collapsible FAQ Accordion Cards */
-.portal-faq-item {
-  background: var(--portal-card-bg, #13251c) !important;
-  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
-  border-radius: 10px !important;
-  margin-bottom: 12px !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  transition: border-color 0.15s ease !important;
-}
-
-.portal-faq-item[open] {
-  border-color: var(--portal-accent, #22c55e) !important;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2) !important;
-}
-
-.portal-faq-question {
-  padding: 15px 20px !important;
-  font-size: 0.95rem !important;
-  font-weight: 700 !important;
-  color: var(--portal-gold, #f3d17b) !important;
-  cursor: pointer !important;
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  gap: 12px !important;
-  user-select: none !important;
-  list-style: none !important;
-}
-
-.portal-faq-question::-webkit-details-marker {
-  display: none !important;
-}
-
-.portal-faq-answer {
-  padding: 0 20px 18px 20px !important;
-  font-size: 0.90rem !important;
-  color: var(--portal-text-body, #cbd5e1) !important;
-  line-height: 1.6 !important;
-  border-top: 1px solid rgba(31, 59, 44, 0.6) !important;
-  padding-top: 14px !important;
-}
+      );
+    })}
+  </div>
+)}
