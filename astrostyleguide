@@ -1,6 +1,6 @@
 ---
 title: "Mobile Engineering FAQs & Troubleshooting Knowledge Base"
-description: "Centralized FAQ hub with built-in domain accordions and automatic rendering for any Markdown (.md) files dropped into the faqs/ folder."
+description: "Centralized FAQ hub with interactive expandable accordions, instant keyword search, and automatic rendering for any Markdown (.md) files dropped into the faqs/ folder."
 sidebar:
   order: 2
   label: "Engineering FAQs"
@@ -13,15 +13,15 @@ export const customMarkdownFaqs = import.meta.glob('./faqs/*.md', { eager: true 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
     <span class="portal-badge-hub">[SUPPORT &amp; KNOWLEDGE BASE]</span>
-    <span class="portal-hub-tag">SELF-SERVICE RUNBOOKS &bull; AUTO-MD LOADER</span>
+    <span class="portal-hub-tag">EXPANDABLE RUNBOOKS &bull; INSTANT SEARCH</span>
   </div>
   <div class="portal-hero-title">Engineering FAQs &amp; Self-Service Runbooks</div>
   <div class="portal-hero-desc">
-    Browse frequently asked questions and verified engineering resolutions across workstation setup, Clean Architecture, Bitrise CI/CD, and App Store distribution. You can also drop any custom <code>.md</code> FAQ files into the <code>faqs/</code> subfolder and they will render automatically without manual imports.
+    Click any question below to expand the verified engineering resolution, or use the instant search bar to filter across workstation setup, Clean Architecture, Bitrise CI/CD, and App Store distribution.
   </div>
 </div>
 
-<div class="portal-support-spotlight" style="padding: 18px 22px; margin-bottom: 28px;">
+<div class="portal-support-spotlight" style="padding: 18px 22px; margin-bottom: 24px;">
   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
     <div style="display: flex; align-items: center; gap: 12px;">
       <span class="portal-support-live-pill">
@@ -43,135 +43,280 @@ export const customMarkdownFaqs = import.meta.glob('./faqs/*.md', { eager: true 
   </div>
 </div>
 
-## Browse Core FAQs by Engineering Domain
+<div class="portal-faq-toolbar">
+  <input
+    type="text"
+    id="portal-faq-search-input"
+    class="portal-faq-search"
+    placeholder="Search FAQs by keyword (e.g., SSL, Artifactory, Circuit Breaker, 80%, KeyStore, Killswitch)..."
+    oninput="
+      const q = this.value.toLowerCase().trim();
+      document.querySelectorAll('details.portal-faq-item').forEach(el => {
+        const match = !q || el.textContent.toLowerCase().includes(q);
+        el.style.display = match ? '' : 'none';
+        if (q && match) el.open = true;
+      });
+    "
+  />
+  <div class="portal-faq-actions">
+    <button
+      type="button"
+      class="portal-faq-action-btn"
+      onclick="document.querySelectorAll('details.portal-faq-item').forEach(d => d.open = true);"
+    >
+      Expand All
+    </button>
+    <button
+      type="button"
+      class="portal-faq-action-btn"
+      onclick="document.querySelectorAll('details.portal-faq-item').forEach(d => d.open = false);"
+    >
+      Collapse All
+    </button>
+  </div>
+</div>
+
+## Browse Expandable FAQs by Engineering Domain
 
 <Tabs>
   <TabItem label="Onboarding & Setup">
-    <details class="portal-faq-item" open>
-      <summary class="portal-faq-question">
-        <span>1. Why does Gradle or CocoaPods fail with "PKIX path building failed" or SSL certificate errors on my corporate laptop?</span>
-        <span class="portal-file-tag">WORKSTATION &bull; SSL</span>
-      </summary>
-      <div class="portal-faq-answer">
-        Corporate network traffic is inspected by the enterprise TLS proxy. You must install the Enterprise Root CA certificate into both the macOS System Keychain and your active Java runtime (<code>cacerts</code>), and export <code>NODE_EXTRA_CA_CERTS</code> in your <code>~/.zshrc</code> profile. Refer to the <a href="/mobile/onboarding/machine-setup/">Machine Setup Guide</a> for the automated bootstrap script.
-      </div>
-    </details>
+    <div class="portal-faq-list">
 
-    <details class="portal-faq-item">
-      <summary class="portal-faq-question">
-        <span>2. How do I obtain credentials for the internal Artifactory Maven, SPM, and NPM registries?</span>
-        <span class="portal-file-tag">ACCESS &bull; ARTIFACTORY</span>
-      </summary>
-      <div class="portal-faq-answer">
-        Request the <strong>Mobile Engineering - Artifactory Read</strong> entitlement via <code>access.enterprise.internal</code>. Once approved, generate an identity token from the Artifactory profile page and store it in <code>~/.gradle/gradle.properties</code>, <code>~/.netrc</code> (for Swift Package Manager), and <code>~/.npmrc</code>.
-      </div>
-    </details>
+      <details class="portal-faq-item" open>
+        <summary class="portal-faq-question">
+          <span class="portal-faq-q-left">
+            <span class="portal-faq-q-badge">Q1</span>
+            <span class="portal-faq-q-text">Why does Gradle or CocoaPods fail with "PKIX path building failed" or SSL certificate errors on my corporate laptop?</span>
+          </span>
+          <span class="portal-faq-q-right">
+            <span class="portal-file-tag">WORKSTATION &bull; SSL</span>
+            <span class="portal-faq-chevron">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </span>
+        </summary>
+        <div class="portal-faq-answer">
+          Corporate network traffic is inspected by the enterprise TLS proxy. You must install the Enterprise Root CA certificate into both the macOS System Keychain and your active Java runtime (<code>cacerts</code>), and export <code>NODE_EXTRA_CA_CERTS</code> in your <code>~/.zshrc</code> profile. Refer to the <a href="/mobile/onboarding/machine-setup/">Machine Setup Guide</a> for the automated bootstrap script.
+        </div>
+      </details>
 
-    <details class="portal-faq-item">
-      <summary class="portal-faq-question">
-        <span>3. Which JDK and Xcode versions are officially supported for local builds?</span>
-        <span class="portal-file-tag">TOOLCHAIN</span>
-      </summary>
-      <div class="portal-faq-answer">
-        All Android and React Native projects require <strong>JDK 17 (Eclipse Temurin)</strong>. All iOS projects require <strong>Xcode 16.x</strong> managed via <code>xcodes</code> or the corporate Self-Service app to match the active Bitrise CI build stack.
-      </div>
-    </details>
+      <details class="portal-faq-item">
+        <summary class="portal-faq-question">
+          <span class="portal-faq-q-left">
+            <span class="portal-faq-q-badge">Q2</span>
+            <span class="portal-faq-q-text">How do I obtain credentials for the internal Artifactory Maven, SPM, and NPM registries?</span>
+          </span>
+          <span class="portal-faq-q-right">
+            <span class="portal-file-tag">ACCESS &bull; ARTIFACTORY</span>
+            <span class="portal-faq-chevron">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </span>
+        </summary>
+        <div class="portal-faq-answer">
+          Request the <strong>Mobile Engineering - Artifactory Read</strong> entitlement via <code>access.enterprise.internal</code>. Once approved, generate an identity token from the Artifactory profile page and store it in <code>~/.gradle/gradle.properties</code>, <code>~/.netrc</code> (for Swift Package Manager), and <code>~/.npmrc</code>.
+        </div>
+      </details>
+
+      <details class="portal-faq-item">
+        <summary class="portal-faq-question">
+          <span class="portal-faq-q-left">
+            <span class="portal-faq-q-badge">Q3</span>
+            <span class="portal-faq-q-text">Which JDK and Xcode versions are officially supported for local builds?</span>
+          </span>
+          <span class="portal-faq-q-right">
+            <span class="portal-file-tag">TOOLCHAIN</span>
+            <span class="portal-faq-chevron">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </span>
+        </summary>
+        <div class="portal-faq-answer">
+          All Android and React Native projects require <strong>JDK 17 (Eclipse Temurin)</strong>. All iOS projects require <strong>Xcode 16.x</strong> managed via <code>xcodes</code> or the corporate Self-Service app to match the active Bitrise CI build stack.
+        </div>
+      </details>
+
+    </div>
   </TabItem>
 
   <TabItem label="Architecture & SDKs">
-    <details class="portal-faq-item" open>
-      <summary class="portal-faq-question">
-        <span>1. Can I import Retrofit, URLSession, or Room directly inside a Domain UseCase class?</span>
-        <span class="portal-file-tag">CLEAN ARCHITECTURE</span>
-      </summary>
-      <div class="portal-faq-answer">
-        No. The <strong>Domain Layer</strong> must remain 100% pure Kotlin, Swift, or TypeScript with zero platform or networking framework imports. Define repository interfaces in the Domain layer and implement them inside the <strong>Data Layer</strong>.
-      </div>
-    </details>
+    <div class="portal-faq-list">
 
-    <details class="portal-faq-item">
-      <summary class="portal-faq-question">
-        <span>2. When should the Enterprise Circuit Breaker trip to the OPEN state?</span>
-        <span class="portal-file-tag">RESILIENCE</span>
-      </summary>
-      <div class="portal-faq-answer">
-        By default, the Enterprise Circuit Breaker transitions from <code>CLOSED</code> to <code>OPEN</code> when 5 consecutive <code>5xx</code> or network timeout failures occur within a 30-second rolling window. While <code>OPEN</code>, calls fail-fast immediately to the local Room/CoreData/SQLite cache for 60 seconds before probing in <code>HALF_OPEN</code>.
-      </div>
-    </details>
+      <details class="portal-faq-item" open>
+        <summary class="portal-faq-question">
+          <span class="portal-faq-q-left">
+            <span class="portal-faq-q-badge">Q1</span>
+            <span class="portal-faq-q-text">Can I import Retrofit, URLSession, or Room directly inside a Domain UseCase class?</span>
+          </span>
+          <span class="portal-faq-q-right">
+            <span class="portal-file-tag">CLEAN ARCHITECTURE</span>
+            <span class="portal-faq-chevron">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </span>
+        </summary>
+        <div class="portal-faq-answer">
+          No. The <strong>Domain Layer</strong> must remain 100% pure Kotlin, Swift, or TypeScript with zero platform or networking framework imports. Define repository interfaces in the Domain layer and implement them inside the <strong>Data Layer</strong>.
+        </div>
+      </details>
 
-    <details class="portal-faq-item">
-      <summary class="portal-faq-question">
-        <span>3. What happens if the remote Feature Flag service is unreachable on app startup?</span>
-        <span class="portal-file-tag">FEATURE FLAGS</span>
-      </summary>
-      <div class="portal-faq-answer">
-        Every feature flag evaluation must define a deterministic offline default value packaged inside the binary. If <code>feature-flags.enterprise.internal</code> times out (exceeds 1500ms), the SDK immediately serves the last cached state or compiled fallback without blocking UI rendering.
-      </div>
-    </details>
+      <details class="portal-faq-item">
+        <summary class="portal-faq-question">
+          <span class="portal-faq-q-left">
+            <span class="portal-faq-q-badge">Q2</span>
+            <span class="portal-faq-q-text">When should the Enterprise Circuit Breaker trip to the OPEN state?</span>
+          </span>
+          <span class="portal-faq-q-right">
+            <span class="portal-file-tag">RESILIENCE</span>
+            <span class="portal-faq-chevron">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </span>
+        </summary>
+        <div class="portal-faq-answer">
+          By default, the Enterprise Circuit Breaker transitions from <code>CLOSED</code> to <code>OPEN</code> when 5 consecutive <code>5xx</code> or network timeout failures occur within a 30-second rolling window. While <code>OPEN</code>, calls fail-fast immediately to the local Room/CoreData/SQLite cache for 60 seconds before probing in <code>HALF_OPEN</code>.
+        </div>
+      </details>
+
+      <details class="portal-faq-item">
+        <summary class="portal-faq-question">
+          <span class="portal-faq-q-left">
+            <span class="portal-faq-q-badge">Q3</span>
+            <span class="portal-faq-q-text">What happens if the remote Feature Flag service is unreachable on app startup?</span>
+          </span>
+          <span class="portal-faq-q-right">
+            <span class="portal-file-tag">FEATURE FLAGS</span>
+            <span class="portal-faq-chevron">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </span>
+        </summary>
+        <div class="portal-faq-answer">
+          Every feature flag evaluation must define a deterministic offline default value packaged inside the binary. If <code>feature-flags.enterprise.internal</code> times out (exceeds 1500ms), the SDK immediately serves the last cached state or compiled fallback without blocking UI rendering.
+        </div>
+      </details>
+
+    </div>
   </TabItem>
 
   <TabItem label="Bitrise CI/CD & Quality">
-    <details class="portal-faq-item" open>
-      <summary class="portal-faq-question">
-        <span>1. Why is my Pull Request blocked by "SonarQube Quality Gate Failed: New Code Coverage &lt; 80%"?</span>
-        <span class="portal-file-tag">QUALITY GATE &bull; 80%</span>
-      </summary>
-      <div class="portal-faq-answer">
-        Enterprise mobile governance requires a minimum of <strong>80% line and branch diff coverage</strong> on all new or modified code. Ensure unit tests cover success, empty, and error states using JUnit 5 + Turbine (Android), XCTest (iOS), or Jest (React Native).
-      </div>
-    </details>
+    <div class="portal-faq-list">
 
-    <details class="portal-faq-item">
-      <summary class="portal-faq-question">
-        <span>2. Where do I configure build flavors, target schemes, and signing profiles for CI?</span>
-        <span class="portal-file-tag">CAMP.YML &bull; BITRISE</span>
-      </summary>
-      <div class="portal-faq-answer">
-        All repository-specific build parameters are declared in <code>camp.yml</code> at the root of your repository. The shared Bitrise pipelines dynamically read <code>camp.yml</code> to execute linting, unit tests, NowSecure scans, and store deployments.
-      </div>
-    </details>
+      <details class="portal-faq-item" open>
+        <summary class="portal-faq-question">
+          <span class="portal-faq-q-left">
+            <span class="portal-faq-q-badge">Q1</span>
+            <span class="portal-faq-q-text">Why is my Pull Request blocked by "SonarQube Quality Gate Failed: New Code Coverage &lt; 80%"?</span>
+          </span>
+          <span class="portal-faq-q-right">
+            <span class="portal-file-tag">QUALITY GATE &bull; 80%</span>
+            <span class="portal-faq-chevron">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </span>
+        </summary>
+        <div class="portal-faq-answer">
+          Enterprise mobile governance requires a minimum of <strong>80% line and branch diff coverage</strong> on all new or modified code. Ensure unit tests cover success, empty, and error states using JUnit 5 + Turbine (Android), XCTest (iOS), or Jest (React Native).
+        </div>
+      </details>
 
-    <details class="portal-faq-item">
-      <summary class="portal-faq-question">
-        <span>3. How can I inspect a failed Bitrise build log directly from VS Code or Android Studio?</span>
-        <span class="portal-file-tag">BITRISE MCP</span>
-      </summary>
-      <div class="portal-faq-answer">
-        Configure the <a href="/mobile/genai/bitrise-mcp/">Bitrise MCP Server</a> via the TrueFoundry MCP Gateway and prompt GitHub Copilot Chat with: <code>"@bitrise why did the last build on my branch fail?"</code>
-      </div>
-    </details>
+      <details class="portal-faq-item">
+        <summary class="portal-faq-question">
+          <span class="portal-faq-q-left">
+            <span class="portal-faq-q-badge">Q2</span>
+            <span class="portal-faq-q-text">Where do I configure build flavors, target schemes, and signing profiles for CI?</span>
+          </span>
+          <span class="portal-faq-q-right">
+            <span class="portal-file-tag">CAMP.YML &bull; BITRISE</span>
+            <span class="portal-faq-chevron">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </span>
+        </summary>
+        <div class="portal-faq-answer">
+          All repository-specific build parameters are declared in <code>camp.yml</code> at the root of your repository. The shared Bitrise pipelines dynamically read <code>camp.yml</code> to execute linting, unit tests, NowSecure scans, and store deployments.
+        </div>
+      </details>
+
+      <details class="portal-faq-item">
+        <summary class="portal-faq-question">
+          <span class="portal-faq-q-left">
+            <span class="portal-faq-q-badge">Q3</span>
+            <span class="portal-faq-q-text">How can I inspect a failed Bitrise build log directly from VS Code or Android Studio?</span>
+          </span>
+          <span class="portal-faq-q-right">
+            <span class="portal-file-tag">BITRISE MCP</span>
+            <span class="portal-faq-chevron">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </span>
+        </summary>
+        <div class="portal-faq-answer">
+          Configure the <a href="/mobile/genai/bitrise-mcp/">Bitrise MCP Server</a> via the TrueFoundry MCP Gateway and prompt GitHub Copilot Chat with: <code>"@bitrise why did the last build on my branch fail?"</code>
+        </div>
+      </details>
+
+    </div>
   </TabItem>
 
   <TabItem label="Security & Distribution">
-    <details class="portal-faq-item" open>
-      <summary class="portal-faq-question">
-        <span>1. How should mobile apps respond when an MDM Remote Wipe command is received?</span>
-        <span class="portal-file-tag">MDM REMOTE WIPE</span>
-      </summary>
-      <div class="portal-faq-answer">
-        Upon receiving the MDM wipe broadcast, the application must immediately revoke active OAuth refresh tokens, shred cryptographic keys in Android KeyStore / iOS Keychain, delete all local SQLite/Room/CoreData files, display <code>"The data for this application has been wiped.quitting..."</code>, and terminate the process.
-      </div>
-    </details>
+    <div class="portal-faq-list">
 
-    <details class="portal-faq-item">
-      <summary class="portal-faq-question">
-        <span>2. Can developers export production iOS Distribution Certificates or Android Upload Keystores to their local laptops?</span>
-        <span class="portal-file-tag">CODE SIGNING</span>
-      </summary>
-      <div class="portal-faq-answer">
-        No. Production signing credentials are strictly isolated inside the <strong>Bitrise Secret Vault</strong> and <strong>Cloud KMS</strong>. Local development builds use automatic debug signing or developer provisioning profiles only.
-      </div>
-    </details>
+      <details class="portal-faq-item" open>
+        <summary class="portal-faq-question">
+          <span class="portal-faq-q-left">
+            <span class="portal-faq-q-badge">Q1</span>
+            <span class="portal-faq-q-text">How should mobile apps respond when an MDM Remote Wipe command is received?</span>
+          </span>
+          <span class="portal-faq-q-right">
+            <span class="portal-file-tag">MDM REMOTE WIPE</span>
+            <span class="portal-faq-chevron">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </span>
+        </summary>
+        <div class="portal-faq-answer">
+          Upon receiving the MDM wipe broadcast, the application must immediately revoke active OAuth refresh tokens, shred cryptographic keys in Android KeyStore / iOS Keychain, delete all local SQLite/Room/CoreData files, display <code>"The data for this application has been wiped.quitting..."</code>, and terminate the process.
+        </div>
+      </details>
 
-    <details class="portal-faq-item">
-      <summary class="portal-faq-question">
-        <span>3. How do we trigger an emergency Force-Update or Killswitch for a vulnerable app version in production?</span>
-        <span class="portal-file-tag">KILLSWITCH &bull; P1</span>
-      </summary>
-      <div class="portal-faq-answer">
-        Update the minimum required semantic version (<code>min_supported_version</code>) or enable <code>killswitch_active: true</code> in the remote configuration payload. Open a P1 incident in the Mobile Support War Room for immediate Platform Architecture approval.
-      </div>
-    </details>
+      <details class="portal-faq-item">
+        <summary class="portal-faq-question">
+          <span class="portal-faq-q-left">
+            <span class="portal-faq-q-badge">Q2</span>
+            <span class="portal-faq-q-text">Can developers export production iOS Distribution Certificates or Android Upload Keystores to their local laptops?</span>
+          </span>
+          <span class="portal-faq-q-right">
+            <span class="portal-file-tag">CODE SIGNING</span>
+            <span class="portal-faq-chevron">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </span>
+        </summary>
+        <div class="portal-faq-answer">
+          No. Production signing credentials are strictly isolated inside the <strong>Bitrise Secret Vault</strong> and <strong>Cloud KMS</strong>. Local development builds use automatic debug signing or developer provisioning profiles only.
+        </div>
+      </details>
+
+      <details class="portal-faq-item">
+        <summary class="portal-faq-question">
+          <span class="portal-faq-q-left">
+            <span class="portal-faq-q-badge">Q3</span>
+            <span class="portal-faq-q-text">How do we trigger an emergency Force-Update or Killswitch for a vulnerable app version in production?</span>
+          </span>
+          <span class="portal-faq-q-right">
+            <span class="portal-file-tag">KILLSWITCH &bull; P1</span>
+            <span class="portal-faq-chevron">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </span>
+        </summary>
+        <div class="portal-faq-answer">
+          Update the minimum required semantic version (<code>min_supported_version</code>) or enable <code>killswitch_active: true</code> in the remote configuration payload. Open a P1 incident in the Mobile Support War Room for immediate Platform Architecture approval.
+        </div>
+      </details>
+
+    </div>
   </TabItem>
 </Tabs>
 
@@ -196,3 +341,213 @@ export const customMarkdownFaqs = import.meta.glob('./faqs/*.md', { eager: true 
     })}
   </div>
 )}
+
+
+
+
+---------------------------
+
+/* ==============================================================================
+   19. NEAT EXPANDABLE FAQ ACCORDION SYSTEM (OVERRIDES STARLIGHT DEFAULTS)
+   ============================================================================== */
+.portal-faq-toolbar {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+  margin: 18px 0 20px 0 !important;
+  padding: 12px 16px !important;
+  background: var(--portal-card-bg, #13251c) !important;
+  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
+  border-radius: 12px !important;
+  box-sizing: border-box !important;
+}
+
+.portal-faq-search {
+  flex: 1 !important;
+  min-width: 240px !important;
+  background: rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
+  border-radius: 8px !important;
+  padding: 9px 14px !important;
+  color: var(--sl-color-text, #e2e8f0) !important;
+  font-size: 0.88rem !important;
+  outline: none !important;
+}
+
+html[data-theme='light'] .portal-faq-search {
+  background: #f8faf8 !important;
+  color: #111827 !important;
+}
+
+.portal-faq-search:focus {
+  border-color: var(--portal-accent, #22c55e) !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2) !important;
+}
+
+.portal-faq-actions {
+  display: flex !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+.portal-faq-action-btn {
+  background: var(--portal-pill-bg, #1a2e23) !important;
+  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
+  color: var(--portal-gold, #f3d17b) !important;
+  padding: 8px 14px !important;
+  border-radius: 8px !important;
+  font-size: 0.8rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.portal-faq-action-btn:hover {
+  border-color: var(--portal-accent, #22c55e) !important;
+  background: rgba(34, 197, 94, 0.15) !important;
+}
+
+.portal-faq-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  margin: 12px 0 24px 0 !important;
+}
+
+.sl-markdown-content details.portal-faq-item,
+details.portal-faq-item {
+  background: var(--portal-card-bg, #13251c) !important;
+  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
+  border-radius: 12px !important;
+  margin: 0 0 12px 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12) !important;
+}
+
+.sl-markdown-content details.portal-faq-item:hover,
+details.portal-faq-item:hover {
+  border-color: rgba(34, 197, 94, 0.5) !important;
+}
+
+.sl-markdown-content details.portal-faq-item[open],
+details.portal-faq-item[open] {
+  border-color: var(--portal-accent, #22c55e) !important;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28) !important;
+}
+
+.sl-markdown-content details.portal-faq-item > summary.portal-faq-question,
+summary.portal-faq-question {
+  padding: 16px 20px !important;
+  margin: 0 !important;
+  font-size: 0.96rem !important;
+  font-weight: 700 !important;
+  color: var(--sl-color-text, #f8fafc) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 14px !important;
+  user-select: none !important;
+  list-style: none !important;
+  background: transparent !important;
+  transition: background 0.15s ease !important;
+}
+
+.sl-markdown-content details.portal-faq-item > summary.portal-faq-question:hover,
+summary.portal-faq-question:hover {
+  background: rgba(34, 197, 94, 0.05) !important;
+}
+
+/* Strip default Starlight/Browser summary markers */
+.sl-markdown-content details.portal-faq-item > summary.portal-faq-question::-webkit-details-marker,
+.sl-markdown-content details.portal-faq-item > summary.portal-faq-question::marker,
+.sl-markdown-content details.portal-faq-item > summary.portal-faq-question::before,
+summary.portal-faq-question::-webkit-details-marker,
+summary.portal-faq-question::marker,
+summary.portal-faq-question::before {
+  display: none !important;
+  content: none !important;
+}
+
+.portal-faq-q-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+.portal-faq-q-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 32px !important;
+  height: 28px !important;
+  padding: 0 8px !important;
+  border-radius: 6px !important;
+  background: rgba(34, 197, 94, 0.16) !important;
+  border: 1px solid rgba(34, 197, 94, 0.4) !important;
+  color: var(--portal-accent, #22c55e) !important;
+  font-size: 0.76rem !important;
+  font-weight: 800 !important;
+  flex-shrink: 0 !important;
+}
+
+.portal-faq-q-text {
+  color: var(--portal-gold, #f3d17b) !important;
+  line-height: 1.45 !important;
+  font-weight: 700 !important;
+}
+
+.portal-faq-q-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+}
+
+.portal-faq-chevron {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--portal-accent, #22c55e) !important;
+  transition: transform 0.22s ease, background 0.2s ease !important;
+  flex-shrink: 0 !important;
+}
+
+details.portal-faq-item[open] .portal-faq-chevron {
+  transform: rotate(180deg) !important;
+  background: var(--portal-accent, #22c55e) !important;
+  color: #06130c !important;
+  border-color: var(--portal-accent, #22c55e) !important;
+}
+
+.sl-markdown-content details.portal-faq-item > .portal-faq-answer,
+.portal-faq-answer {
+  margin: 0 !important;
+  padding: 16px 22px 18px 22px !important;
+  font-size: 0.91rem !important;
+  color: var(--portal-text-body, #cbd5e1) !important;
+  line-height: 1.65 !important;
+  background: rgba(0, 0, 0, 0.18) !important;
+  border-top: 1px solid var(--portal-card-border, #1f3b2c) !important;
+  border-left: 3px solid var(--portal-accent, #22c55e) !important;
+}
+
+html[data-theme='light'] .sl-markdown-content details.portal-faq-item > .portal-faq-answer,
+html[data-theme='light'] .portal-faq-answer {
+  background: #f4f9f5 !important;
+  color: #1f2937 !important;
+}
+
