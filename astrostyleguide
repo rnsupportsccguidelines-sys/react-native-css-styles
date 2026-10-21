@@ -1,576 +1,359 @@
 ---
-title: "Mobile Engineering FAQs & Troubleshooting Knowledge Base"
-description: "Centralized FAQ hub with interactive expandable accordions, instant keyword search, and automatic expandable list rendering for any Markdown (.md) files dropped into the faqs/ folder."
-sidebar:
-  order: 2
-  label: "Engineering FAQs"
+interface Props {
+  basePath?: string;
+}
+
+const { basePath = '/mobile-draft' } = Astro.props;
+const PORTAL_BASE = basePath; // When switching to production tomorrow, simply change '/mobile-draft' to '/mobile'
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
-
-export const customMarkdownFaqs = import.meta.glob('./faqs/*.md', { eager: true });
-export const resolvedFaqs = await Promise.all(
-  Object.entries(customMarkdownFaqs).map(async ([filePath, mod]) => ({
-    filePath,
-    title: mod.frontmatter?.title || filePath.replace('./faqs/', '').replace('.md', ''),
-    htmlContent: typeof mod.compiledContent === 'function' ? await mod.compiledContent() : '',
-  }))
-);
-
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">[SUPPORT &amp; KNOWLEDGE BASE]</span>
-    <span class="portal-hub-tag">EXPANDABLE RUNBOOKS &bull; INSTANT SEARCH</span>
+<div class="portal-hero-card portal-hero-row">
+  <div class="portal-hero-icon">
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+      <line x1="12" y1="18" x2="12.01" y2="18"/>
+    </svg>
   </div>
-  <div class="portal-hero-title">Engineering FAQs &amp; Self-Service Runbooks</div>
-  <div class="portal-hero-desc">
-    Click any question below to expand the verified engineering resolution, or use the instant search bar to filter across workstation setup, Clean Architecture, Bitrise CI/CD, and App Store distribution.
+  <div>
+    <div class="portal-hero-title">Mobile Engineering Platform Hub</div>
+    <div class="portal-hero-sub">Centralized developer portal for architecture standards, automated CI/CD, analytics, App Store distribution, and engineering guidelines.</div>
   </div>
 </div>
 
-<div class="portal-support-spotlight" style="padding: 18px 22px; margin-bottom: 24px;">
-  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+<div class="portal-disclaimer-banner">
+  <div class="portal-disclaimer-icon">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  </div>
+  <div class="portal-disclaimer-content">
+    <div class="portal-disclaimer-title">PORTAL NAVIGATION NOTICE</div>
+    <p class="portal-disclaimer-text">
+      Currently routing through <strong><code>{PORTAL_BASE}</code></strong>. Select any card below to jump directly into the verified documentation runbooks, SDK setups, or deployment checklists.
+    </p>
+  </div>
+</div>
+
+<div class="portal-cards-grid">
+
+  {/* Build and Release Kit */}
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-icon-badge badge-green">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+            <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Build and Release Kit</h3>
+        <span class="portal-tag-pill">TOOLING</span>
+      </div>
+      <p class="portal-card-desc">
+        Complete mobile toolchain bootstrap, workstation provisioning for macOS &amp; Windows, and starter kits.
+      </p>
+      <div class="portal-card-pills">
+        <a href={`${PORTAL_BASE}/build-and-release-kit/`} class="portal-pill-link">Build Kit Overview</a>
+        <a href={`${PORTAL_BASE}/build-and-release-kit/setup/`} class="portal-pill-link">Workstation Setup</a>
+        <a href={`${PORTAL_BASE}/build-and-release-kit/dependencies/`} class="portal-pill-link">SDK Dependencies</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href={`${PORTAL_BASE}/build-and-release-kit/`} class="portal-card-link">Explore Build Kit &rarr;</a>
+    </div>
+  </div>
+
+  {/* Architecture Pattern */}
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-icon-badge badge-green">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Architecture Pattern</h3>
+        <span class="portal-tag-pill">STANDARDS</span>
+      </div>
+      <p class="portal-card-desc">
+        4-Layer Clean Architecture, boundary rules, Circuit Breaker network resilience, and offline caching.
+      </p>
+      <div class="portal-card-pills">
+        <a href={`${PORTAL_BASE}/architecture-pattern/`} class="portal-pill-link">Clean Architecture</a>
+        <a href={`${PORTAL_BASE}/architecture-pattern/circuit-breaker/`} class="portal-pill-link">Circuit Breaker</a>
+        <a href={`${PORTAL_BASE}/architecture-pattern/offline-sync/`} class="portal-pill-link">Offline Cache</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href={`${PORTAL_BASE}/architecture-pattern/`} class="portal-card-link">View Architecture &rarr;</a>
+    </div>
+  </div>
+
+  {/* Analytics & Monitoring */}
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-icon-badge badge-purple">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Analytics &amp; Monitoring</h3>
+        <span class="portal-tag-pill">DATADOG</span>
+      </div>
+      <p class="portal-card-desc">
+        Real User Monitoring (RUM), crash telemetry, synthetic monitoring, and the iOS Datadog wrapper library.
+      </p>
+      <div class="portal-card-pills">
+        <a href={`${PORTAL_BASE}/analytics/`} class="portal-pill-link">Analytics Overview</a>
+        <a href={`${PORTAL_BASE}/analytics/datadog/setup/`} class="portal-pill-link">Datadog Setup</a>
+        <a href={`${PORTAL_BASE}/analytics/ios-datadog-wrapper/`} class="portal-pill-link">iOS Wrapper Library</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href={`${PORTAL_BASE}/analytics/`} class="portal-card-link">View Analytics &rarr;</a>
+    </div>
+  </div>
+
+  {/* App Store & Distribution */}
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-icon-badge badge-rose">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="21 8 21 21 3 21 3 8"/>
+            <rect x="1" y="3" width="22" height="5"/>
+            <line x1="10" y1="12" x2="14" y2="12"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">App Store &amp; Distribution</h3>
+        <span class="portal-tag-pill">PUBLISHING</span>
+      </div>
+      <p class="portal-card-desc">
+        Apple AppStore uploads, code signing certs, remote data wipe on stolen devices, Enterprise Store, and Google Play.
+      </p>
+      <div class="portal-card-pills">
+        <a href={`${PORTAL_BASE}/app-store/apple-appstore-upload/`} class="portal-pill-link">Apple Upload</a>
+        <a href={`${PORTAL_BASE}/app-store/code-signing/`} class="portal-pill-link">Code Signing</a>
+        <a href={`${PORTAL_BASE}/app-store/data-wipe/`} class="portal-pill-link">Remote Data Wipe</a>
+        <a href={`${PORTAL_BASE}/app-store/enterprise-app-store/`} class="portal-pill-link">Enterprise Store</a>
+        <a href={`${PORTAL_BASE}/app-store/google-app-store-deployment/`} class="portal-pill-link">Google Play</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href={`${PORTAL_BASE}/app-store/`} class="portal-card-link">Manage Distribution &rarr;</a>
+    </div>
+  </div>
+
+  {/* Bitrise MCP */}
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-icon-badge badge-teal">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="16" rx="2"/>
+            <rect x="9" y="9" width="6" height="6"/>
+            <line x1="9" y1="1" x2="9" y2="4"/>
+            <line x1="15" y1="1" x2="15" y2="4"/>
+            <line x1="9" y1="20" x2="9" y2="23"/>
+            <line x1="15" y1="20" x2="15" y2="23"/>
+            <line x1="20" y1="9" x2="23" y2="9"/>
+            <line x1="20" y1="14" x2="23" y2="14"/>
+            <line x1="1" y1="9" x2="4" y2="9"/>
+            <line x1="1" y1="14" x2="4" y2="14"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Bitrise MCP</h3>
+        <span class="portal-tag-pill">AI ASSISTANT</span>
+      </div>
+      <p class="portal-card-desc">
+        Model Context Protocol gateway integration to inspect builds, trigger workflows, and debug CI/CD failures via AI chat.
+      </p>
+      <div class="portal-card-pills">
+        <a href={`${PORTAL_BASE}/bitrise-mcp/`} class="portal-pill-link">MCP Overview</a>
+        <a href={`${PORTAL_BASE}/bitrise-mcp/gateway-setup/`} class="portal-pill-link">Gateway Auth</a>
+        <a href={`${PORTAL_BASE}/bitrise-mcp/cursor-copilot/`} class="portal-pill-link">IDE Integration</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href={`${PORTAL_BASE}/bitrise-mcp/`} class="portal-card-link">Connect Bitrise MCP &rarr;</a>
+    </div>
+  </div>
+
+  {/* CI/CD & Automation */}
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-icon-badge badge-coral">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/>
+            <polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">CI/CD &amp; Automation</h3>
+        <span class="portal-tag-pill">PIPELINES</span>
+      </div>
+      <p class="portal-card-desc">
+        Bitrise shared workflows, camp.yml build declarative specs, Danger PR code review automation, and 80% coverage gates.
+      </p>
+      <div class="portal-card-pills">
+        <a href={`${PORTAL_BASE}/cicd/`} class="portal-pill-link">Pipelines Overview</a>
+        <a href={`${PORTAL_BASE}/cicd/camp-spec/`} class="portal-pill-link">camp.yml Spec</a>
+        <a href={`${PORTAL_BASE}/cicd/danger-bot/`} class="portal-pill-link">Danger Inspection</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href={`${PORTAL_BASE}/cicd/`} class="portal-card-link">View CI/CD Workflows &rarr;</a>
+    </div>
+  </div>
+
+  {/* Development Platforms */}
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-icon-badge badge-purple">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Development Platforms</h3>
+        <span class="portal-tag-pill">SDKs &amp; STACKS</span>
+      </div>
+      <p class="portal-card-desc">
+        Native Android (Kotlin &amp; Compose), Native iOS (Swift &amp; SwiftUI), and Cross-Platform React Native standards.
+      </p>
+      <div class="portal-card-pills">
+        <a href={`${PORTAL_BASE}/development-platforms/android/`} class="portal-pill-link">Android (Kotlin)</a>
+        <a href={`${PORTAL_BASE}/development-platforms/ios/`} class="portal-pill-link">iOS (Swift)</a>
+        <a href={`${PORTAL_BASE}/development-platforms/react-native/`} class="portal-pill-link">React Native</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href={`${PORTAL_BASE}/development-platforms/`} class="portal-card-link">Browse Platforms &rarr;</a>
+    </div>
+  </div>
+
+  {/* Push Notifications Backend */}
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-icon-badge badge-amber">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Push Notifications Backend</h3>
+        <span class="portal-tag-pill">MESSAGING</span>
+      </div>
+      <p class="portal-card-desc">
+        Push architecture through Firebase Cloud Messaging (FCM), backend Java implementations, and the PushJS library.
+      </p>
+      <div class="portal-card-pills">
+        <a href={`${PORTAL_BASE}/push-notifications-backend/firebase-cloud-messaging/`} class="portal-pill-link">Firebase FCM</a>
+        <a href={`${PORTAL_BASE}/push-notifications-backend/java/`} class="portal-pill-link">Java Backend</a>
+        <a href={`${PORTAL_BASE}/push-notifications-backend/pushjs/`} class="portal-pill-link">PushJS Library</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href={`${PORTAL_BASE}/push-notifications-backend/`} class="portal-card-link">View Push Services &rarr;</a>
+    </div>
+  </div>
+
+  {/* Guidelines & Governance */}
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-icon-badge badge-green">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Guidelines &amp; Governance</h3>
+        <span class="portal-tag-pill">COMPLIANCE</span>
+      </div>
+      <p class="portal-card-desc">
+        Enterprise security baselines, OWASP MASVS compliance, Git branching policies, PR rules, and quality standards.
+      </p>
+      <div class="portal-card-pills">
+        <a href={`${PORTAL_BASE}/guidelines/`} class="portal-pill-link">Engineering Guidelines</a>
+        <a href={`${PORTAL_BASE}/guidelines/security/`} class="portal-pill-link">Security Policies</a>
+        <a href={`${PORTAL_BASE}/guidelines/branching/`} class="portal-pill-link">Branching Strategy</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href={`${PORTAL_BASE}/guidelines/`} class="portal-card-link">View Guidelines &rarr;</a>
+    </div>
+  </div>
+
+  {/* Engineering FAQs & Self-Service */}
+  <div class="portal-card">
+    <div>
+      <div class="portal-card-topbar">
+        <div class="portal-icon-badge badge-teal">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <h3 class="portal-card-title">Engineering FAQs &amp; Self-Service</h3>
+        <span class="portal-tag-pill">KNOWLEDGE BASE</span>
+      </div>
+      <p class="portal-card-desc">
+        Instant keyword searchable runbooks and verified answers across workstation setups, SSL certs, Bitrise CI/CD, and App Store releases.
+      </p>
+      <div class="portal-card-pills">
+        <a href={`${PORTAL_BASE}/faqs/`} class="portal-pill-link">Browse FAQs</a>
+        <a href={`${PORTAL_BASE}/faqs/troubleshooting/`} class="portal-pill-link">Runbooks</a>
+        <a href={`${PORTAL_BASE}/support/`} class="portal-pill-link">Live Support</a>
+      </div>
+    </div>
+    <div class="portal-card-foot">
+      <a href={`${PORTAL_BASE}/faqs/`} class="portal-card-link">Search FAQs &rarr;</a>
+    </div>
+  </div>
+
+</div>
+
+<div class="portal-support-spotlight">
+  <div class="portal-support-spotlight-header" style="margin-bottom: 12px; padding-bottom: 12px;">
     <div style="display: flex; align-items: center; gap: 12px;">
-      <span class="portal-support-live-pill">
-        <span class="portal-support-pulse"></span>
-        NEED LIVE HELP?
-      </span>
-      <span style="font-size: 0.92rem; color: var(--portal-text-body, #cbd5e1);">
-        Can't find your answer in the FAQs below? Reach the on-call Mobile Platform team in <strong><code>#mobile-platform-support</code></strong>.
-      </span>
+      <div class="portal-icon-badge badge-green">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
+      <div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: var(--portal-gold, #f3d17b);">
+          Need Live Technical Support or Incident Escalation?
+        </div>
+        <div style="font-size: 0.86rem; color: var(--portal-text-body, #cbd5e1);">
+          Reach the on-call Mobile Platform Engineers in <code>#mobile-platform-support</code> or explore self-service engineering FAQs.
+        </div>
+      </div>
     </div>
-    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <a href="https://teams.enterprise.internal/l/channel/mobile-platform-support" target="_blank" rel="noopener noreferrer" class="portal-support-cta" style="width: auto; margin-top: 0; padding: 8px 16px;">
-        Ask in #mobile-platform-support &rarr;
-      </a>
-      <a href="/mobile/support/support-overview/" class="portal-download-btn portal-download-btn-secondary" style="padding: 8px 14px;">
-        View All Support Channels
-      </a>
-    </div>
+    <span class="portal-support-live-pill">
+      <span class="portal-support-pulse"></span>
+      LIVE HELP &bull; P1 SLA
+    </span>
+  </div>
+  <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+    <a href="https://teams.enterprise.internal/l/channel/mobile-platform-support" target="_blank" rel="noopener noreferrer" class="portal-support-cta" style="width: auto; margin-top: 0; padding: 10px 18px;">
+      Ask in #mobile-platform-support &rarr;
+    </a>
+    <a href={`${PORTAL_BASE}/faqs/`} class="portal-download-btn portal-download-btn-secondary" style="padding: 10px 18px;">
+      Browse Engineering FAQs
+    </a>
+    <a href={`${PORTAL_BASE}/support/`} class="portal-download-btn" style="padding: 10px 18px;">
+      View Support Channels &amp; SLAs
+    </a>
   </div>
 </div>
-
-<div class="portal-faq-toolbar">
-  <input
-    type="text"
-    id="portal-faq-search-input"
-    class="portal-faq-search"
-    placeholder="Search FAQs by keyword (e.g., SSL, Artifactory, Circuit Breaker, 80%, KeyStore, Killswitch)..."
-    oninput="
-      const q = this.value.toLowerCase().trim();
-      document.querySelectorAll('details.portal-faq-item').forEach(el => {
-        const match = !q || el.textContent.toLowerCase().includes(q);
-        el.style.display = match ? '' : 'none';
-        if (q && match) el.open = true;
-      });
-    "
-  />
-  <div class="portal-faq-actions">
-    <button
-      type="button"
-      class="portal-faq-action-btn"
-      onclick="document.querySelectorAll('details.portal-faq-item').forEach(d => d.open = true);"
-    >
-      Expand All
-    </button>
-    <button
-      type="button"
-      class="portal-faq-action-btn"
-      onclick="document.querySelectorAll('details.portal-faq-item').forEach(d => d.open = false);"
-    >
-      Collapse All
-    </button>
-  </div>
-</div>
-
-## Browse Expandable FAQs by Engineering Domain
-
-<Tabs>
-  <TabItem label="Onboarding & Setup">
-    <div class="portal-faq-list">
-
-      <details class="portal-faq-item" open>
-        <summary class="portal-faq-question">
-          <span class="portal-faq-q-left">
-            <span class="portal-faq-q-badge">Q1</span>
-            <span class="portal-faq-q-text">Why does Gradle or CocoaPods fail with "PKIX path building failed" or SSL certificate errors on my corporate laptop?</span>
-          </span>
-          <span class="portal-faq-q-right">
-            <span class="portal-file-tag">WORKSTATION &bull; SSL</span>
-            <span class="portal-faq-chevron">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </span>
-        </summary>
-        <div class="portal-faq-answer">
-          Corporate network traffic is inspected by the enterprise TLS proxy. You must install the Enterprise Root CA certificate into both the macOS System Keychain and your active Java runtime (<code>cacerts</code>), and export <code>NODE_EXTRA_CA_CERTS</code> in your <code>~/.zshrc</code> profile. Refer to the <a href="/mobile/onboarding/machine-setup/">Machine Setup Guide</a> for the automated bootstrap script.
-        </div>
-      </details>
-
-      <details class="portal-faq-item">
-        <summary class="portal-faq-question">
-          <span class="portal-faq-q-left">
-            <span class="portal-faq-q-badge">Q2</span>
-            <span class="portal-faq-q-text">How do I obtain credentials for the internal Artifactory Maven, SPM, and NPM registries?</span>
-          </span>
-          <span class="portal-faq-q-right">
-            <span class="portal-file-tag">ACCESS &bull; ARTIFACTORY</span>
-            <span class="portal-faq-chevron">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </span>
-        </summary>
-        <div class="portal-faq-answer">
-          Request the <strong>Mobile Engineering - Artifactory Read</strong> entitlement via <code>access.enterprise.internal</code>. Once approved, generate an identity token from the Artifactory profile page and store it in <code>~/.gradle/gradle.properties</code>, <code>~/.netrc</code> (for Swift Package Manager), and <code>~/.npmrc</code>.
-        </div>
-      </details>
-
-      <details class="portal-faq-item">
-        <summary class="portal-faq-question">
-          <span class="portal-faq-q-left">
-            <span class="portal-faq-q-badge">Q3</span>
-            <span class="portal-faq-q-text">Which JDK and Xcode versions are officially supported for local builds?</span>
-          </span>
-          <span class="portal-faq-q-right">
-            <span class="portal-file-tag">TOOLCHAIN</span>
-            <span class="portal-faq-chevron">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </span>
-        </summary>
-        <div class="portal-faq-answer">
-          All Android and React Native projects require <strong>JDK 17 (Eclipse Temurin)</strong>. All iOS projects require <strong>Xcode 16.x</strong> managed via <code>xcodes</code> or the corporate Self-Service app to match the active Bitrise CI build stack.
-        </div>
-      </details>
-
-    </div>
-  </TabItem>
-
-  <TabItem label="Architecture & SDKs">
-    <div class="portal-faq-list">
-
-      <details class="portal-faq-item" open>
-        <summary class="portal-faq-question">
-          <span class="portal-faq-q-left">
-            <span class="portal-faq-q-badge">Q1</span>
-            <span class="portal-faq-q-text">Can I import Retrofit, URLSession, or Room directly inside a Domain UseCase class?</span>
-          </span>
-          <span class="portal-faq-q-right">
-            <span class="portal-file-tag">CLEAN ARCHITECTURE</span>
-            <span class="portal-faq-chevron">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </span>
-        </summary>
-        <div class="portal-faq-answer">
-          No. The <strong>Domain Layer</strong> must remain 100% pure Kotlin, Swift, or TypeScript with zero platform or networking framework imports. Define repository interfaces in the Domain layer and implement them inside the <strong>Data Layer</strong>.
-        </div>
-      </details>
-
-      <details class="portal-faq-item">
-        <summary class="portal-faq-question">
-          <span class="portal-faq-q-left">
-            <span class="portal-faq-q-badge">Q2</span>
-            <span class="portal-faq-q-text">When should the Enterprise Circuit Breaker trip to the OPEN state?</span>
-          </span>
-          <span class="portal-faq-q-right">
-            <span class="portal-file-tag">RESILIENCE</span>
-            <span class="portal-faq-chevron">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </span>
-        </summary>
-        <div class="portal-faq-answer">
-          By default, the Enterprise Circuit Breaker transitions from <code>CLOSED</code> to <code>OPEN</code> when 5 consecutive <code>5xx</code> or network timeout failures occur within a 30-second rolling window. While <code>OPEN</code>, calls fail-fast immediately to the local Room/CoreData/SQLite cache for 60 seconds before probing in <code>HALF_OPEN</code>.
-        </div>
-      </details>
-
-      <details class="portal-faq-item">
-        <summary class="portal-faq-question">
-          <span class="portal-faq-q-left">
-            <span class="portal-faq-q-badge">Q3</span>
-            <span class="portal-faq-q-text">What happens if the remote Feature Flag service is unreachable on app startup?</span>
-          </span>
-          <span class="portal-faq-q-right">
-            <span class="portal-file-tag">FEATURE FLAGS</span>
-            <span class="portal-faq-chevron">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </span>
-        </summary>
-        <div class="portal-faq-answer">
-          Every feature flag evaluation must define a deterministic offline default value packaged inside the binary. If <code>feature-flags.enterprise.internal</code> times out (exceeds 1500ms), the SDK immediately serves the last cached state or compiled fallback without blocking UI rendering.
-        </div>
-      </details>
-
-    </div>
-  </TabItem>
-
-  <TabItem label="Bitrise CI/CD & Quality">
-    <div class="portal-faq-list">
-
-      <details class="portal-faq-item" open>
-        <summary class="portal-faq-question">
-          <span class="portal-faq-q-left">
-            <span class="portal-faq-q-badge">Q1</span>
-            <span class="portal-faq-q-text">Why is my Pull Request blocked by "SonarQube Quality Gate Failed: New Code Coverage &lt; 80%"?</span>
-          </span>
-          <span class="portal-faq-q-right">
-            <span class="portal-file-tag">QUALITY GATE &bull; 80%</span>
-            <span class="portal-faq-chevron">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </span>
-        </summary>
-        <div class="portal-faq-answer">
-          Enterprise mobile governance requires a minimum of <strong>80% line and branch diff coverage</strong> on all new or modified code. Ensure unit tests cover success, empty, and error states using JUnit 5 + Turbine (Android), XCTest (iOS), or Jest (React Native).
-        </div>
-      </details>
-
-      <details class="portal-faq-item">
-        <summary class="portal-faq-question">
-          <span class="portal-faq-q-left">
-            <span class="portal-faq-q-badge">Q2</span>
-            <span class="portal-faq-q-text">Where do I configure build flavors, target schemes, and signing profiles for CI?</span>
-          </span>
-          <span class="portal-faq-q-right">
-            <span class="portal-file-tag">CAMP.YML &bull; BITRISE</span>
-            <span class="portal-faq-chevron">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </span>
-        </summary>
-        <div class="portal-faq-answer">
-          All repository-specific build parameters are declared in <code>camp.yml</code> at the root of your repository. The shared Bitrise pipelines dynamically read <code>camp.yml</code> to execute linting, unit tests, NowSecure scans, and store deployments.
-        </div>
-      </details>
-
-      <details class="portal-faq-item">
-        <summary class="portal-faq-question">
-          <span class="portal-faq-q-left">
-            <span class="portal-faq-q-badge">Q3</span>
-            <span class="portal-faq-q-text">How can I inspect a failed Bitrise build log directly from VS Code or Android Studio?</span>
-          </span>
-          <span class="portal-faq-q-right">
-            <span class="portal-file-tag">BITRISE MCP</span>
-            <span class="portal-faq-chevron">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </span>
-        </summary>
-        <div class="portal-faq-answer">
-          Configure the <a href="/mobile/genai/bitrise-mcp/">Bitrise MCP Server</a> via the TrueFoundry MCP Gateway and prompt GitHub Copilot Chat with: <code>"@bitrise why did the last build on my branch fail?"</code>
-        </div>
-      </details>
-
-    </div>
-  </TabItem>
-
-  <TabItem label="Security & Distribution">
-    <div class="portal-faq-list">
-
-      <details class="portal-faq-item" open>
-        <summary class="portal-faq-question">
-          <span class="portal-faq-q-left">
-            <span class="portal-faq-q-badge">Q1</span>
-            <span class="portal-faq-q-text">How should mobile apps respond when an MDM Remote Wipe command is received?</span>
-          </span>
-          <span class="portal-faq-q-right">
-            <span class="portal-file-tag">MDM REMOTE WIPE</span>
-            <span class="portal-faq-chevron">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </span>
-        </summary>
-        <div class="portal-faq-answer">
-          Upon receiving the MDM wipe broadcast, the application must immediately revoke active OAuth refresh tokens, shred cryptographic keys in Android KeyStore / iOS Keychain, delete all local SQLite/Room/CoreData files, display <code>"The data for this application has been wiped.quitting..."</code>, and terminate the process.
-        </div>
-      </details>
-
-      <details class="portal-faq-item">
-        <summary class="portal-faq-question">
-          <span class="portal-faq-q-left">
-            <span class="portal-faq-q-badge">Q2</span>
-            <span class="portal-faq-q-text">Can developers export production iOS Distribution Certificates or Android Upload Keystores to their local laptops?</span>
-          </span>
-          <span class="portal-faq-q-right">
-            <span class="portal-file-tag">CODE SIGNING</span>
-            <span class="portal-faq-chevron">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </span>
-        </summary>
-        <div class="portal-faq-answer">
-          No. Production signing credentials are strictly isolated inside the <strong>Bitrise Secret Vault</strong> and <strong>Cloud KMS</strong>. Local development builds use automatic debug signing or developer provisioning profiles only.
-        </div>
-      </details>
-
-      <details class="portal-faq-item">
-        <summary class="portal-faq-question">
-          <span class="portal-faq-q-left">
-            <span class="portal-faq-q-badge">Q3</span>
-            <span class="portal-faq-q-text">How do we trigger an emergency Force-Update or Killswitch for a vulnerable app version in production?</span>
-          </span>
-          <span class="portal-faq-q-right">
-            <span class="portal-file-tag">KILLSWITCH &bull; P1</span>
-            <span class="portal-faq-chevron">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </span>
-        </summary>
-        <div class="portal-faq-answer">
-          Update the minimum required semantic version (<code>min_supported_version</code>) or enable <code>killswitch_active: true</code> in the remote configuration payload. Open a P1 incident in the Mobile Support War Room for immediate Platform Architecture approval.
-        </div>
-      </details>
-
-    </div>
-  </TabItem>
-</Tabs>
-
-{resolvedFaqs.length > 0 && (
-  <div style="width: 100%;">
-    <hr />
-    <h2>Additional Markdown FAQs (Auto-Loaded from <code>./faqs/*.md</code>)</h2>
-    <div class="portal-faq-list">
-      {resolvedFaqs.map((item, idx) => (
-        <details class="portal-faq-item" open={idx === 0}>
-          <summary class="portal-faq-question">
-            <span class="portal-faq-q-left">
-              <span class="portal-faq-q-badge">{`Q${idx + 1}`}</span>
-              <span class="portal-faq-q-text">{item.title}</span>
-            </span>
-            <span class="portal-faq-q-right">
-              <span class="portal-file-tag">{item.filePath.replace('./', '')}</span>
-              <span class="portal-faq-chevron">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </span>
-            </span>
-          </summary>
-          <div class="portal-faq-answer" set:html={item.htmlContent} />
-        </details>
-      ))}
-    </div>
-  </div>
-)}
-
-
-/* ==============================================================================
-   19. NEAT EXPANDABLE FAQ ACCORDION SYSTEM (OVERRIDES STARLIGHT DEFAULTS)
-   ============================================================================== */
-:root:has([class*="portal-"]) .main-pane,
-.main-pane:has([class*="portal-"]) {
-  flex: 1 1 0% !important;
-  width: 100% !important;
-  min-width: 0 !important;
-}
-
-.portal-faq-toolbar {
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  gap: 12px !important;
-  flex-wrap: wrap !important;
-  width: 100% !important;
-  margin: 18px 0 20px 0 !important;
-  padding: 12px 16px !important;
-  background: var(--portal-card-bg, #13251c) !important;
-  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
-  border-radius: 12px !important;
-  box-sizing: border-box !important;
-}
-
-.portal-faq-search {
-  flex: 1 !important;
-  min-width: 240px !important;
-  background: rgba(0, 0, 0, 0.25) !important;
-  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
-  border-radius: 8px !important;
-  padding: 9px 14px !important;
-  color: var(--sl-color-text, #e2e8f0) !important;
-  font-size: 0.88rem !important;
-  outline: none !important;
-}
-
-html[data-theme='light'] .portal-faq-search {
-  background: #f8faf8 !important;
-  color: #111827 !important;
-}
-
-.portal-faq-search:focus {
-  border-color: var(--portal-accent, #22c55e) !important;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2) !important;
-}
-
-.portal-faq-actions {
-  display: flex !important;
-  gap: 8px !important;
-  margin: 0 !important;
-}
-
-.portal-faq-action-btn {
-  background: var(--portal-pill-bg, #1a2e23) !important;
-  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
-  color: var(--portal-gold, #f3d17b) !important;
-  padding: 8px 14px !important;
-  border-radius: 8px !important;
-  font-size: 0.8rem !important;
-  font-weight: 700 !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
-}
-
-.portal-faq-action-btn:hover {
-  border-color: var(--portal-accent, #22c55e) !important;
-  background: rgba(34, 197, 94, 0.15) !important;
-}
-
-.portal-faq-list {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 12px !important;
-  width: 100% !important;
-  margin: 12px 0 24px 0 !important;
-  box-sizing: border-box !important;
-}
-
-.sl-markdown-content details.portal-faq-item,
-details.portal-faq-item {
-  display: block !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  background: var(--portal-card-bg, #13251c) !important;
-  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
-  border-radius: 12px !important;
-  margin: 0 0 12px 0 !important;
-  padding: 0 !important;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12) !important;
-}
-
-.sl-markdown-content details.portal-faq-item:hover,
-details.portal-faq-item:hover {
-  border-color: rgba(34, 197, 94, 0.5) !important;
-}
-
-.sl-markdown-content details.portal-faq-item[open],
-details.portal-faq-item[open] {
-  border-color: var(--portal-accent, #22c55e) !important;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28) !important;
-}
-
-.sl-markdown-content details.portal-faq-item > summary.portal-faq-question,
-summary.portal-faq-question {
-  width: 100% !important;
-  box-sizing: border-box !important;
-  padding: 16px 20px !important;
-  margin: 0 !important;
-  font-size: 0.96rem !important;
-  font-weight: 700 !important;
-  color: var(--sl-color-text, #f8fafc) !important;
-  cursor: pointer !important;
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  gap: 14px !important;
-  user-select: none !important;
-  list-style: none !important;
-  background: transparent !important;
-  transition: background 0.15s ease !important;
-}
-
-.sl-markdown-content details.portal-faq-item > summary.portal-faq-question:hover,
-summary.portal-faq-question:hover {
-  background: rgba(34, 197, 94, 0.05) !important;
-}
-
-/* Strip default Starlight/Browser summary markers */
-.sl-markdown-content details.portal-faq-item > summary.portal-faq-question::-webkit-details-marker,
-.sl-markdown-content details.portal-faq-item > summary.portal-faq-question::marker,
-.sl-markdown-content details.portal-faq-item > summary.portal-faq-question::before,
-summary.portal-faq-question::-webkit-details-marker,
-summary.portal-faq-question::marker,
-summary.portal-faq-question::before {
-  display: none !important;
-  content: none !important;
-}
-
-.portal-faq-q-left {
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
-  flex: 1 1 auto !important;
-  min-width: 0 !important;
-  margin: 0 !important;
-}
-
-.portal-faq-q-badge {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-width: 32px !important;
-  height: 28px !important;
-  padding: 0 8px !important;
-  border-radius: 6px !important;
-  background: rgba(34, 197, 94, 0.16) !important;
-  border: 1px solid rgba(34, 197, 94, 0.4) !important;
-  color: var(--portal-accent, #22c55e) !important;
-  font-size: 0.76rem !important;
-  font-weight: 800 !important;
-  flex-shrink: 0 !important;
-}
-
-.portal-faq-q-text {
-  color: var(--portal-gold, #f3d17b) !important;
-  line-height: 1.45 !important;
-  font-weight: 700 !important;
-}
-
-.portal-faq-q-right {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  flex-shrink: 0 !important;
-  margin: 0 !important;
-}
-
-.portal-faq-chevron {
-  width: 28px !important;
-  height: 28px !important;
-  border-radius: 50% !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid var(--portal-card-border, #1f3b2c) !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: var(--portal-accent, #22c55e) !important;
-  transition: transform 0.22s ease, background 0.2s ease !important;
-  flex-shrink: 0 !important;
-}
-
-details.portal-faq-item[open] .portal-faq-chevron {
-  transform: rotate(180deg) !important;
-  background: var(--portal-accent, #22c55e) !important;
-  color: #06130c !important;
-  border-color: var(--portal-accent, #22c55e) !important;
-}
-
-.sl-markdown-content details.portal-faq-item > .portal-faq-answer,
-.portal-faq-answer {
-  width: 100% !important;
-  box-sizing: border-box !important;
-  margin: 0 !important;
-  padding: 16px 22px 18px 22px !important;
-  font-size: 0.91rem !important;
-  color: var(--portal-text-body, #cbd5e1) !important;
-  line-height: 1.65 !important;
-  background: rgba(0, 0, 0, 0.18) !important;
-  border-top: 1px solid var(--portal-card-border, #1f3b2c) !important;
-  border-left: 3px solid var(--portal-accent, #22c55e) !important;
-  border-radius: 0 0 12px 12px !important;
-}
-
-html[data-theme='light'] .sl-markdown-content details.portal-faq-item > .portal-faq-answer,
-html[data-theme='light'] .portal-faq-answer {
-  background: #f4f9f5 !important;
-  color: #1f2937 !important;
-}
