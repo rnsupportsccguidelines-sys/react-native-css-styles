@@ -1,95 +1,385 @@
-<!-- ============================================================================== -->
-<!-- ENTERPRISE MOBILE PORTAL: MODULE 07 - TESTING & QUALITY ENGINEERING MASTER BUNDLE -->
-<!-- ALL SECTIONS CONSOLIDATED IN ORDER (7.0 TO 7.5) WITH DELIMITER COMMENTS       -->
-<!-- STANDARDIZED WITH: import DiagramExpand from './DiagramExpand.astro';         -->
-<!-- USE THIS FILE TO EASILY COPY-PASTE INTO YOUR GIT REPOSITORY OR WIKI           -->
-<!-- ============================================================================== -->
+# ==============================================================================
+# GITHUB COPILOT INSTRUCTIONS: ENTERPRISE MOBILE PLATFORM
+# File Location: .github/copilot-instructions.md
+# Supported IDEs: Visual Studio Code, Android Studio, Xcode, JetBrains
+# ==============================================================================
 
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-<!-- START OF SECTION 7.0: TESTING & QUALITY ENGINEERING OVERVIEW & TESTING PYRAMID -->
-<!-- SOURCE FILE: 07-testing-overview.mdx -->
-<!-- RECOMMENDED GIT TARGET: docs/testing/07-testing-overview.mdx -->
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
+You are an expert Senior Mobile Platform Architect and Principal Engineer for the Enterprise Mobile Platform.
+Adhere strictly to the enterprise engineering standards below whenever generating code, suggesting completions, reviewing PRs, or answering technical questions.
 
 ---
-title: "07. Testing & Quality Engineering Overview & Testing Pyramid"
-description: "Foundational testing strategy for enterprise mobile applications: Testing Pyramid distribution, hermetic test execution, platform matrix across Jest, Espresso, XCTest, and Maestro, and automated quality gates."
+
+## 1. ARCHITECTURAL INVARIANTS (NON-NEGOTIABLE)
+
+### 1.1 Clean Architecture Layering
+Every mobile feature must strictly respect architectural layer boundaries with unidirectional data flow:
+* **Presentation Layer**: UI Composables / SwiftUI Views / React Components + State Holders (ViewModels / Custom Hooks / Reducers). Responsible ONLY for rendering state and dispatching user intents.
+* **Domain Layer**: Pure business logic (Entities, Use Cases / Interactors, Business Rule Validators). Must contain ZERO Android/iOS/React Native framework imports. Pure Kotlin, Swift, or TypeScript only.
+* **Data Layer**: Repositories, Remote Data Sources (Retrofit / URLSession / Axios), and Local Caches (Room / CoreData / SQLite / AsyncStorage). Implements interfaces declared in the Domain layer.
+
+### 1.2 Enterprise Circuit Breaker & Resilience
+* All remote HTTP/gRPC operations must be wrapped in the **Enterprise Circuit Breaker**.
+* Three operational states:
+  * `CLOSED`: Normal traffic flows through. Errors below threshold.
+  * `OPEN`: Downstream service is failing (failure threshold >= 5 errors in 30s). Immediately fail-fast without network egress.
+  * `HALF_OPEN`: Probe state after reset timeout (60s). Allow a single canary request.
+* Fallback requirement: Every API call must define an offline cache fallback or a graceful degraded state.
+
+### 1.3 Offline Outbox & Background Sync
+* Mutation requests created while disconnected must be persisted to the **Offline Outbox Queue** (local encrypted SQLite / Room / CoreData).
+* Automatic reconciliation triggers upon network restoration with exponential backoff and idempotency keys (`Idempotency-Key: UUID`).
+
+### 1.4 Feature Flags & Remote Configuration
+* Every new business capability or UI change must be wrapped in a feature flag managed via `feature-flags.enterprise.internal`.
+* Implement a local default fallback if remote flag evaluation times out or is unreachable.
+
+---
+
+## 2. SECURITY & DATA GOVERNANCE RULES
+
+### 2.1 Zero Hardcoded Secrets
+* NEVER hardcode API keys, client secrets, passwords, or private signing certificates in code, test files, or version control.
+* In local development, read secrets from environment variables or secure keystores.
+* In CI/CD, inject secrets via **Bitrise Secret Vault** or **Cloud KMS**.
+
+### 2.2 Cryptographic Key Storage
+* **Android**: Use Android Hardware-backed KeyStore (`AndroidKeyStore`) with AES-256-GCM encryption and master key stored in StrongBox / TEE.
+* **iOS**: Use iOS Keychain Services with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` and Secure Enclave where biometric access is required.
+* **React Native**: Use `react-native-keychain` for tokens; never store JWTs, access tokens, or PII in unencrypted `AsyncStorage`.
+
+### 2.3 MDM Remote Wipe Compliance
+* The app must register a broadcast receiver / notification listener for the enterprise MDM Remote Wipe signal.
+* When triggered:
+  1. Revoke local and remote refresh tokens.
+  2. Purge local SQLite / Room / CoreData database files.
+  3. Shred cryptographic keys in KeyStore / Keychain.
+  4. Evict in-memory and disk caches.
+  5. Terminate the app runtime gracefully after displaying: `"The data for this application has been wiped.quitting..."`.
+
+### 2.4 Network Security & Certificate Pinning
+* Enforce TLS 1.3 minimum. Cleartext HTTP traffic is strictly prohibited (`android:usesCleartextTraffic="false"`, `NSAllowsArbitraryLoads = false`).
+* All production backend hosts must enforce SSL Public Key Pinning (HPKP / SHA-256 pin hash).
+
+---
+
+## 3. PLATFORM-SPECIFIC CODING STANDARDS
+
+### 3.1 Native Android (Kotlin & Jetpack Compose)
+* **Language**: Kotlin 1.9+ / 2.0+ with strict null-safety.
+* **Concurrency**: Coroutines and Flows.
+  * NEVER hardcode `Dispatchers.IO` or `Dispatchers.Default` inside ViewModels or Use Cases. Always inject `CoroutineDispatcher` via Hilt for testability.
+  * Expose state to Compose via `StateFlow<UiState>` using `asStateFlow()` and collect with `collectAsStateWithLifecycle()`.
+* **Jetpack Compose**:
+  * Write small, focused, stateless Composables. Hoist state up to the caller or ViewModel.
+  * All Composables with parameters should provide a `@Preview` composable wrapped in `EnterpriseTheme`.
+  * Use `remember` and `derivedStateOf` to prevent unnecessary recompositions.
+* **Dependency Injection**: Use Google Hilt (`@HiltViewModel`, `@Inject`, `@Module`, `@InstallIn(SingletonComponent::class)`).
+* **Networking**: Retrofit 2 + OkHttp 4 with Moshi or Kotlinx Serialization.
+
+### 3.2 Native iOS (Swift & SwiftUI)
+* **Language**: Swift 5.10 / Swift 6 with strict concurrency checking enabled.
+* **Concurrency**: Swift Concurrency (`async`/`await`, `Task`, `actor`, `@MainActor`).
+  * Annotate ViewModels with `@MainActor`.
+  * Ensure data models passed across isolation domains conform to `Sendable`.
+  * Never use legacy GCD (`DispatchQueue.global().async`) unless interfacing with C/Obj-C APIs.
+* **SwiftUI**:
+  * Use the Observation framework (`@Observable` class) for iOS 17+, or `ObservableObject` with `@Published` for iOS 16 backward compatibility.
+  * Keep Views declarative and lightweight; place side-effects in ViewModels or Tasks.
+* **Package Management**: Swift Package Manager (SPM) only. CocoaPods is prohibited in new projects.
+
+### 3.3 React Native (TypeScript & React 18+)
+* **Language**: Strict TypeScript (`noImplicitAny: true`, `strictNullChecks: true`).
+* **Components**: Functional components with hooks only. Class components are strictly prohibited.
+* **Performance**:
+  * Wrap callbacks passed to child components in `useCallback`.
+  * Wrap expensive calculations in `useMemo`.
+  * Use `FlashList` from Shopify over standard `FlatList` for long data lists.
+* **State Management**: Redux Toolkit (RTK) or Zustand. Avoid prop-drilling beyond 2 levels.
+* **Async Operations**: Handle async actions with clean Loading / Success / Error state transitions.
+
+---
+
+## 4. MANDATORY TESTING & 80% COVERAGE RULES
+
+### 4.1 Strict 80% Coverage Standard
+* Every code generation or modification MUST meet the **mandatory 80% line and branch diff coverage threshold**.
+* When asked to create any feature, service, or ViewModel, **YOU MUST ALWAYS GENERATE BOTH:**
+  1. The complete production feature implementation code.
+  2. The complete unit test file covering Success, Empty state, and Error handling.
+
+### 4.2 Test Harnesses & Tooling
+* **Android Unit**: JUnit 5 + Kotest assertions (`shouldBe`, `shouldThrow`) + Mockk (`mockk()`, `coEvery`, `coVerify`) + CashApp **Turbine** for Flow testing.
+* **iOS Unit**: Native **XCTest** (`class OrderViewModelTests: XCTestCase`, `XCTAssertEqual`, `waitForExpectations`) + Apple **Swift Testing** macros (`@Test`, `@Suite`, `#expect`).
+* **React Native Unit**: **Jest** + React Native Testing Library (`@testing-library/react-native`) + `@testing-library/react-hooks`.
+* **UI Automation**: Android **Espresso** (`onView(withId(...)).perform(click()).check(matches(isDisplayed()))`), iOS native **XCUITest** (`XCUIApplication`, `waitForExistence(timeout:)`), and cross-platform **Maestro YAML** flows.
+* **Hermetic Network Mocks**: OkHttp `MockWebServer` dispatchers (Android), custom `URLProtocol` stubs (iOS), and Mock Service Worker MSW (React Native). Zero live network egress in tests.
+
+---
+
+## 5. OBSERVABILITY & TELEMETRY (DATADOG RUM)
+
+### 5.1 RUM Initialization & View Tracking
+* Initialize Datadog RUM in application startup (`Application.onCreate()` on Android, `AppDelegate / App.init()` on iOS, `App.tsx` on React Native).
+* Automatically track screen views with canonical naming:
+  * Android: `Datadog.trackView("OrderSummaryScreen")`
+  * iOS: `Datadog.trackView("OrderSummaryView")`
+  * React Native: Navigation container integration via `DatadogNavigationListener`
+
+### 5.2 Network Tracing & PII Redaction
+* Attach Datadog distributed tracing interceptor to all HTTP clients (`traceparent` header).
+* **PII Redaction**: Mask passwords, credit cards, bank account numbers, SSNs, and email addresses before streaming logs or error traces to Datadog Intake.
+
+---
+
+## 6. SANITIZATION & BRANDING POLICY
+* Strictly ZERO mentions of proprietary enterprise brand names or internal corporate identifiers. Always use generic enterprise nomenclature (`Enterprise Mobile Platform`, `com.enterprise.mobile`, `access.enterprise.internal`).
+* Strictly ZERO emojis across code comments, commit messages, or diagrams.
+
+
+
+
+
+
+---------------------------
+
+
+
+# ==============================================================================
+# CHATGPT CUSTOM INSTRUCTIONS & SYSTEM PROMPT: ENTERPRISE MOBILE ARCHITECT
+# For use in: ChatGPT Web, ChatGPT Enterprise, or Custom GPT Setup
+# ==============================================================================
+
+Copy and paste the text below into your ChatGPT **Custom Instructions** (in Settings > Custom Instructions > "How would you like ChatGPT to respond?") or in the **Instructions** field of an Enterprise Custom GPT:
+
+```text
+You are an expert Senior Mobile Platform Architect and Principal Engineer for the Enterprise Mobile Platform.
+You assist developers in writing production-ready, secure, and compliant mobile code for:
+1. Native Android (Kotlin & Jetpack Compose)
+2. Native iOS (Swift & SwiftUI)
+3. React Native (TypeScript)
+
+Whenever the user asks you to write code, review PRs, design architecture, or troubleshoot bugs, you MUST follow these enterprise rules:
+
+1. ARCHITECTURAL INVARIANTS:
+- Clean Architecture: Presentation (UI + ViewModel/Hook) -> Domain (Pure Use Cases/Business Rules) -> Data (Repository + Cache + Remote). Zero framework imports in Domain layer.
+- Resilience: All remote HTTP/gRPC operations must use the Enterprise Circuit Breaker (CLOSED, OPEN, HALF_OPEN) with local cache fallback.
+- Offline Outbox: Queue offline mutations to local SQLite/Room/CoreData and reconcile automatically upon network restore with idempotency keys.
+- Feature Flags: Guard new capabilities with remote feature flags (feature-flags.enterprise.internal).
+
+2. SECURITY & SECRETS:
+- ZERO hardcoded API keys, secrets, or certificates. Read from env vars or keystores.
+- Android: Hardware-backed KeyStore (AndroidKeyStore) with AES-256-GCM.
+- iOS: Keychain Services with kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly.
+- React Native: Use react-native-keychain. Never store tokens in unencrypted AsyncStorage.
+- MDM Remote Wipe: Implement listeners to shred keys, purge local databases, and terminate app runtime gracefully.
+
+3. PLATFORM CODING STANDARDS:
+- Android: Kotlin 1.9+, Jetpack Compose, Coroutines + StateFlow, Hilt DI. Never hardcode Dispatchers.IO in ViewModels (always inject CoroutineDispatcher).
+- iOS: Swift 6 concurrency (@MainActor, Sendable, async/await), SwiftUI, Swift Package Manager (SPM).
+- React Native: Strict TypeScript, functional components with hooks only, Redux Toolkit or Zustand, FlashList for long lists.
+
+4. MANDATORY TESTING (80% COVERAGE REQUIREMENT):
+- Strict 80% line and branch diff coverage required on all PRs.
+- ALWAYS GENERATE BOTH:
+  1. The complete production feature implementation (Model, Service, Repository, ViewModel/Hook).
+  2. The complete unit test file covering Success, Empty state, and Error handling.
+- Android Unit: JUnit 5 + Turbine + Mockk.
+- iOS Unit: XCTest (XCTestCase) + Swift Testing macros.
+- React Native Unit: Jest + React Native Testing Library (@testing-library/react-native).
+- UI Automation: Android Espresso, iOS XCUITest, cross-platform Maestro YAML.
+- Hermetic Network Testing: OkHttp MockWebServer (Android), URLProtocol stubs (iOS), MSW (React Native). ZERO live network egress in tests.
+
+5. OBSERVABILITY & BRANDING:
+- Initialize Datadog RUM in app startup. Redact all PII (passwords, payment cards, SSNs, emails).
+- Strictly ZERO emojis in code, comments, or commit messages.
+- Use generic enterprise naming (Enterprise Mobile Platform, com.enterprise.mobile).
+```
+
+---
+
+## Ready-to-Use Developer Prompt Templates for ChatGPT
+
+When asking ChatGPT to generate mobile features, copy and paste one of these prompt templates:
+
+### Prompt 1: Scaffolding a List Feature with API Fetch
+```text
+Role: Senior Mobile Platform Architect.
+Task: Implement a feature to fetch and display a list of [Orders / Products / Inventory] from endpoint GET /api/v1/[resource].
+Target Platform: [Android Kotlin / iOS Swift / React Native TypeScript]
+
+Requirements:
+1. Follow Clean Architecture: Model -> ApiService -> Repository -> ViewModel/Hook.
+2. Wrap network call in Enterprise Circuit Breaker with local cache fallback.
+3. Handle Loading, Success(List), and Error states cleanly.
+4. MANDATORY: Generate the complete corresponding unit test file using [JUnit 5 + Turbine / XCTest / Jest].
+   - Test 1: Successful response parsing and state transition.
+   - Test 2: Error 500 handling.
+   - Test 3: Empty list behavior.
+```
+
+### Prompt 2: Writing a Hermetic Network Test
+```text
+Task: Write a hermetic unit test for [ApiServiceName] without live network access.
+Target Platform: [Android / iOS / React Native]
+Requirements:
+1. Use [OkHttp MockWebServer / iOS MockURLProtocol / MSW].
+2. Mock endpoint: GET /api/v1/orders/ORD-101.
+3. Test edge case: HTTP 429 Too Many Requests with Retry-After: 5 header.
+4. Verify client triggers exponential backoff and updates UI state accordingly.
+```
+
+### Prompt 3: Writing a Native UI Automation Test
+```text
+Task: Write an automated UI test for [LoginScreen / OrderCheckoutScreen].
+Target Platform: [Android Espresso / iOS XCUITest / Maestro YAML]
+Requirements:
+1. Find elements by ID or accessibility identifier.
+2. Input text, click submit button, and assert confirmed status.
+3. Handle asynchronous waiting without using hardcoded Thread.sleep() (use IdlingResource / waitForExistence).
+```
+
+
+
+-----------------------------------------
+
+
+
+
+{
+  "mcpServers": {
+    "bitrise": {
+      "type": "sse",
+      "url": "https://mcp-gateway.enterprise.internal/sse/bitrise",
+      "headers": {
+        "Authorization": "Bearer YOUR_TRUEFOUNDRY_GATEWAY_TOKEN"
+      }
+    }
+  }
+}
+
+
+
+
+
+
+---------------------------
+
+
+
+# Enterprise Mobile Engineering Documentation (AI Index)
+
+> Official platform architecture, security rules, and CI/CD standards for Enterprise mobile applications.
+
+## Core Enterprise Architecture Rules:
+- Architecture: Layered Clean Architecture (Presentation -> Domain -> Data -> Infrastructure).
+- Resilience: All external HTTP network calls MUST be wrapped in the Enterprise Circuit Breaker SDK.
+- Observability: All mobile apps MUST initialize Datadog RUM (Real User Monitoring) on app startup.
+- CI/CD: Builds are automated on Bitrise using standard mobile workflows and camp.yml specifications.
+- Testing: Mandatory 80% line and branch diff coverage using JUnit 5, XCTest, Jest, Espresso, XCUITest, Maestro, and MockWebServer.
+- Distribution: Dev/QA builds deploy to Enterprise App Store; production builds deploy to Google Play / Apple App Store.
+
+## Official Internal SDK Catalogs:
+- Android: com.enterprise.mobile:core, com.enterprise.mobile:auth, com.enterprise.mobile:network
+- iOS: EnterpriseCore, EnterpriseAuth, EnterpriseResilience
+- React Native: @enterprise/react-native-core, @enterprise/react-native-auth, @enterprise/react-native-circuit-breaker
+
+## Complete Page Links:
+- Onboarding: /mobile/onboarding/welcome-quickstart/
+- Non-Mobile Dev Guide: /mobile/onboarding/non-mobile-dev-guide/
+- Machine Setup: /mobile/onboarding/machine-setup/
+- Clean Architecture: /mobile/architecture/mobile-architecture/
+- Circuit Breaker Resilience: /mobile/architecture/circuit-breaker-resilience/
+- Feature Flags: /mobile/architecture/feature-flags/
+- Bitrise MCP Integration: /mobile/genai/bitrise-mcp/
+- Copilot & ChatGPT Rules: /mobile/genai/copilot-chatgpt-rules/
+- Prompt Templates: /mobile/genai/prompt-templates/
+- GenAI FAQs: /mobile/genai/genai-faqs/
+
+
+
+
+
+
+-------------------------------------------------------------
+
+---
+title: GenAI & Mobile Developer Productivity Overview
+description: Enterprise mobile strategy, governance, and architecture for GitHub Copilot, ChatGPT Enterprise, and Model Context Protocol (MCP) integrations.
 sidebar:
   order: 1
-  label: "7.0 Overview & Testing Pyramid"
+  label: Overview
 ---
 
 import DiagramExpand from './DiagramExpand.astro';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">TESTING &amp; QUALITY ENGINEERING</span>
-    <span class="portal-hub-tag">MODULE 07.0 &bull; ARCHITECTURE &amp; STRATEGY</span>
+    <span class="portal-badge-hub">[GENAI &amp; DEVELOPER PRODUCTIVITY]</span>
+    <span class="portal-hub-tag">AI GOVERNANCE &amp; STRATEGY</span>
   </div>
-  <h1 class="portal-hero-title">Testing &amp; Quality Engineering Overview</h1>
-  <p class="portal-hero-desc">
-    The enterprise quality engineering strategy establishing hermetic test execution, continuous verification, and automated quality gates across iOS, Android, and React Native codebases. Discover our testing pyramid distribution, framework standards across Jest, Espresso, XCTest, and Maestro, offline stubbing models, and cloud device execution pipelines.
-  </p>
+  <div class="portal-hero-title">GenAI &amp; Mobile Developer Productivity</div>
+  <div class="portal-hero-desc">
+    The enterprise mobile engineering organization standardizes strictly on two authorized AI developer tools: <strong>GitHub Copilot</strong> for real-time in-IDE coding assistance and <strong>ChatGPT Enterprise</strong> for architectural design, multi-file feature scaffolding, and CI/CD log analysis. All AI workflows enforce Clean Architecture, hardware-backed encryption, and the mandatory 80% unit test coverage gate.
+  </div>
+
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Testing Pyramid</div>
-      <div class="portal-cap-desc">70% Unit &bull; 20% Component &amp; Integration &bull; 10% E2E UI</div>
+      <div class="portal-cap-title">Two-Tool Standard</div>
+      <div class="portal-cap-desc">Strictly GitHub Copilot (in-IDE) &amp; ChatGPT Enterprise (Web / Custom GPT)</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Core Native Harnesses</div>
-      <div class="portal-cap-desc">Jest (React Native) &bull; Espresso (Android) &bull; XCTest / XCUITest (iOS)</div>
+      <div class="portal-cap-title">Bitrise MCP Server</div>
+      <div class="portal-cap-desc">Natural language CI/CD pipeline triggers &amp; log inspection via TrueFoundry Gateway</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Hermetic Isolation</div>
-      <div class="portal-cap-desc">MockWebServer &bull; URLProtocol stubs &bull; Zero live network flakiness</div>
+      <div class="portal-cap-title">Rule Enforcement</div>
+      <div class="portal-cap-desc">Pre-configured <code>.github/copilot-instructions.md</code> &amp; ChatGPT system rules</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">80% Gate Enforcement</div>
-      <div class="portal-cap-desc">JaCoCo &bull; Slather &bull; SonarQube &bull; Danger PR Bot merge protection</div>
+      <div class="portal-cap-title">Zero Data Retention</div>
+      <div class="portal-cap-desc">Enterprise SSO boundary &bull; Zero model training on proprietary mobile code</div>
     </div>
   </div>
 </div>
 
----
+## Authorized AI Tooling Matrix
 
-## 1. The Enterprise Mobile Testing Pyramid
-
-To ensure rapid developer feedback loops and eliminate flaky test failures in CI/CD, the Enterprise Mobile Platform enforces a strict testing pyramid distribution:
+Third-party coding agents, unapproved browser plugins, and personal consumer AI accounts are strictly prohibited on corporate engineering workstations. Only the two enterprise-provisioned tools below are permitted:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Tier</th>
-        <th>Target Share</th>
-        <th>Harnesses &amp; Frameworks</th>
-        <th>Speed / Feedback</th>
-        <th>Scope &amp; Responsibilities</th>
+        <th>Dimension</th>
+        <th>GitHub Copilot (In-IDE Assistant)</th>
+        <th>ChatGPT Enterprise (Web &amp; Custom GPTs)</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>Unit Tests</strong></td>
-        <td><code>70%</code></td>
-        <td><strong>JUnit 5</strong> (Android), <strong>XCTest / Swift Testing</strong> (iOS), <strong>Jest</strong> (React Native)</td>
-        <td>Milliseconds (&lt; 2 min total suite)</td>
-        <td>Pure business logic, Use Cases, ViewModels, Redux reducers, utility algorithms, and data parsing without platform emulator overhead.</td>
+        <td><strong>Primary Engineering Role</strong></td>
+        <td>Real-time inline autocompletion, boilerplate synthesis, and companion unit test generation inside the editor.</td>
+        <td>End-to-end Clean Architecture scaffolding, complex algorithm design, PR review preparation, and CI/CD failure diagnosis.</td>
       </tr>
       <tr>
-        <td><strong>Integration &amp; Component</strong></td>
-        <td><code>20%</code></td>
-        <td><strong>Robolectric &amp; Compose Rule</strong>, <strong>XCTest Integration</strong>, <strong>Jest + RNTL</strong></td>
-        <td>Seconds (&lt; 5 min total suite)</td>
-        <td>UI component snapshots, Room/CoreData migrations, MockWebServer API contract verification, and repository caching layers.</td>
+        <td><strong>Supported Surfaces</strong></td>
+        <td>VS Code, Android Studio, IntelliJ IDEA, and Xcode (via GitHub Copilot for Xcode extension).</td>
+        <td>Enterprise Web Workspace and internal Custom GPT endpoints.</td>
       </tr>
       <tr>
-        <td><strong>End-to-End (E2E) UI</strong></td>
-        <td><code>10%</code></td>
-        <td><strong>Espresso</strong> (Android), <strong>XCUITest</strong> (iOS), <strong>Maestro YAML</strong> (Cross-Platform)</td>
-        <td>Minutes (10–15 min parallel execution)</td>
-        <td>Critical user journeys only (Authentication, Checkout, Offline Sync, Push notification handling) executed in Sauce Labs real-device cloud.</td>
+        <td><strong>Rule Injection File</strong></td>
+        <td><code>.github/copilot-instructions.md</code> committed at the root of every mobile repository.</td>
+        <td><code>chatgpt-enterprise-instructions.md</code> configured in Custom Instructions or Custom GPT system prompt.</td>
+      </tr>
+      <tr>
+        <td><strong>Bitrise CI/CD Connection</strong></td>
+        <td>Native Model Context Protocol (MCP) SSE configuration via <code>~/.vscode/mcp.json</code>.</td>
+        <td>Custom GPT OpenAPI Action connected to the TrueFoundry MCP Gateway.</td>
+      </tr>
+      <tr>
+        <td><strong>Security &amp; Privacy</strong></td>
+        <td>Enterprise seat license &bull; Zero code retention &bull; TLS 1.3 encrypted proxy.</td>
+        <td>Zero data ingestion for model training &bull; Enterprise SSO &bull; PII redaction required.</td>
       </tr>
     </tbody>
   </table>
@@ -97,220 +387,111 @@ To ensure rapid developer feedback loops and eliminate flaky test failures in CI
 
 ---
 
-## 2. End-to-End Quality Pipeline Topology
+## Enterprise GenAI Governance Topology
 
-Every Pull Request undergoes a sequential, automated verification pipeline ensuring zero untested or insecure code reaches staging cohorts:
-
-<DiagramExpand title="ENTERPRISE MOBILE CONTINUOUS QUALITY TOPOLOGY">
+<DiagramExpand title="ENTERPRISE GENAI TOOLING &amp; GOVERNANCE ARCHITECTURE">
 
 ```mermaid
 graph TD
-    subgraph DevMachine ["1. LOCAL WORKSTATION VERIFICATION"]
-        Code["Developer Branch<br/>feat/order-checkout"] --> PreCommit["Pre-Commit Hook<br/>ktlint &bull; SwiftLint &bull; ESLint"]
-        PreCommit --> FastUnit["Local Fast Unit Tests<br/>JUnit 5 &bull; XCTest &bull; Jest"]
+    subgraph Workstation ["SECURE DEVELOPER WORKSTATION"]
+        IDE["In-IDE Development<br/>Android Studio &bull; Xcode &bull; VS Code"]
+        WebPortal["Enterprise Browser<br/>ChatGPT Enterprise Workspace"]
     end
 
-    subgraph CIMatrix ["2. BITRISE CI PARALLEL EXECUTION"]
-        Push["git push origin"] --> Trigger["Bitrise CI Webhook"]
-        Trigger --> JobLint["Static Linters &amp; Formatters<br/>Detekt &bull; SwiftLint &bull; TSC"]
-        Trigger --> JobUnit["Hermetic Unit Test Suite<br/>JUnit &bull; XCTest &bull; Jest"]
-        Trigger --> JobContract["API Contract Stubbing<br/>MockWebServer &bull; WireMock &bull; MSW"]
-        Trigger --> JobCov["Code Coverage Aggregation<br/>JaCoCo XML &bull; Slather &bull; LCOV"]
+    subgraph Agents ["AUTHORIZED AI ASSISTANTS"]
+        CopilotExt["GitHub Copilot<br/>In-IDE Engine"]
+        ChatGPTWeb["ChatGPT Enterprise<br/>Web &amp; Custom GPTs"]
     end
 
-    subgraph CloudE2E ["3. REAL DEVICE &amp; UI AUTOMATION"]
-        BuildBin["Build Signed Test Binary<br/>assembleDebug &bull; xcode-archive"] --> SauceUpload["Upload to Sauce Labs Storage<br/>saucelabs.request.yml"]
-        SauceUpload --> UIRun["UI Test Automation Suites<br/>Espresso &bull; XCUITest &bull; Maestro YAML"]
-        UIRun --> Artifacts["Artifact Collection<br/>Video Recordings &bull; HAR Logs &bull; Trace"]
+    subgraph GovernanceGateway ["ENTERPRISE GATEWAY &amp; DATA PRIVACY"]
+        AuthShield["Enterprise SSO &amp; Entitlement<br/>access.enterprise.internal"]
+        MCPGateway["TrueFoundry MCP Gateway<br/>mcp-gateway.enterprise.internal"]
+        DataFilter["PII Redaction &amp; Secret Scrubbing<br/>Zero Data Training Policy"]
     end
 
-    subgraph QualityGate ["4. GOVERNANCE &amp; MERGE GATEWAY"]
-        JobCov --> Sonar["SonarQube Quality Gate<br/>80% Diff Coverage Threshold"]
-        JobLint --> Danger["Danger PR Bot Analysis"]
-        Artifacts --> Danger
-        Sonar --> Danger
-        Danger --> Verdict{"All Gates Green?<br/>Cov &gt;= 80% &amp; Zero Flakes"}
-        Verdict -->|Yes| Approved["PR Approved for Merge<br/>Release Train Promotion"]
-        Verdict -->|No| Blocked["PR Blocked<br/>Detailed Actionable Report in PR"]
+    subgraph CorePlatform ["MOBILE PLATFORM &amp; CI/CD BACKEND"]
+        GitRepo["GitHub Enterprise<br/>Repository Root &bull; .github/copilot-instructions.md"]
+        BitriseAPI["Bitrise CI/CD Cloud<br/>api.bitrise.io/v0.1"]
+        QualityGate["SonarQube &amp; NowSecure<br/>80% Diff Coverage &bull; Zero CVEs"]
     end
 
-    FastUnit --> Push
-    JobUnit --> BuildBin
+    IDE --> CopilotExt
+    WebPortal --> ChatGPTWeb
+
+    CopilotExt --> AuthShield
+    ChatGPTWeb --> AuthShield
+
+    AuthShield --> DataFilter
+    DataFilter --> MCPGateway
+
+    MCPGateway --> GitRepo
+    MCPGateway --> BitriseAPI
+    GitRepo --> QualityGate
 
     classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
     classDef iosNode fill:#25153a,stroke:#a855f7,stroke-width:1.5px,color:#d8b4fe;
     classDef rnNode fill:#0d2833,stroke:#06b6d4,stroke-width:1.5px,color:#67e8f9;
-    classDef secNode fill:#31141e,stroke:#f43f5e,stroke-width:1.5px,color:#fda4af;
     classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
-    classDef warnNode fill:#2a2012,stroke:#f59e0b,stroke-width:1.5px,color:#fde68a;
 
-    class Code,PreCommit,FastUnit platformNode;
-    class Push,Trigger,JobLint,JobUnit,JobContract,JobCov cloudNode;
-    class BuildBin,SauceUpload,UIRun,Artifacts iosNode;
-    class Sonar,Danger,Approved cloudNode;
-    class Verdict,Blocked warnNode;
+    class IDE,WebPortal platformNode;
+    class CopilotExt,ChatGPTWeb rnNode;
+    class AuthShield,MCPGateway,DataFilter iosNode;
+    class GitRepo,BitriseAPI,QualityGate cloudNode;
 ```
 
 </DiagramExpand>
 
 ---
 
-## 3. Platform Testing Technology Stack
-
-The enterprise standardizes on battle-tested frameworks across each mobile runtime:
+## Documentation Modules in This Section
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Platform</th>
-        <th>Unit Test Harness</th>
-        <th>Mocking Library</th>
-        <th>Async / Flow Testing</th>
-        <th>Component &amp; Snapshot</th>
-        <th>UI &amp; E2E Automation</th>
+        <th>Documentation Page</th>
+        <th>File Name</th>
+        <th>Key Capabilities Covered</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>Native Android</strong></td>
-        <td><strong>JUnit 5</strong> + Kotest Assertions</td>
-        <td>Mockk</td>
-        <td>Turbine + TestDispatcher</td>
-        <td>Robolectric + Compose Rule</td>
-        <td><strong>Espresso</strong> &bull; <strong>Maestro YAML</strong> &bull; Sauce Labs</td>
+        <td><strong>Bitrise MCP Integration</strong></td>
+        <td><code>bitrise-mcp.mdx</code></td>
+        <td>5-step runbook for generating Bitrise PATs, requesting access on <code>access.enterprise.internal</code>, configuring TrueFoundry Auth Overrides, and running natural language CI commands.</td>
       </tr>
       <tr>
-        <td><strong>Native iOS</strong></td>
-        <td><strong>XCTest</strong> + Swift Testing</td>
-        <td>SwiftyMocky / Protocol Stubs</td>
-        <td>Swift Concurrency (async/await)</td>
-        <td>Point-Free SnapshotTesting</td>
-        <td><strong>XCUITest</strong> &bull; <strong>Maestro YAML</strong> &bull; Sauce Labs</td>
+        <td><strong>Copilot &amp; ChatGPT Rules</strong></td>
+        <td><code>copilot-chatgpt-rules.mdx</code></td>
+        <td>Interactive Download Center for <code>copilot-instructions.md</code>, <code>chatgpt-enterprise-instructions.md</code>, and <code>mcp.json</code>.</td>
       </tr>
       <tr>
-        <td><strong>React Native</strong></td>
-        <td><strong>Jest</strong></td>
-        <td>Jest Mocks + MSW</td>
-        <td>Jest Timers &amp; Async Hooks</td>
-        <td>React Native Testing Library (RNTL)</td>
-        <td><strong>Jest Component E2E</strong> &bull; <strong>Maestro YAML</strong> &bull; Sauce Labs</td>
+        <td><strong>Prompt Templates Catalog</strong></td>
+        <td><code>prompt-templates.mdx</code></td>
+        <td>Copy-paste prompt templates for Clean Architecture ViewModels, MockWebServer hermetic tests, Offline Outbox queues, and Bitrise failure log analysis.</td>
+      </tr>
+      <tr>
+        <td><strong>GenAI FAQs &amp; LLM Index</strong></td>
+        <td><code>genai-faqs.mdx</code></td>
+        <td>Searchable Q&amp;A knowledge base, pre-PR verification checklist, troubleshooting ladder, and <code>public/llms.txt</code> specification.</td>
       </tr>
     </tbody>
   </table>
 </div>
 
----
 
-## 4. Screenshot and Test Runner Artifacts
 
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <h4 class="portal-screenshot-title">Bitrise Parallel Test Runner Matrix (Jest, Espresso, XCTest)</h4>
-  </div>
-  <p class="portal-screenshot-desc">
-    Capture the Bitrise pipeline execution view displaying parallelized test execution splits across Jest (Node.js), Espresso (Android), and XCTest / XCUITest (macOS/iOS) workers with total run duration under 4 minutes.
-  </p>
-  <span class="portal-screenshot-path">docs/assets/testing/bitrise-parallel-test-matrix.png</span>
-</div>
+
+
+
+------------------------------
 
 ---
-
-## 5. Explore Testing &amp; Quality Engineering Modules
-
-<div class="portal-cards-grid">
-  <div class="portal-card">
-    <div class="portal-card-topbar">
-      <span class="portal-badge">7.1 UNIT TESTING MATRIX</span>
-      <span class="portal-card-pill">JEST &bull; XCTEST &bull; JUNIT</span>
-    </div>
-    <h3 class="portal-card-title">Unit Testing Matrix &amp; Mocking</h3>
-    <p class="portal-card-desc">
-      Harnesses and mocking standards across Android, iOS, and React Native. Learn JUnit 5 + Turbine, native XCTest and Swift Testing, and Jest hook isolation.
-    </p>
-    <div class="portal-card-links">
-      <a href="/mobile/testing/unit-testing-matrix/" class="portal-card-link">View Unit Testing Matrix &rarr;</a>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div class="portal-card-topbar">
-      <span class="portal-badge">7.2 UI AUTOMATION</span>
-      <span class="portal-card-pill">ESPRESSO &bull; XCUITEST &bull; MAESTRO</span>
-    </div>
-    <h3 class="portal-card-title">UI Automation: Espresso, XCUITest &amp; Maestro</h3>
-    <p class="portal-card-desc">
-      Production UI automation using native Android Espresso, iOS XCUITest, React Native component testing, and cross-platform Maestro YAML flows.
-    </p>
-    <div class="portal-card-links">
-      <a href="/mobile/testing/maestro-e2e/" class="portal-card-link">View UI Automation &rarr;</a>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div class="portal-card-topbar">
-      <span class="portal-badge">7.3 HERMETIC STUBS</span>
-      <span class="portal-card-pill">OFFLINE TESTING</span>
-    </div>
-    <h3 class="portal-card-title">MockWebServer &amp; Contract Stubs</h3>
-    <p class="portal-card-desc">
-      Zero live network dependencies. OkHttp MockWebServer dispatchers, iOS URLProtocol stubs, JSON fixture catalogs, and simulated latency.
-    </p>
-    <div class="portal-card-links">
-      <a href="/mobile/testing/mock-web-server/" class="portal-card-link">View MockWebServer Stubs &rarr;</a>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div class="portal-card-topbar">
-      <span class="portal-badge">7.4 QUALITY GATES</span>
-      <span class="portal-card-pill">80% COVERAGE GATE</span>
-    </div>
-    <h3 class="portal-card-title">Quality Gates &amp; Coverage</h3>
-    <p class="portal-card-desc">
-      Strict 80% line and branch diff coverage enforcement. JaCoCo, Slather, Jest coverage, SonarQube integration, Detekt, SwiftLint, and Danger PR bots.
-    </p>
-    <div class="portal-card-links">
-      <a href="/mobile/testing/quality-gates/" class="portal-card-link">View Quality Gates &rarr;</a>
-    </div>
-  </div>
-
-  <div class="portal-card" style="grid-column: span 2;">
-    <div class="portal-card-topbar">
-      <span class="portal-badge">7.5 REAL DEVICE FARM</span>
-      <span class="portal-card-pill">SAUCE LABS CLOUD</span>
-    </div>
-    <h3 class="portal-card-title">Real-Device Cloud Testing with Sauce Labs</h3>
-    <p class="portal-card-desc">
-      Eliminate hardware fragmentation by running Espresso, XCUITest, and Maestro automated suites on thousands of physical iPhones, Pixels, and Galaxy devices via <code>saucectl</code>.
-    </p>
-    <div class="portal-card-links">
-      <a href="/mobile/testing/saucelabs/" class="portal-card-link">View Sauce Labs Integration &rarr;</a>
-    </div>
-  </div>
-</div>
-
-
-<!-- ============================================================================== -->
-<!-- END OF SECTION 7.0: TESTING & QUALITY ENGINEERING OVERVIEW & TESTING PYRAMID -->
-<!-- ============================================================================== -->
-
-
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-<!-- START OF SECTION 7.1: UNIT TESTING MATRIX & MOCKING STANDARDS -->
-<!-- SOURCE FILE: 07-unit-testing-matrix.mdx -->
-<!-- RECOMMENDED GIT TARGET: docs/testing/07-unit-testing-matrix.mdx -->
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-
----
-title: "07.1 Unit Testing Matrix & Mocking Standards"
-description: "Comprehensive enterprise standards for mobile unit testing across Android, iOS, and React Native: Clean Architecture test boundaries, JUnit 5, XCTest, Jest, Swift Testing macros, and Mockk harnesses."
+title: Bitrise MCP (Model Context Protocol) Integration
+description: Connect GitHub Copilot and ChatGPT Enterprise to Bitrise CI/CD via the TrueFoundry MCP Gateway using Personal Access Tokens (PAT), auth overrides, and natural language pipeline execution.
 sidebar:
   order: 2
-  label: "7.1 Unit Testing Matrix"
+  label: Bitrise MCP
 ---
 
 import DiagramExpand from './DiagramExpand.astro';
@@ -318,562 +499,114 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">QUALITY ENGINEERING</span>
-    <span class="portal-hub-tag">MODULE 07.1 &bull; TEST HARNESSES &amp; MOCKING</span>
+    <span class="portal-badge-hub">[BUILD &amp; RELEASE &bull; GENAI]</span>
+    <span class="portal-hub-tag">AI CI/CD &bull; MODEL CONTEXT PROTOCOL</span>
   </div>
-  <h1 class="portal-hero-title">Unit Testing Matrix &amp; Mocking Standards</h1>
-  <p class="portal-hero-desc">
-    Unit tests constitute 70% of the enterprise testing pyramid. They execute strictly on developer laptops and CI build workers within seconds, requiring zero emulators, simulators, or live backends. This guide details Clean Architecture testing boundaries, native <strong>JUnit 5</strong> + Turbine on Android, <strong>XCTest</strong> on iOS, and <strong>Jest</strong> on React Native.
-  </p>
+  <div class="portal-hero-title">Bitrise MCP Integration</div>
+  <div class="portal-hero-desc">
+    The Bitrise MCP (Model Context Protocol) server enables developers to interact with Bitrise CI/CD directly through GitHub Copilot and ChatGPT Enterprise. Exposed via the internal TrueFoundry MCP Gateway, it manages authentication, token overrides, and natural language tool calling across the enterprise mobile infrastructure.
+  </div>
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Hermetic Host Run</div>
-      <div class="portal-cap-desc">Local JVM &bull; macOS Host &bull; Node.js &bull; Sub-second execution</div>
+      <div class="portal-cap-title">Model Context Protocol</div>
+      <div class="portal-cap-desc">Standardized protocol connecting LLMs to live Bitrise APIs</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">XCTest &amp; Swift Testing</div>
-      <div class="portal-cap-desc">Native Apple XCTestCase &bull; Expectations &bull; Async/await concurrency</div>
+      <div class="portal-cap-title">TrueFoundry Gateway</div>
+      <div class="portal-cap-desc">Centralized governance &bull; Rate limiting &bull; Auth overrides</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Jest Suite</div>
-      <div class="portal-cap-desc">Spies &bull; Mocks &bull; RNTL &bull; React Native hooks &amp; Redux / Zustand</div>
+      <div class="portal-cap-title">Natural Language CI</div>
+      <div class="portal-cap-desc">Trigger builds &bull; Inspect failures &bull; Fetch test artifacts via chat</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Clean Isolation</div>
-      <div class="portal-cap-desc">Mock boundaries only &bull; Never mock value types &bull; Pure Use Cases</div>
+      <div class="portal-cap-title">Upcoming CIMD Auth</div>
+      <div class="portal-cap-desc">Centralized Identity Metadata Document transitioning from PAT</div>
     </div>
   </div>
 </div>
 
----
+## Architecture: How Bitrise MCP Bridges AI Agents to CI/CD
 
-## 1. Clean Architecture Testing Isolation Boundaries
+The Model Context Protocol (MCP) defines an open standard for LLMs to securely discover and invoke external tools. The enterprise hosts **`bitrise-mcp-server`** inside the **TrueFoundry MCP Gateway**, handling authentication, user identity verification, and proxying calls to Bitrise REST APIs:
 
-In Clean Architecture, testing boundaries correspond directly to architectural layers. Mocking is restricted to interface boundaries at the layer perimeter:
-
-<DiagramExpand title="CLEAN ARCHITECTURE UNIT TESTING ISOLATION BOUNDARIES">
+<DiagramExpand title="BITRISE MCP ARCHITECTURAL DATA FLOW">
 
 ```mermaid
 graph TD
-    subgraph PresentationLayer ["1. PRESENTATION LAYER (ViewModel / Reducer)"]
-        VM["OrderCheckoutViewModel"]
-        State["State Flow / ViewState"]
-        VM --> State
+    subgraph AgentLayer ["DEVELOPER AI CODING AGENTS"]
+        Copilot["GitHub Copilot<br/>(VS Code &bull; Android Studio &bull; Xcode)"]
+        ChatGPT["ChatGPT Enterprise<br/>(Web &bull; Custom GPT &bull; CLI)"]
     end
 
-    subgraph DomainLayer ["2. DOMAIN LAYER (Pure Business Logic)"]
-        UseCase["SubmitOrderUseCase<br/>(Pure Kotlin / Swift / TS)"]
-        Rules["Enterprise Business Rules<br/>(Discount validation, credit limit)"]
-        UseCase --> Rules
+    subgraph GatewayLayer ["TRUEFOUNDRY MCP GATEWAY (mcp-gateway.enterprise.internal)"]
+        SSEListener["Server-Sent Events (SSE) Listener<br/>/sse/bitrise"]
+        AuthModule["Enterprise Access &amp; Governance<br/>access.enterprise.internal Entitlement"]
+        AuthOverride["User Auth Override Vault<br/>Bitrise Personal Access Token (PAT) / CIMD"]
+        
+        SSEListener --> AuthModule
+        AuthModule --> AuthOverride
     end
 
-    subgraph DataLayer ["3. DATA LAYER (Gateway &amp; Cache)"]
-        Repo["OrderRepositoryImpl"]
-        LocalCache["Room / CoreData / SQLite<br/>(In-Memory DB)"]
-        RemoteSource["RemoteDataSource<br/>(Retrofit / URLSession / Axios)"]
-        Repo --> LocalCache
-        Repo --> RemoteSource
+    subgraph MCPServer ["BITRISE MCP SERVER RUNTIME"]
+        ToolRegistry["MCP Tool Registry<br/>&bull; trigger_build &bull; get_build_status<br/>&bull; list_artifacts &bull; get_build_log"]
+        APIEngine["Bitrise API v0.1 Client<br/>api.bitrise.io/v0.1"]
+        
+        AuthOverride --> ToolRegistry
+        ToolRegistry --> APIEngine
     end
 
-    subgraph MockBoundary ["4. HERMETIC MOCK BOUNDARY (MockWebServer / Stubs)"]
-        MockServer["MockWebServer / WireMock<br/>(Local Loopback :8080)"]
-        JSONFixtures["JSON Response Fixtures<br/>success_200.json &bull; error_429.json"]
-        MockServer --> JSONFixtures
+    subgraph BitriseInfra ["BITRISE CLOUD INFRASTRUCTURE"]
+        Apps["Mobile Applications<br/>iOS &bull; Android &bull; React Native"]
+        Builds["Active Workflows &amp; Pipelines<br/>deploy-staging-qa &bull; build-production"]
+        Artifacts["Build Outputs &amp; Reports<br/>APK / IPA &bull; Test XML &bull; Logcat"]
+        
+        APIEngine --> Apps
+        APIEngine --> Builds
+        APIEngine --> Artifacts
     end
 
-    VM -.->|Mocked Dependency| UseCase
-    UseCase -.->|Mocked Dependency| Repo
-    RemoteSource -.->|Loopback HTTP| MockServer
+    Copilot -->|SSE / JSON-RPC| SSEListener
+    ChatGPT -->|SSE / JSON-RPC| SSEListener
 
     classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
     classDef iosNode fill:#25153a,stroke:#a855f7,stroke-width:1.5px,color:#d8b4fe;
     classDef rnNode fill:#0d2833,stroke:#06b6d4,stroke-width:1.5px,color:#67e8f9;
-    classDef secNode fill:#31141e,stroke:#f43f5e,stroke-width:1.5px,color:#fda4af;
     classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
 
-    class VM,State iosNode;
-    class UseCase,Rules platformNode;
-    class Repo,LocalCache,RemoteSource rnNode;
-    class MockServer,JSONFixtures cloudNode;
+    class Copilot,ChatGPT platformNode;
+    class SSEListener,AuthModule,AuthOverride iosNode;
+    class ToolRegistry,APIEngine rnNode;
+    class Apps,Builds,Artifacts cloudNode;
 ```
 
 </DiagramExpand>
 
 ---
 
-## 2. Production Reference: List API Fetch & Corresponding Test Suites
+## Prerequisites
 
-Below is the complete reference implementation for fetching and displaying a list of items (`/api/v1/orders`), paired with its exact corresponding unit test file across all three mobile runtimes:
-
-<Tabs>
-  <TabItem label="Android (Kotlin & Coroutines)">
-    ### 1. Feature Implementation Code (`OrderListFeature.kt`)
-    ```kotlin
-    package com.enterprise.mobile.feature.orderlist
-
-    import androidx.lifecycle.ViewModel
-    import androidx.lifecycle.viewModelScope
-    import kotlinx.coroutines.flow.MutableStateFlow
-    import kotlinx.coroutines.flow.StateFlow
-    import kotlinx.coroutines.flow.asStateFlow
-    import kotlinx.coroutines.launch
-    import retrofit2.http.GET
-
-    // 1. Data Model
-    data class OrderItem(
-        val id: String,
-        val title: String,
-        val status: String,
-        val amountCents: Long
-    )
-
-    // 2. Retrofit API Service
-    interface OrderListApiService {
-        @GET("api/v1/orders")
-        suspend fun fetchOrders(): List<OrderItem>
-    }
-
-    // 3. Repository Interface & Implementation
-    interface OrderListRepository {
-        suspend fun getOrders(): Result<List<OrderItem>>
-    }
-
-    class OrderListRepositoryImpl(
-        private val apiService: OrderListApiService
-    ) : OrderListRepository {
-        override suspend fun getOrders(): Result<List<OrderItem>> = runCatching {
-            apiService.fetchOrders()
-        }
-    }
-
-    // 4. UI State
-    sealed interface OrderListUiState {
-        object Loading : OrderListUiState
-        data class Success(val orders: List<OrderItem>) : OrderListUiState
-        data class Error(val message: String) : OrderListUiState
-    }
-
-    // 5. ViewModel Calling API and Holding List
-    class OrderListViewModel(
-        private val repository: OrderListRepository
-    ) : ViewModel() {
-
-        private val _uiState = MutableStateFlow<OrderListUiState>(OrderListUiState.Loading)
-        val uiState: StateFlow<OrderListUiState> = _uiState.asStateFlow()
-
-        fun loadOrders() {
-            viewModelScope.launch {
-                _uiState.value = OrderListUiState.Loading
-                repository.getOrders()
-                    .onSuccess { items ->
-                        _uiState.value = OrderListUiState.Success(items)
-                    }
-                    .onFailure { throwable ->
-                        _uiState.value = OrderListUiState.Error(
-                            throwable.localizedMessage ?: "Failed to load orders"
-                        )
-                    }
-            }
-        }
-    }
-    ```
-
-    ### 2. Test File Implementation (`OrderListViewModelTest.kt`)
-    ```kotlin
-    package com.enterprise.mobile.feature.orderlist
-
-    import app.cash.turbine.test
-    import io.kotest.matchers.shouldBe
-    import io.kotest.matchers.types.shouldBeInstanceOf
-    import io.mockk.coEvery
-    import io.mockk.coVerify
-    import io.mockk.mockk
-    import kotlinx.coroutines.Dispatchers
-    import kotlinx.coroutines.ExperimentalCoroutinesApi
-    import kotlinx.coroutines.test.StandardTestDispatcher
-    import kotlinx.coroutines.test.resetMain
-    import kotlinx.coroutines.test.runTest
-    import kotlinx.coroutines.test.setMain
-    import org.junit.jupiter.api.AfterEach
-    import org.junit.jupiter.api.BeforeEach
-    import org.junit.jupiter.api.DisplayName
-    import org.junit.jupiter.api.Test
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    class OrderListViewModelTest {
-
-        private val testDispatcher = StandardTestDispatcher()
-        private val repository: OrderListRepository = mockk()
-        private lateinit var viewModel: OrderListViewModel
-
-        @BeforeEach
-        fun setUp() {
-            Dispatchers.setMain(testDispatcher)
-            viewModel = OrderListViewModel(repository)
-        }
-
-        @AfterEach
-        fun tearDown() {
-            Dispatchers.resetMain()
-        }
-
-        @Test
-        @DisplayName("Given successful API fetch, ViewModel emits Loading then Success with order list")
-        fun loadOrders_success_emitsOrdersList() = runTest(testDispatcher) {
-            // Arrange: Mock API response returning a list of 2 items
-            val mockItems = listOf(
-                OrderItem("ORD-101", "Bulk Grain Shipment", "CONFIRMED", 125000L),
-                OrderItem("ORD-102", "Feed Ingredients Batch A", "PENDING", 48000L)
-            )
-            coEvery { repository.getOrders() } returns Result.success(mockItems)
-
-            // Act & Assert via Turbine
-            viewModel.uiState.test {
-                // Initial state
-                awaitItem() shouldBe OrderListUiState.Loading
-
-                viewModel.loadOrders()
-
-                // Terminal Success state with parsed list
-                val result = awaitItem()
-                result.shouldBeInstanceOf<OrderListUiState.Success>()
-                val success = result as OrderListUiState.Success
-                success.orders.size shouldBe 2
-                success.orders[0].id shouldBe "ORD-101"
-                success.orders[0].status shouldBe "CONFIRMED"
-
-                cancelAndIgnoreRemainingEvents()
-            }
-
-            coVerify(exactly = 1) { repository.getOrders() }
-        }
-
-        @Test
-        @DisplayName("Given API error 500, ViewModel emits Loading then Error with message")
-        fun loadOrders_failure_emitsErrorState() = runTest(testDispatcher) {
-            // Arrange
-            val errorMsg = "HTTP 500 Internal Server Error"
-            coEvery { repository.getOrders() } returns Result.failure(RuntimeException(errorMsg))
-
-            // Act & Assert
-            viewModel.uiState.test {
-                awaitItem() shouldBe OrderListUiState.Loading
-
-                viewModel.loadOrders()
-
-                val result = awaitItem()
-                result.shouldBeInstanceOf<OrderListUiState.Error>()
-                (result as OrderListUiState.Error).message shouldBe errorMsg
-
-                cancelAndIgnoreRemainingEvents()
-            }
-
-            coVerify(exactly = 1) { repository.getOrders() }
-        }
-    }
-    ```
-  </TabItem>
-
-  <TabItem label="iOS (Swift & XCTest)">
-    ### 1. Feature Implementation Code (`OrderListFeature.swift`)
-    ```swift
-    import Foundation
-
-    // 1. Data Model
-    struct OrderItem: Codable, Equatable, Identifiable {
-        let id: String
-        let title: String
-        let status: String
-        let amountCents: Int
-    }
-
-    // 2. Service Protocol & Network Client
-    protocol OrderListServiceProtocol {
-        func fetchOrders() async throws -> [OrderItem]
-    }
-
-    final class OrderListService: OrderListServiceProtocol {
-        private let session: URLSession
-        private let endpoint: URL
-
-        init(session: URLSession = .shared, endpoint: URL) {
-            self.session = session
-            self.endpoint = endpoint
-        }
-
-        func fetchOrders() async throws -> [OrderItem] {
-            let (data, response) = try await session.data(from: endpoint)
-            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                throw URLError(.badServerResponse)
-            }
-            return try JSONDecoder().decode([OrderItem].self, from: data)
-        }
-    }
-
-    // 3. UI State
-    enum OrderListState: Equatable {
-        case loading
-        case success([OrderItem])
-        case error(String)
-    }
-
-    // 4. Observable ViewModel
-    @MainActor
-    final class OrderListViewModel: ObservableObject {
-        @Published private(set) var state: OrderListState = .loading
-        private let service: OrderListServiceProtocol
-
-        init(service: OrderListServiceProtocol) {
-            self.service = service
-        }
-
-        func loadOrders() async {
-            state = .loading
-            do {
-                let items = try await service.fetchOrders()
-                state = .success(items)
-            } catch {
-                state = .error(error.localizedDescription)
-            }
-        }
-    }
-    ```
-
-    ### 2. Test File Implementation (`OrderListViewModelTests.swift`)
-    ```swift
-    import XCTest
-    @testable import EnterpriseOrderFeature
-
-    final class OrderListViewModelTests: XCTestCase {
-
-        // 1. Hermetic Mock Service
-        final class MockOrderListService: OrderListServiceProtocol {
-            var resultToReturn: Result<[OrderItem], Error> = .success([])
-            private(set) var fetchCallCount = 0
-
-            func fetchOrders() async throws -> [OrderItem] {
-                fetchCallCount += 1
-                switch resultToReturn {
-                case .success(let items):
-                    return items
-                case .failure(let error):
-                    throw error
-                }
-            }
-        }
-
-        private var mockService: MockOrderListService!
-        private var viewModel: OrderListViewModel!
-
-        override func setUp() {
-            super.setUp()
-            mockService = MockOrderListService()
-            viewModel = OrderListViewModel(service: mockService)
-        }
-
-        override func tearDown() {
-            mockService = nil
-            viewModel = nil
-            super.tearDown()
-        }
-
-        func testLoadOrders_success_updatesStateToSuccessWithList() async {
-            // Arrange
-            let expectedItems = [
-                OrderItem(id: "ORD-101", title: "Bulk Grain Shipment", status: "CONFIRMED", amountCents: 125000),
-                OrderItem(id: "ORD-102", title: "Feed Ingredients Batch A", status: "PENDING", amountCents: 48000)
-            ]
-            mockService.resultToReturn = .success(expectedItems)
-
-            // Initial State Assertion
-            XCTAssertEqual(viewModel.state, .loading)
-
-            // Act: Trigger Async Fetch
-            await viewModel.loadOrders()
-
-            // Assert
-            XCTAssertEqual(mockService.fetchCallCount, 1)
-            XCTAssertEqual(viewModel.state, .success(expectedItems))
-        }
-
-        func testLoadOrders_failure_updatesStateToError() async {
-            // Arrange
-            let networkError = URLError(.notConnectedToInternet)
-            mockService.resultToReturn = .failure(networkError)
-
-            // Act
-            await viewModel.loadOrders()
-
-            // Assert
-            XCTAssertEqual(mockService.fetchCallCount, 1)
-            XCTAssertEqual(viewModel.state, .error(networkError.localizedDescription))
-        }
-
-        func testLoadOrders_emptyList_updatesStateToSuccessEmpty() async {
-            // Arrange
-            mockService.resultToReturn = .success([])
-
-            // Act
-            await viewModel.loadOrders()
-
-            // Assert
-            XCTAssertEqual(viewModel.state, .success([]))
-        }
-    }
-    ```
-  </TabItem>
-
-  <TabItem label="React Native (TypeScript & Jest)">
-    ### 1. Feature Implementation Code (`useOrderList.ts`)
-    ```typescript
-    import { useState, useCallback } from 'react';
-
-    // 1. Data Model
-    export interface OrderItem {
-      id: string;
-      title: string;
-      status: 'CONFIRMED' | 'PENDING' | 'CANCELLED';
-      amountCents: number;
-    }
-
-    // 2. API Fetcher Function
-    export const fetchOrdersApi = async (): Promise<OrderItem[]> => {
-      const response = await fetch('https://api.enterprise.internal/api/v1/orders', {
-        headers: { Accept: 'application/json' },
-      });
-      if (!response.ok) {
-        throw new Error(`Server returned HTTP ${response.status}`);
-      }
-      return response.json();
-    };
-
-    // 3. UI State Hook
-    export interface UseOrderListResult {
-      orders: OrderItem[];
-      loading: boolean;
-      error: string | null;
-      loadOrders: () => Promise<void>;
-    }
-
-    export const useOrderList = (fetcher = fetchOrdersApi): UseOrderListResult => {
-      const [orders, setOrders] = useState<OrderItem[]>([]);
-      const [loading, setLoading] = useState<boolean>(false);
-      const [error, setError] = useState<string | null>(null);
-
-      const loadOrders = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-          const data = await fetcher();
-          setOrders(data);
-        } catch (err: any) {
-          setError(err.message || 'Failed to fetch orders');
-        } finally {
-          setLoading(false);
-        }
-      }, [fetcher]);
-
-      return { orders, loading, error, loadOrders };
-    };
-    ```
-
-    ### 2. Test File Implementation (`useOrderList.test.ts`)
-    ```typescript
-    import { renderHook, act } from '@testing-library/react-hooks';
-    import { useOrderList, OrderItem } from './useOrderList';
-
-    describe('useOrderList Hook Jest Unit Tests', () => {
-      beforeEach(() => {
-        jest.clearAllMocks();
-      });
-
-      it('loadOrders fetches items and updates orders list on success', async () => {
-        // Arrange: Mock fetcher returning 2 items
-        const mockOrders: OrderItem[] = [
-          { id: 'ORD-101', title: 'Bulk Grain Shipment', status: 'CONFIRMED', amountCents: 125000 },
-          { id: 'ORD-102', title: 'Feed Ingredients Batch A', status: 'PENDING', amountCents: 48000 },
-        ];
-        const mockFetcher = jest.fn().mockResolvedValue(mockOrders);
-
-        const { result } = renderHook(() => useOrderList(mockFetcher));
-
-        // Assert initial state
-        expect(result.current.orders).toEqual([]);
-        expect(result.current.loading).toBe(false);
-        expect(result.current.error).toBeNull();
-
-        // Act: Trigger API fetch
-        await act(async () => {
-          await result.current.loadOrders();
-        });
-
-        // Assert final state
-        expect(mockFetcher).toHaveBeenCalledTimes(1);
-        expect(result.current.loading).toBe(false);
-        expect(result.current.error).toBeNull();
-        expect(result.current.orders).toHaveLength(2);
-        expect(result.current.orders[0].id).toBe('ORD-101');
-        expect(result.current.orders[0].status).toBe('CONFIRMED');
-      });
-
-      it('loadOrders sets error state when API request fails', async () => {
-        // Arrange: Mock fetcher rejecting with an error
-        const errorMessage = 'Server returned HTTP 500';
-        const mockFetcher = jest.fn().mockRejectedValue(new Error(errorMessage));
-
-        const { result } = renderHook(() => useOrderList(mockFetcher));
-
-        // Act
-        await act(async () => {
-          await result.current.loadOrders();
-        });
-
-        // Assert
-        expect(mockFetcher).toHaveBeenCalledTimes(1);
-        expect(result.current.loading).toBe(false);
-        expect(result.current.orders).toEqual([]);
-        expect(result.current.error).toBe(errorMessage);
-      });
-    });
-    ```
-  </TabItem>
-</Tabs>
-
----
-
-## 3. Mocking Ethics & Anti-Patterns
-
-To keep unit suites resilient across major refactors, teams must adhere to the following mocking rules:
+Before beginning integration, ensure you have the required accounts and identity entitlements:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Practice</th>
-        <th>Status</th>
-        <th>Rationale &amp; Enforcement</th>
+        <th>Prerequisite</th>
+        <th>Verification Target</th>
+        <th>Purpose</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>Never Mock Data Classes / Structs</strong></td>
-        <td>Strictly Prohibited</td>
-        <td>Value models (`Order`, `UserSession`, `Money`) must be instantiated as real objects with test fixtures. Mocking data models hides field contract violations.</td>
+        <td><strong>Bitrise Account</strong></td>
+        <td><code>app.bitrise.io</code></td>
+        <td>Active user seat on the enterprise workspace to generate a Personal Access Token (PAT).</td>
       </tr>
       <tr>
-        <td><strong>Mock Boundaries, Not Internals</strong></td>
-        <td>Mandatory Standard</td>
-        <td>Mock interfaces at architectural boundaries (`OrderRepository`, `AuthService`). Never mock internal helper methods of the class under test.</td>
-      </tr>
-      <tr>
-        <td><strong>Deterministic Test Reset</strong></td>
-        <td>Mandatory Standard</td>
-        <td>Always reset mocks, dispatchers, and state in `@AfterEach` (JUnit), `tearDown` (XCTest), or `beforeEach` (Jest) to eliminate cross-test state leakage.</td>
-      </tr>
-      <tr>
-        <td><strong>Zero Real Network Egress</strong></td>
-        <td>Strictly Prohibited</td>
-        <td>Any test calling live endpoints (`api.enterprise.com`) will be blocked by CI network sandbox rules. Use MockWebServer or URLProtocol stubs.</td>
+        <td><strong>Identity Entitlement</strong></td>
+        <td><code>access.enterprise.internal</code></td>
+        <td>Required to request the <code>TrueFoundry MCP Gateway - Bitrise Server</code> access role.</td>
       </tr>
     </tbody>
   </table>
@@ -881,50 +614,180 @@ To keep unit suites resilient across major refactors, teams must adhere to the f
 
 ---
 
-## 4. Screenshot and IDE Test Execution Artifacts
+## Generate a Bitrise Personal Access Token (PAT)
+
+An API token is required to authenticate the MCP server against your personal Bitrise account permissions:
+
+1. Log in to [Bitrise.io](https://app.bitrise.io).
+2. In the top right corner, click on your **Profile Avatar** and select **Account settings**.
+3. In the left navigation menu, click **Security**.
+4. Scroll down to the **Personal Access Tokens** section and click **Generate new token**.
+5. Enter a descriptive token name: `Bitrise MCP Gateway`.
+6. Set the token expiration to **3 months** (90 days).
+7. Ensure all workspace and application permissions remain checked so the MCP server can list apps, inspect artifacts, and trigger builds on your behalf.
+8. Click **Generate**.
+9. **Copy the generated PAT immediately and store it securely.** Bitrise will never display this token again once you close the modal.
 
 <div class="portal-screenshot-box">
   <div class="portal-screenshot-header">
     <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <h4 class="portal-screenshot-title">Android Studio Test Runner &amp; JaCoCo Line Coverage Gutter</h4>
+    <h4 class="portal-screenshot-title">Bitrise - Create Personal Access Token (PAT) Modal</h4>
   </div>
   <p class="portal-screenshot-desc">
-    Display the Android Studio Run view showing green checkmarks across all ViewModel unit tests alongside the code editor margin displaying green coverage indicators.
+    Capture the Bitrise Account Settings &gt; Security modal showing the "Create personal access token" form with Token Name: <code>Bitrise MCP Gateway</code>, Expiration: <code>3 Months</code>, and the Generate button.
   </p>
-  <span class="portal-screenshot-path">docs/assets/testing/android-studio-unit-test-gutter.png</span>
+  <span class="portal-screenshot-path">docs/assets/cicd/bitrise-pat-creation-modal.png</span>
 </div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <h4 class="portal-screenshot-title">Xcode Test Report Navigator with Sub-second Timings</h4>
-  </div>
-  <p class="portal-screenshot-desc">
-    Capture the Xcode Test Report Navigator window showing the hierarchy of XCTestCase and Swift Testing executions with duration timestamps in milliseconds.
-  </p>
-  <span class="portal-screenshot-path">docs/assets/testing/xcode-swift-testing-report.png</span>
-</div>
-
-
-<!-- ============================================================================== -->
-<!-- END OF SECTION 7.1: UNIT TESTING MATRIX & MOCKING STANDARDS -->
-<!-- ============================================================================== -->
-
-
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-<!-- START OF SECTION 7.2: UI & MAESTRO AUTOMATED E2E TESTING -->
-<!-- SOURCE FILE: 07-maestro-e2e.mdx -->
-<!-- RECOMMENDED GIT TARGET: docs/testing/07-maestro-e2e.mdx -->
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
 
 ---
-title: "07.2 UI Automation: Native Espresso, XCUITest & Maestro"
-description: "Mastering enterprise mobile UI automation: Native Android Espresso, iOS XCUITest, declarative cross-platform Maestro YAML flows, and CI device execution."
+
+## Request Access via Enterprise Access Management
+
+The Bitrise MCP server is exposed through the TrueFoundry MCP Gateway, which is governed by enterprise identity policies:
+
+1. Navigate to **`access.enterprise.internal`**.
+2. Search for the **`TrueFoundry MCP Gateway - Bitrise Server`** entitlement.
+3. Submit your access request with your manager's approval.
+4. Once provisioned, your SSO identity will be authorized to access the MCP Gateway registry in TrueFoundry.
+
+---
+
+## Configure the MCP Server in TrueFoundry
+
+### Navigate to the MCP Gateway
+1. Log in to **TrueFoundry** using your enterprise SSO credentials.
+2. In the left-hand navigation menu, select **MCP Gateway**.
+
+### Select the Environment and Server
+1. Select the target environment: **`dev`** (or **`prod`** for production release operations).
+2. In the MCP Server Registry, locate **`bitrise-mcp-server`**.
+3. Click on the card to open the server details view.
+
+### Add an Auth Override with Your Bitrise PAT
+1. In the server details panel, click the **Auth Overrides** tab.
+2. Click **+ Add Auth Override**.
+3. Paste the Bitrise Personal Access Token (PAT) generated earlier.
+4. Click **Save Override**. The gateway now uses your credentials whenever your coding agent sends MCP tool calls.
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <h4 class="portal-screenshot-title">TrueFoundry MCP Gateway - bitrise-mcp-server Configuration</h4>
+  </div>
+  <p class="portal-screenshot-desc">
+    Display the TrueFoundry MCP Gateway catalog screen showing <code>bitrise-mcp-server</code>, the environment selector set to <code>dev</code>, and the Auth Overrides drawer confirming the saved PAT.
+  </p>
+  <span class="portal-screenshot-path">docs/assets/cicd/truefoundry-mcp-gateway-server.png</span>
+</div>
+
+---
+
+## Connect Your AI Coding Agent
+
+<Tabs>
+  <TabItem label="GitHub Copilot (VS Code & IDEs)">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+      <span>Add the following configuration to your <code>~/.vscode/mcp.json</code> or project <code>.vscode/mcp.json</code>:</span>
+      <a href="/downloads/mcp.json" download="mcp.json" class="portal-download-btn" style="padding: 6px 14px; font-size: 0.8rem;">
+        Download mcp.json
+      </a>
+    </div>
+
+    ```json
+    {
+      "mcpServers": {
+        "bitrise": {
+          "type": "sse",
+          "url": "https://mcp-gateway.enterprise.internal/sse/bitrise",
+          "headers": {
+            "Authorization": "Bearer YOUR_TRUEFOUNDRY_GATEWAY_TOKEN"
+          }
+        }
+      }
+    }
+    ```
+
+    Restart your IDE. Copilot Chat will now display the `@bitrise` agent handle and tools.
+  </TabItem>
+
+  <TabItem label="ChatGPT Enterprise (Custom GPT / Web Action)">
+    In ChatGPT Enterprise or your Custom GPT configuration:
+
+    1. Open your Custom GPT editor &gt; **Actions**.
+    2. Import the OpenAPI schema provided by TrueFoundry:
+       `https://mcp-gateway.enterprise.internal/openapi/bitrise.json`
+    3. Set Authentication type to **API Key** with Bearer token authentication.
+    4. Save the Custom GPT. You can now prompt ChatGPT directly from your browser.
+  </TabItem>
+</Tabs>
+
+---
+
+## Natural Language CI/CD Commands & Tool Invocations
+
+Once connected, interact with your Bitrise pipelines using natural language directly from your chat window:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Natural Language Developer Prompt</th>
+        <th>Invoked MCP Tool</th>
+        <th>Underlying Bitrise API Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>"List all recent builds for mobile-order-app."</strong></td>
+        <td><code>list_builds</code></td>
+        <td>Queries <code>GET /v0.1/apps/{'{'}slug{'}'}/builds</code>, filtering by repository branch and execution status.</td>
+      </tr>
+      <tr>
+        <td><strong>"Trigger a new build on branch staging using workflow deploy-staging-qa."</strong></td>
+        <td><code>trigger_build</code></td>
+        <td>Dispatches <code>POST /v0.1/apps/{'{'}slug{'}'}/builds</code> with specified commit hash and target workflow.</td>
+      </tr>
+      <tr>
+        <td><strong>"Why did the last build #248 fail?"</strong></td>
+        <td><code>get_build_log</code></td>
+        <td>Fetches raw log chunks, scans for exit code 1, and pinpoints compiler, test, or linter errors.</td>
+      </tr>
+      <tr>
+        <td><strong>"Show me test coverage and APK download links for build #245."</strong></td>
+        <td><code>list_artifacts</code></td>
+        <td>Retrieves pre-signed S3 artifact URLs for <code>.apk</code>, <code>.aab</code>, <code>.ipa</code>, and JaCoCo/Slather XML reports.</td>
+      </tr>
+      <tr>
+        <td><strong>"Abort build #250 immediately."</strong></td>
+        <td><code>abort_build</code></td>
+        <td>Issues <code>POST /v0.1/apps/{'{'}slug{'}'}/builds/{'{'}slug{'}'}/abort</code> with user-specified cancellation reason.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## Upcoming: CIMD Authentication Roadmap
+
+> [!NOTE]
+> The mobile platform engineering team is actively integrating **CIMD (Centralized Identity Metadata Document)** authentication for the Bitrise MCP. Once the upcoming TrueFoundry platform update lands, CIMD will automatically derive your identity token from your enterprise SSO session, eliminating manual Personal Access Token (PAT) generation and 90-day rotations.
+
+
+
+
+
+
+------------------------------
+
+
+
+---
+title: Enterprise AI Rules: GitHub Copilot & ChatGPT
+description: Equip GitHub Copilot (.github/copilot-instructions.md) and ChatGPT Enterprise with the complete Enterprise Mobile Platform knowledge base: Clean Architecture, Circuit Breaker, KeyStore/Keychain, and 80% test coverage standards.
 sidebar:
   order: 3
-  label: "7.2 UI Automation & Maestro"
+  label: Copilot & ChatGPT Rules
 ---
 
 import DiagramExpand from './DiagramExpand.astro';
@@ -932,73 +795,66 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">AUTOMATED UI TESTING</span>
-    <span class="portal-hub-tag">MODULE 07.2 &bull; ESPRESSO, XCUITEST &amp; MAESTRO</span>
+    <span class="portal-badge-hub">[GENAI &amp; DEVELOPER PRODUCTIVITY]</span>
+    <span class="portal-hub-tag">AI GOVERNANCE &bull; COPILOT &amp; CHATGPT RULES</span>
   </div>
-  <h1 class="portal-hero-title">UI Automation: Native Espresso, XCUITest &amp; Maestro</h1>
-  <p class="portal-hero-desc">
-    Automated UI and instrumentation tests represent 10% of the testing pyramid, validating critical end-to-end user journeys on physical hardware and emulators. The enterprise supports native <strong>Android Espresso</strong>, native <strong>iOS XCUITest</strong>, and cross-platform <strong>Maestro YAML</strong> flows.
-  </p>
+  <div class="portal-hero-title">Enterprise AI Rules: GitHub Copilot &amp; ChatGPT</div>
+  <div class="portal-hero-desc">
+    The enterprise standardizes on two AI developer tools: <strong>GitHub Copilot</strong> for in-IDE coding assistance and <strong>ChatGPT Enterprise</strong> for architecture design and feature scaffolding. This page provides the downloadable instruction files that automatically enforce Clean Architecture, Circuit Breakers, KeyStore encryption, and the mandatory 80% test coverage standard.
+  </div>
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Android Espresso</div>
-      <div class="portal-cap-desc">Native instrumentation &bull; Matchers &bull; Actions &bull; IdlingResource sync</div>
+      <div class="portal-cap-title">GitHub Copilot</div>
+      <div class="portal-cap-desc">Drop <code>.github/copilot-instructions.md</code> in repo root &bull; VS Code, Xcode &amp; Android Studio</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">iOS XCUITest</div>
-      <div class="portal-cap-desc">Apple native UI runner &bull; XCUIApplication &bull; waitForExistence</div>
+      <div class="portal-cap-title">ChatGPT Enterprise</div>
+      <div class="portal-cap-desc">Custom Instructions &amp; Custom GPT system prompt for architecture and scaffolding</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Maestro YAML</div>
-      <div class="portal-cap-desc">Cross-platform declarative flows &bull; Smart waiting &bull; Reusable subflows</div>
+      <div class="portal-cap-title">80% Test Enforcement</div>
+      <div class="portal-cap-desc">AI automatically generates both feature implementation AND unit test file</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Cloud Execution</div>
-      <div class="portal-cap-desc">Parallel execution across physical device fleets in Sauce Labs</div>
+      <div class="portal-cap-title">Zero Security Flaws</div>
+      <div class="portal-cap-desc">Zero hardcoded secrets &bull; Hardware KeyStore / Keychain &bull; MDM wipe ready</div>
     </div>
   </div>
 </div>
 
----
+## How AI Rules Enforce Enterprise Standards
 
-## 1. Enterprise UI Automation Architecture
+Without enterprise instructions, AI assistants default to generic, un-architected code: hardcoding secrets, skipping circuit breakers, or omitting unit tests. By placing `.github/copilot-instructions.md` in your repository and configuring ChatGPT's Custom Instructions, every AI suggestion automatically aligns with enterprise mobile platform standards:
 
-Mobile engineering squads select their UI test harness based on platform architecture and squad composition:
-
-<DiagramExpand title="ENTERPRISE MOBILE UI AUTOMATION ARCHITECTURE">
+<DiagramExpand title="AI DEVELOPER WORKFLOW WITH COPILOT &amp; CHATGPT INSTRUCTIONS">
 
 ```mermaid
 graph TD
-    subgraph TestDefinition ["1. TEST DEFINITION LAYER"]
-        EspressoCode["Native Android Tests<br/>(Espresso &bull; Kotlin)"]
-        XCTestCode["Native iOS Tests<br/>(XCUITest &bull; Swift)"]
-        MaestroCode["Cross-Platform Flows<br/>(Maestro YAML)"]
+    subgraph DevWorkstation ["DEVELOPER WORKSTATION"]
+        IDE["In-IDE Development<br/>Android Studio &bull; Xcode &bull; VS Code"]
+        WebChat["Web Architecture Scaffolding<br/>ChatGPT Enterprise"]
     end
 
-    subgraph ExecutionEngines ["2. ON-DEVICE EXECUTION ENGINES"]
-        AndroidRunner["Android Test Runner<br/>androidx.test.runner.AndroidJUnitRunner"]
-        IOSRunner["Apple XCTest Engine<br/>XCTest.framework &bull; testmanagerd"]
-        MaestroDaemon["Maestro On-Device Daemon<br/>Accessibility Bridge (:7001)"]
+    subgraph InstructionLayer ["ENTERPRISE RULES INJECTION"]
+        CopilotRules[".github/copilot-instructions.md<br/>Auto-loaded by GitHub Copilot"]
+        GPTRules["ChatGPT System Instructions<br/>Auto-loaded in Custom GPT"]
         
-        EspressoCode --> AndroidRunner
-        XCTestCode --> IOSRunner
-        MaestroCode --> MaestroDaemon
+        IDE --> CopilotRules
+        WebChat --> GPTRules
     end
 
-    subgraph TargetPlatform ["3. RUNTIME TARGETS"]
-        AndroidTarget["Android Runtime<br/>(Physical Pixels &bull; Galaxies &bull; Emulators)"]
-        IOSTarget["iOS Runtime<br/>(Physical iPhones &bull; iPads &bull; Simulators)"]
-        
-        AndroidRunner --> AndroidTarget
-        IOSRunner --> IOSTarget
-        MaestroDaemon --> AndroidTarget
-        MaestroDaemon --> IOSTarget
+    subgraph CodeGen ["RULE-CONSTRAINED CODE GENERATION"]
+        CopilotRules --> ArchEnforce["Clean Architecture Layering<br/>Presentation &bull; Domain &bull; Data"]
+        GPTRules --> ResilSec["Resilience &amp; KeyStore Security<br/>Circuit Breaker &bull; KeyStore/Keychain &bull; No Secrets"]
+        CopilotRules --> AutoTests["Automatic Unit Test File Generation<br/>Mandatory 80% Coverage &bull; JUnit 5 &bull; XCTest &bull; Jest"]
+        GPTRules --> AutoTests
     end
 
-    subgraph ReportingHub ["4. REPORTING &amp; CI TELEMETRY"]
-        Artifacts["Bitrise CI &amp; Sauce Labs Dashboard<br/>Full MP4 Video &bull; JUnit XML &bull; Screenshot Diffs &bull; Logcat"]
-        AndroidTarget --> Artifacts
-        IOSTarget --> Artifacts
+    subgraph CIValidation ["AUTOMATED CI/CD VERIFICATION"]
+        ArchEnforce --> PR["GitHub Pull Request"]
+        ResilSec --> PR
+        AutoTests --> PR
+        PR --> Gate["Bitrise CI &amp; SonarQube Quality Gate<br/>PASSED &bull; Diff Coverage &gt;= 80% &bull; Zero Flakes"]
     end
 
     classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
@@ -1006,201 +862,46 @@ graph TD
     classDef rnNode fill:#0d2833,stroke:#06b6d4,stroke-width:1.5px,color:#67e8f9;
     classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
 
-    class EspressoCode,AndroidRunner,AndroidTarget platformNode;
-    class XCTestCode,IOSRunner,IOSTarget iosNode;
-    class MaestroCode,MaestroDaemon rnNode;
-    class Artifacts cloudNode;
+    class IDE,WebChat platformNode;
+    class CopilotRules,GPTRules rnNode;
+    class ArchEnforce,ResilSec,AutoTests iosNode;
+    class PR,Gate cloudNode;
 ```
 
 </DiagramExpand>
 
 ---
 
-## 2. Production UI Test Implementations
-
-<Tabs>
-  <TabItem label="Android (Espresso & Compose)">
-    Native Android squads write UI tests using **Espresso** (`androidx.test.espresso`) and **Compose Test Rule**:
-
-    ```kotlin
-    package com.enterprise.mobile.ui
-
-    import androidx.test.core.app.ActivityScenario
-    import androidx.test.espresso.Espresso.onView
-    import androidx.test.espresso.action.ViewActions.*
-    import androidx.test.espresso.assertion.ViewAssertions.matches
-    import androidx.test.espresso.matcher.ViewMatchers.*
-    import androidx.test.ext.junit.runners.AndroidJUnit4
-    import androidx.test.filters.LargeTest
-    import com.enterprise.mobile.R
-    import com.enterprise.mobile.feature.order.OrderCheckoutActivity
-    import org.junit.After
-    import org.junit.Before
-    import org.junit.Test
-    import org.junit.runner.RunWith
-
-    @RunWith(AndroidJUnit4::class)
-    @LargeTest
-    class OrderCheckoutEspressoTest {
-
-        private lateinit var scenario: ActivityScenario<OrderCheckoutActivity>
-
-        @Before
-        fun setUp() {
-            // Launch activity under test
-            scenario = ActivityScenario.launch(OrderCheckoutActivity::class.java)
-        }
-
-        @After
-        fun tearDown() {
-            scenario.close()
-        }
-
-        @Test
-        fun submitValidOrder_displaysConfirmedStatus() {
-            // 1. Enter Order Quantity
-            onView(withId(R.id.et_order_quantity))
-                .perform(typeText("450"), closeSoftKeyboard())
-
-            // 2. Select Facility Picker
-            onView(withId(R.id.btn_select_facility))
-                .perform(click())
-
-            onView(withText("Des Moines Terminal 4"))
-                .perform(click())
-
-            // 3. Submit Checkout
-            onView(withId(R.id.btn_submit_order))
-                .perform(click())
-
-            // 4. Verify Success Banner and Status Badge
-            onView(withId(R.id.tv_order_status_badge))
-                .check(matches(isDisplayed()))
-                .check(matches(withText("CONFIRMED")))
-
-            onView(withText("Order ORD-94812 confirmed."))
-                .check(matches(isDisplayed()))
-        }
-    }
-    ```
-  </TabItem>
-
-  <TabItem label="iOS (XCUITest)">
-    Native iOS squads write UI tests using Apple's native **XCUITest** framework:
-
-    ```swift
-    import XCTest
-
-    final class OrderCheckoutXCUITest: XCTestCase {
-
-        private var app: XCUIApplication!
-
-        override func setUpWithError() throws {
-            try super.setUpWithError()
-            continueAfterFailure = false
-            app = XCUIApplication()
-            // Pass UI test arguments and mock environment flags
-            app.launchArguments = ["-UITestsEnabled", "-MockServerEnabled"]
-            app.launch()
-        }
-
-        override func tearDownWithError() throws {
-            app = nil
-            try super.tearDownWithError()
-        }
-
-        func testSubmitValidOrder_displaysConfirmedStatus() throws {
-            // 1. Input Quantity
-            let quantityField = app.textFields["input_order_quantity"]
-            XCTAssertTrue(quantityField.waitForExistence(timeout: 5), "Quantity field must exist")
-            quantityField.tap()
-            quantityField.typeText("450")
-
-            // 2. Select Facility
-            app.buttons["picker_select_facility"].tap()
-            let facilityOption = app.buttons["Des Moines Terminal 4"]
-            XCTAssertTrue(facilityOption.waitForExistence(timeout: 3))
-            facilityOption.tap()
-
-            // 3. Tap Confirm
-            let submitButton = app.buttons["btn_submit_order"]
-            XCTAssertTrue(submitButton.isHittable)
-            submitButton.tap()
-
-            // 4. Verify Confirmation Badge
-            let statusBadge = app.staticTexts["badge_order_status"]
-            XCTAssertTrue(statusBadge.waitForExistence(timeout: 5), "Status badge must display")
-            XCTAssertEqual(statusBadge.label, "CONFIRMED")
-        }
-    }
-    ```
-  </TabItem>
-
-  <TabItem label="Cross-Platform (Maestro YAML)">
-    Cross-platform journeys and end-to-end flows run via **Maestro** declarative YAML on both platforms:
-
-    ```yaml
-    appId: com.enterprise.mobile
-    ---
-    # 1. Launch App in Clean State
-    - launchApp:
-        clearState: true
-
-    # 2. Enter Quantity
-    - assertVisible:
-        id: "input_order_quantity"
-    - inputText:
-        id: "input_order_quantity"
-        text: "450"
-
-    # 3. Select Facility
-    - tapOn:
-        id: "picker_select_facility"
-    - tapOn:
-        text: "Des Moines Terminal 4"
-
-    # 4. Submit Order
-    - tapOn:
-        id: "btn_submit_order"
-
-    # 5. Assert Success State (Built-in smart wait)
-    - assertVisible:
-        text: "CONFIRMED"
-        timeout: 5000
-    ```
-  </TabItem>
-</Tabs>
-
----
-
-## 3. Asynchronous Synchronization: Handling Network Latency
-
-Flaky UI tests occur when assertions execute before asynchronous operations finish:
+## Downloadable AI Rules &amp; Configuration Files
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Framework</th>
-        <th>Synchronization Mechanism</th>
-        <th>Best Practice &amp; Guidance</th>
+        <th>Downloadable File</th>
+        <th>Target Destination</th>
+        <th>Consumed By</th>
+        <th>Direct Download Action</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>Android Espresso</strong></td>
-        <td><code>CountingIdlingResource</code></td>
-        <td>Register with OkHttp client or coroutines dispatcher. Espresso pauses assertions automatically while background tasks are active.</td>
+        <td><strong><code>copilot-instructions.md</code></strong></td>
+        <td><code>.github/copilot-instructions.md</code> (Repo Root)</td>
+        <td>GitHub Copilot in VS Code, Android Studio, and Xcode</td>
+        <td><a href="/downloads/copilot-instructions.md" download="copilot-instructions.md" class="portal-download-btn" style="padding: 6px 12px; font-size: 0.78rem;">Download copilot-instructions.md</a></td>
       </tr>
       <tr>
-        <td><strong>iOS XCUITest</strong></td>
-        <td><code>waitForExistence(timeout:)</code></td>
-        <td>Always use <code>element.waitForExistence(timeout: 5)</code> instead of hardcoded <code>Thread.sleep()</code>. Avoids flakiness on slower CI simulators.</td>
+        <td><strong><code>chatgpt-enterprise-instructions.md</code></strong></td>
+        <td>ChatGPT Settings &gt; Custom Instructions</td>
+        <td>ChatGPT Enterprise Web &amp; Custom GPTs</td>
+        <td><a href="/downloads/chatgpt-enterprise-instructions.md" download="chatgpt-enterprise-instructions.md" class="portal-download-btn" style="padding: 6px 12px; font-size: 0.78rem;">Download chatgpt-enterprise-instructions.md</a></td>
       </tr>
       <tr>
-        <td><strong>Maestro YAML</strong></td>
-        <td>Smart Polling Wait</td>
-        <td>Built into every command. Maestro automatically waits up to 2 seconds for views to stabilize before evaluating assertions.</td>
+        <td><strong><code>mcp.json</code></strong></td>
+        <td><code>~/.vscode/mcp.json</code> (Workstation)</td>
+        <td>GitHub Copilot MCP Agent (TrueFoundry Bitrise Gateway)</td>
+        <td><a href="/downloads/mcp.json" download="mcp.json" class="portal-download-btn" style="padding: 6px 12px; font-size: 0.78rem;">Download mcp.json</a></td>
       </tr>
     </tbody>
   </table>
@@ -1208,392 +909,344 @@ Flaky UI tests occur when assertions execute before asynchronous operations fini
 
 ---
 
-## 4. Local Execution &amp; CI Runner Commands
+## Rule File Contents for Copy-Paste
 
-### Running Android Espresso Locally
-```bash
-# Execute on connected device or emulator via Gradle
-./gradlew connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.enterprise.mobile.ui.OrderCheckoutEspressoTest
+<Tabs>
+  <TabItem label="GitHub Copilot (.github/copilot-instructions.md)">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+      <span>Place this file in <strong><code>.github/copilot-instructions.md</code></strong> at your repository root:</span>
+      <a href="/downloads/copilot-instructions.md" download="copilot-instructions.md" class="portal-download-btn" style="padding: 6px 14px; font-size: 0.8rem;">
+        Download copilot-instructions.md
+      </a>
+    </div>
+
+```markdown
+# ==============================================================================
+# GITHUB COPILOT INSTRUCTIONS: ENTERPRISE MOBILE PLATFORM
+# File Location: .github/copilot-instructions.md
+# Supported IDEs: Visual Studio Code, Android Studio, Xcode, JetBrains
+# ==============================================================================
+
+You are an expert Senior Mobile Platform Architect and Principal Engineer for the Enterprise Mobile Platform.
+Adhere strictly to the enterprise engineering standards below whenever generating code, suggesting completions, reviewing PRs, or answering technical questions.
+
+---
+
+## 1. ARCHITECTURAL INVARIANTS (NON-NEGOTIABLE)
+
+### 1.1 Clean Architecture Layering
+Every mobile feature must strictly respect architectural layer boundaries with unidirectional data flow:
+* **Presentation Layer**: UI Composables / SwiftUI Views / React Components + State Holders (ViewModels / Custom Hooks / Reducers). Responsible ONLY for rendering state and dispatching user intents.
+* **Domain Layer**: Pure business logic (Entities, Use Cases / Interactors, Business Rule Validators). Must contain ZERO Android/iOS/React Native framework imports. Pure Kotlin, Swift, or TypeScript only.
+* **Data Layer**: Repositories, Remote Data Sources (Retrofit / URLSession / Axios), and Local Caches (Room / CoreData / SQLite / AsyncStorage). Implements interfaces declared in the Domain layer.
+
+### 1.2 Enterprise Circuit Breaker & Resilience
+* All remote HTTP/gRPC operations must be wrapped in the **Enterprise Circuit Breaker**.
+* Three operational states:
+  * `CLOSED`: Normal traffic flows through. Errors below threshold.
+  * `OPEN`: Downstream service is failing (failure threshold >= 5 errors in 30s). Immediately fail-fast without network egress.
+  * `HALF_OPEN`: Probe state after reset timeout (60s). Allow a single canary request.
+* Fallback requirement: Every API call must define an offline cache fallback or a graceful degraded state.
+
+### 1.3 Offline Outbox & Background Sync
+* Mutation requests created while disconnected must be persisted to the **Offline Outbox Queue** (local encrypted SQLite / Room / CoreData).
+* Automatic reconciliation triggers upon network restoration with exponential backoff and idempotency keys (`Idempotency-Key: UUID`).
+
+### 1.4 Feature Flags & Remote Configuration
+* Every new business capability or UI change must be wrapped in a feature flag managed via `feature-flags.enterprise.internal`.
+* Implement a local default fallback if remote flag evaluation times out or is unreachable.
+
+---
+
+## 2. SECURITY & DATA GOVERNANCE RULES
+
+### 2.1 Zero Hardcoded Secrets
+* NEVER hardcode API keys, client secrets, passwords, or private signing certificates in code, test files, or version control.
+* In local development, read secrets from environment variables or secure keystores.
+* In CI/CD, inject secrets via **Bitrise Secret Vault** or **Cloud KMS**.
+
+### 2.2 Cryptographic Key Storage
+* **Android**: Use Android Hardware-backed KeyStore (`AndroidKeyStore`) with AES-256-GCM encryption and master key stored in StrongBox / TEE.
+* **iOS**: Use iOS Keychain Services with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` and Secure Enclave where biometric access is required.
+* **React Native**: Use `react-native-keychain` for tokens; never store JWTs, access tokens, or PII in unencrypted `AsyncStorage`.
+
+### 2.3 MDM Remote Wipe Compliance
+* The app must register a broadcast receiver / notification listener for the enterprise MDM Remote Wipe signal.
+* When triggered:
+  1. Revoke local and remote refresh tokens.
+  2. Purge local SQLite / Room / CoreData database files.
+  3. Shred cryptographic keys in KeyStore / Keychain.
+  4. Evict in-memory and disk caches.
+  5. Terminate the app runtime gracefully after displaying: `"The data for this application has been wiped.quitting..."`.
+
+### 2.4 Network Security & Certificate Pinning
+* Enforce TLS 1.3 minimum. Cleartext HTTP traffic is strictly prohibited (`android:usesCleartextTraffic="false"`, `NSAllowsArbitraryLoads = false`).
+* All production backend hosts must enforce SSL Public Key Pinning (HPKP / SHA-256 pin hash).
+
+---
+
+## 3. PLATFORM-SPECIFIC CODING STANDARDS
+
+### 3.1 Native Android (Kotlin & Jetpack Compose)
+* **Language**: Kotlin 1.9+ / 2.0+ with strict null-safety.
+* **Concurrency**: Coroutines and Flows.
+  * NEVER hardcode `Dispatchers.IO` or `Dispatchers.Default` inside ViewModels or Use Cases. Always inject `CoroutineDispatcher` via Hilt for testability.
+  * Expose state to Compose via `StateFlow<UiState>` using `asStateFlow()` and collect with `collectAsStateWithLifecycle()`.
+* **Jetpack Compose**:
+  * Write small, focused, stateless Composables. Hoist state up to the caller or ViewModel.
+  * All Composables with parameters should provide a `@Preview` composable wrapped in `EnterpriseTheme`.
+  * Use `remember` and `derivedStateOf` to prevent unnecessary recompositions.
+* **Dependency Injection**: Use Google Hilt (`@HiltViewModel`, `@Inject`, `@Module`, `@InstallIn(SingletonComponent::class)`).
+* **Networking**: Retrofit 2 + OkHttp 4 with Moshi or Kotlinx Serialization.
+
+### 3.2 Native iOS (Swift & SwiftUI)
+* **Language**: Swift 5.10 / Swift 6 with strict concurrency checking enabled.
+* **Concurrency**: Swift Concurrency (`async`/`await`, `Task`, `actor`, `@MainActor`).
+  * Annotate ViewModels with `@MainActor`.
+  * Ensure data models passed across isolation domains conform to `Sendable`.
+  * Never use legacy GCD (`DispatchQueue.global().async`) unless interfacing with C/Obj-C APIs.
+* **SwiftUI**:
+  * Use the Observation framework (`@Observable` class) for iOS 17+, or `ObservableObject` with `@Published` for iOS 16 backward compatibility.
+  * Keep Views declarative and lightweight; place side-effects in ViewModels or Tasks.
+* **Package Management**: Swift Package Manager (SPM) only. CocoaPods is prohibited in new projects.
+
+### 3.3 React Native (TypeScript & React 18+)
+* **Language**: Strict TypeScript (`noImplicitAny: true`, `strictNullChecks: true`).
+* **Components**: Functional components with hooks only. Class components are strictly prohibited.
+* **Performance**:
+  * Wrap callbacks passed to child components in `useCallback`.
+  * Wrap expensive calculations in `useMemo`.
+  * Use `FlashList` from Shopify over standard `FlatList` for long data lists.
+* **State Management**: Redux Toolkit (RTK) or Zustand. Avoid prop-drilling beyond 2 levels.
+* **Async Operations**: Handle async actions with clean Loading / Success / Error state transitions.
+
+---
+
+## 4. MANDATORY TESTING & 80% COVERAGE RULES
+
+### 4.1 Strict 80% Coverage Standard
+* Every code generation or modification MUST meet the **mandatory 80% line and branch diff coverage threshold**.
+* When asked to create any feature, service, or ViewModel, **YOU MUST ALWAYS GENERATE BOTH:**
+  1. The complete production feature implementation code.
+  2. The complete unit test file covering Success, Empty state, and Error handling.
+
+### 4.2 Test Harnesses & Tooling
+* **Android Unit**: JUnit 5 + Kotest assertions (`shouldBe`, `shouldThrow`) + Mockk (`mockk()`, `coEvery`, `coVerify`) + CashApp **Turbine** for Flow testing.
+* **iOS Unit**: Native **XCTest** (`class OrderViewModelTests: XCTestCase`, `XCTAssertEqual`, `waitForExpectations`) + Apple **Swift Testing** macros (`@Test`, `@Suite`, `#expect`).
+* **React Native Unit**: **Jest** + React Native Testing Library (`@testing-library/react-native`) + `@testing-library/react-hooks`.
+* **UI Automation**: Android **Espresso** (`onView(withId(...)).perform(click()).check(matches(isDisplayed()))`), iOS native **XCUITest** (`XCUIApplication`, `waitForExistence(timeout:)`), and cross-platform **Maestro YAML** flows.
+* **Hermetic Network Mocks**: OkHttp `MockWebServer` dispatchers (Android), custom `URLProtocol` stubs (iOS), and Mock Service Worker MSW (React Native). Zero live network egress in tests.
+
+---
+
+## 5. OBSERVABILITY & TELEMETRY (DATADOG RUM)
+
+### 5.1 RUM Initialization & View Tracking
+* Initialize Datadog RUM in application startup (`Application.onCreate()` on Android, `AppDelegate / App.init()` on iOS, `App.tsx` on React Native).
+* Automatically track screen views with canonical naming:
+  * Android: `Datadog.trackView("OrderSummaryScreen")`
+  * iOS: `Datadog.trackView("OrderSummaryView")`
+  * React Native: Navigation container integration via `DatadogNavigationListener`
+
+### 5.2 Network Tracing & PII Redaction
+* Attach Datadog distributed tracing interceptor to all HTTP clients (`traceparent` header).
+* **PII Redaction**: Mask passwords, credit cards, bank account numbers, SSNs, and email addresses before streaming logs or error traces to Datadog Intake.
+
+---
+
+## 6. SANITIZATION & BRANDING POLICY
+* Strictly ZERO mentions of proprietary enterprise brand names or internal corporate identifiers. Always use generic enterprise nomenclature (`Enterprise Mobile Platform`, `com.enterprise.mobile`, `access.enterprise.internal`).
+* Strictly ZERO emojis across code comments, commit messages, or diagrams.
 ```
+  </TabItem>
 
-### Running iOS XCUITest Locally
-```bash
-# Execute on iOS Simulator via xcodebuild
-xcodebuild test \
-  -workspace EnterpriseMobile.xcworkspace \
-  -scheme EnterpriseMobileUITests \
-  -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.0'
-```
+  <TabItem label="ChatGPT Enterprise Instructions">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+      <span>Paste into ChatGPT <strong>Custom Instructions</strong> or Custom GPT Instructions:</span>
+      <a href="/downloads/chatgpt-enterprise-instructions.md" download="chatgpt-enterprise-instructions.md" class="portal-download-btn" style="padding: 6px 14px; font-size: 0.8rem;">
+        Download chatgpt-enterprise-instructions.md
+      </a>
+    </div>
 
-### Running Maestro Locally
-```bash
-# Execute YAML flow against connected simulator/emulator
-maestro test .maestro/flows/02-offline-order-sync.yaml
+````markdown
+# ==============================================================================
+# CHATGPT CUSTOM INSTRUCTIONS & SYSTEM PROMPT: ENTERPRISE MOBILE ARCHITECT
+# For use in: ChatGPT Web, ChatGPT Enterprise, or Custom GPT Setup
+# ==============================================================================
+
+Copy and paste the text below into your ChatGPT **Custom Instructions** (in Settings > Custom Instructions > "How would you like ChatGPT to respond?") or in the **Instructions** field of an Enterprise Custom GPT:
+
+```text
+You are an expert Senior Mobile Platform Architect and Principal Engineer for the Enterprise Mobile Platform.
+You assist developers in writing production-ready, secure, and compliant mobile code for:
+1. Native Android (Kotlin & Jetpack Compose)
+2. Native iOS (Swift & SwiftUI)
+3. React Native (TypeScript)
+
+Whenever the user asks you to write code, review PRs, design architecture, or troubleshoot bugs, you MUST follow these enterprise rules:
+
+1. ARCHITECTURAL INVARIANTS:
+- Clean Architecture: Presentation (UI + ViewModel/Hook) -> Domain (Pure Use Cases/Business Rules) -> Data (Repository + Cache + Remote). Zero framework imports in Domain layer.
+- Resilience: All remote HTTP/gRPC operations must use the Enterprise Circuit Breaker (CLOSED, OPEN, HALF_OPEN) with local cache fallback.
+- Offline Outbox: Queue offline mutations to local SQLite/Room/CoreData and reconcile automatically upon network restore with idempotency keys.
+- Feature Flags: Guard new capabilities with remote feature flags (feature-flags.enterprise.internal).
+
+2. SECURITY & SECRETS:
+- ZERO hardcoded API keys, secrets, or certificates. Read from env vars or keystores.
+- Android: Hardware-backed KeyStore (AndroidKeyStore) with AES-256-GCM.
+- iOS: Keychain Services with kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly.
+- React Native: Use react-native-keychain. Never store tokens in unencrypted AsyncStorage.
+- MDM Remote Wipe: Implement listeners to shred keys, purge local databases, and terminate app runtime gracefully.
+
+3. PLATFORM CODING STANDARDS:
+- Android: Kotlin 1.9+, Jetpack Compose, Coroutines + StateFlow, Hilt DI. Never hardcode Dispatchers.IO in ViewModels (always inject CoroutineDispatcher).
+- iOS: Swift 6 concurrency (@MainActor, Sendable, async/await), SwiftUI, Swift Package Manager (SPM).
+- React Native: Strict TypeScript, functional components with hooks only, Redux Toolkit or Zustand, FlashList for long lists.
+
+4. MANDATORY TESTING (80% COVERAGE REQUIREMENT):
+- Strict 80% line and branch diff coverage required on all PRs.
+- ALWAYS GENERATE BOTH:
+  1. The complete production feature implementation (Model, Service, Repository, ViewModel/Hook).
+  2. The complete unit test file covering Success, Empty state, and Error handling.
+- Android Unit: JUnit 5 + Turbine + Mockk.
+- iOS Unit: XCTest (XCTestCase) + Swift Testing macros.
+- React Native Unit: Jest + React Native Testing Library (@testing-library/react-native).
+- UI Automation: Android Espresso, iOS XCUITest, cross-platform Maestro YAML.
+- Hermetic Network Testing: OkHttp MockWebServer (Android), URLProtocol stubs (iOS), MSW (React Native). ZERO live network egress in tests.
+
+5. OBSERVABILITY & BRANDING:
+- Initialize Datadog RUM in app startup. Redact all PII (passwords, payment cards, SSNs, emails).
+- Strictly ZERO emojis in code, comments, or commit messages.
+- Use generic enterprise naming (Enterprise Mobile Platform, com.enterprise.mobile).
 ```
 
 ---
 
-## 5. Screenshot Placeholders
+## Ready-to-Use Developer Prompt Templates for ChatGPT
 
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <h4 class="portal-screenshot-title">Android Studio Espresso Test Execution Matrix</h4>
-  </div>
-  <p class="portal-screenshot-desc">
-    Display the Android Studio Run view showing green execution checkmarks across all Espresso instrumentation tests with individual test duration timestamps.
-  </p>
-  <span class="portal-screenshot-path">docs/assets/testing/android-studio-espresso-run.png</span>
-</div>
+When asking ChatGPT to generate mobile features, copy and paste one of these prompt templates:
 
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <h4 class="portal-screenshot-title">Xcode XCUITest Report with Automatic Failure Screen Diffs</h4>
-  </div>
-  <p class="portal-screenshot-desc">
-    Capture the Xcode Test Report Navigator window showing the hierarchy of XCUITest executions with duration timestamps and attached failure snapshots.
-  </p>
-  <span class="portal-screenshot-path">docs/assets/testing/xcode-xcuitest-report.png</span>
-</div>
+### Prompt 1: Scaffolding a List Feature with API Fetch
+```text
+Role: Senior Mobile Platform Architect.
+Task: Implement a feature to fetch and display a list of [Orders / Products / Inventory] from endpoint GET /api/v1/[resource].
+Target Platform: [Android Kotlin / iOS Swift / React Native TypeScript]
+
+Requirements:
+1. Follow Clean Architecture: Model -> ApiService -> Repository -> ViewModel/Hook.
+2. Wrap network call in Enterprise Circuit Breaker with local cache fallback.
+3. Handle Loading, Success(List), and Error states cleanly.
+4. MANDATORY: Generate the complete corresponding unit test file using [JUnit 5 + Turbine / XCTest / Jest].
+   - Test 1: Successful response parsing and state transition.
+   - Test 2: Error 500 handling.
+   - Test 3: Empty list behavior.
+```
+
+### Prompt 2: Writing a Hermetic Network Test
+```text
+Task: Write a hermetic unit test for [ApiServiceName] without live network access.
+Target Platform: [Android / iOS / React Native]
+Requirements:
+1. Use [OkHttp MockWebServer / iOS MockURLProtocol / MSW].
+2. Mock endpoint: GET /api/v1/orders/ORD-101.
+3. Test edge case: HTTP 429 Too Many Requests with Retry-After: 5 header.
+4. Verify client triggers exponential backoff and updates UI state accordingly.
+```
+
+### Prompt 3: Writing a Native UI Automation Test
+```text
+Task: Write an automated UI test for [LoginScreen / OrderCheckoutScreen].
+Target Platform: [Android Espresso / iOS XCUITest / Maestro YAML]
+Requirements:
+1. Find elements by ID or accessibility identifier.
+2. Input text, click submit button, and assert confirmed status.
+3. Handle asynchronous waiting without using hardcoded Thread.sleep() (use IdlingResource / waitForExistence).
+```
+````
+  </TabItem>
+</Tabs>
 
 
-<!-- ============================================================================== -->
-<!-- END OF SECTION 7.2: UI & MAESTRO AUTOMATED E2E TESTING -->
-<!-- ============================================================================== -->
+---------------------------------------------
 
 
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-<!-- START OF SECTION 7.3: MOCKWEBSERVER & HERMETIC NETWORK STUBS -->
-<!-- SOURCE FILE: 07-mock-web-server.mdx -->
-<!-- RECOMMENDED GIT TARGET: docs/testing/07-mock-web-server.mdx -->
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
+
 
 ---
-title: "07.3 MockWebServer & Hermetic Network Stubs"
-description: "Hermetic API mocking and contract stubbing: OkHttp MockWebServer, iOS URLProtocol stubs, Mock Service Worker (MSW), and consumer-driven contract testing."
+title: Enterprise Mobile Prompt Engineering Catalog
+description: Standardized prompt templates for GitHub Copilot and ChatGPT Enterprise to scaffold Clean Architecture features, MockWebServer tests, offline queues, and CI diagnostics.
 sidebar:
   order: 4
-  label: "7.3 Mocking API & Contract Stubs"
+  label: Prompt Templates
 ---
 
-import DiagramExpand from './DiagramExpand.astro';
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">HERMETIC TESTING</span>
-    <span class="portal-hub-tag">MODULE 07.3 &bull; NETWORK VIRTUALIZATION</span>
+    <span class="portal-badge-hub">[GENAI &amp; DEVELOPER PRODUCTIVITY]</span>
+    <span class="portal-hub-tag">PROMPT ENGINEERING &bull; CODE SCAFFOLDING</span>
   </div>
-  <h1 class="portal-hero-title">MockWebServer &amp; Hermetic Network Stubs</h1>
-  <p class="portal-hero-desc">
-    Hermetic test suites achieve 100% determinism by cutting off all external network egress. By virtualizing backend APIs using local loopback servers and URLProtocol stubs, mobile applications test real HTTP parsing, error recovery, token rotation, and network degradation without depending on flaky staging environments.
-  </p>
+  <div class="portal-hero-title">Enterprise Mobile Prompt Engineering Catalog</div>
+  <div class="portal-hero-desc">
+    Standardized, reusable prompt templates designed for <strong>GitHub Copilot Chat</strong> and <strong>ChatGPT Enterprise</strong>. Using these structured prompts guarantees that generated code adheres to 4-Layer Clean Architecture, wraps network calls in the Enterprise Circuit Breaker, and includes hermetic unit tests meeting the 80% diff coverage gate.
+  </div>
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Zero Network Flake</div>
-      <div class="portal-cap-desc">100% offline determinism &bull; No staging environment outages</div>
+      <div class="portal-cap-title">Feature Scaffolding</div>
+      <div class="portal-cap-desc">Generates Model, Service, Repository, ViewModel &amp; Unit Test in one pass</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Edge Case Injection</div>
-      <div class="portal-cap-desc">Simulate HTTP 429, 500, token expired 401, and socket timeouts</div>
+      <div class="portal-cap-title">Hermetic API Mocking</div>
+      <div class="portal-cap-desc">OkHttp MockWebServer, iOS MockURLProtocol &amp; React Native MSW stubs</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Path Dispatchers</div>
-      <div class="portal-cap-desc">Dynamic route matching for complex multi-step user transactions</div>
+      <div class="portal-cap-title">Offline Outbox Sync</div>
+      <div class="portal-cap-desc">Encrypted SQLite/Room/SwiftData persistence with idempotency keys</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Contract Verification</div>
-      <div class="portal-cap-desc">JSON schema validation &bull; Consumer-driven contract guarantees</div>
+      <div class="portal-cap-title">Bitrise CI Diagnostics</div>
+      <div class="portal-cap-desc">Root-cause extraction from compiler, test, and signing logs</div>
     </div>
   </div>
 </div>
 
----
-
-## 1. Hermetic Testing Architecture
-
-During automated execution, the application HTTP client is redirected to a local loopback listener running directly in the test process. Zero network packets escape to external servers:
-
-<DiagramExpand title="HERMETIC NETWORK INTERCEPTION ARCHITECTURE">
-
-```mermaid
-graph LR
-    subgraph AppCode ["MOBILE APP RUNTIME"]
-        UI["UI View / ViewModel"] --> Client["HTTP Engine<br/>Retrofit &bull; URLSession &bull; Axios"]
-    end
-
-    subgraph InterceptionBoundary ["HERMETIC TEST BOUNDARY"]
-        Client --> Interceptor{"Target URL Config"}
-        Interceptor -->|Debug / Prod| Cloud["External API Gateway<br/>https://api.enterprise.com<br/>(BLOCKED IN CI)"]
-        Interceptor -->|Test Execution| Loopback["Local Loopback Listener<br/>http://localhost:8080"]
-    end
-
-    subgraph MockEngine ["MOCK DISPATCH ENGINE"]
-        Loopback --> Dispatcher["Dynamic Path Dispatcher"]
-        Dispatcher -->|/api/v1/auth| R1["HTTP 200: auth_success.json"]
-        Dispatcher -->|/api/v1/orders| R2["HTTP 201: order_created.json"]
-        Dispatcher -->|/api/v1/sync| R3["HTTP 429: rate_limit.json"]
-        Dispatcher -->|Invalid Path| R4["HTTP 404: Not Found"]
-    end
-
-    classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
-    classDef iosNode fill:#25153a,stroke:#a855f7,stroke-width:1.5px,color:#d8b4fe;
-    classDef rnNode fill:#0d2833,stroke:#06b6d4,stroke-width:1.5px,color:#67e8f9;
-    classDef secNode fill:#31141e,stroke:#f43f5e,stroke-width:1.5px,color:#fda4af;
-    classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
-
-    class UI,Client platformNode;
-    class Interceptor,Loopback iosNode;
-    class Cloud secNode;
-    class Dispatcher,R1,R2,R3,R4 cloudNode;
-```
-
-</DiagramExpand>
-
----
-
-## 2. Multi-Platform Implementation Patterns
-
-<Tabs>
-  <TabItem label="Android (OkHttp MockWebServer)">
-    Square's **MockWebServer** is the gold standard for Android. It runs an in-memory HTTP server on the test thread, allowing full verification of headers, bodies, and network retries:
-
-    ```kotlin
-    package com.enterprise.mobile.data.remote
-
-    import io.kotest.matchers.shouldBe
-    import kotlinx.coroutines.test.runTest
-    import okhttp3.OkHttpClient
-    import okhttp3.mockwebserver.Dispatcher
-    import okhttp3.mockwebserver.MockResponse
-    import okhttp3.mockwebserver.MockWebServer
-    import okhttp3.mockwebserver.RecordedRequest
-    import org.junit.jupiter.api.AfterEach
-    import org.junit.jupiter.api.BeforeEach
-    import org.junit.jupiter.api.Test
-    import retrofit2.Retrofit
-    import retrofit2.converter.kotlinx.serialization.asConverterFactory
-    import kotlinx.serialization.json.Json
-    import okhttp3.MediaType.Companion.toMediaType
-    import java.util.concurrent.TimeUnit
-
-    class HermeticOrderApiTest {
-
-        private lateinit var server: MockWebServer
-        private lateinit var api: OrderApiService
-
-        @BeforeEach
-        fun setUp() {
-            server = MockWebServer()
-            server.start()
-
-            val retrofit = Retrofit.Builder()
-                .baseUrl(server.url("/"))
-                .client(OkHttpClient.Builder().build())
-                .addConverterFactory(Json.asConverterFactory("application/json".toMediaType()))
-                .build()
-
-            api = retrofit.create(OrderApiService::class.java)
-        }
-
-        @AfterEach
-        fun tearDown() {
-            server.shutdown()
-        }
-
-        @Test
-        fun `given valid order, dispatcher responds with 200 and parses body`() = runTest {
-            // Configure custom path dispatcher
-            server.dispatcher = object : Dispatcher() {
-                override fun dispatch(request: RecordedRequest): MockResponse {
-                    return when (request.path) {
-                        "/api/v1/orders/ORD-94812" -> MockResponse()
-                            .setResponseCode(200)
-                            .setHeader("Content-Type", "application/json")
-                            .setBody("""{"id":"ORD-94812","status":"APPROVED","totalCents":15400}""")
-                        else -> MockResponse().setResponseCode(404)
-                    }
-                }
-            }
-
-            // Act
-            val response = api.fetchOrder("ORD-94812")
-
-            // Assert
-            response.id shouldBe "ORD-94812"
-            response.status shouldBe "APPROVED"
-
-            // Verify outbound request headers
-            val recorded = server.takeRequest(5, TimeUnit.SECONDS)
-            recorded?.path shouldBe "/api/v1/orders/ORD-94812"
-            recorded?.getHeader("Accept") shouldBe "application/json"
-        }
-
-        @Test
-        fun `given 429 rate limit with retry-after header, client triggers backoff`() = runTest {
-            server.enqueue(
-                MockResponse()
-                    .setResponseCode(429)
-                    .setHeader("Retry-After", "5")
-                    .setBody("""{"error":"TOO_MANY_REQUESTS"}""")
-            )
-
-            val result = runCatching { api.fetchOrder("ORD-BURST") }
-            result.isFailure shouldBe true
-        }
-    }
-    ```
-  </TabItem>
-
-  <TabItem label="iOS (Custom URLProtocol Stub)">
-    On iOS, **`URLProtocol`** intercepts network traffic at the Foundation layer, making it completely invisible to application repositories:
-
-    ```swift
-    import Foundation
-    import Testing
-    @testable import EnterpriseOrderFeature
-
-    final class MockURLProtocol: URLProtocol {
-        static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-
-        override class func canInit(with request: URLRequest) -> Bool {
-            return true // Intercept all requests
-        }
-
-        override class func canonicalRequest(for request: URLRequest) -> URLRequest {
-            return request
-        }
-
-        override func startLoading() {
-            guard let handler = MockURLProtocol.requestHandler else {
-                client?.urlProtocol(self, didFailWithError: URLError(.badURL))
-                return
-            }
-
-            do {
-                let (response, data) = try handler(request)
-                client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-                client?.urlProtocol(self, didLoad: data)
-                client?.urlProtocolDidFinishLoading(self)
-            } catch {
-                client?.urlProtocol(self, didFailWithError: error)
-            }
-        }
-
-        override func stopLoading() {}
-    }
-
-    @Suite("Hermetic Network Test Suite")
-    struct HermeticNetworkTests {
-
-        @Test("Interprets HTTP 500 error and triggers circuit breaker")
-        func testInternalServerErrorHandling() async throws {
-            // Configure custom session
-            let config = URLSessionConfiguration.ephemeral
-            config.protocolClasses = [MockURLProtocol.self]
-            let session = URLSession(configuration: config)
-
-            MockURLProtocol.requestHandler = { request in
-                let response = HTTPURLResponse(
-                    url: request.url!,
-                    statusCode: 500,
-                    httpVersion: nil,
-                    headerFields: ["Content-Type": "application/json"]
-                )!
-                let data = Data("""{"error":"INTERNAL_SERVER_ERROR"}""".utf8)
-                return (response, data)
-            }
-
-            let networkClient = APIClient(session: session)
-            let result = await networkClient.fetchOrder(id: "ORD-FAIL")
-
-            #expect(result == .serverError)
-        }
-    }
-    ```
-  </TabItem>
-
-  <TabItem label="React Native (MSW - Mock Service Worker)">
-    React Native uses **MSW (Mock Service Worker)** to intercept requests at the Node / React Native runtime level:
-
-    ```typescript
-    import { setupServer } from 'msw/node';
-    import { rest } from 'msw';
-    import { orderApiClient } from '../api/orderApiClient';
-
-    const server = setupServer(
-      rest.get('https://api.enterprise.internal/api/v1/orders/:id', (req, res, ctx) => {
-        const { id } = req.params;
-        if (id === 'ORD-94812') {
-          return res(
-            ctx.status(200),
-            ctx.json({ id: 'ORD-94812', totalCents: 15400, status: 'CONFIRMED' })
-          );
-        }
-        return res(ctx.status(404), ctx.json({ message: 'Order not found' }));
-      }),
-
-      rest.post('https://api.enterprise.internal/api/v1/orders', (req, res, ctx) => {
-        return res(
-          ctx.status(201),
-          ctx.delay(100), // Simulate network latency
-          ctx.json({ status: 'QUEUED' })
-        );
-      })
-    );
-
-    beforeAll(() => server.listen());
-    afterEach(() => server.resetHandlers());
-    afterAll(() => server.close());
-
-    test('successfully fetches order fixture without live network access', async () => {
-      const order = await orderApiClient.getOrder('ORD-94812');
-      expect(order.id).toBe('ORD-94812');
-      expect(order.totalCents).toBe(15400);
-    });
-    ```
-  </TabItem>
-</Tabs>
-
----
-
-## 3. Simulating Network Degraded Scenarios
-
-To ensure resilience, test suites must explicitly assert behavior under hostile network conditions:
+## Prompt Template Matrix
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Scenario</th>
-        <th>Mock Implementation</th>
-        <th>Expected Client Behavior</th>
+        <th>Template Name</th>
+        <th>Recommended AI Tool</th>
+        <th>Target Runtimes</th>
+        <th>Guaranteed Output Artifacts</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>Token Expiry (HTTP 401)</strong></td>
-        <td>First request returns 401; second request (refresh) returns 200; third request retries original call.</td>
-        <td>Transparent token refresh without logging user out. Zero duplicate prompt screens.</td>
+        <td><strong>Clean Architecture Feature + Unit Test</strong></td>
+        <td>ChatGPT Enterprise / Copilot Chat</td>
+        <td>Android (Kotlin), iOS (Swift), React Native (TS)</td>
+        <td>Domain Entity, Repository Contract &amp; Implementation, ViewModel/Hook, and JUnit 5 / XCTest / Jest test suite.</td>
       </tr>
       <tr>
-        <td><strong>Rate Limiting (HTTP 429)</strong></td>
-        <td>Returns 429 with <code>Retry-After: 3</code> header.</td>
-        <td>Client honors backoff delay, transitions UI to non-blocking warning, and retries automatically.</td>
+        <td><strong>Hermetic Network Test Suite</strong></td>
+        <td>GitHub Copilot (In-IDE)</td>
+        <td>Android, iOS, React Native</td>
+        <td>Zero-egress local mock server test verifying HTTP 200, HTTP 429 backoff, and HTTP 500 fallback states.</td>
       </tr>
       <tr>
-        <td><strong>Bandwidth Throttling</strong></td>
-        <td><code>response.throttleBody(1024, 1, TimeUnit.SECONDS)</code> (1 KB/sec).</td>
-        <td>Progress bar updates smoothly; timeout cancellation works cleanly if user navigates away.</td>
+        <td><strong>Offline Outbox Queue</strong></td>
+        <td>ChatGPT Enterprise</td>
+        <td>Room, SwiftData / CoreData, SQLite</td>
+        <td>Encrypted local entity, OutboxSyncWorker, idempotency header injection, and offline queueing test.</td>
       </tr>
       <tr>
-        <td><strong>Socket Timeout / Disconnect</strong></td>
-        <td><code>server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))</code></td>
-        <td>Immediate fallback to offline outbox queue; user notified via non-intrusive status toast.</td>
+        <td><strong>Bitrise CI Failure Triage</strong></td>
+        <td>Copilot Chat (<code>@bitrise</code>) / ChatGPT</td>
+        <td>Bitrise Pipelines (<code>camp.yml</code> / <code>bitrise.yml</code>)</td>
+        <td>Exact failing step identification, exit code root cause, and copy-paste remediation fix.</td>
       </tr>
     </tbody>
   </table>
@@ -1601,482 +1254,141 @@ To ensure resilience, test suites must explicitly assert behavior under hostile 
 
 ---
 
-## 4. Screenshot Placeholders
+## Copy-Paste Prompt Templates
 
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <h4 class="portal-screenshot-title">MockWebServer Terminal Execution &amp; Dispatcher Logs</h4>
-  </div>
-  <p class="portal-screenshot-desc">
-    Capture the console output during a test run showing MockWebServer receiving requests, logging HTTP methods and paths, and dispatching JSON responses in sub-milliseconds.
-  </p>
-  <span class="portal-screenshot-path">docs/assets/testing/mockwebserver-terminal-logs.png</span>
-</div>
+<Tabs>
+  <TabItem label="Feature + 80% Unit Test">
+    ```text
+    Role: Senior Mobile Platform Architect.
+    Task: Implement a feature to fetch and display a list of [Orders / Products / Inventory] from endpoint GET /api/v1/[resource].
+    Target Platform: [Android Kotlin / iOS Swift / React Native TypeScript]
 
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <h4 class="portal-screenshot-title">JSON Fixture Catalog Project Tree Structure</h4>
-  </div>
-  <p class="portal-screenshot-desc">
-    Display the IDE project navigator highlighting the `src/test/resources/fixtures/` directory containing standardized success, validation error, and edge case JSON payloads.
-  </p>
-  <span class="portal-screenshot-path">docs/assets/testing/json-fixtures-directory-tree.png</span>
-</div>
+    Requirements:
+    1. Follow Clean Architecture: Model -> ApiService -> Repository -> ViewModel/Hook.
+    2. Wrap network call in Enterprise Circuit Breaker with local cache fallback.
+    3. Handle Loading, Success(List), and Error states cleanly.
+    4. MANDATORY: Generate the complete corresponding unit test file using [JUnit 5 + Turbine / XCTest / Jest].
+       - Test 1: Successful response parsing and state transition.
+       - Test 2: Error 500 handling with fallback cache verification.
+       - Test 3: Empty list behavior.
+    ```
+  </TabItem>
+
+  <TabItem label="Hermetic MockWebServer Test">
+    ```text
+    Task: Write a hermetic unit test for [ApiServiceName] without live network access.
+    Target Platform: [Android / iOS / React Native]
+
+    Requirements:
+    1. Use [OkHttp MockWebServer / iOS MockURLProtocol / MSW].
+    2. Mock endpoint: GET /api/v1/orders/ORD-101.
+    3. Test edge case: HTTP 429 Too Many Requests with Retry-After: 5 header.
+    4. Verify client triggers exponential backoff and updates UI state accordingly.
+    5. Verify zero network requests escape the local mock server.
+    ```
+  </TabItem>
+
+  <TabItem label="Offline Outbox Sync">
+    ```text
+    Task: Implement an offline mutation queue for submitting a new [Order / Inspection Report].
+    Target Platform: [Android Room / iOS SwiftData / React Native SQLite]
+
+    Requirements:
+    1. When offline, persist mutation with status PENDING to local encrypted database.
+    2. Expose an OutboxSyncWorker that monitors network connectivity.
+    3. Upon reconnect, dispatch mutations with idempotent header: Idempotency-Key: [UUID].
+    4. Update local record to SYNCED upon HTTP 200/201 response.
+    5. Generate corresponding unit test verifying mutation queuing while offline.
+    ```
+  </TabItem>
+
+  <TabItem label="Bitrise Log Diagnosis">
+    ```text
+    Role: Bitrise CI/CD DevOps Specialist.
+    Task: Analyze the following build log excerpt from Bitrise workflow [deploy-staging-qa].
+
+    Build Log Excerpt:
+    [PASTE LOG CHUNK HERE]
+
+    Questions to Answer:
+    1. What was the exact root cause of the failure (step name, exit code, error trace)?
+    2. Is this failure caused by a compilation error, a failed unit test, a lint gate, or a code signing issue?
+    3. Provide the exact shell command or source code modification needed to fix the issue.
+    ```
+  </TabItem>
+</Tabs>
 
 
-<!-- ============================================================================== -->
-<!-- END OF SECTION 7.3: MOCKWEBSERVER & HERMETIC NETWORK STUBS -->
-<!-- ============================================================================== -->
 
-
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-<!-- START OF SECTION 7.4: QUALITY GATES, CODE COVERAGE THRESHOLDS & STATIC ANALYSIS -->
-<!-- SOURCE FILE: 07-quality-gates.mdx -->
-<!-- RECOMMENDED GIT TARGET: docs/testing/07-quality-gates.mdx -->
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
+---------------------------------
 
 ---
-title: "07.4 Quality Gates, Code Coverage Thresholds & Static Analysis"
-description: "Enterprise mobile quality gates: 80% test coverage thresholds, JaCoCo, Slather, SonarQube, Detekt, SwiftLint, and automated Danger PR verification."
+title: GenAI Searchable FAQs, Troubleshooting & LLM Index
+description: Searchable knowledge base for enterprise mobile AI workflows, Bitrise MCP troubleshooting ladder, and the machine-readable llms.txt index.
 sidebar:
   order: 5
-  label: "7.4 Quality & Coverage Gates"
+  label: FAQs & Troubleshooting
 ---
-
-import DiagramExpand from './DiagramExpand.astro';
-import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">QUALITY GOVERNANCE</span>
-    <span class="portal-hub-tag">MODULE 07.4 &bull; QUALITY GATES &amp; METRICS</span>
+    <span class="portal-badge-hub">[GENAI &amp; DEVELOPER PRODUCTIVITY]</span>
+    <span class="portal-hub-tag">KNOWLEDGE BASE &bull; TROUBLESHOOTING</span>
   </div>
-  <h1 class="portal-hero-title">Quality Gates &amp; Coverage Thresholds</h1>
-  <p class="portal-hero-desc">
-    Continuous quality verification is enforced by automated stage gates in CI/CD. The enterprise mandates an 80% line and branch coverage threshold on all new and modified code, coupled with strict static analysis via Detekt, SwiftLint, SonarQube, and automated Danger PR bot checks.
-  </p>
+  <div class="portal-hero-title">GenAI Searchable FAQs &amp; Troubleshooting</div>
+  <div class="portal-hero-desc">
+    Curated engineering Q&amp;A pairs, pre-PR verification gates, and troubleshooting runbooks optimized for both human developers and Vector DB / RAG retrieval pipelines.
+  </div>
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">80% Diff Coverage</div>
-      <div class="portal-cap-desc">Strict threshold on modified lines &bull; Zero repository regressions</div>
+      <div class="portal-cap-title">RAG-Ready Q&amp;A</div>
+      <div class="portal-cap-desc">Structured answers for architecture, security, and CI/CD gates</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Multi-Tool Coverage</div>
-      <div class="portal-cap-desc">JaCoCo (Android) &bull; Slather (iOS) &bull; Istanbul LCOV (React Native)</div>
+      <div class="portal-cap-title">MCP Troubleshooting</div>
+      <div class="portal-cap-desc">Resolutions for 401/403 gateway errors and PAT expirations</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Automated Linting</div>
-      <div class="portal-cap-desc">Detekt &bull; ktlint &bull; SwiftLint &bull; ESLint &bull; TypeScript strict</div>
+      <div class="portal-cap-title">Pre-PR Verification</div>
+      <div class="portal-cap-desc">Mandatory checklist before submitting AI-assisted Pull Requests</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Danger PR Enforcement</div>
-      <div class="portal-cap-desc">Automated PR comments &bull; Blocks merging on coverage failure</div>
+      <div class="portal-cap-title">LLM Index (llms.txt)</div>
+      <div class="portal-cap-desc">Standardized machine-readable portal index at <code>/llms.txt</code></div>
     </div>
   </div>
 </div>
 
----
-
-## 1. Quality Gate Architecture &amp; Enforcement Flow
-
-Every Pull Request submitted to an enterprise repository must pass through four sequential verification stages before merge approval:
-
-<DiagramExpand title="ENTERPRISE QUALITY GATES &amp; COVERAGE PIPELINE">
-
-```mermaid
-graph TD
-    subgraph TriggerPhase ["1. PULL REQUEST TRIGGER"]
-        PR["Developer Submits PR<br/>feature/order-summary &rarr; main"]
-    end
-
-    subgraph StaticPhase ["2. STATIC ANALYSIS &amp; LINTING"]
-        PR --> LintAndroid["Detekt &amp; ktlint<br/>Zero code smells"]
-        PR --> LintIOS["SwiftLint Strict<br/>Zero warnings"]
-        PR --> LintRN["ESLint &amp; TSC<br/>Zero type errors"]
-    end
-
-    subgraph TestCovPhase ["3. TEST EXECUTION &amp; COVERAGE INSTRUMENTATION"]
-        LintAndroid --> UnitAndroid["JUnit 5 Tests &rarr; JaCoCo XML"]
-        LintIOS --> UnitIOS["Swift Tests &rarr; Slather / xccov"]
-        LintRN --> UnitRN["Jest Tests &rarr; Istanbul LCOV"]
-    end
-
-    subgraph GovernancePhase ["4. SONARQUBE &amp; DANGER BOT GATEWAY"]
-        UnitAndroid --> Sonar["SonarQube Enterprise Analysis"]
-        UnitIOS --> Sonar
-        UnitRN --> Sonar
-        
-        Sonar --> Eval{"Diff Coverage &gt;= 80%<br/>&amp; Zero Sev 1 Vulnerabilities?"}
-        Eval -->|Passed| DangerPass["Danger Bot Posts Success<br/>Green GitHub Check"]
-        Eval -->|Failed| DangerFail["Danger Bot Blocks PR<br/>Detailed Missing Line Table"]
-    end
-
-    DangerPass --> Merge["Merge Allowed &bull; Bitrise Release Pipeline"]
-    DangerFail --> Blocked["Merge Blocked &bull; Author Action Required"]
-
-    classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
-    classDef iosNode fill:#25153a,stroke:#a855f7,stroke-width:1.5px,color:#d8b4fe;
-    classDef rnNode fill:#0d2833,stroke:#06b6d4,stroke-width:1.5px,color:#67e8f9;
-    classDef warnNode fill:#2a2012,stroke:#f59e0b,stroke-width:1.5px,color:#fde68a;
-    classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
-    classDef failNode fill:#31141e,stroke:#f43f5e,stroke-width:1.5px,color:#fda4af;
-
-    class PR,LintAndroid,UnitAndroid platformNode;
-    class LintIOS,UnitIOS iosNode;
-    class LintRN,UnitRN rnNode;
-    class Sonar,DangerPass,Merge cloudNode;
-    class Eval warnNode;
-    class DangerFail,Blocked failNode;
-```
-
-</DiagramExpand>
-
----
-
-## 2. Multi-Platform Coverage Configuration
-
-<Tabs>
-  <TabItem label="Android (JaCoCo Gradle Setup)">
-    The Android configuration enforces exclusion patterns for generated code, Compose UI previews, and Hilt dependency injection classes:
-
-    ```groovy
-    // app/build.gradle.kts
-    plugins {
-        id("jacoco")
-    }
-
-    jacoco {
-        toolVersion = "0.8.11"
-    }
-
-    val fileFilter = listOf(
-        "**/R.class",
-        "**/R$*.class",
-        "**/BuildConfig.*",
-        "**/Manifest*.*",
-        "**/*Test*.*",
-        "android/**/*.*",
-        "**/*_Hilt*.class",
-        "**/Hilt_*.class",
-        "**/*_Factory.class",
-        "**/*_MembersInjector.class",
-        "**/*ComposableSingletons*.*",
-        "**/*Preview*.*"
-    )
-
-    tasks.register<JacocoReport>("jacocoTestReport") {
-        dependsOn("testDebugUnitTest")
-        group = "Reporting"
-        description = "Generate JaCoCo coverage reports for Debug unit tests"
-
-        reports {
-            xml.required.set(true)
-            html.required.set(true)
-            csv.required.set(false)
-        }
-
-        val debugTree = fileTree("${layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
-            exclude(fileFilter)
-        }
-        val mainSrc = "${project.projectDir}/src/main/java"
-
-        sourceDirectories.setFrom(files(mainSrc))
-        classDirectories.setFrom(files(debugTree))
-        executionData.setFrom(fileTree(layout.buildDirectory.get()) {
-            include("jacoco/testDebugUnitTest.exec")
-        })
-    }
-
-    tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
-        dependsOn("jacocoTestReport")
-        violationRules {
-            rule {
-                limit {
-                    minimum = "0.80".toBigDecimal() // 80% Minimum Threshold
-                }
-            }
-        }
-    }
-    ```
-  </TabItem>
-
-  <TabItem label="iOS (Slather & Xcode Coverage)">
-    On iOS, **Slather** parses native `.xccovreport` binaries generated by `xcodebuild -enableCodeCoverage YES` and produces SonarQube-compatible XML:
-
-    ```ruby
-    # .slather.yml
-    coverage_service: sonarqube_xml
-    xcodeproj: EnterpriseMobile.xcodeproj
-    scheme: EnterpriseMobile
-    output_directory: ./build/reports/slather
-    ignore:
-      - "EnterpriseMobileTests/*"
-      - "EnterpriseMobileUITests/*"
-      - "**/Generated/*"
-      - "**/Preview Content/*"
-      - "**/Mocks/*"
-    ```
-
-    Execution in Bitrise CI:
-    ```bash
-    # Run tests with coverage enabled
-    xcodebuild test \
-      -workspace EnterpriseMobile.xcworkspace \
-      -scheme EnterpriseMobile \
-      -destination "platform=iOS Simulator,name=iPhone 16,OS=18.0" \
-      -enableCodeCoverage YES \
-      -resultBundlePath ./build/TestResults.xcresult
-
-    # Generate XML report via Slather
-    bundle exec slather
-    ```
-  </TabItem>
-
-  <TabItem label="React Native (Jest Coverage Thresholds)">
-    React Native defines explicit coverage enforcement directly in `jest.config.js`:
-
-    ```javascript
-    // jest.config.js
-    module.exports = {
-      preset: 'react-native',
-      collectCoverage: true,
-      collectCoverageFrom: [
-        'src/**/*.{ts,tsx}',
-        '!src/**/*.d.ts',
-        '!src/**/styles.ts',
-        '!src/**/__tests__/**',
-        '!src/**/mocks/**',
-      ],
-      coverageReporters: ['text', 'lcov', 'json-summary'],
-      coverageThreshold: {
-        global: {
-          branches: 80,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-      },
-    };
-    ```
-  </TabItem>
-</Tabs>
-
----
-
-## 3. Automated Danger PR Bot Verification
-
-The **Danger PR bot** runs as the final step in the Bitrise CI pipeline, analyzing pull request metadata, static analysis findings, and code coverage numbers before posting an actionable review comment:
-
-```ruby
-# Dangerfile
-# Enforce PR description length
-fail("Please provide a meaningful PR summary explaining your architectural changes.") if github.pr_body.length < 30
-
-# Check for tests on modified business logic
-has_source_changes = git.modified_files.any? { |file| file.start_with?("src/main", "Sources/") }
-has_test_changes = git.modified_files.any? { |file| file.start_with?("src/test", "Tests/") }
-
-if has_source_changes && !has_test_changes
-  warn("This PR modifies core application code without corresponding test modifications.")
-end
-
-# Check SonarQube / JaCoCo coverage report
-jacoco_report = "app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml"
-if File.exist?(jacoco_report)
-  coverage = parse_jacoco_coverage(jacoco_report)
-  if coverage < 80.0
-    fail("PR Code Coverage is #{coverage}%, which fails the mandatory 80% threshold.")
-  else
-    message("PR Code Coverage: #{coverage}% (Exceeds 80% threshold)")
-  end
-end
-```
-
----
-
-## 4. Screenshot Placeholders
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <h4 class="portal-screenshot-title">SonarQube Project Quality Gate Status Dashboard</h4>
-  </div>
-  <p class="portal-screenshot-desc">
-    Display the SonarQube dashboard for the enterprise mobile project showing the green "PASSED" badge with Line Coverage at 84.6%, zero High-Severity Security Hotspots, and zero critical code smells.
-  </p>
-  <span class="portal-screenshot-path">docs/assets/testing/sonarqube-quality-gate-passed.png</span>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <h4 class="portal-screenshot-title">Danger Bot Pull Request Verification Comment</h4>
-  </div>
-  <p class="portal-screenshot-desc">
-    Capture the GitHub Pull Request conversation tab showing the Danger bot automated comment with a formatted table of passed linters, code coverage statistics, and build status checkmarks.
-  </p>
-  <span class="portal-screenshot-path">docs/assets/testing/github-danger-pr-comment.png</span>
-</div>
-
-
-<!-- ============================================================================== -->
-<!-- END OF SECTION 7.4: QUALITY GATES, CODE COVERAGE THRESHOLDS & STATIC ANALYSIS -->
-<!-- ============================================================================== -->
-
-
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-<!-- START OF SECTION 7.5: REAL-DEVICE CLOUD TESTING WITH SAUCE LABS -->
-<!-- SOURCE FILE: 07-cloud-device-testing-saucelabs.mdx -->
-<!-- RECOMMENDED GIT TARGET: docs/testing/07-cloud-device-testing-saucelabs.mdx -->
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-
----
-title: "07.5 Real-Device Cloud Testing with Sauce Labs"
-description: "Master automated physical device testing in Bitrise using Sauce Labs: saucelabs.request.yml, saucectl runner, parallel device pools, and artifact collection."
-sidebar:
-  order: 6
-  label: "7.5 Sauce Labs Device Cloud"
----
-
-import DiagramExpand from './DiagramExpand.astro';
-import { Tabs, TabItem } from '@astrojs/starlight/components';
-
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">QUALITY ENGINEERING</span>
-    <span class="portal-hub-tag">MODULE 07.5 &bull; REAL-DEVICE TESTING</span>
-  </div>
-  <h1 class="portal-hero-title">Real-Device Cloud Testing with Sauce Labs</h1>
-  <p class="portal-hero-desc">
-    Eliminate device fragmentation and hardware-specific runtime crashes by automating testing on physical Android and iOS hardware. Learn how to configure the Sauce Labs device cloud, structure <code>saucelabs.request.yml</code> and <code>.sauce/config.yml</code>, orchestrate the two-step Bitrise test workflow, and inspect video recordings and device telemetry.
-  </p>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Real-Device Farm</div>
-      <div class="portal-cap-desc">Thousands of physical iPhones &bull; Google Pixels &bull; Samsung Galaxies</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">2-Step Pipeline</div>
-      <div class="portal-cap-desc">Sauce Labs App Create &bull; Upload and Test &bull; Automatic ID export</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">saucectl CLI</div>
-      <div class="portal-cap-desc">Declarative runner &bull; Appium &bull; Espresso &bull; XCUITest &bull; Maestro</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Rich Artifacts</div>
-      <div class="portal-cap-desc">Full video replays &bull; Screenshots &bull; Console logs &bull; Network HAR</div>
-    </div>
-  </div>
-</div>
-
----
-
-## 1. Why Real-Device Cloud Testing Matters
-
-Simulators and emulators on developer laptops cannot accurately replicate physical device realities:
-* **OEM Customizations**: Samsung One UI, Xiaomi MIUI, and Google Pixel skins alter background task execution, battery optimization, and push notification delivery.
-* **Hardware Sensors &amp; GPU Constraints**: Camera APIs, biometric sensors (Face ID, Fingerprint), and GPU rendering engines behave differently on physical chipsets.
-* **OS Version Fragmentation**: Testing simultaneously across Android 11 through 15 and iOS 16 through 18 ensures backwards compatibility before general availability.
-
-Sauce Labs provides an enterprise cloud of real, physical mobile devices hosted in secure data centers, enabling automated regression tests on every staging build.
-
----
-
-## 2. Architecture at a Glance (The 2-Step Bitrise Workflow)
-
-The integration splits into two distinct, governed steps within your Bitrise pipeline:
-
-<DiagramExpand title="SAUCE LABS TWO-STEP PIPELINE ARCHITECTURE">
-
-```mermaid
-graph TD
-    subgraph BuildPhase ["1. COMPILATION PHASE"]
-        Clone["git-clone &bull; npm ci"] --> Compile["android-build or xcode-archive"]
-        Compile --> ReadyBin["Compiled Binary Ready<br/>$BITRISE_APK_PATH or $BITRISE_IPA_PATH"]
-    end
-
-    subgraph Step1 ["2. STEP 1: SAUCE LABS APP CREATE"]
-        ReqFile["Read saucelabs.request.yml<br/>from project root"] --> Register["Register App in Sauce Labs Storage API"]
-        Register --> ExportIDs["Export Environment Variables:<br/>$SAUCE_APP_NAME &bull; $SAUCE_APP_ID &bull; $SAUCE_APP_FILE_NAME"]
-    end
-
-    subgraph Step2 ["3. STEP 2: SAUCE LABS UPLOAD AND TEST"]
-        UploadBin["Upload Binary via Storage API<br/>https://api.us-west-1.saucelabs.com"] --> RunTest["Execute saucectl test_command<br/>Maestro / Espresso / XCUITest"]
-        RunTest --> StreamLogs["Stream Test Artifacts to Bitrise:<br/>Videos &bull; Screenshots &bull; HAR Network Logs"]
-    end
-
-    ReadyBin --> ReqFile
-    ExportIDs --> UploadBin
-
-    classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
-    classDef iosNode fill:#25153a,stroke:#a855f7,stroke-width:1.5px,color:#d8b4fe;
-    classDef rnNode fill:#0d2833,stroke:#06b6d4,stroke-width:1.5px,color:#67e8f9;
-    classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
-
-    class Clone,Compile,ReadyBin platformNode;
-    class ReqFile,Register,ExportIDs cloudNode;
-    class UploadBin,RunTest,StreamLogs iosNode;
-```
-
-</DiagramExpand>
-
----
-
-## 3. Step 1: Create the Request File (`saucelabs.request.yml`)
-
-Create a file named `saucelabs.request.yml` in the root directory of your repository. This file identifies your application in Sauce Labs storage:
-
-```yaml
-app_name: my-mobile-app
-platform: android # Allowed: android or ios
-owner_email: mobile-engineering@enterprise.internal
-team: mobile-platform
-description: Enterprise mobile application provisioned via Bitrise CI/CD
-
-# Optional Metadata Fields
-business_unit: corporate
-environment: staging
-repository: https://git.enterprise.internal/mobile-engineering/my-mobile-app.git
-```
-
-### Field Validation Rules
+## Frequently Asked Questions (FAQs)
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Field</th>
-        <th>Type</th>
-        <th>Constraint Rule</th>
+        <th>Developer Question</th>
+        <th>Enterprise Engineering Resolution</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><code>app_name</code></td>
-        <td>String</td>
-        <td>Must not be empty. Represents your application title in Sauce Labs App Storage.</td>
+        <td><strong>Why does my Bitrise build fail with "SonarQube Quality Gate Failed: Coverage below 80%" on AI-generated code?</strong></td>
+        <td>Enterprise policy mandates that all Pull Requests maintain <code>&gt;= 80%</code> line and branch diff coverage. Always instruct GitHub Copilot or ChatGPT to generate the companion unit test file alongside production code.</td>
       </tr>
       <tr>
-        <td><code>platform</code></td>
-        <td>Enum</td>
-        <td>Must be exactly <code>android</code> or <code>ios</code>.</td>
+        <td><strong>How do I prevent AI from generating hardcoded secrets or API keys?</strong></td>
+        <td>Ensure <code>.github/copilot-instructions.md</code> is present in the repository root. On Android, store sensitive material in <code>AndroidKeyStore</code>; on iOS, use <code>KeychainServices</code>; on React Native, use <code>react-native-keychain</code>.</td>
       </tr>
       <tr>
-        <td><code>owner_email</code></td>
-        <td>Email</td>
-        <td>Must be a valid enterprise email address for test failure alerts.</td>
+        <td><strong>How do I test network calls in AI-generated unit tests without hitting staging servers?</strong></td>
+        <td>Live network egress in unit tests is prohibited. Use OkHttp <code>MockWebServer</code> on Android, custom <code>URLProtocol</code> stubs on iOS, and <code>msw</code> (Mock Service Worker) on React Native.</td>
       </tr>
       <tr>
-        <td><code>team</code></td>
-        <td>String</td>
-        <td>Name of the owning mobile engineering squad.</td>
+        <td><strong>How does Bitrise MCP authenticate my identity?</strong></td>
+        <td>The TrueFoundry MCP Gateway currently authenticates requests using your Bitrise Personal Access Token (PAT) saved in TrueFoundry Auth Overrides. Upcoming CIMD support will transition this to automatic SSO token exchange.</td>
+      </tr>
+      <tr>
+        <td><strong>Can I use unapproved AI coding assistants on my workstation?</strong></td>
+        <td>No. Enterprise security guidelines authorize strictly <strong>GitHub Copilot</strong> (in-IDE) and <strong>ChatGPT Enterprise</strong> (web). All other AI coding tools are prohibited.</td>
       </tr>
     </tbody>
   </table>
@@ -2084,258 +1396,83 @@ repository: https://git.enterprise.internal/mobile-engineering/my-mobile-app.git
 
 ---
 
-## 4. Step 2: Configure the Test Runner (`.sauce/config.yml`)
+## Troubleshooting Ladder
 
-Sauce Labs uses the declarative `saucectl` CLI to orchestrate test execution across real device pools.
-
-Create a folder named `.sauce/` in your repository root, and place a `config.yml` file inside it:
-
-<Tabs>
-  <TabItem label="Android (Espresso)">
-    **`.sauce/config.yml` (Android Espresso)**
-    ```yaml
-    apiVersion: v1alpha
-    kind: espresso
-    sauce:
-      region: us-west-1
-      concurrency: 2
-      metadata:
-        build: "Bitrise Build $BITRISE_BUILD_NUMBER"
-        tags:
-          - "staging"
-          - "espresso"
-
-    espresso:
-      app: storage:$SAUCE_APP_ID
-      testApp: storage:$SAUCE_TEST_APP_ID
-
-    suites:
-      - name: "Pixel-Real-Device-Espresso"
-        devices:
-          - name: "Google Pixel.*"
-            platformVersion: "14"
-        testOptions:
-          class:
-            - "com.enterprise.mobile.ui.OrderCheckoutEspressoTest"
-
-      - name: "Samsung-Galaxy-Espresso"
-        devices:
-          - name: "Samsung Galaxy S.*"
-            platformVersion: "13"
-    ```
-  </TabItem>
-
-  <TabItem label="iOS (XCUITest)">
-    **`.sauce/config.yml` (iOS XCUITest)**
-    ```yaml
-    apiVersion: v1alpha
-    kind: xcuitest
-    sauce:
-      region: us-west-1
-      concurrency: 2
-      metadata:
-        build: "Bitrise Build $BITRISE_BUILD_NUMBER"
-        tags:
-          - "staging"
-          - "xcuitest"
-
-    xcuitest:
-      app: storage:$SAUCE_APP_ID
-      testApp: storage:$SAUCE_TEST_APP_ID
-
-    suites:
-      - name: "iPhone-Real-Device-XCUITest"
-        devices:
-          - name: "iPhone (15|16).*"
-            platformVersion: "18"
-        testOptions:
-          class:
-            - "OrderCheckoutXCUITest"
-    ```
-  </TabItem>
-
-  <TabItem label="Cross-Platform (Maestro)">
-    **`.sauce/config.yml` (Maestro YAML Flows)**
-    ```yaml
-    apiVersion: v1alpha
-    kind: maestro
-    sauce:
-      region: us-west-1
-      concurrency: 2
-      metadata:
-        build: "Bitrise Build $BITRISE_BUILD_NUMBER"
-        tags:
-          - "staging"
-          - "maestro"
-
-    maestro:
-      app: storage:$SAUCE_APP_ID
-      flows:
-        - ".maestro/flows/02-offline-order-sync.yaml"
-
-    suites:
-      - name: "Real-Device-Maestro-Android"
-        devices:
-          - name: "Google Pixel.*"
-            platformVersion: "14"
-      - name: "Real-Device-Maestro-iOS"
-        devices:
-          - name: "iPhone 16.*"
-            platformVersion: "18"
-    ```
-  </TabItem>
-</Tabs>
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Observed Symptom / Error</th>
+        <th>Probable Root Cause</th>
+        <th>Prescribed Corrective Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Copilot generates legacy callbacks instead of Swift Concurrency or Kotlin Coroutines.</strong></td>
+        <td>Local workspace root is missing <code>.github/copilot-instructions.md</code> or IDE extension has not reloaded.</td>
+        <td>Download <code>copilot-instructions.md</code>, place it in <code>.github/</code> at the repository root, and restart the IDE.</td>
+      </tr>
+      <tr>
+        <td><strong>Bitrise MCP returns <code>401 Unauthorized</code> in Copilot Chat.</strong></td>
+        <td>Personal Access Token (PAT) has expired (past 90 days) or was pasted with whitespace.</td>
+        <td>Generate a new 90-day PAT on Bitrise.io &gt; Account Settings &gt; Security, and update Auth Overrides in TrueFoundry MCP Gateway.</td>
+      </tr>
+      <tr>
+        <td><strong>Bitrise MCP returns <code>403 Forbidden</code> when listing apps or triggering workflows.</strong></td>
+        <td>PAT was generated with missing scopes, or enterprise entitlement in <code>access.enterprise.internal</code> is inactive.</td>
+        <td>Regenerate the Bitrise PAT with all workspace/app scopes enabled and verify your <code>TrueFoundry MCP Gateway - Bitrise Server</code> entitlement.</td>
+      </tr>
+      <tr>
+        <td><strong>Bitrise CI build fails with <code>SonarQube Quality Gate Failed: Coverage &lt; 80%</code>.</strong></td>
+        <td>AI assistant generated production feature code without companion unit test cases.</td>
+        <td>Use the Feature + Unit Test prompt template to generate tests covering Success, Empty state, and Error handling branches.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
 ---
 
-## 5. Step 3: Configure Bitrise Secrets &amp; Steps
+## Machine-Readable LLM Index (`public/llms.txt`)
 
-### 5.1 Store Sauce Labs Credentials in Bitrise Secrets
+The documentation portal serves a standardized `/llms.txt` index file at the website root so authorized AI assistants can index all architecture rules and page routes:
 
-In Bitrise &gt; **Workflow Editor &gt; Secrets Tab**, declare your API credentials:
-* `$SAUCE_USERNAME`: Your Sauce Labs account username.
-* `$SAUCE_ACCESS_KEY`: Your Sauce Labs alphanumeric access key (found under User Settings &gt; Access Key).
+```text
+# Enterprise Mobile Engineering Documentation (AI Index)
 
-### 5.2 Add Steps to `bitrise.yml`
+> Official platform architecture, security rules, and CI/CD standards for Enterprise mobile applications.
 
-Integrate the two steps into your `deploy-staging-qa` workflow:
+## Core Enterprise Architecture Rules:
+- Architecture: Layered Clean Architecture (Presentation -> Domain -> Data -> Infrastructure).
+- Resilience: All external HTTP network calls MUST be wrapped in the Enterprise Circuit Breaker SDK.
+- Observability: All mobile apps MUST initialize Datadog RUM (Real User Monitoring) on app startup.
+- CI/CD: Builds are automated on Bitrise using standard mobile workflows and camp.yml specifications.
+- Testing: Mandatory 80% line and branch diff coverage using JUnit 5, XCTest, Jest, Espresso, XCUITest, Maestro, and MockWebServer.
+- Distribution: Dev/QA builds deploy to Enterprise App Store; production builds deploy to Google Play / Apple App Store.
 
-```yaml
-# 1. Register App in Sauce Labs Storage
-- git::https://git.enterprise.internal/mobile-engineering/bitrise-step-sauce-labs-app-create.git@v1:
-    title: Sauce Labs App Create
-    inputs:
-    - yaml_file_path: "saucelabs.request.yml"
-    - sauce_username: $SAUCE_USERNAME
-    - sauce_access_key: $SAUCE_ACCESS_KEY
+## Official Internal SDK Catalogs:
+- Android: com.enterprise.mobile:core, com.enterprise.mobile:auth, com.enterprise.mobile:network
+- iOS: EnterpriseCore, EnterpriseAuth, EnterpriseResilience
+- React Native: @enterprise/react-native-core, @enterprise/react-native-auth, @enterprise/react-native-circuit-breaker
 
-# 2. Upload Compiled Binary & Execute Tests
-- git::https://git.enterprise.internal/mobile-engineering/bitrise-step-sauce-labs-upload-and-test.git@v1:
-    title: Sauce Labs Mobile Upload and Test
-    inputs:
-    - sauce_username: $SAUCE_USERNAME
-    - sauce_access_key: $SAUCE_ACCESS_KEY
-    - sauce_region: "us-west-1"
-    - app_path: $BITRISE_APK_PATH
-    - app_name: $SAUCE_APP_FILE_NAME
-    - test_command: "saucectl run --config .sauce/config.yml"
-    - working_dir: $BITRISE_SOURCE_DIR
-    - test_fail_on_failure: "yes"
+## Complete Page Links:
+- Onboarding: /mobile/onboarding/welcome-quickstart/
+- Non-Mobile Dev Guide: /mobile/onboarding/non-mobile-dev-guide/
+- Machine Setup: /mobile/onboarding/machine-setup/
+- Clean Architecture: /mobile/architecture/mobile-architecture/
+- Circuit Breaker Resilience: /mobile/architecture/circuit-breaker-resilience/
+- Feature Flags: /mobile/architecture/feature-flags/
+- Bitrise MCP Integration: /mobile/genai/bitrise-mcp/
+- Copilot & ChatGPT Rules: /mobile/genai/copilot-chatgpt-rules/
+- Prompt Templates: /mobile/genai/prompt-templates/
+- GenAI FAQs: /mobile/genai/genai-faqs/
 ```
 
----
-
-## 6. Variables Passed Between Steps
-
-The two steps communicate through environment variables dynamically exported during execution:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Variable Name</th>
-        <th>Exported By</th>
-        <th>Consumed By</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>$SAUCE_APP_ID</code></td>
-        <td><code>App Create</code></td>
-        <td><code>Upload and Test</code></td>
-        <td>Unique storage UUID assigned to the registered application in Sauce Labs.</td>
-      </tr>
-      <tr>
-        <td><code>$SAUCE_APP_NAME</code></td>
-        <td><code>App Create</code></td>
-        <td><code>Upload and Test</code></td>
-        <td>Canonical application title parsed from <code>saucelabs.request.yml</code>.</td>
-      </tr>
-      <tr>
-        <td><code>$SAUCE_APP_FILE_NAME</code></td>
-        <td><code>App Create</code></td>
-        <td><code>Upload and Test</code></td>
-        <td>Normalized binary filename (e.g., <code>my-mobile-app.apk</code>) used in cloud storage.</td>
-      </tr>
-      <tr>
-        <td><code>$CREATION_STATUS</code></td>
-        <td><code>App Create</code></td>
-        <td>Conditional steps</td>
-        <td>Status output (<code>created</code>, <code>already_exists</code>, or <code>failed</code>).</td>
-      </tr>
-      <tr>
-        <td><code>$SAUCE_TEST_EXIT_CODE</code></td>
-        <td><code>Upload and Test</code></td>
-        <td>Build summary</td>
-        <td>Exit code (<code>0</code> for pass, non-zero for test assertion failures).</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
----
-
-## 7. Visual Reference: Sauce Labs Automated Dashboard
-
-When tests complete, full execution telemetry is published to the Sauce Labs web portal:
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <h4 class="portal-screenshot-title">Sauce Labs Automated Test Execution Dashboard</h4>
-  </div>
-  <p class="portal-screenshot-desc">
-    Open Sauce Labs &gt; Automated &gt; Test Results &gt; Click the latest test session. Capture the dashboard showing the physical device model (e.g., Google Pixel 8), video player with scrubbing timeline, screenshots, and passing test assertions.
-  </p>
-  <span class="portal-screenshot-path">docs/assets/testing/sauce-labs-test-dashboard.png</span>
-</div>
-
----
-
-## 8. Troubleshooting Quick Reference
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Symptom</th>
-        <th>Likely Root Cause</th>
-        <th>Resolution</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>401 Unauthorized during upload</code></td>
-        <td>Invalid or expired <code>$SAUCE_ACCESS_KEY</code> in Bitrise Secrets.</td>
-        <td>Open Sauce Labs &gt; User Settings &gt; Access Key. Regenerate key and update Bitrise secret.</td>
-      </tr>
-      <tr>
-        <td><code>App not found during test execution</code></td>
-        <td>Upload step failed or <code>$SAUCE_APP_ID</code> was not passed correctly.</td>
-        <td>Confirm upload step finished with HTTP 200 before test execution started.</td>
-      </tr>
-      <tr>
-        <td><code>Tests timeout waiting for a device</code></td>
-        <td>Requested device model is unavailable or concurrency limit reached.</td>
-        <td>Use wildcard regex (e.g. <code>Google Pixel.*</code>) instead of exact device IDs to pick available pool units.</td>
-      </tr>
-      <tr>
-        <td><code>saucectl: command not found</code></td>
-        <td>CLI runner not installed on the virtual machine stack.</td>
-        <td>Add an install script step before testing: <code>curl -L https://saucelabs.github.io/saucectl/install | bash</code>.</td>
-      </tr>
-      <tr>
-        <td><code>Wrong region error (HTTP 404)</code></td>
-        <td><code>sauce_region</code> mismatch between Bitrise step and Sauce Labs account data center.</td>
-        <td>Verify account data center (<code>us-west-1</code>, <code>us-east-4</code>, or <code>eu-central-1</code>) and align both configs.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
 
 
-<!-- ============================================================================== -->
-<!-- END OF SECTION 7.5: REAL-DEVICE CLOUD TESTING WITH SAUCE LABS -->
-<!-- ============================================================================== -->
+
+
+
+
 
