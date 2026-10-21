@@ -16,7 +16,6 @@
 ---
 title: "07. Testing & Quality Engineering Overview & Testing Pyramid"
 description: "Foundational testing strategy for enterprise mobile applications: Testing Pyramid distribution, hermetic test execution, platform matrix across Jest, Espresso, XCTest, and Maestro, and automated quality gates."
----
 sidebar:
   order: 1
   label: "7.0 Overview & Testing Pyramid"
@@ -309,7 +308,6 @@ The enterprise standardizes on battle-tested frameworks across each mobile runti
 ---
 title: "07.1 Unit Testing Matrix & Mocking Standards"
 description: "Comprehensive enterprise standards for mobile unit testing across Android, iOS, and React Native: Clean Architecture test boundaries, JUnit 5, XCTest, Jest, Swift Testing macros, and Mockk harnesses."
----
 sidebar:
   order: 2
   label: "7.1 Unit Testing Matrix"
@@ -924,7 +922,6 @@ To keep unit suites resilient across major refactors, teams must adhere to the f
 ---
 title: "07.2 UI Automation: Native Espresso, XCUITest & Maestro"
 description: "Mastering enterprise mobile UI automation: Native Android Espresso, iOS XCUITest, declarative cross-platform Maestro YAML flows, and CI device execution."
----
 sidebar:
   order: 3
   label: "7.2 UI Automation & Maestro"
@@ -1278,7 +1275,6 @@ maestro test .maestro/flows/02-offline-order-sync.yaml
 ---
 title: "07.3 MockWebServer & Hermetic Network Stubs"
 description: "Hermetic API mocking and contract stubbing: OkHttp MockWebServer, iOS URLProtocol stubs, Mock Service Worker (MSW), and consumer-driven contract testing."
----
 sidebar:
   order: 4
   label: "7.3 Mocking API & Contract Stubs"
@@ -1646,7 +1642,6 @@ To ensure resilience, test suites must explicitly assert behavior under hostile 
 ---
 title: "07.4 Quality Gates, Code Coverage Thresholds & Static Analysis"
 description: "Enterprise mobile quality gates: 80% test coverage thresholds, JaCoCo, Slather, SonarQube, Detekt, SwiftLint, and automated Danger PR verification."
----
 sidebar:
   order: 5
   label: "7.4 Quality & Coverage Gates"
@@ -1944,7 +1939,6 @@ end
 ---
 title: "07.5 Real-Device Cloud Testing with Sauce Labs"
 description: "Master automated physical device testing in Bitrise using Sauce Labs: saucelabs.request.yml, saucectl runner, parallel device pools, and artifact collection."
----
 sidebar:
   order: 6
   label: "7.5 Sauce Labs Device Cloud"
