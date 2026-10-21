@@ -1,103 +1,96 @@
 <!-- ============================================================================== -->
-<!-- ENTERPRISE MOBILE PORTAL: MODULE 06 - APP STORE & DISTRIBUTION MASTER BUNDLE  -->
-<!-- ALL SECTIONS CONSOLIDATED IN ORDER (6.0 TO 6.5) WITH DELIMITER COMMENTS       -->
+<!-- ENTERPRISE MOBILE PORTAL: MODULE 07 - TESTING & QUALITY ENGINEERING MASTER BUNDLE -->
+<!-- ALL SECTIONS CONSOLIDATED IN ORDER (7.0 TO 7.5) WITH DELIMITER COMMENTS       -->
 <!-- STANDARDIZED WITH: import DiagramExpand from './DiagramExpand.astro';         -->
 <!-- USE THIS FILE TO EASILY COPY-PASTE INTO YOUR GIT REPOSITORY OR WIKI           -->
 <!-- ============================================================================== -->
 
 <!-- ============================================================================== -->
 <!-- ============================================================================== -->
-<!-- START OF SECTION 6.0: APP STORE & DISTRIBUTION OVERVIEW -->
-<!-- SOURCE FILE: 06-app-store-distribution-overview.mdx -->
-<!-- RECOMMENDED GIT TARGET: docs/distribution/06-app-store-distribution-overview.mdx -->
+<!-- START OF SECTION 7.0: TESTING & QUALITY ENGINEERING OVERVIEW & TESTING PYRAMID -->
+<!-- SOURCE FILE: 07-testing-overview.mdx -->
+<!-- RECOMMENDED GIT TARGET: docs/testing/07-testing-overview.mdx -->
 <!-- ============================================================================== -->
 <!-- ============================================================================== -->
 
 ---
-title: "06. App Store & Distribution Overview & Mental Model"
-description: "Foundations of enterprise mobile deployment: navigating Public App Stores (Apple & Google Play) vs. Private Enterprise Distribution (MDM / Enterprise App Store), release tracks, code signing vaults, and TGRC governance."
+title: "07. Testing & Quality Engineering Overview & Testing Pyramid"
+description: "Foundational testing strategy for enterprise mobile applications: Testing Pyramid distribution, hermetic test execution, platform matrix across Jest, Espresso, XCTest, and Maestro, and automated quality gates."
 ---
 sidebar:
   order: 1
-  label: "6.0 Overview & Architecture"
+  label: "7.0 Overview & Testing Pyramid"
 ---
 
 import DiagramExpand from './DiagramExpand.astro';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">APP STORE &amp; DISTRIBUTION</span>
-    <span class="portal-hub-tag">MODULE 06.0 &bull; ARCHITECTURE &amp; GOVERNANCE</span>
+    <span class="portal-badge-hub">TESTING &amp; QUALITY ENGINEERING</span>
+    <span class="portal-hub-tag">MODULE 07.0 &bull; ARCHITECTURE &amp; STRATEGY</span>
   </div>
-  <h1 class="portal-hero-title">App Store &amp; Distribution Overview</h1>
+  <h1 class="portal-hero-title">Testing &amp; Quality Engineering Overview</h1>
   <p class="portal-hero-desc">
-    The comprehensive architectural foundation governing mobile binary distribution across internal enterprise workforces, staging cohorts, and global public app stores. Learn the release mental models, dual-track distribution pipelines, TGRC compliance gates, and certificate management standards.
+    The enterprise quality engineering strategy establishing hermetic test execution, continuous verification, and automated quality gates across iOS, Android, and React Native codebases. Discover our testing pyramid distribution, framework standards across Jest, Espresso, XCTest, and Maestro, offline stubbing models, and cloud device execution pipelines.
   </p>
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Dual Distribution Pathways</div>
-      <div class="portal-cap-desc">Private Enterprise App Store (MDM / Intune) vs. Public App Stores (Google Play / Apple)</div>
+      <div class="portal-cap-title">Testing Pyramid</div>
+      <div class="portal-cap-desc">70% Unit &bull; 20% Component &amp; Integration &bull; 10% E2E UI</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Tiered Testing &amp; Rollouts</div>
-      <div class="portal-cap-desc">Internal App Sharing &bull; Closed Testing &bull; TestFlight &bull; Staged Rollout (1% &rarr; 100%)</div>
+      <div class="portal-cap-title">Core Native Harnesses</div>
+      <div class="portal-cap-desc">Jest (React Native) &bull; Espresso (Android) &bull; XCTest / XCUITest (iOS)</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Automated Upload Tooling</div>
-      <div class="portal-cap-desc">Fastlane supply &amp; deliver &bull; Transporter Desktop &bull; App Store Connect API</div>
+      <div class="portal-cap-title">Hermetic Isolation</div>
+      <div class="portal-cap-desc">MockWebServer &bull; URLProtocol stubs &bull; Zero live network flakiness</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">TGRC &amp; Code Signing</div>
-      <div class="portal-cap-desc">Unified Keystores &bull; Apple Enterprise vs Public Certs &bull; Cloud KMS &bull; Audit Trail</div>
+      <div class="portal-cap-title">80% Gate Enforcement</div>
+      <div class="portal-cap-desc">JaCoCo &bull; Slather &bull; SonarQube &bull; Danger PR Bot merge protection</div>
     </div>
   </div>
 </div>
 
 ---
 
-## 1. The Enterprise Distribution Mental Model: Public vs. Internal Stores
+## 1. The Enterprise Mobile Testing Pyramid
 
-In enterprise mobility, software release engineering bifurcates into two distinct delivery channels based on target audience and regulatory sensitivity:
+To ensure rapid developer feedback loops and eliminate flaky test failures in CI/CD, the Enterprise Mobile Platform enforces a strict testing pyramid distribution:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
-        <th>Release Vector</th>
-        <th>Internal Enterprise App Store (Private MDM)</th>
-        <th>Public App Stores (Apple App Store &amp; Google Play)</th>
+        <th>Tier</th>
+        <th>Target Share</th>
+        <th>Harnesses &amp; Frameworks</th>
+        <th>Speed / Feedback</th>
+        <th>Scope &amp; Responsibilities</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>Target Audience</strong></td>
-        <td>Enterprise employees, field operators, contractors, and internal business stakeholders.</td>
-        <td>Public consumers, commercial partners, farmers, dealers, and external clients.</td>
+        <td><strong>Unit Tests</strong></td>
+        <td><code>70%</code></td>
+        <td><strong>JUnit 5</strong> (Android), <strong>XCTest / Swift Testing</strong> (iOS), <strong>Jest</strong> (React Native)</td>
+        <td>Milliseconds (&lt; 2 min total suite)</td>
+        <td>Pure business logic, Use Cases, ViewModels, Redux reducers, utility algorithms, and data parsing without platform emulator overhead.</td>
       </tr>
       <tr>
-        <td><strong>Access Control</strong></td>
-        <td>Restricted by corporate identity (Okta / Entra ID). Business applications require entitlement approval via <code>access.enterprise.internal</code>.</td>
-        <td>Publicly discoverable worldwide or geo-gated by country on Google Play and Apple App Store.</td>
+        <td><strong>Integration &amp; Component</strong></td>
+        <td><code>20%</code></td>
+        <td><strong>Robolectric &amp; Compose Rule</strong>, <strong>XCTest Integration</strong>, <strong>Jest + RNTL</strong></td>
+        <td>Seconds (&lt; 5 min total suite)</td>
+        <td>UI component snapshots, Room/CoreData migrations, MockWebServer API contract verification, and repository caching layers.</td>
       </tr>
       <tr>
-        <td><strong>Review &amp; Approval</strong></td>
-        <td>Internal Technology Governance &amp; Regulatory Compliance (TGRC) security sign-off. Zero external vendor review.</td>
-        <td>Apple App Review Board (1–2 weeks turnaround) and Google Play Review team (~1 week turnaround).</td>
-      </tr>
-      <tr>
-        <td><strong>Signing Certificates</strong></td>
-        <td>iOS Enterprise Developer Certificate (In-House Distribution) and unified enterprise Android Release Keystore.</td>
-        <td>Apple Developer Program Distribution Certificate and Google Play App Signing (Play-managed root keys).</td>
-      </tr>
-      <tr>
-        <td><strong>Deployment Velocity</strong></td>
-        <td>Instant publishing upon pipeline completion; updates propagate immediately to user devices.</td>
-        <td>Subject to app store ingestion pipelines, review queues, and staged phased rollout windows.</td>
-      </tr>
-      <tr>
-        <td><strong>Device Management</strong></td>
-        <td>Full Mobile Device Management (MDM / MAM) integration supporting remote data wipe on lost/stolen hardware.</td>
-        <td>Standard consumer OS sandboxing; zero enterprise remote wipe capability outside application-level logic.</td>
+        <td><strong>End-to-End (E2E) UI</strong></td>
+        <td><code>10%</code></td>
+        <td><strong>Espresso</strong> (Android), <strong>XCUITest</strong> (iOS), <strong>Maestro YAML</strong> (Cross-Platform)</td>
+        <td>Minutes (10–15 min parallel execution)</td>
+        <td>Critical user journeys only (Authentication, Checkout, Offline Sync, Push notification handling) executed in Sauce Labs real-device cloud.</td>
       </tr>
     </tbody>
   </table>
@@ -105,1468 +98,104 @@ In enterprise mobility, software release engineering bifurcates into two distinc
 
 ---
 
-## 2. End-to-End Enterprise Publishing Pipeline Topology
+## 2. End-to-End Quality Pipeline Topology
 
-Every enterprise mobile build transitions from source control through Bitrise CI/CD into automated signing vaults, passes through TGRC governance, and branches into the appropriate distribution channel:
+Every Pull Request undergoes a sequential, automated verification pipeline ensuring zero untested or insecure code reaches staging cohorts:
 
-<DiagramExpand title="ENTERPRISE MOBILE PUBLISHING &amp; DISTRIBUTION TOPOLOGY">
+<DiagramExpand title="ENTERPRISE MOBILE CONTINUOUS QUALITY TOPOLOGY">
 
 ```mermaid
 graph TD
-    GIT["Source Code Repository (GitHub Enterprise)"] --> CI["Bitrise CI/CD Hermetic Build Runner"]
-    
-    subgraph BuildAndSign ["1. Hermetic Compilation & Cryptographic Signing"]
-        CI --> VAULT["Encrypted Code Signing Vault (Cloud KMS)"]
-        VAULT --> SIGN_AAB["Sign Android Release Bundle (.aab / .apk)"]
-        VAULT --> SIGN_IPA["Sign iOS Distribution Binary (.ipa)"]
+    subgraph DevMachine ["1. LOCAL WORKSTATION VERIFICATION"]
+        Code["Developer Branch<br/>feat/order-checkout"] --> PreCommit["Pre-Commit Hook<br/>ktlint &bull; SwiftLint &bull; ESLint"]
+        PreCommit --> FastUnit["Local Fast Unit Tests<br/>JUnit 5 &bull; XCTest &bull; Jest"]
     end
 
-    SIGN_AAB --> TGRC["TGRC Security & Regulatory Compliance Gate"]
-    SIGN_IPA --> TGRC
-
-    subgraph DistributionDecision ["2. Distribution Channel Governance"]
-        TGRC -->|Audience: Enterprise Employees| INTERNAL_PATH["Private Enterprise App Store Pathway"]
-        TGRC -->|Audience: External Customers| PUBLIC_PATH["Public App Store Pathway"]
+    subgraph CIMatrix ["2. BITRISE CI PARALLEL EXECUTION"]
+        Push["git push origin"] --> Trigger["Bitrise CI Webhook"]
+        Trigger --> JobLint["Static Linters &amp; Formatters<br/>Detekt &bull; SwiftLint &bull; TSC"]
+        Trigger --> JobUnit["Hermetic Unit Test Suite<br/>JUnit &bull; XCTest &bull; Jest"]
+        Trigger --> JobContract["API Contract Stubbing<br/>MockWebServer &bull; WireMock &bull; MSW"]
+        Trigger --> JobCov["Code Coverage Aggregation<br/>JaCoCo XML &bull; Slather &bull; LCOV"]
     end
 
-    subgraph InternalMDM ["3A. Private Enterprise App Store (Apperian / Intune)"]
-        INTERNAL_PATH --> STORE_QA["Enterprise QA Store (Development Team)"]
-        INTERNAL_PATH --> STORE_UAT["Enterprise UAT Store (Business User Sign-off)"]
-        INTERNAL_PATH --> STORE_PROD["Enterprise PROD Store (All Employees)"]
+    subgraph CloudE2E ["3. REAL DEVICE &amp; UI AUTOMATION"]
+        BuildBin["Build Signed Test Binary<br/>assembleDebug &bull; xcode-archive"] --> SauceUpload["Upload to Sauce Labs Storage<br/>saucelabs.request.yml"]
+        SauceUpload --> UIRun["UI Test Automation Suites<br/>Espresso &bull; XCUITest &bull; Maestro YAML"]
+        UIRun --> Artifacts["Artifact Collection<br/>Video Recordings &bull; HAR Logs &bull; Trace"]
     end
 
-    subgraph PublicStores ["3B. Public App Stores (Google Play & Apple)"]
-        PUBLIC_PATH --> PLAY_CONSOLE["Google Play Console (Fastlane supply)"]
-        PUBLIC_PATH --> APP_STORE_CONNECT["Apple App Store Connect (Transporter / Fastlane)"]
-        
-        PLAY_CONSOLE --> PLAY_TRACKS["Internal &rarr; Closed Testing &rarr; Staged Rollout (1% to 100%)"]
-        APP_STORE_CONNECT --> TESTFLIGHT["TestFlight Beta &rarr; 7-Day Phased Release"]
+    subgraph QualityGate ["4. GOVERNANCE &amp; MERGE GATEWAY"]
+        JobCov --> Sonar["SonarQube Quality Gate<br/>80% Diff Coverage Threshold"]
+        JobLint --> Danger["Danger PR Bot Analysis"]
+        Artifacts --> Danger
+        Sonar --> Danger
+        Danger --> Verdict{"All Gates Green?<br/>Cov &gt;= 80% &amp; Zero Flakes"}
+        Verdict -->|Yes| Approved["PR Approved for Merge<br/>Release Train Promotion"]
+        Verdict -->|No| Blocked["PR Blocked<br/>Detailed Actionable Report in PR"]
     end
 
-    STORE_PROD --> EMP_DEVICES["Employee Mobile Devices (QR Code / Catalog)"]
-    PLAY_TRACKS --> EXT_USERS["Global Android Users (Play Store)"]
-    TESTFLIGHT --> EXT_IOS_USERS["Global iOS Users (App Store)"]
+    FastUnit --> Push
+    JobUnit --> BuildBin
 
-    classDef source fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff;
-    classDef gate fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#ffffff;
-    classDef internal fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff;
-    classDef public fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef endpoint fill:#1f3b2c,stroke:#22c55e,stroke-width:1.5px,color:#f8fafc;
+    classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
+    classDef iosNode fill:#25153a,stroke:#a855f7,stroke-width:1.5px,color:#d8b4fe;
+    classDef rnNode fill:#0d2833,stroke:#06b6d4,stroke-width:1.5px,color:#67e8f9;
+    classDef secNode fill:#31141e,stroke:#f43f5e,stroke-width:1.5px,color:#fda4af;
+    classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
+    classDef warnNode fill:#2a2012,stroke:#f59e0b,stroke-width:1.5px,color:#fde68a;
 
-    class GIT,CI,VAULT,SIGN_AAB,SIGN_IPA source;
-    class TGRC,INTERNAL_PATH,PUBLIC_PATH gate;
-    class STORE_QA,STORE_UAT,STORE_PROD internal;
-    class PLAY_CONSOLE,APP_STORE_CONNECT,PLAY_TRACKS,TESTFLIGHT public;
-    class EMP_DEVICES,EXT_USERS,EXT_IOS_USERS endpoint;
+    class Code,PreCommit,FastUnit platformNode;
+    class Push,Trigger,JobLint,JobUnit,JobContract,JobCov cloudNode;
+    class BuildBin,SauceUpload,UIRun,Artifacts iosNode;
+    class Sonar,Danger,Approved cloudNode;
+    class Verdict,Blocked warnNode;
 ```
 
 </DiagramExpand>
 
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">Enterprise Mobile Publishing &amp; Distribution Pipeline Dashboard</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the official architectural diagram or portal screenshot: <span class="portal-screenshot-path">docs/assets/distribution/publishing-pipeline-topology.png</span>.
-  </p>
-</div>
-
 ---
 
-## 3. The 5 Core Distribution Pillars
+## 3. Platform Testing Technology Stack
 
-Every enterprise mobile application must align with these five operational pillars governing binary packaging, store listing compliance, cryptographic signing, and remote revocation:
-
-<div class="portal-cards-grid">
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-purple">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
-        </div>
-        <h3 class="portal-card-title">1. Enterprise App Store (Private MDM)</h3>
-        <span class="portal-tag-pill">INTERNAL WORKFORCE</span>
-      </div>
-      <p class="portal-card-desc">
-        Three-tier internal catalog (QA, UAT, PROD), mobile browser zero-touch installation, QR code scan downloads, iOS enterprise certificate trust configuration, and business application entitlement governance via <code>access.enterprise.internal</code>.
-      </p>
-      <div class="portal-card-pills">
-        <a href="06-enterprise-app-store.mdx" style="text-decoration: none;"><span>QA, UAT &amp; PROD Stores</span></a>
-        <a href="06-enterprise-app-store.mdx" style="text-decoration: none;"><span>QR Code Catalog</span></a>
-        <a href="06-enterprise-app-store.mdx" style="text-decoration: none;"><span>iOS Cert Trust</span></a>
-        <a href="06-enterprise-app-store.mdx" style="text-decoration: none;"><span>Entitlements Portal</span></a>
-      </div>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-rose">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-        </div>
-        <h3 class="portal-card-title">2. Google Play Store Deployment</h3>
-        <span class="portal-tag-pill">ANDROID ECOSYSTEM</span>
-      </div>
-      <p class="portal-card-desc">
-        Mandatory Google Play Console metadata limits (Title 50, Short 80, Full 4000), graphic asset specifications (512x512 icon, 1024x500 feature graphic, 320px–3840px screenshots), test credentials submission, and staged rollouts (1% &rarr; 100%).
-      </p>
-      <div class="portal-card-pills">
-        <a href="06-google-play-publish.mdx" style="text-decoration: none;"><span>Store Listing Metadata</span></a>
-        <a href="06-google-play-publish.mdx" style="text-decoration: none;"><span>1024x500 Graphics</span></a>
-        <a href="06-google-play-publish.mdx" style="text-decoration: none;"><span>Testing Tracks</span></a>
-        <a href="06-google-play-publish.mdx" style="text-decoration: none;"><span>Staged Rollout (1%-100%)</span></a>
-      </div>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-blue">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2z"></path><path d="M12 6v6l4 2"></path></svg>
-        </div>
-        <h3 class="portal-card-title">3. Apple App Store &amp; TestFlight</h3>
-        <span class="portal-tag-pill">IOS ECOSYSTEM</span>
-      </div>
-      <p class="portal-card-desc">
-        Complete 15-point deployment checklist (bundle ID <code>com.enterprise.&lt;app&gt;</code>, demo accounts, copyright, SKU), Transporter desktop IPA upload utility, multi-device screenshot specifications, App Store Review guidelines, and 7-day phased releases.
-      </p>
-      <div class="portal-card-pills">
-        <a href="06-apple-app-store.mdx" style="text-decoration: none;"><span>15-Point Checklist</span></a>
-        <a href="06-apple-app-store.mdx" style="text-decoration: none;"><span>Screenshot Specs</span></a>
-        <a href="06-apple-app-store.mdx" style="text-decoration: none;"><span>Transporter Tool</span></a>
-        <a href="06-apple-app-store.mdx" style="text-decoration: none;"><span>7-Day Phased Release</span></a>
-      </div>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-green">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-        </div>
-        <h3 class="portal-card-title">4. Code Signing &amp; TGRC Approvals</h3>
-        <span class="portal-tag-pill">SECURITY &amp; AUDIT</span>
-      </div>
-      <p class="portal-card-desc">
-        Unified Android Release Keystores, Apple Enterprise In-House vs. Public Distribution certificates, developer certificate request portals (<code>myid.enterprise.internal</code>), mandatory TGRC deployment approval Excel manifests, and review SLAs.
-      </p>
-      <div class="portal-card-pills">
-        <a href="06-certs-and-signing.mdx" style="text-decoration: none;"><span>Android Release JKS</span></a>
-        <a href="06-certs-and-signing.mdx" style="text-decoration: none;"><span>Apple Distribution P12</span></a>
-        <a href="06-certs-and-signing.mdx" style="text-decoration: none;"><span>TGRC Approval Form</span></a>
-        <a href="06-certs-and-signing.mdx" style="text-decoration: none;"><span>Review SLAs (1-2 Wks)</span></a>
-      </div>
-    </div>
-  </div>
-
-  <div class="portal-card portal-card-full">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-amber">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-        </div>
-        <h3 class="portal-card-title">5. MDM Remote Data Wipe Protocol</h3>
-        <span class="portal-tag-pill">DEVICE SECURITY</span>
-      </div>
-      <p class="portal-card-desc">
-        The eight-step administrator data wipe runbook in the Enterprise MDM console for misplaced, stolen, or compromised employee devices. Governs immediate session invalidation, client-side alert handling (<code>The data for this application has been wiped.quitting...</code>), local disk purging, and zero residual PII retention.
-      </p>
-      <div class="portal-card-pills">
-        <a href="06-mdm-remote-wipe-protocol.mdx" style="text-decoration: none;"><span>8-Step Admin Runbook</span></a>
-        <a href="06-mdm-remote-wipe-protocol.mdx" style="text-decoration: none;"><span>Stolen Device Containment</span></a>
-        <a href="06-mdm-remote-wipe-protocol.mdx" style="text-decoration: none;"><span>Client Wipe Experience</span></a>
-        <a href="06-mdm-remote-wipe-protocol.mdx" style="text-decoration: none;"><span>Zero Residual PII</span></a>
-      </div>
-    </div>
-  </div>
-
-</div>
-
----
-
-## 4. Enterprise Review SLAs & Publishing Lead Times
-
-Unlike backend deployments that execute in minutes, mobile store distribution must account for platform review queues and governance sign-offs. Build leads must schedule release windows according to these operational lead times:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Distribution Channel</th>
-        <th>Typical Review Lead Time</th>
-        <th>Fast-Track / Expedited Option</th>
-        <th>Mandatory Pre-requisite</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Enterprise App Store (QA &amp; UAT)</strong></td>
-        <td>&lt; 30 minutes (Automated CI/CD)</td>
-        <td>Instant on git push to <code>develop</code> or <code>release/*</code>.</td>
-        <td>Automated unit tests and Danger PR bot passing.</td>
-      </tr>
-      <tr>
-        <td><strong>Enterprise App Store (PROD)</strong></td>
-        <td>24 – 48 hours</td>
-        <td>On-call TGRC lead override for critical P1 business outages.</td>
-        <td>Approved TGRC deployment request form with Excel manifest.</td>
-      </tr>
-      <tr>
-        <td><strong>Google Play Store (Public)</strong></td>
-        <td>3 – 7 business days</td>
-        <td>Google Play Console expedited review (critical security patch).</td>
-        <td>Full store listing assets (1024x500 graphic, icon, test login credentials).</td>
-      </tr>
-      <tr>
-        <td><strong>Apple App Store (Public)</strong></td>
-        <td>1 – 2 weeks (7–14 calendar days)</td>
-        <td>Apple Expedited Review request (critical bug or event-dated app).</td>
-        <td>15-point checklist verified, valid demo account, IPv6 support confirmed.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
----
-
-## 5. Pre-Flight Distribution Verification Checklist
-
-Before triggering a production build or opening a store deployment request, verify the following:
-
-* **[ ] Application Bundle ID Convention:** Android and iOS application identifiers must strictly adhere to `com.enterprise.<appname>`.
-* **[ ] TGRC Governance Submission:** Form submitted on the internal portal with the complete Excel manifest detailing target release channels, data classification, and authentication endpoints.
-* **[ ] Test Account Credentials:** Active, valid demo login credentials (username and password) provided in the release notes for store review team evaluation without requiring SMS/biometric two-factor hardware.
-* **[ ] Play Store Visual Assets:** High-resolution 512x512 PNG app icon and 1024x500 JPEG/PNG feature graphic prepared with zero alpha transparency.
-* **[ ] App Store Multi-Device Screenshots:** Minimum of 4 screenshots uploaded for each required device form factor (iPhone 6.7" Display, iPhone 6.5" Display, iPad Pro 12.9").
-* **[ ] Privacy Policy URL:** Live, publicly accessible corporate privacy policy link active on HTTPS.
-* **[ ] Entitlements & Identity Setup:** For internal enterprise business apps, identity groups and entitlement owners configured in `access.enterprise.internal`.
-* **[ ] Code Signing Vault Verification:** Android Release Keystore (`.jks`) and Apple Distribution Certificate (`.p12`) confirmed valid with at least 60 days remaining before expiration.
-
-<!-- ============================================================================== -->
-<!-- END OF SECTION 6.0: APP STORE & DISTRIBUTION OVERVIEW -->
-<!-- ============================================================================== -->
-
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-<!-- START OF SECTION 6.1: ENTERPRISE APP STORE & PRIVATE MDM (QA, UAT, PROD) -->
-<!-- SOURCE FILE: 06-enterprise-app-store.mdx -->
-<!-- RECOMMENDED GIT TARGET: docs/distribution/06-enterprise-app-store.mdx -->
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-
----
-title: "06.1 Enterprise App Store & Private MDM (QA, UAT, PROD)"
-description: "Enterprise operational standard for private mobile application distribution: managing QA, UAT, and Production app store variants, QR code provisioning, iOS enterprise certificate trust, and identity entitlements."
----
-sidebar:
-  order: 2
-  label: "6.1 Enterprise App Store"
----
-
-import DiagramExpand from './DiagramExpand.astro';
-
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">APP STORE &amp; DISTRIBUTION</span>
-    <span class="portal-hub-tag">MODULE 06.1 &bull; PRIVATE ENTERPRISE DISTRIBUTION</span>
-  </div>
-  <h1 class="portal-hero-title">Enterprise App Store &amp; Private MDM</h1>
-  <p class="portal-hero-desc">
-    The complete operational handbook for distributing internal mobile applications to enterprise employees, field teams, and business testing cohorts across QA, UAT, and Production app store variants without routing through public commercial app stores.
-  </p>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">3 Store Variants</div>
-      <div class="portal-cap-desc">Enterprise QA (Dev/Test) &bull; Enterprise UAT (Business Sign-off) &bull; Enterprise PROD (All Employees)</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Zero-Touch Provisioning</div>
-      <div class="portal-cap-desc">Mobile browser direct download &bull; QR code camera scanning &bull; Over-the-air manifest</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">iOS Enterprise Cert Trust</div>
-      <div class="portal-cap-desc">Settings &rarr; VPN &amp; Device Management &rarr; Root Enterprise Trust execution runbook</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Identity Entitlements</div>
-      <div class="portal-cap-desc">RBAC governance &bull; access.enterprise.internal portal &bull; Business unit group onboarding</div>
-    </div>
-  </div>
-</div>
-
----
-
-## 1. Enterprise App Store Architecture & Variants
-
-In accordance with corporate mobility governance, **any application built exclusively for internal enterprise employees must be hosted on the Enterprise App Store**, rather than published to public commercial app stores (Google Play or Apple App Store).
-
-<DiagramExpand title="ENTERPRISE APP STORE BUILD, DISTRIBUTION &amp; ZERO-TRUST ARCHITECTURE">
-
-```mermaid
-graph TD
-    subgraph CI_Pipeline ["1. CI/CD Build & Signing Pipeline"]
-        SRC["Mobile Code Repository (GitHub)"] --> CI_BUILD["Bitrise Hermetic Build Runner"]
-        CI_BUILD --> SIGN_INHOUSE["Sign with Apple Enterprise In-House (.p12)<br/>or Android Unified Release Keystore (.jks)"]
-    end
-
-    subgraph Store_Tiers ["2. Enterprise App Store Variants (Apperian / MDM)"]
-        SIGN_INHOUSE --> QA_STORE["Enterprise QA Store<br/>(Engineering Sprint & Smoke Testing)"]
-        SIGN_INHOUSE --> UAT_STORE["Enterprise UAT Store<br/>(Business Stakeholder Sign-Off)"]
-        SIGN_INHOUSE --> PROD_STORE["Enterprise PROD Store<br/>(Global Workforce Deployment)"]
-    end
-
-    subgraph User_Device ["3. Device Provisioning & Onboarding"]
-        EMP["Employee Mobile Device"] -->|Scan QR / Open Mobile Safari| CATALOG["Private App Store Catalog Web Portal"]
-        CATALOG -->|Select App & Download| OTA_PLIST["OTA Manifest (itms-services://)"]
-        OTA_PLIST --> INSTALL["Container Installation on Device"]
-    end
-
-    subgraph Trust_Auth ["4. Trust & Identity Governance Gate"]
-        INSTALL --> IOS_TRUST["iOS Device Settings:<br/>Trust Enterprise Developer Certificate"]
-        IOS_TRUST --> SSO_AUTH["Entitlements Gate (access.enterprise.internal):<br/>Validate Active Directory / Okta Group RBAC"]
-        SSO_AUTH --> APP_ACTIVE["Enterprise Application Active & Operational"]
-    end
-
-    QA_STORE --> CATALOG
-    UAT_STORE --> CATALOG
-    PROD_STORE --> CATALOG
-
-    classDef ci fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff;
-    classDef store fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff;
-    classDef device fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef gate fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#ffffff;
-    classDef success fill:#1f3b2c,stroke:#22c55e,stroke-width:2px,color:#22c55e;
-
-    class SRC,CI_BUILD,SIGN_INHOUSE ci;
-    class QA_STORE,UAT_STORE,PROD_STORE store;
-    class EMP,CATALOG,OTA_PLIST,INSTALL device;
-    class IOS_TRUST,SSO_AUTH gate;
-    class APP_ACTIVE success;
-```
-
-</DiagramExpand>
-
-The enterprise maintains **three distinct App Store variants** tailored to each stage of the delivery lifecycle:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>App Store Variant</th>
-        <th>Target Audience</th>
-        <th>Environment Purpose</th>
-        <th>Governance &amp; Approval Gateway</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Enterprise QA</strong></td>
-        <td>Engineering Leads, QA Automation Engineers, Mobile Developers.</td>
-        <td>Daily sprint validation, automated regression builds, and continuous integration smoke testing.</td>
-        <td>Automated merge gate on <code>develop</code> branch via Bitrise CI/CD.</td>
-      </tr>
-      <tr>
-        <td><strong>Enterprise UAT</strong></td>
-        <td>Business Stakeholders, Product Managers, Field Pilot Users.</td>
-        <td>User Acceptance Testing (UAT), pre-release sign-offs, and operational workflow dry-runs.</td>
-        <td>Requires formal <strong>TGRC Stage-Gate Approval</strong> before build deployment.</td>
-      </tr>
-      <tr>
-        <td><strong>Enterprise PROD</strong></td>
-        <td>All Corporate &amp; Operational Employees Worldwide.</td>
-        <td>Live production operations across global supply chains, factories, trading floors, and corporate offices.</td>
-        <td>Requires full <strong>TGRC Production Sign-Off</strong> and executive business unit sponsorship.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">Enterprise App Store - 3 Store Variants &amp; Download Portal</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the official screenshot of the Enterprise App Store landing page displaying the QA, UAT, and PROD download cards and download links: <span class="portal-screenshot-path">docs/assets/distribution/enterprise-store-variants-grid.png</span>.
-  </p>
-</div>
-
----
-
-## 2. Device Installation & QR Code Provisioning
-
-Employees can install the Enterprise App Store catalog directly on corporate or BYOD devices using their mobile web browser or camera QR code reader:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Store Environment</th>
-        <th>Installation URL Pathway</th>
-        <th>Mobile Provisioning Mechanism</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Production App Store</strong></td>
-        <td><code>https://mobileapps.enterprise.internal</code></td>
-        <td>Scan Production QR Code or navigate to mobile portal &rarr; Tap <strong>Install</strong>.</td>
-      </tr>
-      <tr>
-        <td><strong>UAT App Store</strong></td>
-        <td><code>https://mobileapps-uat.enterprise.internal</code></td>
-        <td>Scan UAT QR Code or navigate to UAT portal &rarr; Tap <strong>Install</strong>.</td>
-      </tr>
-      <tr>
-        <td><strong>QA App Store</strong></td>
-        <td><code>https://mobileapps-qa.enterprise.internal</code></td>
-        <td>Scan QA QR Code or navigate to QA portal &rarr; Tap <strong>Install</strong>.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-### Step-by-Step Installation Runbook:
-
-1. **Launch Mobile Browser:** Open Safari (iOS) or Chrome (Android) on the target mobile device.
-2. **Scan QR Code or Enter URL:** Direct the camera at the designated environment QR code or manually enter the store URL.
-3. **Execute Installation:** When the web prompt appears (*"Press the button below to install the App Catalog on your device"*), tap the green **Install** button.
-4. **Confirm System Prompt:** On iOS, confirm the system dialog: `"[enterprise.internal] would like to install [App Catalog]"`. Tap **Install**.
-5. **Home Screen Placement:** Exit the browser. The Enterprise App Store icon will appear on the device home screen and complete downloading over the air (OTA).
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">Mobile Browser Direct Install Prompt &amp; QR Codes</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the side-by-side screenshots showing the mobile browser "Install" button and the three QA / UAT / PROD QR code images: <span class="portal-screenshot-path">docs/assets/distribution/enterprise-store-qr-install-screens.png</span>.
-  </p>
-</div>
-
----
-
-## 3. iOS Enterprise Certificate Trust Configuration
-
-On iOS devices, enterprise applications signed with an in-house **Apple Developer Enterprise Program Certificate** are not trusted by default by the operating system until the employee manually authorizes the root organization certificate:
-
-<div class="portal-alert-box warning">
-  <div class="portal-alert-title">MANDATORY IOS FIRST-LAUNCH TRUST CONFIGURATION</div>
-  <p>
-    If an employee opens an enterprise app before authorizing the certificate, iOS displays: <strong>"Untrusted Enterprise Developer: Your device management profile has not been trusted on this iPhone."</strong> Users must execute the following one-time approval runbook:
-  </p>
-</div>
-
-### iOS 16, 17, and 18 Certificate Trust Runbook:
-
-1. Open the device **Settings** app.
-2. Navigate to **General &rarr; VPN &amp; Device Management** (on older iOS versions: *General &rarr; Device Management* or *General &rarr; Profiles &amp; Device Management*).
-3. Under the **Enterprise App** section, tap the enterprise organization name: `Enterprise Global Services Inc.`.
-4. Tap **Trust "Enterprise Global Services Inc."**.
-5. When the confirmation prompt appears (*"Trusting will allow any app from this enterprise developer to be used on your iPhone and may allow access to your data"*), tap **Trust**.
-6. Return to the home screen; the Enterprise App Store and all hosted enterprise applications will launch immediately.
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">iOS VPN &amp; Device Management Certificate Trust Flow</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the step-by-step iOS Settings screenshots navigating from General &rarr; VPN &amp; Device Management to the final "Trust" confirmation dialog: <span class="portal-screenshot-path">docs/assets/distribution/ios-certificate-trust-settings-flow.png</span>.
-  </p>
-</div>
-
----
-
-## 4. User Access Entitlements for Business Applications
-
-Applications hosted in the Enterprise App Store fall into two distinct entitlement classes:
-
-<div class="portal-cards-grid">
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-green">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-        </div>
-        <h3 class="portal-card-title">General Employee Applications</h3>
-        <span class="portal-tag-pill">AUTO-PROVISIONED</span>
-      </div>
-      <p class="portal-card-desc">
-        Universal corporate tools (Employee Directory, IT Helpdesk, Workplace Safety, Facilities) accessible by all active employees worldwide. These apps are visible in the store catalog immediately upon corporate login without requiring individual access requests.
-      </p>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-amber">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-        </div>
-        <h3 class="portal-card-title">Business-Specific Applications</h3>
-        <span class="portal-tag-pill">ENTITLEMENT REQUIRED</span>
-      </div>
-      <p class="portal-card-desc">
-        Proprietary applications restricted to specific business units (Commodity Trading, Grain Elevators, Animal Nutrition, Financial Risk). Access must be formally requested and approved through the enterprise Identity Management portal.
-      </p>
-    </div>
-  </div>
-</div>
-
-### Business Application Access Request Workflow:
-
-1. **Identity Management Setup:** Before releasing a business application, the product team collaborates with the **Identity &amp; Access Management (IAM) Team** to establish the active directory security groups and define the designated **Entitlement Owners**.
-2. **Employee Request:** The employee navigates to the corporate access portal: `https://access.enterprise.internal`.
-3. **Application Search:** The user searches for the application by business name or SKU (e.g., `GrainDesk-Mobile-Prod`).
-4. **Entitlement Approval:** The request routes automatically to the Entitlement Owner. Upon managerial sign-off, IAM updates the user's corporate profile.
-5. **Catalog Visibility:** Within 15 minutes of approval, the application becomes visible and downloadable in the employee's Enterprise App Store view.
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">Identity Management Portal - Application Entitlement Request</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the screenshot of access.enterprise.internal showing an application access request and approval confirmation: <span class="portal-screenshot-path">docs/assets/distribution/access-portal-entitlement-request.png</span>.
-  </p>
-</div>
-
----
-
-## 5. TGRC Pre-Deployment Security Sign-Off
-
-Deploying any mobile application to the **Enterprise UAT** or **Enterprise PROD** app stores strictly requires prior authorization from the **Technology Governance &amp; Regulatory Compliance (TGRC)** board:
-
-1. **Submit TGRC Request Form:** The development team submits the mobile deployment request form available on the internal developer service portal (`https://myid.enterprise.internal/mobile-deploy`).
-2. **Attach Complete Excel Manifest:** The request must include the official enterprise deployment manifest spreadsheet containing:
-   * Target Application ID (`com.enterprise.<appname>`).
-   * Production API backend hostnames and data classification level (Confidential, Restricted).
-   * User authentication mechanism (Okta SSO, OAuth 2.0 PKCE).
-   * Datadog RUM client tokens and PII sanitization proof.
-3. **Turnaround SLA:** TGRC typically reviews and approves submissions within **24 to 48 hours**. Emergency security hotfixes can request expedited approval via the on-call TGRC duty lead.
-
-<!-- ============================================================================== -->
-<!-- END OF SECTION 6.1: ENTERPRISE APP STORE & PRIVATE MDM (QA, UAT, PROD) -->
-<!-- ============================================================================== -->
-
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-<!-- START OF SECTION 6.2: GOOGLE PLAY STORE PUBLISHING & STAGED ROLLOUTS -->
-<!-- SOURCE FILE: 06-google-play-publish.mdx -->
-<!-- RECOMMENDED GIT TARGET: docs/distribution/06-google-play-publish.mdx -->
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-
----
-title: "06.2 Google Play Store Deployment & Asset Specifications"
-description: "Enterprise operational standard for Android Google Play deployment: metadata character limits, 512x512 app icons, 1024x500 feature graphics, testing tracks, and staged rollouts."
----
-sidebar:
-  order: 3
-  label: "6.2 Google Play Deployment"
----
-
-import DiagramExpand from './DiagramExpand.astro';
-
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">APP STORE &amp; DISTRIBUTION</span>
-    <span class="portal-hub-tag">MODULE 06.2 &bull; GOOGLE PLAY SPECIFICATION</span>
-  </div>
-  <h1 class="portal-hero-title">Google Play Store Deployment &amp; Asset Guide</h1>
-  <p class="portal-hero-desc">
-    The comprehensive engineering and release handbook for publishing public Android applications to the Google Play Store, governing character limit compliance, high-resolution graphics, testing tracks, staged rollouts, and Fastlane supply automation.
-  </p>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Metadata Limits</div>
-      <div class="portal-cap-desc">App Title (50 chars) &bull; Short Description (80 chars) &bull; Full Description (4,000 chars)</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Mandatory Visuals</div>
-      <div class="portal-cap-desc">512x512 32-bit PNG Icon &bull; 1024x500 Feature Graphic &bull; Screenshots (320px–3840px)</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Test Credentials</div>
-      <div class="portal-cap-desc">Pre-configured demo account &bull; 2FA bypass &bull; Reviewer instructions</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Staged Rollouts</div>
-      <div class="portal-cap-desc">Internal App Sharing &bull; Closed Testing &bull; Phased rollout (1% &rarr; 5% &rarr; 20% &rarr; 100%)</div>
-    </div>
-  </div>
-</div>
-
----
-
-## 1. Mandatory Release Assets & Information
-
-To publish an Android mobile application to the public Google Play Store, the development team must prepare and submit a strictly governed set of metadata, cryptographic assets, and store listing collateral:
-
-* **Signed Android App Bundle (`.aab`):** The release binary compiled with production optimizations, R8 shrinking, and signed with the enterprise upload key or unified release certificate.
-* **App Name ("Visible in Play Store"):** The official public brand title displayed on Google Play.
-* **App Search Keywords:** Relevant discovery keywords used by prospective commercial clients and customers to locate the application on mobile devices.
-* **App Category:** Primary category declaration (strictly **Business** or **Utility** for enterprise applications).
-* **Test Account Credentials:** Active username and password provided in the Play Console *App Access* section so Google review engineers can authenticate.
-* **Privacy Policy URL:** Publicly reachable HTTPS link to the corporate privacy statement.
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">Google Play Console - Main Store Listing Setup</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the screenshot of the Google Play Console showing the Main Store Listing metadata fields (App Name, Short Description, Full Description): <span class="portal-screenshot-path">docs/assets/distribution/google-play-store-listing-overview.png</span>.
-  </p>
-</div>
-
----
-
-## 2. Field Description Character Limit Notes
-
-Google Play strictly enforces character length boundaries on all store listing copy. Submissions exceeding these limits are immediately rejected by the Play Console validation engine:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Store Listing Field</th>
-        <th>Character Limit</th>
-        <th>Display Behavior &amp; User Experience</th>
-        <th>Optimization Best Practice</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>App Title</strong></td>
-        <td><strong>50 characters</strong><br/>(30 recommended)</td>
-        <td>The primary title displayed in search rankings, category charts, and the app listing hero banner. One localized title allowed per supported language.</td>
-        <td>Keep concise: <code>[Brand Name] - [Core Function]</code>. Do not include promotional terms like "Free", "Best", or "#1".</td>
-      </tr>
-      <tr>
-        <td><strong>Short Description</strong></td>
-        <td><strong>80 characters</strong></td>
-        <td>The very first copy users see when viewing the app's detail page on the mobile Play Store app. Users expand this text to view the full description.</td>
-        <td>Focus on the primary value proposition: <em>"Manage grain contracts, track real-time commodity bids, and scale your harvest."</em></td>
-      </tr>
-      <tr>
-        <td><strong>Full Description</strong></td>
-        <td><strong>4,000 characters</strong></td>
-        <td>Detailed overview of the app's features, capabilities, workflows, customer support channels, and security credentials.</td>
-        <td>Structure with bullet points, feature headings, and operational prerequisites. Avoid keyword stuffing.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
----
-
-## 3. Graphic Asset Requirements & Dimensions
-
-All promotional graphics uploaded to Google Play must meet precise pixel dimensions, aspect ratios, and color format specifications:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Graphic Asset</th>
-        <th>Pixel Dimensions</th>
-        <th>File Format &amp; Color</th>
-        <th>Maximum Size</th>
-        <th>Design Specifications</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>App Icon</strong></td>
-        <td><strong>512 x 512 px</strong></td>
-        <td>32-bit PNG (with alpha)</td>
-        <td>1,024 KB (1 MB)</td>
-        <td>High-resolution brand icon. Do not round corners; Google Play automatically applies adaptive squircles and shadow masks.</td>
-      </tr>
-      <tr>
-        <td><strong>Feature Graphic</strong></td>
-        <td><strong>1024 x 500 px</strong></td>
-        <td>JPEG or 24-bit PNG (<strong>no alpha</strong>)</td>
-        <td>15 MB</td>
-        <td>Displayed prominently in Play Store recommendations and header banners. If a promo video is attached, a Play button overlays this image. Keep text centered.</td>
-      </tr>
-      <tr>
-        <td><strong>Phone Screenshots</strong></td>
-        <td>Min: <strong>320 px</strong><br/>Max: <strong>3840 px</strong></td>
-        <td>JPEG or 24-bit PNG (<strong>no alpha</strong>)</td>
-        <td>8 MB per image</td>
-        <td>Upload between <strong>4 and 8 screenshots</strong>. Maximum aspect ratio 2:1. Show real app workflows with descriptive caption callouts.</td>
-      </tr>
-      <tr>
-        <td><strong>Tablet Screenshots</strong></td>
-        <td>Min: <strong>1080 px</strong></td>
-        <td>JPEG or 24-bit PNG (<strong>no alpha</strong>)</td>
-        <td>8 MB per image</td>
-        <td>Mandatory if app targets Android tablets: upload separate 7-inch and 10-inch screenshots displaying optimized multi-pane layouts.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">Google Play Graphic Assets Dimension &amp; Alignment Guide</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the design template screenshot illustrating the 512x512 app icon, 1024x500 feature graphic safe zone, and screenshot carousel layout: <span class="portal-screenshot-path">docs/assets/distribution/google-play-graphics-spec-guide.png</span>.
-  </p>
-</div>
-
----
-
-## 4. Reviewer Test Credentials & App Access Configuration
-
-Google Play Review Guideline 2.1 mandates that reviewers must be able to authenticate and inspect all primary app workflows. If the application requires a login, the release team must provide valid credentials:
-
-```text
-Google Play Console -> App Content -> App Access -> "All or some functionality is restricted"
--> Add Credentials:
-   - Account Name: "Enterprise Automated Reviewer"
-   - Username: play-tester@enterprise.internal
-   - Password: [Secure High-Entropy Password]
-   - Additional Notes: "Test account configured with simulated demo orders. No hardware SMS 2FA required."
-```
-
-<div class="portal-alert-box info">
-  <div class="portal-alert-title">TWO-FACTOR AUTHENTICATION (2FA) BYPASS RULE</div>
-  <p>
-    Google Play reviewers cannot receive hardware SMS codes or enterprise push authenticators (Okta Verify / Microsoft Authenticator). For store test accounts, engineering must either provide fixed universal OTP codes (e.g., <code>123456</code>) or exempt the review username from 2FA requirements in staging/production identity gateways.
-  </p>
-</div>
-
----
-
-## 5. Release Tracks & Staged Rollout Strategy
-
-Enterprise Android apps deploy through progressive testing tracks before reaching 100% of global production users:
-
-<DiagramExpand title="GOOGLE PLAY TESTING TRACKS &amp; PHASED STAGED ROLLOUT ARCHITECTURE">
-
-```mermaid
-graph TD
-    AAB["Signed Android App Bundle (.aab)<br/>+ Proguard / R8 mapping.txt"] --> FASTLANE["Fastlane supply / Google Play Developer API"]
-    
-    subgraph TestingTracks ["1. Pre-Release Testing Tracks"]
-        FASTLANE --> TRACK_INTERNAL["Internal App Sharing<br/>(Instant Dev/QA Smoke Testing)"]
-        FASTLANE --> TRACK_CLOSED["Closed Testing Track<br/>(Targeted QA & Automation Fleet)"]
-        TRACK_CLOSED --> PRE_LAUNCH["Google Pre-Launch Report<br/>(Firebase Test Lab Device Matrix)"]
-    end
-
-    subgraph ProductionRollout ["2. Production Staged Rollout Stages"]
-        PRE_LAUNCH -->|Pass: Zero High-Severity Issues| STAGE_1["Day 1: 1% Staged Rollout"]
-        STAGE_1 --> STAGE_5["Day 2: 5% Staged Rollout"]
-        STAGE_5 --> STAGE_20["Day 3: 20% Staged Rollout"]
-        STAGE_20 --> STAGE_50["Day 4: 50% Staged Rollout"]
-        STAGE_50 --> STAGE_100["Day 5: 100% Full Production"]
-    end
-
-    subgraph TelemetryGates ["3. Real-Time Telemetry Gates (Datadog & Android Vitals)"]
-        STAGE_1 -.-> HEALTH_CHECK{"Health Gate:<br/>Crash Rate &lt; 1.09%<br/>ANR &lt; 0.47%"}
-        STAGE_5 -.-> HEALTH_CHECK
-        STAGE_20 -.-> HEALTH_CHECK
-        STAGE_50 -.-> HEALTH_CHECK
-        HEALTH_CHECK -->|Vitals Healthy| NEXT_RAMP["Approve Next Rollout Tier"]
-        HEALTH_CHECK -->|Vitals Threshold Breached| HALT["Halt Rollout Immediately<br/>&amp; Dispatch Hotfix"]
-    end
-
-    classDef build fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff;
-    classDef track fill:#1c2d22,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef rollout fill:#102217,stroke:#facc15,stroke-width:2px,color:#ffffff;
-    classDef gate fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#ffffff;
-    classDef alert fill:#381515,stroke:#ef4444,stroke-width:2px,color:#ffffff;
-
-    class AAB,FASTLANE build;
-    class TRACK_INTERNAL,TRACK_CLOSED,PRE_LAUNCH track;
-    class STAGE_1,STAGE_5,STAGE_20,STAGE_50,STAGE_100 rollout;
-    class HEALTH_CHECK,NEXT_RAMP gate;
-    class HALT alert;
-```
-
-</DiagramExpand>
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Release Track</th>
-        <th>Audience Scope</th>
-        <th>Review Requirement</th>
-        <th>Promotion Criteria</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Internal App Sharing</strong></td>
-        <td>Up to 100 internal developers and QA leads.</td>
-        <td>Instant (&lt; 5 minutes); zero review gate.</td>
-        <td>Used for rapid smoke testing directly from Bitrise CI.</td>
-      </tr>
-      <tr>
-        <td><strong>Closed Testing (Alpha)</strong></td>
-        <td>Dedicated Google Group or internal email list (up to 2,000 testers).</td>
-        <td>Light automated virus and binary check.</td>
-        <td>Sign-off from QA Lead; zero high-severity crashes.</td>
-      </tr>
-      <tr>
-        <td><strong>Open Testing (Beta)</strong></td>
-        <td>Public opt-in external pilot users.</td>
-        <td>Full Google Play Store review.</td>
-        <td>Telemetry confirms &gt; 99.8% crash-free sessions.</td>
-      </tr>
-      <tr>
-        <td><strong>Production Staged Rollout</strong></td>
-        <td>Phased rollout: <strong>1% &rarr; 5% &rarr; 20% &rarr; 50% &rarr; 100%</strong>.</td>
-        <td>Full Google Play Store review (3–7 days).</td>
-        <td>Gradual ramp over 5 days while monitoring Datadog crash rates.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">Google Play Release Tracks &amp; Staged Rollout Percentage Slider</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the Google Play Console screenshot displaying the staged rollout release dashboard with percentage controls: <span class="portal-screenshot-path">docs/assets/distribution/google-play-staged-rollout-dashboard.png</span>.
-  </p>
-</div>
-
----
-
-## 6. Automated Fastlane `supply` Deployment Pipeline
-
-To eliminate manual binary uploads in the Google Play Console, Bitrise pipelines execute automated deployment using Fastlane:
-
-```ruby
-# fastlane/Fastfile
-lane :deploy_google_play do
-  upload_to_play_store(
-    package_name: 'com.enterprise.mobileapp',
-    track: 'production',
-    rollout: '0.05', # Initial 5% staged rollout
-    aab: './android/app/build/outputs/bundle/release/app-release.aab',
-    json_key: ENV['GOOGLE_PLAY_SERVICE_ACCOUNT_JSON'],
-    skip_upload_metadata: false,
-    skip_upload_images: false,
-    skip_upload_screenshots: false
-  )
-end
-```
-
-<!-- ============================================================================== -->
-<!-- END OF SECTION 6.2: GOOGLE PLAY STORE PUBLISHING & STAGED ROLLOUTS -->
-<!-- ============================================================================== -->
-
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-<!-- START OF SECTION 6.3: APPLE APP STORE, TRANSPORTER & TESTFLIGHT -->
-<!-- SOURCE FILE: 06-apple-app-store.mdx -->
-<!-- RECOMMENDED GIT TARGET: docs/distribution/06-apple-app-store.mdx -->
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-
----
-title: "06.3 Apple App Store & TestFlight Deployment Requirements"
-description: "Enterprise operational standard for iOS App Store and TestFlight deployment: the 15-point release checklist, Transporter desktop IPA upload, multi-device screenshot dimensions, and phased releases."
----
-sidebar:
-  order: 4
-  label: "6.3 Apple App Store"
----
-
-import DiagramExpand from './DiagramExpand.astro';
-
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">APP STORE &amp; DISTRIBUTION</span>
-    <span class="portal-hub-tag">MODULE 06.3 &bull; APPLE APP STORE SPECIFICATION</span>
-  </div>
-  <h1 class="portal-hero-title">Apple App Store &amp; TestFlight Deployment Requirements</h1>
-  <p class="portal-hero-desc">
-    The comprehensive engineering and release handbook for publishing iOS applications to the Apple App Store and TestFlight, detailing the mandatory 15-point deployment checklist, Transporter IPA upload utilities, multi-device screenshot specifications, and phased release schedules.
-  </p>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">15-Point Release Checklist</div>
-      <div class="portal-cap-desc">Bundle ID convention &bull; App name &bull; Keywords &bull; SKU &bull; Demo review credentials</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Multi-Device Screenshots</div>
-      <div class="portal-cap-desc">iPhone 6.7" &bull; iPhone 6.5" &bull; iPhone 5.5" &bull; iPad Pro 12.9" &bull; Min 4 per display</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Transporter IPA Upload</div>
-      <div class="portal-cap-desc">Apple Transporter macOS tool &bull; App Store Connect API &bull; Fastlane deliver automation</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">7-Day Phased Release</div>
-      <div class="portal-cap-desc">1% &rarr; 2% &rarr; 5% &rarr; 10% &rarr; 20% &rarr; 50% &rarr; 100% telemetry-governed ramp</div>
-    </div>
-  </div>
-</div>
-
----
-
-## 1. The 15-Point Application Deployment Checklist
-
-Before submitting an iOS release to the corporate release management team, the engineering team must satisfy every requirement of the official enterprise checklist:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Checklist Requirement</th>
-        <th>Specification &amp; Enterprise Standard</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>1</strong></td>
-        <td><strong>Application Identifier (Bundle ID)</strong></td>
-        <td>The <code>.ipa</code> must be signed with the assigned bundle ID adhering strictly to: <code>com.enterprise.&lt;appname&gt;</code>.</td>
-      </tr>
-      <tr>
-        <td><strong>2</strong></td>
-        <td><strong>App Name &amp; Subtitle</strong></td>
-        <td>App Name: Up to 30 characters displayed on the App Store. Subtitle: Up to 30 characters summarizing functionality.</td>
-      </tr>
-      <tr>
-        <td><strong>3</strong></td>
-        <td><strong>Discovery Keywords</strong></td>
-        <td>Up to 100 characters, comma-separated with zero spaces. Relevant keywords used to locate the app on the App Store.</td>
-      </tr>
-      <tr>
-        <td><strong>4</strong></td>
-        <td><strong>App Description</strong></td>
-        <td>Comprehensive text detailing app features, agricultural workflows, user benefits, and enterprise security standards.</td>
-      </tr>
-      <tr>
-        <td><strong>5</strong></td>
-        <td><strong>Target Devices</strong></td>
-        <td>Explicitly specify target devices: <strong>iPhone only</strong>, <strong>iPad only</strong>, or <strong>Universal (iPhone &amp; iPad)</strong>.</td>
-      </tr>
-      <tr>
-        <td><strong>6</strong></td>
-        <td><strong>Primary Language</strong></td>
-        <td>Specify primary release language (default: <code>English (U.S.)</code>). Provide localized copy for secondary regional markets.</td>
-      </tr>
-      <tr>
-        <td><strong>7</strong></td>
-        <td><strong>Stock-Keeping Unit (SKU)</strong></td>
-        <td>Unique internal alphanumeric identifier (e.g., <code>ENTERPRISE-MOBILE-APP-PROD-2026</code>). Default fallback: <code>ACESMobility</code>.</td>
-      </tr>
-      <tr>
-        <td><strong>8</strong></td>
-        <td><strong>Privacy Policy URL</strong></td>
-        <td>Mandatory live HTTPS link to the corporate privacy policy explaining data collection and user rights.</td>
-      </tr>
-      <tr>
-        <td><strong>9</strong></td>
-        <td><strong>Territory / Country Availability</strong></td>
-        <td>Share the list of countries the app should be available in (e.g., USA, Canada, UK, Brazil, India, Global).</td>
-      </tr>
-      <tr>
-        <td><strong>10</strong></td>
-        <td><strong>Demo Testing Account Credentials</strong></td>
-        <td>Provide valid, active review credentials (username and password). Must be an active test account with demo data.</td>
-      </tr>
-      <tr>
-        <td><strong>11</strong></td>
-        <td><strong>Reviewer Testing Notes</strong></td>
-        <td>Additional operational instructions guiding Apple reviewers on how to navigate workflows and test core features.</td>
-      </tr>
-      <tr>
-        <td><strong>12</strong></td>
-        <td><strong>Signed IPA Binary</strong></td>
-        <td>Share the production-signed <code>.ipa</code> file compiled via Bitrise or secure cryptographic pipeline.</td>
-      </tr>
-      <tr>
-        <td><strong>13</strong></td>
-        <td><strong>Copyright Declaration</strong></td>
-        <td>Provide the legal entity and copyright year (e.g., <code>&copy; 2026 Enterprise Mobility Services Inc.</code>).</td>
-      </tr>
-      <tr>
-        <td><strong>14</strong></td>
-        <td><strong>Screenshot Collateral</strong></td>
-        <td>Minimum of <strong>4 screenshots per device form factor</strong> according to the Apple display dimensions table.</td>
-      </tr>
-      <tr>
-        <td><strong>15</strong></td>
-        <td><strong>App Review Guidelines Compliance</strong></td>
-        <td>Confirm compliance with Apple Human Interface Guidelines and App Review Guidelines (2.1, 4.2, 5.1).</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">App Store Connect - General App Information &amp; Pricing Metadata</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the App Store Connect screenshot showing the App Information tab with Bundle ID, SKU, and Primary Language: <span class="portal-screenshot-path">docs/assets/distribution/app-store-connect-general-info.png</span>.
-  </p>
-</div>
-
----
-
-## 2. Apple App Store IPA Upload Options
-
-Apple provides multiple utilities for transmitting signed IPA builds from macOS environments to App Store Connect:
-
-<div class="portal-cards-grid">
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-purple">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-        </div>
-        <h3 class="portal-card-title">1. Apple Transporter Utility</h3>
-        <span class="portal-tag-pill">RECOMMENDED GUI</span>
-      </div>
-      <p class="portal-card-desc">
-        Transporter is Apple's dedicated macOS desktop utility for uploading pre-compiled IPA binaries directly to App Store Connect. Developers simply drag and drop the <code>.ipa</code> file; Transporter automatically verifies code signing, provisioning profiles, and asset catalogs before upload. Available directly from the Mac App Store.
-      </p>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-card-icon badge-teal">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-        </div>
-        <h3 class="portal-card-title">2. Fastlane deliver / pilot</h3>
-        <span class="portal-tag-pill">AUTOMATED CI/CD</span>
-      </div>
-      <p class="portal-card-desc">
-        Command-line automation embedded inside Bitrise CI/CD pipelines. Uses App Store Connect API Keys (<code>.p8</code>) to authenticate, validate, and upload IPAs automatically on git release tag triggers without manual developer intervention.
-      </p>
-    </div>
-  </div>
-
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">Apple Transporter macOS App - IPA Validation &amp; Delivery Screen</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the screenshot of Apple Transporter macOS app displaying an IPA build being verified and uploaded to App Store Connect: <span class="portal-screenshot-path">docs/assets/distribution/apple-transporter-ipa-upload.png</span>.
-  </p>
-</div>
-
----
-
-## 3. Screenshot Dimensions Across Device Form Factors
-
-Apple enforces exact pixel dimensions for all uploaded screenshots. Images must be 72 dpi, RGB, flattened, and contain no transparency:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Device Target Category</th>
-        <th>Pixel Dimensions (Portrait)</th>
-        <th>Pixel Dimensions (Landscape)</th>
-        <th>Required Quantity</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>iPhone 6.7" Display</strong><br/>(iPhone 16 Pro Max, 15 Pro Max, 14 Pro Max)</td>
-        <td><strong>1290 x 2796 px</strong></td>
-        <td><strong>2796 x 1290 px</strong></td>
-        <td>Min 4, Max 10 images</td>
-      </tr>
-      <tr>
-        <td><strong>iPhone 6.5" Display</strong><br/>(iPhone 14 Plus, 13 Pro Max, 11 Pro Max, XS Max)</td>
-        <td><strong>1242 x 2688 px</strong></td>
-        <td><strong>2688 x 1242 px</strong></td>
-        <td>Min 4, Max 10 images</td>
-      </tr>
-      <tr>
-        <td><strong>iPhone 5.5" Display</strong><br/>(iPhone 8 Plus, 7 Plus, 6s Plus)</td>
-        <td><strong>1242 x 2208 px</strong></td>
-        <td><strong>2208 x 1242 px</strong></td>
-        <td>Min 4, Max 10 images</td>
-      </tr>
-      <tr>
-        <td><strong>iPad Pro 12.9" Display</strong><br/>(6th &amp; 2nd generation iPad Pro)</td>
-        <td><strong>2048 x 2732 px</strong></td>
-        <td><strong>2732 x 2048 px</strong></td>
-        <td>Min 4, Max 10 images (if iPad enabled)</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">App Store Connect - Screenshot Upload &amp; Display Order Matrix</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the App Store Connect screenshot showing the iPhone and iPad screenshot tabs with uploaded image sets: <span class="portal-screenshot-path">docs/assets/distribution/app-store-connect-screenshots-grid.png</span>.
-  </p>
-</div>
-
----
-
-## 4. TestFlight Beta Cohorts & 7-Day Phased Release
-
-To mitigate production incident blast radiuses, applications distribute through TestFlight before executing a staged production release:
-
-<DiagramExpand title="APPLE APP STORE CONNECT, TESTFLIGHT &amp; 7-DAY PHASED ROLLOUT ARCHITECTURE">
-
-```mermaid
-graph TD
-    IPA["Signed iOS Distribution Binary (.ipa)<br/>+ dSYM Crash Symbols"] --> UPLOAD["Apple Transporter App / Fastlane deliver"]
-    
-    subgraph AppStoreConnect ["1. App Store Connect Ingestion & Processing"]
-        UPLOAD --> PROC["Automated Ingestion Processing<br/>(Asset validation &amp; bitcode/symbol extraction)"]
-        PROC --> READY["Build Ready for Testing / Release"]
-    end
-
-    subgraph TestFlightCohort ["2. TestFlight Progressive Beta Tracks"]
-        READY --> TF_INTERNAL["TestFlight Internal Cohort<br/>(Instant availability &bull; No review gate)"]
-        READY --> TF_EXTERNAL["TestFlight External Public Beta<br/>(Requires Beta App Review sign-off)"]
-    end
-
-    subgraph AppleReview ["3. App Store Review Gate"]
-        TF_EXTERNAL -->|Production Candidate| REVIEW_SUBMIT["Submit for App Store Review<br/>(15-Point Pre-flight Checklist)"]
-        REVIEW_SUBMIT --> APPLE_REVIEWER["Apple Review Board Assessment<br/>(Human UI/UX &amp; Demo Credentials Testing)"]
-        APPLE_REVIEWER -->|Approved| PHASED_GATE["Enable 7-Day Phased Release"]
-    end
-
-    subgraph PhasedRelease ["4. 7-Day Progressive Production Rollout"]
-        PHASED_GATE --> D1["Day 1: 1%"]
-        D1 --> D2["Day 2: 2%"]
-        D2 --> D3["Day 3: 5%"]
-        D3 --> D4["Day 4: 10%"]
-        D4 --> D5["Day 5: 20%"]
-        D5 --> D6["Day 6: 50%"]
-        D6 --> D7["Day 7: 100% Global Saturation"]
-    end
-
-    classDef source fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff;
-    classDef connect fill:#1c2d22,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef testflight fill:#102217,stroke:#a855f7,stroke-width:2px,color:#ffffff;
-    classDef review fill:#25153a,stroke:#facc15,stroke-width:2px,color:#ffffff;
-    classDef rollout fill:#1f3b2c,stroke:#22c55e,stroke-width:2px,color:#22c55e;
-
-    class IPA,UPLOAD source;
-    class PROC,READY connect;
-    class TF_INTERNAL,TF_EXTERNAL testflight;
-    class REVIEW_SUBMIT,APPLE_REVIEWER,PHASED_GATE review;
-    class D1,D2,D3,D4,D5,D6,D7 rollout;
-```
-
-</DiagramExpand>
-
-### TestFlight Testing Tracks:
-* **Internal Testing:** Up to 100 internal organization developers and product leads. Builds become available immediately upon processing with zero review requirements.
-* **External Testing:** Up to 10,000 external pilot users. The initial build requires lightweight Beta App Review by Apple before distribution begins.
-
-### 7-Day Phased Release Schedule:
-When releasing an update to production, developers must enable **Phased Release for Automatic Updates**. The update deploys progressively over a 7-day period to users with automatic updates enabled:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Release Day</th>
-        <th>Rollout Percentage</th>
-        <th>Datadog Telemetry Verification Gate</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Day 1</strong></td>
-        <td><strong>1%</strong> of user base</td>
-        <td>Verify cold launch latency &lt; 2.0s; crash-free users &ge; 99.9%.</td>
-      </tr>
-      <tr>
-        <td><strong>Day 2</strong></td>
-        <td><strong>2%</strong> of user base</td>
-        <td>Verify network error rate &lt; 0.5% on core API endpoints.</td>
-      </tr>
-      <tr>
-        <td><strong>Day 3</strong></td>
-        <td><strong>5%</strong> of user base</td>
-        <td>Inspect Datadog APM flamegraphs for latency regressions.</td>
-      </tr>
-      <tr>
-        <td><strong>Day 4</strong></td>
-        <td><strong>10%</strong> of user base</td>
-        <td>Confirm zero P1 alert spikes in <code>#mobile-ops-duty</code>.</td>
-      </tr>
-      <tr>
-        <td><strong>Day 5</strong></td>
-        <td><strong>20%</strong> of user base</td>
-        <td>Mid-point release sign-off by Mobile Lead.</td>
-      </tr>
-      <tr>
-        <td><strong>Day 6</strong></td>
-        <td><strong>50%</strong> of user base</td>
-        <td>Final stability check before global saturation.</td>
-      </tr>
-      <tr>
-        <td><strong>Day 7</strong></td>
-        <td><strong>100%</strong> of user base</td>
-        <td>Full global distribution complete.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<!-- ============================================================================== -->
-<!-- END OF SECTION 6.3: APPLE APP STORE, TRANSPORTER & TESTFLIGHT -->
-<!-- ============================================================================== -->
-
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-<!-- START OF SECTION 6.4: CODE SIGNING, CERTIFICATES & TGRC APPROVALS -->
-<!-- SOURCE FILE: 06-certs-and-signing.mdx -->
-<!-- RECOMMENDED GIT TARGET: docs/distribution/06-certs-and-signing.mdx -->
-<!-- ============================================================================== -->
-<!-- ============================================================================== -->
-
----
-title: "06.4 Code Signing, Certificates & TGRC Approvals"
-description: "Enterprise cryptographic code signing governance: Android unified keystores, Apple Enterprise vs. Public distribution certificates, internal certificate request portals, and TGRC pre-deployment approvals."
----
-sidebar:
-  order: 5
-  label: "6.4 Code Signing & TGRC"
----
-
-import DiagramExpand from './DiagramExpand.astro';
-
-<div class="portal-hero-card">
-  <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">APP STORE &amp; DISTRIBUTION</span>
-    <span class="portal-hub-tag">MODULE 06.4 &bull; CRYPTOGRAPHIC SIGNING &amp; GOVERNANCE</span>
-  </div>
-  <h1 class="portal-hero-title">Code Signing, Certificates &amp; TGRC Approvals</h1>
-  <p class="portal-hero-desc">
-    The complete cryptographic governance specification for signing enterprise mobile binaries, managing Android release keystores and Apple developer certificates, executing mandatory TGRC pre-deployment security reviews, and scheduling store review lead times.
-  </p>
-  <div class="portal-caps-bar">
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Android Unified Keystore</div>
-      <div class="portal-cap-desc">Single enterprise certificate &bull; Dual-purpose signing for Enterprise &amp; Public Play Store</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">iOS Certificate Hierarchy</div>
-      <div class="portal-cap-desc">Apple Enterprise In-House (.p12) vs. Apple Public Developer Distribution profile</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">TGRC Deployment Gateway</div>
-      <div class="portal-cap-desc">Pre-deployment security manifest &bull; Excel workbook submission &bull; UAT &amp; PROD sign-off</div>
-    </div>
-    <div class="portal-cap-item">
-      <div class="portal-cap-title">Review Turnaround SLAs</div>
-      <div class="portal-cap-desc">Apple (1–2 weeks) &bull; Google Play (~1 week) &bull; Enterprise App Store (&lt; 2 hrs)</div>
-    </div>
-  </div>
-</div>
-
----
-
-## 1. Application Signing Architecture: Android & iOS
-
-To safeguard binary integrity and prevent unauthorized code injection, all mobile builds must be cryptographically signed using enterprise-governed digital certificates before deployment:
-
-<DiagramExpand title="ENTERPRISE MOBILE CODE SIGNING HIERARCHY &amp; TGRC GOVERNANCE ARCHITECTURE">
-
-```mermaid
-graph TD
-    DEV["Developer / Release Engineer"] --> REQ["Certificate Request Portal (myid.enterprise.internal)"]
-    
-    subgraph GovernanceGate ["1. TGRC Security & Regulatory Pre-Flight Gate"]
-        REQ --> TGRC["TGRC Deployment Gateway<br/>(Excel Manifest &amp; Vulnerability Scan Sign-Off)"]
-        TGRC --> VAULT["Encrypted CI/CD Vault<br/>(Bitrise Secrets &amp; Cloud KMS)"]
-    end
-
-    subgraph SigningVaults ["2. Cryptographic Code Signing Hierarchy"]
-        VAULT --> ANDROID_KEY["Android Unified Keystore (.jks)<br/>(Single Corporate Signing Certificate)"]
-        VAULT --> IOS_INHOUSE["iOS Apple Developer Enterprise (.p12)<br/>(In-House Distribution Certificate)"]
-        VAULT --> IOS_PUBLIC["iOS Apple Developer Program (.p12)<br/>(Public Commercial Distribution Profile)"]
-    end
-
-    subgraph TargetDistribution ["3. Governed Distribution Pathways"]
-        ANDROID_KEY -->|Unified Dual-Purpose Signing| ANDROID_INTERNAL["Enterprise App Store (QA/UAT/PROD)"]
-        ANDROID_KEY -->|Unified Dual-Purpose Signing| ANDROID_PUBLIC["Public Google Play Console"]
-        
-        IOS_INHOUSE -->|In-House Ad-Hoc/Enterprise| IOS_INTERNAL["Enterprise App Store (Employees Only)"]
-        IOS_PUBLIC -->|Commercial App Store Review| IOS_PUBLIC_STORE["Apple App Store &amp; TestFlight"]
-    end
-
-    classDef dev fill:#13251c,stroke:#22c55e,stroke-width:2px,color:#ffffff;
-    classDef gate fill:#25153a,stroke:#a855f7,stroke-width:2px,color:#ffffff;
-    classDef vault fill:#1c2d22,stroke:#facc15,stroke-width:2px,color:#ffffff;
-    classDef target fill:#102217,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-
-    class DEV,REQ dev;
-    class TGRC,VAULT gate;
-    class ANDROID_KEY,IOS_INHOUSE,IOS_PUBLIC vault;
-    class ANDROID_INTERNAL,ANDROID_PUBLIC,IOS_INTERNAL,IOS_PUBLIC_STORE target;
-```
-
-</DiagramExpand>
+The enterprise standardizes on battle-tested frameworks across each mobile runtime:
 
 <div class="portal-table-wrap">
   <table class="portal-table">
     <thead>
       <tr>
         <th>Platform</th>
-        <th>Certificate Type</th>
-        <th>Target Distribution Pathway</th>
-        <th>Security Governance Standard</th>
+        <th>Unit Test Harness</th>
+        <th>Mocking Library</th>
+        <th>Async / Flow Testing</th>
+        <th>Component &amp; Snapshot</th>
+        <th>UI &amp; E2E Automation</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>Android</strong></td>
-        <td>Unified Enterprise Release Keystore (<code>.jks</code>)</td>
-        <td>Enterprise App Store (QA/UAT/PROD) <strong>and</strong> Public Google Play Store.</td>
-        <td>The mobile engineering team maintains <strong>one unified enterprise certificate</strong> utilized to sign both internal enterprise and public customer-facing applications.</td>
+        <td><strong>Native Android</strong></td>
+        <td><strong>JUnit 5</strong> + Kotest Assertions</td>
+        <td>Mockk</td>
+        <td>Turbine + TestDispatcher</td>
+        <td>Robolectric + Compose Rule</td>
+        <td><strong>Espresso</strong> &bull; <strong>Maestro YAML</strong> &bull; Sauce Labs</td>
       </tr>
       <tr>
-        <td><strong>iOS (Internal)</strong></td>
-        <td>Apple Developer Enterprise Program Certificate (In-House Distribution)</td>
-        <td>Enterprise App Store (QA, UAT, and PROD).</td>
-        <td>Signed using enterprise distribution licenses for direct employee deployment without Apple review. Requires manual device certificate trust in iOS Settings.</td>
+        <td><strong>Native iOS</strong></td>
+        <td><strong>XCTest</strong> + Swift Testing</td>
+        <td>SwiftyMocky / Protocol Stubs</td>
+        <td>Swift Concurrency (async/await)</td>
+        <td>Point-Free SnapshotTesting</td>
+        <td><strong>XCUITest</strong> &bull; <strong>Maestro YAML</strong> &bull; Sauce Labs</td>
       </tr>
       <tr>
-        <td><strong>iOS (Public)</strong></td>
-        <td>Apple Developer Program Distribution Certificate</td>
-        <td>Public Apple App Store and TestFlight.</td>
-        <td>Signed using the public commercial developer account. Submissions are subject to mandatory Apple App Review guidelines and review boards.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-### Application ID Naming Convention:
-All enterprise mobile applications across both Android and iOS must adhere to the standardized reverse-domain naming convention:
-```text
-com.enterprise.<appname>
-```
-*Examples:*
-* `com.enterprise.graindesk`
-* `com.enterprise.driverconnect`
-* `com.enterprise.plantops`
-
----
-
-## 2. Developer Certificate Request Workflow
-
-Developers building new applications or migrating existing solutions must request authorized signing certificates through the internal self-service portal:
-
-1. **Access Internal Service Portal:** Navigate to the enterprise identity management gateway: `https://myid.enterprise.internal`.
-2. **Submit Certificate Request:** Select **Request for Certificate** under the Mobile Engineering capabilities menu.
-3. **Declare Target Pathway:** Specify whether the certificate is required for **Enterprise App Store** (internal workforce) or **Public Apple App Store / Google Play**.
-4. **Provide Application Details:** Enter the verified application bundle ID (`com.enterprise.<appname>`), project repository URL, and designated technical lead.
-5. **Vault Provisioning:** Once approved by the Mobile Platform Security team, the signing keys and provisioning profiles are dynamically provisioned into the project's **Bitrise Encrypted Secret Vault**.
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">Internal Developer Service Portal - Certificate Request Workflow</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the screenshot of myid.enterprise.internal showing the Mobile Certificate Request form and approval dashboard: <span class="portal-screenshot-path">docs/assets/distribution/myid-certificate-request-portal.png</span>.
-  </p>
-</div>
-
----
-
-## 3. Mandatory TGRC Pre-Deployment Security Approval
-
-Under corporate compliance standards, **no application can be released to UAT or Production without prior approval from Technology Governance &amp; Regulatory Compliance (TGRC)**:
-
-```text
-Build Artifact (.aab / .ipa)
-       │
-       ▼
-[Submit TGRC Request on Internal Portal] ──► Attach Completed Excel Manifest
-       │
-       ▼
-[TGRC Review: Data Privacy, Auth Security, PII Masking]
-       │
-       ├──► APPROVED: Promoted to UAT or PROD
-       └──► REJECTED: Remediation required (Security Findings)
-```
-
-### Pre-Deployment Manifest Requirements:
-Development teams must download, populate, and attach the official **TGRC Mobile Deployment Manifest** (Excel file) containing:
-1. **Application Identity:** Full app name, bundle ID, version number, and build code.
-2. **Data Classification:** Confidential, Restricted, or Public data handling classification.
-3. **API &amp; Backend Endpoints:** List of all production backend microservices and domain hostnames consumed by the client.
-4. **Authentication &amp; Tokens:** User sign-in flows (Okta, Entra ID, OAuth 2.0 PKCE) and token storage mechanism.
-5. **Observability Verification:** Datadog RUM configuration and confirmation that all PII masking filters are enabled.
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">TGRC Deployment Approval Request Form &amp; Manifest Attachment</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the portal screenshot of the TGRC Deployment Form showing the required fields and Excel manifest attachment upload button: <span class="portal-screenshot-path">docs/assets/distribution/tgrc-deployment-request-screen.png</span>.
-  </p>
-</div>
-
----
-
-## 4. Platform Review Turnaround SLAs & Release Scheduling
-
-Release managers and mobile leads must account for platform review lead times when scheduling business deployment milestones:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Store Distribution Target</th>
-        <th>Typical Review Turnaround</th>
-        <th>Planning &amp; Lead Time Guidance</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Apple App Store (Public)</strong></td>
-        <td><strong>1 to 2 weeks</strong><br/>(7–14 calendar days)</td>
-        <td>Apple conducts rigorous manual inspection of UI, demo accounts, and privacy guidelines. Submit builds at least 14 days before marketing launch dates.</td>
-      </tr>
-      <tr>
-        <td><strong>Google Play Store (Public)</strong></td>
-        <td><strong>1 week</strong><br/>(5–7 business days)</td>
-        <td>Google conducts automated security checks and manual policy reviews. Allow a minimum of 7 days before general public availability.</td>
-      </tr>
-      <tr>
-        <td><strong>Enterprise App Store (Internal)</strong></td>
-        <td><strong>&lt; 2 hours</strong><br/>(Upon TGRC sign-off)</td>
-        <td>Zero vendor review queue. Once TGRC approves the manifest, deployment to QA, UAT, or PROD stores executes instantly via Bitrise CI/CD.</td>
+        <td><strong>React Native</strong></td>
+        <td><strong>Jest</strong></td>
+        <td>Jest Mocks + MSW</td>
+        <td>Jest Timers &amp; Async Hooks</td>
+        <td>React Native Testing Library (RNTL)</td>
+        <td><strong>Jest Component E2E</strong> &bull; <strong>Maestro YAML</strong> &bull; Sauce Labs</td>
       </tr>
     </tbody>
   </table>
@@ -1574,473 +203,2145 @@ Release managers and mobile leads must account for platform review lead times wh
 
 ---
 
-## 5. Automated Bitrise Code Signing Integration
-
-To prevent unencrypted certificate leakage onto developer workstations, all signing keys are securely mounted into memory only during CI/CD build execution:
-
-```yaml
-# bitrise.yml
-workflows:
-  release-prod-ios:
-    steps:
-    - certificate-and-profile-installer@1:
-        inputs:
-        - default_certificate_passphrase: $BITRISEIO_CERTIFICATE_PASSPHRASE
-    - xcode-archive@5:
-        inputs:
-        - export_method: app-store # or enterprise
-        - distribution_type: app-store
-        - compile_bitcode: "no"
-
-  release-prod-android:
-    steps:
-    - sign-apk@1:
-        inputs:
-        - android_app: $BITRISE_AAB_PATH
-        - keystore_url: $BITRISEIO_ANDROID_KEYSTORE_URL
-        - keystore_password: $BITRISEIO_ANDROID_KEYSTORE_PASSWORD
-        - keystore_alias: $BITRISEIO_ANDROID_KEYSTORE_ALIAS
-        - private_key_password: $BITRISEIO_ANDROID_KEYSTORE_PRIVATE_KEY_PASSWORD
-```
+## 4. Screenshot and Test Runner Artifacts
 
 <div class="portal-screenshot-box">
   <div class="portal-screenshot-header">
     <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">Bitrise Code Signing Tab - Encrypted Keystore &amp; Provisioning Profiles</span>
+    <h4 class="portal-screenshot-title">Bitrise Parallel Test Runner Matrix (Jest, Espresso, XCTest)</h4>
   </div>
   <p class="portal-screenshot-desc">
-    Replace this placeholder with the Bitrise Web Console screenshot displaying the Code Signing tab with configured .p12 certificates, provisioning profiles, and Android keystore: <span class="portal-screenshot-path">docs/assets/distribution/bitrise-code-signing-vault.png</span>.
+    Capture the Bitrise pipeline execution view displaying parallelized test execution splits across Jest (Node.js), Espresso (Android), and XCTest / XCUITest (macOS/iOS) workers with total run duration under 4 minutes.
   </p>
+  <span class="portal-screenshot-path">docs/assets/testing/bitrise-parallel-test-matrix.png</span>
 </div>
 
+---
+
+## 5. Explore Testing &amp; Quality Engineering Modules
+
+<div class="portal-cards-grid">
+  <div class="portal-card">
+    <div class="portal-card-topbar">
+      <span class="portal-badge">7.1 UNIT TESTING MATRIX</span>
+      <span class="portal-card-pill">JEST &bull; XCTEST &bull; JUNIT</span>
+    </div>
+    <h3 class="portal-card-title">Unit Testing Matrix &amp; Mocking</h3>
+    <p class="portal-card-desc">
+      Harnesses and mocking standards across Android, iOS, and React Native. Learn JUnit 5 + Turbine, native XCTest and Swift Testing, and Jest hook isolation.
+    </p>
+    <div class="portal-card-links">
+      <a href="/mobile/testing/unit-testing-matrix/" class="portal-card-link">View Unit Testing Matrix &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div class="portal-card-topbar">
+      <span class="portal-badge">7.2 UI AUTOMATION</span>
+      <span class="portal-card-pill">ESPRESSO &bull; XCUITEST &bull; MAESTRO</span>
+    </div>
+    <h3 class="portal-card-title">UI Automation: Espresso, XCUITest &amp; Maestro</h3>
+    <p class="portal-card-desc">
+      Production UI automation using native Android Espresso, iOS XCUITest, React Native component testing, and cross-platform Maestro YAML flows.
+    </p>
+    <div class="portal-card-links">
+      <a href="/mobile/testing/maestro-e2e/" class="portal-card-link">View UI Automation &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div class="portal-card-topbar">
+      <span class="portal-badge">7.3 HERMETIC STUBS</span>
+      <span class="portal-card-pill">OFFLINE TESTING</span>
+    </div>
+    <h3 class="portal-card-title">MockWebServer &amp; Contract Stubs</h3>
+    <p class="portal-card-desc">
+      Zero live network dependencies. OkHttp MockWebServer dispatchers, iOS URLProtocol stubs, JSON fixture catalogs, and simulated latency.
+    </p>
+    <div class="portal-card-links">
+      <a href="/mobile/testing/mock-web-server/" class="portal-card-link">View MockWebServer Stubs &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card">
+    <div class="portal-card-topbar">
+      <span class="portal-badge">7.4 QUALITY GATES</span>
+      <span class="portal-card-pill">80% COVERAGE GATE</span>
+    </div>
+    <h3 class="portal-card-title">Quality Gates &amp; Coverage</h3>
+    <p class="portal-card-desc">
+      Strict 80% line and branch diff coverage enforcement. JaCoCo, Slather, Jest coverage, SonarQube integration, Detekt, SwiftLint, and Danger PR bots.
+    </p>
+    <div class="portal-card-links">
+      <a href="/mobile/testing/quality-gates/" class="portal-card-link">View Quality Gates &rarr;</a>
+    </div>
+  </div>
+
+  <div class="portal-card" style="grid-column: span 2;">
+    <div class="portal-card-topbar">
+      <span class="portal-badge">7.5 REAL DEVICE FARM</span>
+      <span class="portal-card-pill">SAUCE LABS CLOUD</span>
+    </div>
+    <h3 class="portal-card-title">Real-Device Cloud Testing with Sauce Labs</h3>
+    <p class="portal-card-desc">
+      Eliminate hardware fragmentation by running Espresso, XCUITest, and Maestro automated suites on thousands of physical iPhones, Pixels, and Galaxy devices via <code>saucectl</code>.
+    </p>
+    <div class="portal-card-links">
+      <a href="/mobile/testing/saucelabs/" class="portal-card-link">View Sauce Labs Integration &rarr;</a>
+    </div>
+  </div>
+</div>
+
+
 <!-- ============================================================================== -->
-<!-- END OF SECTION 6.4: CODE SIGNING, CERTIFICATES & TGRC APPROVALS -->
+<!-- END OF SECTION 7.0: TESTING & QUALITY ENGINEERING OVERVIEW & TESTING PYRAMID -->
 <!-- ============================================================================== -->
+
 
 <!-- ============================================================================== -->
 <!-- ============================================================================== -->
-<!-- START OF SECTION 6.5: MDM REMOTE WIPE PROTOCOL & APPERIAN OPERATIONS -->
-<!-- SOURCE FILE: 06-mdm-remote-wipe-protocol.mdx -->
-<!-- RECOMMENDED GIT TARGET: docs/distribution/06-mdm-remote-wipe-protocol.mdx -->
+<!-- START OF SECTION 7.1: UNIT TESTING MATRIX & MOCKING STANDARDS -->
+<!-- SOURCE FILE: 07-unit-testing-matrix.mdx -->
+<!-- RECOMMENDED GIT TARGET: docs/testing/07-unit-testing-matrix.mdx -->
 <!-- ============================================================================== -->
 <!-- ============================================================================== -->
 
 ---
-title: "06.5 MDM Remote Wipe Protocol & Apperian Operations"
-description: "Administrative runbook and operational procedures for enterprise device lifecycle management, remote data wiping via Apperian/MDM console, client-side container purging, and user termination handling."
+title: "07.1 Unit Testing Matrix & Mocking Standards"
+description: "Comprehensive enterprise standards for mobile unit testing across Android, iOS, and React Native: Clean Architecture test boundaries, JUnit 5, XCTest, Jest, Swift Testing macros, and Mockk harnesses."
 ---
 sidebar:
-  order: 6
-  label: "6.5 MDM Remote Wipe Protocol"
+  order: 2
+  label: "7.1 Unit Testing Matrix"
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
 import DiagramExpand from './DiagramExpand.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="portal-hero-card">
   <div class="portal-hero-topbar">
-    <span class="portal-badge-hub">APP STORE &amp; DISTRIBUTION</span>
-    <span class="portal-hub-tag">MODULE 06.5 &bull; MDM RUNBOOK &amp; DATA WIPE</span>
+    <span class="portal-badge-hub">QUALITY ENGINEERING</span>
+    <span class="portal-hub-tag">MODULE 07.1 &bull; TEST HARNESSES &amp; MOCKING</span>
   </div>
-  <h1 class="portal-hero-title">MDM Remote Wipe Protocol &amp; Apperian Operations</h1>
+  <h1 class="portal-hero-title">Unit Testing Matrix &amp; Mocking Standards</h1>
   <p class="portal-hero-desc">
-    The complete enterprise administrative standard and operational runbook for executing remote application data wipes, managing lost or stolen corporate mobile assets, purging secure enterprise containers, and enforcing offboarding revocation.
+    Unit tests constitute 70% of the enterprise testing pyramid. They execute strictly on developer laptops and CI build workers within seconds, requiring zero emulators, simulators, or live backends. This guide details Clean Architecture testing boundaries, native <strong>JUnit 5</strong> + Turbine on Android, <strong>XCTest</strong> on iOS, and <strong>Jest</strong> on React Native.
   </p>
   <div class="portal-caps-bar">
     <div class="portal-cap-item">
-      <div class="portal-cap-title">8-Step Console Runbook</div>
-      <div class="portal-cap-desc">Standardized Apperian/MDM procedure &bull; Helpdesk &amp; SecOps authorization</div>
+      <div class="portal-cap-title">Hermetic Host Run</div>
+      <div class="portal-cap-desc">Local JVM &bull; macOS Host &bull; Node.js &bull; Sub-second execution</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Client-Side Quitting Alert</div>
-      <div class="portal-cap-desc">System modal: <code>The data for this application has been wiped.quitting...</code> &bull; Immediate app termination</div>
+      <div class="portal-cap-title">XCTest &amp; Swift Testing</div>
+      <div class="portal-cap-desc">Native Apple XCTestCase &bull; Expectations &bull; Async/await concurrency</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Selective Container Purge</div>
-      <div class="portal-cap-desc">Destroys SQLCipher databases, Keychain items, and tokens without affecting personal photos or apps</div>
+      <div class="portal-cap-title">Jest Suite</div>
+      <div class="portal-cap-desc">Spies &bull; Mocks &bull; RNTL &bull; React Native hooks &amp; Redux / Zustand</div>
     </div>
     <div class="portal-cap-item">
-      <div class="portal-cap-title">Audit &amp; Compliance Trail</div>
-      <div class="portal-cap-desc">Real-time syslog ingestion &bull; SOC 2, ISO 27001, and GDPR compliance validation</div>
+      <div class="portal-cap-title">Clean Isolation</div>
+      <div class="portal-cap-desc">Mock boundaries only &bull; Never mock value types &bull; Pure Use Cases</div>
     </div>
   </div>
 </div>
 
 ---
 
-## 1. Remote Data Wipe Sequence Architecture
+## 1. Clean Architecture Testing Isolation Boundaries
 
-When an enterprise device is flagged as lost, stolen, or compromised—or during immediate employee offboarding—the SecOps or IT Helpdesk team triggers an administrative application wipe through the MDM Management Console:
+In Clean Architecture, testing boundaries correspond directly to architectural layers. Mocking is restricted to interface boundaries at the layer perimeter:
 
-<DiagramExpand title="MDM REMOTE CONTAINER WIPE &amp; CLIENT QUITTING PROTOCOL">
+<DiagramExpand title="CLEAN ARCHITECTURE UNIT TESTING ISOLATION BOUNDARIES">
 
 ```mermaid
-sequenceDiagram
-  autonumber
-  actor Admin as IT Help Desk / SecOps
-  participant MDM as MDM / Apperian Console
-  participant APNS as Apple APNs / Google FCM
-  participant AppWrapper as Enterprise App Container (SDK)
-  participant LocalStore as Encrypted Local Storage (Keyring / DB)
-  actor User as Mobile Device User
+graph TD
+    subgraph PresentationLayer ["1. PRESENTATION LAYER (ViewModel / Reducer)"]
+        VM["OrderCheckoutViewModel"]
+        State["State Flow / ViewState"]
+        VM --> State
+    end
 
-  Admin->>MDM: 1. Locate User & Device in Users Directory
-  Admin->>MDM: 2. Click "Clear Data" for Target Application
-  Admin->>MDM: 3. Confirm Remote Wipe Modal
-  MDM->>APNS: 4. Dispatch High-Priority Silent Wipe Payload
-  APNS->>AppWrapper: 5. Deliver Push Command (or on App Launch)
-  AppWrapper->>LocalStore: 6. Securely Shred Cryptographic Keys & Local DBs
-  LocalStore-->>AppWrapper: 7. Storage Zeroized
-  AppWrapper->>User: 8. Present Blocking Modal ("The data for this application has been wiped.quitting...")
-  AppWrapper->>AppWrapper: 9. Force Kill Process / Exit to OS Home
-  AppWrapper->>MDM: 10. Transmit Wipe Acknowledgment & Audit Event
+    subgraph DomainLayer ["2. DOMAIN LAYER (Pure Business Logic)"]
+        UseCase["SubmitOrderUseCase<br/>(Pure Kotlin / Swift / TS)"]
+        Rules["Enterprise Business Rules<br/>(Discount validation, credit limit)"]
+        UseCase --> Rules
+    end
+
+    subgraph DataLayer ["3. DATA LAYER (Gateway &amp; Cache)"]
+        Repo["OrderRepositoryImpl"]
+        LocalCache["Room / CoreData / SQLite<br/>(In-Memory DB)"]
+        RemoteSource["RemoteDataSource<br/>(Retrofit / URLSession / Axios)"]
+        Repo --> LocalCache
+        Repo --> RemoteSource
+    end
+
+    subgraph MockBoundary ["4. HERMETIC MOCK BOUNDARY (MockWebServer / Stubs)"]
+        MockServer["MockWebServer / WireMock<br/>(Local Loopback :8080)"]
+        JSONFixtures["JSON Response Fixtures<br/>success_200.json &bull; error_429.json"]
+        MockServer --> JSONFixtures
+    end
+
+    VM -.->|Mocked Dependency| UseCase
+    UseCase -.->|Mocked Dependency| Repo
+    RemoteSource -.->|Loopback HTTP| MockServer
+
+    classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
+    classDef iosNode fill:#25153a,stroke:#a855f7,stroke-width:1.5px,color:#d8b4fe;
+    classDef rnNode fill:#0d2833,stroke:#06b6d4,stroke-width:1.5px,color:#67e8f9;
+    classDef secNode fill:#31141e,stroke:#f43f5e,stroke-width:1.5px,color:#fda4af;
+    classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
+
+    class VM,State iosNode;
+    class UseCase,Rules platformNode;
+    class Repo,LocalCache,RemoteSource rnNode;
+    class MockServer,JSONFixtures cloudNode;
 ```
 
 </DiagramExpand>
 
 ---
 
-## 2. 8-Step Apperian / MDM Console Administrative Runbook
+## 2. Production Reference: List API Fetch & Corresponding Test Suites
 
-Authorized Tier-2 IT Support, Mobile Center of Excellence (CoE) engineers, and SecOps operators must strictly follow this 8-step workflow when executing an application data wipe:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Step</th>
-        <th>Console Stage</th>
-        <th>Operator Action</th>
-        <th>Expected Console State</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>01</strong></td>
-        <td><strong>Console Authentication</strong></td>
-        <td>Navigate to <code>https://mdm.enterprise.internal</code> and authenticate using corporate SSO with hardware security key (FIDO2/WebAuthn).</td>
-        <td>Admin Dashboard displays active devices, managed applications, and pending operational requests.</td>
-      </tr>
-      <tr>
-        <td><strong>02</strong></td>
-        <td><strong>Navigation to Users</strong></td>
-        <td>Click on <strong>Users</strong> in the primary left-hand navigation sidebar.</td>
-        <td>Displays the global enterprise user directory table with pagination and filter controls.</td>
-      </tr>
-      <tr>
-        <td><strong>03</strong></td>
-        <td><strong>User Account Search</strong></td>
-        <td>Enter the employee's Corporate Email, Network Username, or Employee ID in the search query field and press Enter.</td>
-        <td>User profile summary card appears showing name, department, status (Active/Suspended), and total enrolled devices.</td>
-      </tr>
-      <tr>
-        <td><strong>04</strong></td>
-        <td><strong>Access Devices Tab</strong></td>
-        <td>Click on the user's name to open their detailed profile, then select the <strong>Devices</strong> section.</td>
-        <td>List of all mobile devices (iOS, iPadOS, Android) currently or previously registered to this employee.</td>
-      </tr>
-      <tr>
-        <td><strong>05</strong></td>
-        <td><strong>Identify Target Device</strong></td>
-        <td>Match the device using Device Name, Hardware Model, Operating System version, or Hardware UDID/IMEI. Click to open device inspection.</td>
-        <td>Device details blade expands showing enrollment date, compliance status, battery/network state, and installed managed apps.</td>
-      </tr>
-      <tr>
-        <td><strong>06</strong></td>
-        <td><strong>Inspect Installed Applications</strong></td>
-        <td>Navigate to the <strong>Installed Applications</strong> table within the selected device record.</td>
-        <td>Table listing all enterprise wrapped and distributed apps (e.g., Enterprise Sales Hub, Logistics Portal, Supply Chain Scanner).</td>
-      </tr>
-      <tr>
-        <td><strong>07</strong></td>
-        <td><strong>Trigger "Clear Data"</strong></td>
-        <td>Locate the target application row and click the red <strong>Clear Data</strong> (or <strong>Wipe Application Data</strong>) button.</td>
-        <td>A high-severity confirmation modal window pops up requiring operator verification.</td>
-      </tr>
-      <tr>
-        <td><strong>08</strong></td>
-        <td><strong>Confirm &amp; Dispatch Payload</strong></td>
-        <td>Review the application bundle ID and device serial, enter the mandatory ServiceNow Incident or Security Ticket number, and click <strong>Confirm Clear Data</strong>.</td>
-        <td>Status transitions to <code>Wipe Command Queued &rarr; Sent &rarr; Acknowledged</code>. Audit record generated.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">MDM Admin Console - Users Directory &amp; Device Search Screen</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the Apperian / MDM Web Console screenshot showing the Users tab, search input with target employee, and registered device cards: <span class="portal-screenshot-path">docs/assets/distribution/mdm-user-device-search.png</span>.
-  </p>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">MDM Installed Applications &amp; "Clear Data" Action Trigger</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the Apperian / MDM device management view showing the list of installed enterprise apps and the red "Clear Data" button: <span class="portal-screenshot-path">docs/assets/distribution/mdm-installed-apps-clear-data.png</span>.
-  </p>
-</div>
-
----
-
-## 3. Client-Side Experience & Quitting Alert Protocol
-
-When the wipe payload arrives on the mobile device, the enterprise container wrapper guarantees zero data retention through an immutable shredding routine:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Execution Phase</th>
-        <th>System / Container Action</th>
-        <th>User Experience Impact</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>1. Interception</strong></td>
-        <td>The Enterprise SDK wrapper intercepts the silent push payload or evaluates the wipe flag during initial app bootstrap.</td>
-        <td>Background execution or immediate splash screen freeze. Normal UI interaction is halted.</td>
-      </tr>
-      <tr>
-        <td><strong>2. Cryptographic Eviction</strong></td>
-        <td>Deletes the AES-256 database master key from iOS Keychain or Android Keystore, corrupting SQLCipher headers.</td>
-        <td>Silent and instantaneous (&lt; 150 ms). All cached offline data, documents, and records become unrecoverable.</td>
-      </tr>
-      <tr>
-        <td><strong>3. Storage Purging</strong></td>
-        <td>Recursively deletes application sandbox directories: <code>/Documents</code>, <code>/Library/Caches</code>, <code>/Application Support</code>, and <code>shared_preferences</code>.</td>
-        <td>Local sandbox is completely restored to clean-install state.</td>
-      </tr>
-      <tr>
-        <td><strong>4. Alert Presentation</strong></td>
-        <td>Surfaces a modal dialog over the active window. Dialog text: <code>The data for this application has been wiped.quitting...</code></td>
-        <td>User sees the prompt shown below. No cancel button exists; only a single <strong>OK</strong> button is presented.</td>
-      </tr>
-      <tr>
-        <td><strong>5. Process Termination</strong></td>
-        <td>Upon tapping OK (or after a 5-second timeout), the app invokes <code>exit(0)</code> / <code>finishAffinity()</code> to immediately close.</td>
-        <td>The mobile OS returns the user directly to the home screen.</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">MDM Clear Data Confirmation Dialog (Console View)</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the console confirmation dialog asking "Are you sure you want to clear data for this application?": <span class="portal-screenshot-path">docs/assets/distribution/mdm-clear-data-modal.png</span>.
-  </p>
-</div>
-
-<div class="portal-screenshot-box">
-  <div class="portal-screenshot-header">
-    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
-    <span class="portal-screenshot-title">Mobile Device Alert Screen - "Data Wiped - Quitting" Dialog</span>
-  </div>
-  <p class="portal-screenshot-desc">
-    Replace this placeholder with the mobile client screen displaying the native modal dialog: "The data for this application has been wiped.quitting...": <span class="portal-screenshot-path">docs/assets/distribution/mobile-client-wiped-quitting-alert.png</span>.
-  </p>
-</div>
-
----
-
-## 4. Selective Container Wipe vs. Full Factory Reset
-
-Enterprise mobility supports two tiers of remote wipe actions based on device ownership (BYOD vs. Corporate-Owned):
-
-<div class="portal-cards-grid">
-  <div class="portal-card">
-    <div class="portal-card-topbar">
-      <span class="portal-card-badge">BYOD &bull; CONTAINER ONLY</span>
-      <span class="portal-card-badge-status status-active">DEFAULT</span>
-    </div>
-    <div class="portal-card-title">Selective Application Wipe ("Clear Data")</div>
-    <p class="portal-card-desc">
-      Only purges data inside the enterprise application sandbox. Personal photos, personal apps, text messages, and personal device settings are <strong>completely untouched</strong>. Used when an employee leaves the company or unenrolls their personal phone.
-    </p>
-    <div class="portal-card-pills">
-      <span class="portal-card-pill">App Sandbox Only</span>
-      <span class="portal-card-pill">Zero Personal Impact</span>
-      <span class="portal-card-pill">GDPR Privacy Compliant</span>
-    </div>
-  </div>
-
-  <div class="portal-card">
-    <div class="portal-card-topbar">
-      <span class="portal-card-badge">CORPORATE ASSET &bull; FULL OS</span>
-      <span class="portal-card-badge-status status-planned">RESTRICTED</span>
-    </div>
-    <div class="portal-card-title">Full Device Factory Reset ("Erase Device")</div>
-    <p class="portal-card-desc">
-      Issues an operating-system level command that restores the entire physical device to factory defaults. Destroys all OS partitions, eSIM profiles, and storage sectors. <strong>Restricted strictly to corporate-owned, DEP/Supervised hardware</strong> reported stolen.
-    </p>
-    <div class="portal-card-pills">
-      <span class="portal-card-pill">Full OS Re-flash</span>
-      <span class="portal-card-pill">Hardware Supervised</span>
-      <span class="portal-card-pill">SecOps Manager Sign-off</span>
-    </div>
-  </div>
-</div>
-
----
-
-## 5. Security Operations & Emergency Offboarding SOP
-
-When an employee departs or a critical device loss occurs, the following Service Level Agreements (SLAs) apply:
-
-<div class="portal-table-wrap">
-  <table class="portal-table">
-    <thead>
-      <tr>
-        <th>Incident Type</th>
-        <th>Trigger Channel</th>
-        <th>Target SLA</th>
-        <th>Mandatory Approver</th>
-        <th>Audit Requirement</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Lost / Stolen BYOD</strong></td>
-        <td>ServiceNow Portal Self-Service or Helpdesk Call</td>
-        <td>&lt; 15 minutes</td>
-        <td>Help Desk Tier-2</td>
-        <td>ServiceNow Incident Ticket</td>
-      </tr>
-      <tr>
-        <td><strong>Lost / Stolen Corporate Device</strong></td>
-        <td>Global Security Operations Center (GSOC) Hotline</td>
-        <td>&lt; 10 minutes</td>
-        <td>SecOps Incident Commander</td>
-        <td>GSOC P1 Security Record</td>
-      </tr>
-      <tr>
-        <td><strong>Involuntary Employee Offboarding</strong></td>
-        <td>HR Information System (Workday API) Automated Webhook</td>
-        <td>Instant (&lt; 60 seconds)</td>
-        <td>Automated IAM Pipeline</td>
-        <td>Active Directory Revocation Log</td>
-      </tr>
-      <tr>
-        <td><strong>Compromised / Jailbroken Device Alert</strong></td>
-        <td>Datadog Security / MDM Compliance Engine Trigger</td>
-        <td>Instant (&lt; 30 seconds)</td>
-        <td>Automated Zero Trust Gateway</td>
-        <td>SIEM Compliance Alert</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
----
-
-## 6. Implementation Reference: Native Wrapper Wipe Interceptor
-
-For internal developers packaging apps with the enterprise SDK wrapper, the client-side lifecycle hook is implemented as follows:
+Below is the complete reference implementation for fetching and displaying a list of items (`/api/v1/orders`), paired with its exact corresponding unit test file across all three mobile runtimes:
 
 <Tabs>
-  <TabItem label="iOS (Swift / Apperian Wrapper)">
+  <TabItem label="Android (Kotlin & Coroutines)">
+    ### 1. Feature Implementation Code (`OrderListFeature.kt`)
+    ```kotlin
+    package com.enterprise.mobile.feature.orderlist
 
-```swift
-import Foundation
-import UIKit
+    import androidx.lifecycle.ViewModel
+    import androidx.lifecycle.viewModelScope
+    import kotlinx.coroutines.flow.MutableStateFlow
+    import kotlinx.coroutines.flow.StateFlow
+    import kotlinx.coroutines.flow.asStateFlow
+    import kotlinx.coroutines.launch
+    import retrofit2.http.GET
 
-@objc public class EnterpriseDataWipeManager: NSObject {
-    public static let shared = EnterpriseDataWipeManager()
-    
-    public func handleRemoteWipeCommand(completion: @escaping () -> Void) {
-        NSLog("[SECURITY] Remote wipe signal received from MDM gateway.")
-        
-        // 1. Purge keychain credentials
-        KeychainHelper.wipeAllEnterpriseKeys()
-        
-        // 2. Erase encrypted SQLite databases
-        let fileManager = FileManager.default
-        if let docsUrl = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
-            try? fileManager.removeItem(at: docsUrl)
+    // 1. Data Model
+    data class OrderItem(
+        val id: String,
+        val title: String,
+        val status: String,
+        val amountCents: Long
+    )
+
+    // 2. Retrofit API Service
+    interface OrderListApiService {
+        @GET("api/v1/orders")
+        suspend fun fetchOrders(): List<OrderItem>
+    }
+
+    // 3. Repository Interface & Implementation
+    interface OrderListRepository {
+        suspend fun getOrders(): Result<List<OrderItem>>
+    }
+
+    class OrderListRepositoryImpl(
+        private val apiService: OrderListApiService
+    ) : OrderListRepository {
+        override suspend fun getOrders(): Result<List<OrderItem>> = runCatching {
+            apiService.fetchOrders()
         }
-        
-        // 3. Reset user defaults
-        if let bundleId = Bundle.main.bundleIdentifier {
-            UserDefaults.standard.removePersistentDomain(forName: bundleId)
-        }
-        
-        // 4. Surface blocking native alert dialog
-        DispatchQueue.main.async {
-            let alert = UIAlertController(
-                title: "Application Security Notice",
-                message: "The data for this application has been wiped.quitting...",
-                preferredStyle: .alert
-            )
-            alert.addAction(UIAlertAction(title: "OK", style: .destructive) { _ in
-                exit(0)
-            })
-            
-            if let rootVC = UIApplication.shared.windows.first(where: { $0.isKeyWindow })?.rootViewController {
-                rootVC.present(alert, animated: true, completion: nil)
+    }
+
+    // 4. UI State
+    sealed interface OrderListUiState {
+        object Loading : OrderListUiState
+        data class Success(val orders: List<OrderItem>) : OrderListUiState
+        data class Error(val message: String) : OrderListUiState
+    }
+
+    // 5. ViewModel Calling API and Holding List
+    class OrderListViewModel(
+        private val repository: OrderListRepository
+    ) : ViewModel() {
+
+        private val _uiState = MutableStateFlow<OrderListUiState>(OrderListUiState.Loading)
+        val uiState: StateFlow<OrderListUiState> = _uiState.asStateFlow()
+
+        fun loadOrders() {
+            viewModelScope.launch {
+                _uiState.value = OrderListUiState.Loading
+                repository.getOrders()
+                    .onSuccess { items ->
+                        _uiState.value = OrderListUiState.Success(items)
+                    }
+                    .onFailure { throwable ->
+                        _uiState.value = OrderListUiState.Error(
+                            throwable.localizedMessage ?: "Failed to load orders"
+                        )
+                    }
             }
         }
     }
-}
-```
+    ```
 
-  </TabItem>
-  <TabItem label="Android (Kotlin / MDM Receiver)">
+    ### 2. Test File Implementation (`OrderListViewModelTest.kt`)
+    ```kotlin
+    package com.enterprise.mobile.feature.orderlist
 
-```kotlin
-package com.enterprise.mobile.security
+    import app.cash.turbine.test
+    import io.kotest.matchers.shouldBe
+    import io.kotest.matchers.types.shouldBeInstanceOf
+    import io.mockk.coEvery
+    import io.mockk.coVerify
+    import io.mockk.mockk
+    import kotlinx.coroutines.Dispatchers
+    import kotlinx.coroutines.ExperimentalCoroutinesApi
+    import kotlinx.coroutines.test.StandardTestDispatcher
+    import kotlinx.coroutines.test.resetMain
+    import kotlinx.coroutines.test.runTest
+    import kotlinx.coroutines.test.setMain
+    import org.junit.jupiter.api.AfterEach
+    import org.junit.jupiter.api.BeforeEach
+    import org.junit.jupiter.api.DisplayName
+    import org.junit.jupiter.api.Test
 
-import android.app.Activity
-import android.app.AlertDialog
-import android.content.Context
-import android.os.Process
-import java.io.File
+    @OptIn(ExperimentalCoroutinesApi::class)
+    class OrderListViewModelTest {
 
-object EnterpriseDataWipeManager {
+        private val testDispatcher = StandardTestDispatcher()
+        private val repository: OrderListRepository = mockk()
+        private lateinit var viewModel: OrderListViewModel
 
-    fun executeContainerWipe(context: Context, currentActivity: Activity?) {
-        // 1. Shred encrypted local databases
-        context.databaseList().forEach { dbName ->
-            context.deleteDatabase(dbName)
+        @BeforeEach
+        fun setUp() {
+            Dispatchers.setMain(testDispatcher)
+            viewModel = OrderListViewModel(repository)
         }
 
-        // 2. Clear app shared preferences & cache
-        context.cacheDir.deleteRecursively()
-        File(context.filesDir.parent, "shared_prefs").deleteRecursively()
+        @AfterEach
+        fun tearDown() {
+            Dispatchers.resetMain()
+        }
 
-        // 3. Present blocking system alert dialog
-        currentActivity?.runOnUiThread {
-            AlertDialog.Builder(currentActivity)
-                .setTitle("Application Security Alert")
-                .setMessage("The data for this application has been wiped.quitting...")
-                .setCancelable(false)
-                .setPositiveButton("OK") { _, _ ->
-                    currentActivity.finishAffinity()
-                    Process.killProcess(Process.myPid())
-                }
-                .show()
-        } ?: run {
-            // If backgrounded, kill immediately
-            Process.killProcess(Process.myPid())
+        @Test
+        @DisplayName("Given successful API fetch, ViewModel emits Loading then Success with order list")
+        fun loadOrders_success_emitsOrdersList() = runTest(testDispatcher) {
+            // Arrange: Mock API response returning a list of 2 items
+            val mockItems = listOf(
+                OrderItem("ORD-101", "Bulk Grain Shipment", "CONFIRMED", 125000L),
+                OrderItem("ORD-102", "Feed Ingredients Batch A", "PENDING", 48000L)
+            )
+            coEvery { repository.getOrders() } returns Result.success(mockItems)
+
+            // Act & Assert via Turbine
+            viewModel.uiState.test {
+                // Initial state
+                awaitItem() shouldBe OrderListUiState.Loading
+
+                viewModel.loadOrders()
+
+                // Terminal Success state with parsed list
+                val result = awaitItem()
+                result.shouldBeInstanceOf<OrderListUiState.Success>()
+                val success = result as OrderListUiState.Success
+                success.orders.size shouldBe 2
+                success.orders[0].id shouldBe "ORD-101"
+                success.orders[0].status shouldBe "CONFIRMED"
+
+                cancelAndIgnoreRemainingEvents()
+            }
+
+            coVerify(exactly = 1) { repository.getOrders() }
+        }
+
+        @Test
+        @DisplayName("Given API error 500, ViewModel emits Loading then Error with message")
+        fun loadOrders_failure_emitsErrorState() = runTest(testDispatcher) {
+            // Arrange
+            val errorMsg = "HTTP 500 Internal Server Error"
+            coEvery { repository.getOrders() } returns Result.failure(RuntimeException(errorMsg))
+
+            // Act & Assert
+            viewModel.uiState.test {
+                awaitItem() shouldBe OrderListUiState.Loading
+
+                viewModel.loadOrders()
+
+                val result = awaitItem()
+                result.shouldBeInstanceOf<OrderListUiState.Error>()
+                (result as OrderListUiState.Error).message shouldBe errorMsg
+
+                cancelAndIgnoreRemainingEvents()
+            }
+
+            coVerify(exactly = 1) { repository.getOrders() }
         }
     }
-}
-```
+    ```
+  </TabItem>
 
+  <TabItem label="iOS (Swift & XCTest)">
+    ### 1. Feature Implementation Code (`OrderListFeature.swift`)
+    ```swift
+    import Foundation
+
+    // 1. Data Model
+    struct OrderItem: Codable, Equatable, Identifiable {
+        let id: String
+        let title: String
+        let status: String
+        let amountCents: Int
+    }
+
+    // 2. Service Protocol & Network Client
+    protocol OrderListServiceProtocol {
+        func fetchOrders() async throws -> [OrderItem]
+    }
+
+    final class OrderListService: OrderListServiceProtocol {
+        private let session: URLSession
+        private let endpoint: URL
+
+        init(session: URLSession = .shared, endpoint: URL) {
+            self.session = session
+            self.endpoint = endpoint
+        }
+
+        func fetchOrders() async throws -> [OrderItem] {
+            let (data, response) = try await session.data(from: endpoint)
+            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                throw URLError(.badServerResponse)
+            }
+            return try JSONDecoder().decode([OrderItem].self, from: data)
+        }
+    }
+
+    // 3. UI State
+    enum OrderListState: Equatable {
+        case loading
+        case success([OrderItem])
+        case error(String)
+    }
+
+    // 4. Observable ViewModel
+    @MainActor
+    final class OrderListViewModel: ObservableObject {
+        @Published private(set) var state: OrderListState = .loading
+        private let service: OrderListServiceProtocol
+
+        init(service: OrderListServiceProtocol) {
+            self.service = service
+        }
+
+        func loadOrders() async {
+            state = .loading
+            do {
+                let items = try await service.fetchOrders()
+                state = .success(items)
+            } catch {
+                state = .error(error.localizedDescription)
+            }
+        }
+    }
+    ```
+
+    ### 2. Test File Implementation (`OrderListViewModelTests.swift`)
+    ```swift
+    import XCTest
+    @testable import EnterpriseOrderFeature
+
+    final class OrderListViewModelTests: XCTestCase {
+
+        // 1. Hermetic Mock Service
+        final class MockOrderListService: OrderListServiceProtocol {
+            var resultToReturn: Result<[OrderItem], Error> = .success([])
+            private(set) var fetchCallCount = 0
+
+            func fetchOrders() async throws -> [OrderItem] {
+                fetchCallCount += 1
+                switch resultToReturn {
+                case .success(let items):
+                    return items
+                case .failure(let error):
+                    throw error
+                }
+            }
+        }
+
+        private var mockService: MockOrderListService!
+        private var viewModel: OrderListViewModel!
+
+        override func setUp() {
+            super.setUp()
+            mockService = MockOrderListService()
+            viewModel = OrderListViewModel(service: mockService)
+        }
+
+        override func tearDown() {
+            mockService = nil
+            viewModel = nil
+            super.tearDown()
+        }
+
+        func testLoadOrders_success_updatesStateToSuccessWithList() async {
+            // Arrange
+            let expectedItems = [
+                OrderItem(id: "ORD-101", title: "Bulk Grain Shipment", status: "CONFIRMED", amountCents: 125000),
+                OrderItem(id: "ORD-102", title: "Feed Ingredients Batch A", status: "PENDING", amountCents: 48000)
+            ]
+            mockService.resultToReturn = .success(expectedItems)
+
+            // Initial State Assertion
+            XCTAssertEqual(viewModel.state, .loading)
+
+            // Act: Trigger Async Fetch
+            await viewModel.loadOrders()
+
+            // Assert
+            XCTAssertEqual(mockService.fetchCallCount, 1)
+            XCTAssertEqual(viewModel.state, .success(expectedItems))
+        }
+
+        func testLoadOrders_failure_updatesStateToError() async {
+            // Arrange
+            let networkError = URLError(.notConnectedToInternet)
+            mockService.resultToReturn = .failure(networkError)
+
+            // Act
+            await viewModel.loadOrders()
+
+            // Assert
+            XCTAssertEqual(mockService.fetchCallCount, 1)
+            XCTAssertEqual(viewModel.state, .error(networkError.localizedDescription))
+        }
+
+        func testLoadOrders_emptyList_updatesStateToSuccessEmpty() async {
+            // Arrange
+            mockService.resultToReturn = .success([])
+
+            // Act
+            await viewModel.loadOrders()
+
+            // Assert
+            XCTAssertEqual(viewModel.state, .success([]))
+        }
+    }
+    ```
+  </TabItem>
+
+  <TabItem label="React Native (TypeScript & Jest)">
+    ### 1. Feature Implementation Code (`useOrderList.ts`)
+    ```typescript
+    import { useState, useCallback } from 'react';
+
+    // 1. Data Model
+    export interface OrderItem {
+      id: string;
+      title: string;
+      status: 'CONFIRMED' | 'PENDING' | 'CANCELLED';
+      amountCents: number;
+    }
+
+    // 2. API Fetcher Function
+    export const fetchOrdersApi = async (): Promise<OrderItem[]> => {
+      const response = await fetch('https://api.enterprise.internal/api/v1/orders', {
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) {
+        throw new Error(`Server returned HTTP ${response.status}`);
+      }
+      return response.json();
+    };
+
+    // 3. UI State Hook
+    export interface UseOrderListResult {
+      orders: OrderItem[];
+      loading: boolean;
+      error: string | null;
+      loadOrders: () => Promise<void>;
+    }
+
+    export const useOrderList = (fetcher = fetchOrdersApi): UseOrderListResult => {
+      const [orders, setOrders] = useState<OrderItem[]>([]);
+      const [loading, setLoading] = useState<boolean>(false);
+      const [error, setError] = useState<string | null>(null);
+
+      const loadOrders = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const data = await fetcher();
+          setOrders(data);
+        } catch (err: any) {
+          setError(err.message || 'Failed to fetch orders');
+        } finally {
+          setLoading(false);
+        }
+      }, [fetcher]);
+
+      return { orders, loading, error, loadOrders };
+    };
+    ```
+
+    ### 2. Test File Implementation (`useOrderList.test.ts`)
+    ```typescript
+    import { renderHook, act } from '@testing-library/react-hooks';
+    import { useOrderList, OrderItem } from './useOrderList';
+
+    describe('useOrderList Hook Jest Unit Tests', () => {
+      beforeEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it('loadOrders fetches items and updates orders list on success', async () => {
+        // Arrange: Mock fetcher returning 2 items
+        const mockOrders: OrderItem[] = [
+          { id: 'ORD-101', title: 'Bulk Grain Shipment', status: 'CONFIRMED', amountCents: 125000 },
+          { id: 'ORD-102', title: 'Feed Ingredients Batch A', status: 'PENDING', amountCents: 48000 },
+        ];
+        const mockFetcher = jest.fn().mockResolvedValue(mockOrders);
+
+        const { result } = renderHook(() => useOrderList(mockFetcher));
+
+        // Assert initial state
+        expect(result.current.orders).toEqual([]);
+        expect(result.current.loading).toBe(false);
+        expect(result.current.error).toBeNull();
+
+        // Act: Trigger API fetch
+        await act(async () => {
+          await result.current.loadOrders();
+        });
+
+        // Assert final state
+        expect(mockFetcher).toHaveBeenCalledTimes(1);
+        expect(result.current.loading).toBe(false);
+        expect(result.current.error).toBeNull();
+        expect(result.current.orders).toHaveLength(2);
+        expect(result.current.orders[0].id).toBe('ORD-101');
+        expect(result.current.orders[0].status).toBe('CONFIRMED');
+      });
+
+      it('loadOrders sets error state when API request fails', async () => {
+        // Arrange: Mock fetcher rejecting with an error
+        const errorMessage = 'Server returned HTTP 500';
+        const mockFetcher = jest.fn().mockRejectedValue(new Error(errorMessage));
+
+        const { result } = renderHook(() => useOrderList(mockFetcher));
+
+        // Act
+        await act(async () => {
+          await result.current.loadOrders();
+        });
+
+        // Assert
+        expect(mockFetcher).toHaveBeenCalledTimes(1);
+        expect(result.current.loading).toBe(false);
+        expect(result.current.orders).toEqual([]);
+        expect(result.current.error).toBe(errorMessage);
+      });
+    });
+    ```
   </TabItem>
 </Tabs>
 
+---
+
+## 3. Mocking Ethics & Anti-Patterns
+
+To keep unit suites resilient across major refactors, teams must adhere to the following mocking rules:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Practice</th>
+        <th>Status</th>
+        <th>Rationale &amp; Enforcement</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Never Mock Data Classes / Structs</strong></td>
+        <td>Strictly Prohibited</td>
+        <td>Value models (`Order`, `UserSession`, `Money`) must be instantiated as real objects with test fixtures. Mocking data models hides field contract violations.</td>
+      </tr>
+      <tr>
+        <td><strong>Mock Boundaries, Not Internals</strong></td>
+        <td>Mandatory Standard</td>
+        <td>Mock interfaces at architectural boundaries (`OrderRepository`, `AuthService`). Never mock internal helper methods of the class under test.</td>
+      </tr>
+      <tr>
+        <td><strong>Deterministic Test Reset</strong></td>
+        <td>Mandatory Standard</td>
+        <td>Always reset mocks, dispatchers, and state in `@AfterEach` (JUnit), `tearDown` (XCTest), or `beforeEach` (Jest) to eliminate cross-test state leakage.</td>
+      </tr>
+      <tr>
+        <td><strong>Zero Real Network Egress</strong></td>
+        <td>Strictly Prohibited</td>
+        <td>Any test calling live endpoints (`api.enterprise.com`) will be blocked by CI network sandbox rules. Use MockWebServer or URLProtocol stubs.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 4. Screenshot and IDE Test Execution Artifacts
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <h4 class="portal-screenshot-title">Android Studio Test Runner &amp; JaCoCo Line Coverage Gutter</h4>
+  </div>
+  <p class="portal-screenshot-desc">
+    Display the Android Studio Run view showing green checkmarks across all ViewModel unit tests alongside the code editor margin displaying green coverage indicators.
+  </p>
+  <span class="portal-screenshot-path">docs/assets/testing/android-studio-unit-test-gutter.png</span>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <h4 class="portal-screenshot-title">Xcode Test Report Navigator with Sub-second Timings</h4>
+  </div>
+  <p class="portal-screenshot-desc">
+    Capture the Xcode Test Report Navigator window showing the hierarchy of XCTestCase and Swift Testing executions with duration timestamps in milliseconds.
+  </p>
+  <span class="portal-screenshot-path">docs/assets/testing/xcode-swift-testing-report.png</span>
+</div>
+
+
 <!-- ============================================================================== -->
-<!-- END OF SECTION 6.5: MDM REMOTE WIPE PROTOCOL & APPERIAN OPERATIONS -->
+<!-- END OF SECTION 7.1: UNIT TESTING MATRIX & MOCKING STANDARDS -->
+<!-- ============================================================================== -->
+
+
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+<!-- START OF SECTION 7.2: UI & MAESTRO AUTOMATED E2E TESTING -->
+<!-- SOURCE FILE: 07-maestro-e2e.mdx -->
+<!-- RECOMMENDED GIT TARGET: docs/testing/07-maestro-e2e.mdx -->
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+
+---
+title: "07.2 UI Automation: Native Espresso, XCUITest & Maestro"
+description: "Mastering enterprise mobile UI automation: Native Android Espresso, iOS XCUITest, declarative cross-platform Maestro YAML flows, and CI device execution."
+---
+sidebar:
+  order: 3
+  label: "7.2 UI Automation & Maestro"
+---
+
+import DiagramExpand from './DiagramExpand.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">AUTOMATED UI TESTING</span>
+    <span class="portal-hub-tag">MODULE 07.2 &bull; ESPRESSO, XCUITEST &amp; MAESTRO</span>
+  </div>
+  <h1 class="portal-hero-title">UI Automation: Native Espresso, XCUITest &amp; Maestro</h1>
+  <p class="portal-hero-desc">
+    Automated UI and instrumentation tests represent 10% of the testing pyramid, validating critical end-to-end user journeys on physical hardware and emulators. The enterprise supports native <strong>Android Espresso</strong>, native <strong>iOS XCUITest</strong>, and cross-platform <strong>Maestro YAML</strong> flows.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Android Espresso</div>
+      <div class="portal-cap-desc">Native instrumentation &bull; Matchers &bull; Actions &bull; IdlingResource sync</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">iOS XCUITest</div>
+      <div class="portal-cap-desc">Apple native UI runner &bull; XCUIApplication &bull; waitForExistence</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Maestro YAML</div>
+      <div class="portal-cap-desc">Cross-platform declarative flows &bull; Smart waiting &bull; Reusable subflows</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Cloud Execution</div>
+      <div class="portal-cap-desc">Parallel execution across physical device fleets in Sauce Labs</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Enterprise UI Automation Architecture
+
+Mobile engineering squads select their UI test harness based on platform architecture and squad composition:
+
+<DiagramExpand title="ENTERPRISE MOBILE UI AUTOMATION ARCHITECTURE">
+
+```mermaid
+graph TD
+    subgraph TestDefinition ["1. TEST DEFINITION LAYER"]
+        EspressoCode["Native Android Tests<br/>(Espresso &bull; Kotlin)"]
+        XCTestCode["Native iOS Tests<br/>(XCUITest &bull; Swift)"]
+        MaestroCode["Cross-Platform Flows<br/>(Maestro YAML)"]
+    end
+
+    subgraph ExecutionEngines ["2. ON-DEVICE EXECUTION ENGINES"]
+        AndroidRunner["Android Test Runner<br/>androidx.test.runner.AndroidJUnitRunner"]
+        IOSRunner["Apple XCTest Engine<br/>XCTest.framework &bull; testmanagerd"]
+        MaestroDaemon["Maestro On-Device Daemon<br/>Accessibility Bridge (:7001)"]
+        
+        EspressoCode --> AndroidRunner
+        XCTestCode --> IOSRunner
+        MaestroCode --> MaestroDaemon
+    end
+
+    subgraph TargetPlatform ["3. RUNTIME TARGETS"]
+        AndroidTarget["Android Runtime<br/>(Physical Pixels &bull; Galaxies &bull; Emulators)"]
+        IOSTarget["iOS Runtime<br/>(Physical iPhones &bull; iPads &bull; Simulators)"]
+        
+        AndroidRunner --> AndroidTarget
+        IOSRunner --> IOSTarget
+        MaestroDaemon --> AndroidTarget
+        MaestroDaemon --> IOSTarget
+    end
+
+    subgraph ReportingHub ["4. REPORTING &amp; CI TELEMETRY"]
+        Artifacts["Bitrise CI &amp; Sauce Labs Dashboard<br/>Full MP4 Video &bull; JUnit XML &bull; Screenshot Diffs &bull; Logcat"]
+        AndroidTarget --> Artifacts
+        IOSTarget --> Artifacts
+    end
+
+    classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
+    classDef iosNode fill:#25153a,stroke:#a855f7,stroke-width:1.5px,color:#d8b4fe;
+    classDef rnNode fill:#0d2833,stroke:#06b6d4,stroke-width:1.5px,color:#67e8f9;
+    classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
+
+    class EspressoCode,AndroidRunner,AndroidTarget platformNode;
+    class XCTestCode,IOSRunner,IOSTarget iosNode;
+    class MaestroCode,MaestroDaemon rnNode;
+    class Artifacts cloudNode;
+```
+
+</DiagramExpand>
+
+---
+
+## 2. Production UI Test Implementations
+
+<Tabs>
+  <TabItem label="Android (Espresso & Compose)">
+    Native Android squads write UI tests using **Espresso** (`androidx.test.espresso`) and **Compose Test Rule**:
+
+    ```kotlin
+    package com.enterprise.mobile.ui
+
+    import androidx.test.core.app.ActivityScenario
+    import androidx.test.espresso.Espresso.onView
+    import androidx.test.espresso.action.ViewActions.*
+    import androidx.test.espresso.assertion.ViewAssertions.matches
+    import androidx.test.espresso.matcher.ViewMatchers.*
+    import androidx.test.ext.junit.runners.AndroidJUnit4
+    import androidx.test.filters.LargeTest
+    import com.enterprise.mobile.R
+    import com.enterprise.mobile.feature.order.OrderCheckoutActivity
+    import org.junit.After
+    import org.junit.Before
+    import org.junit.Test
+    import org.junit.runner.RunWith
+
+    @RunWith(AndroidJUnit4::class)
+    @LargeTest
+    class OrderCheckoutEspressoTest {
+
+        private lateinit var scenario: ActivityScenario<OrderCheckoutActivity>
+
+        @Before
+        fun setUp() {
+            // Launch activity under test
+            scenario = ActivityScenario.launch(OrderCheckoutActivity::class.java)
+        }
+
+        @After
+        fun tearDown() {
+            scenario.close()
+        }
+
+        @Test
+        fun submitValidOrder_displaysConfirmedStatus() {
+            // 1. Enter Order Quantity
+            onView(withId(R.id.et_order_quantity))
+                .perform(typeText("450"), closeSoftKeyboard())
+
+            // 2. Select Facility Picker
+            onView(withId(R.id.btn_select_facility))
+                .perform(click())
+
+            onView(withText("Des Moines Terminal 4"))
+                .perform(click())
+
+            // 3. Submit Checkout
+            onView(withId(R.id.btn_submit_order))
+                .perform(click())
+
+            // 4. Verify Success Banner and Status Badge
+            onView(withId(R.id.tv_order_status_badge))
+                .check(matches(isDisplayed()))
+                .check(matches(withText("CONFIRMED")))
+
+            onView(withText("Order ORD-94812 confirmed."))
+                .check(matches(isDisplayed()))
+        }
+    }
+    ```
+  </TabItem>
+
+  <TabItem label="iOS (XCUITest)">
+    Native iOS squads write UI tests using Apple's native **XCUITest** framework:
+
+    ```swift
+    import XCTest
+
+    final class OrderCheckoutXCUITest: XCTestCase {
+
+        private var app: XCUIApplication!
+
+        override func setUpWithError() throws {
+            try super.setUpWithError()
+            continueAfterFailure = false
+            app = XCUIApplication()
+            // Pass UI test arguments and mock environment flags
+            app.launchArguments = ["-UITestsEnabled", "-MockServerEnabled"]
+            app.launch()
+        }
+
+        override func tearDownWithError() throws {
+            app = nil
+            try super.tearDownWithError()
+        }
+
+        func testSubmitValidOrder_displaysConfirmedStatus() throws {
+            // 1. Input Quantity
+            let quantityField = app.textFields["input_order_quantity"]
+            XCTAssertTrue(quantityField.waitForExistence(timeout: 5), "Quantity field must exist")
+            quantityField.tap()
+            quantityField.typeText("450")
+
+            // 2. Select Facility
+            app.buttons["picker_select_facility"].tap()
+            let facilityOption = app.buttons["Des Moines Terminal 4"]
+            XCTAssertTrue(facilityOption.waitForExistence(timeout: 3))
+            facilityOption.tap()
+
+            // 3. Tap Confirm
+            let submitButton = app.buttons["btn_submit_order"]
+            XCTAssertTrue(submitButton.isHittable)
+            submitButton.tap()
+
+            // 4. Verify Confirmation Badge
+            let statusBadge = app.staticTexts["badge_order_status"]
+            XCTAssertTrue(statusBadge.waitForExistence(timeout: 5), "Status badge must display")
+            XCTAssertEqual(statusBadge.label, "CONFIRMED")
+        }
+    }
+    ```
+  </TabItem>
+
+  <TabItem label="Cross-Platform (Maestro YAML)">
+    Cross-platform journeys and end-to-end flows run via **Maestro** declarative YAML on both platforms:
+
+    ```yaml
+    appId: com.enterprise.mobile
+    ---
+    # 1. Launch App in Clean State
+    - launchApp:
+        clearState: true
+
+    # 2. Enter Quantity
+    - assertVisible:
+        id: "input_order_quantity"
+    - inputText:
+        id: "input_order_quantity"
+        text: "450"
+
+    # 3. Select Facility
+    - tapOn:
+        id: "picker_select_facility"
+    - tapOn:
+        text: "Des Moines Terminal 4"
+
+    # 4. Submit Order
+    - tapOn:
+        id: "btn_submit_order"
+
+    # 5. Assert Success State (Built-in smart wait)
+    - assertVisible:
+        text: "CONFIRMED"
+        timeout: 5000
+    ```
+  </TabItem>
+</Tabs>
+
+---
+
+## 3. Asynchronous Synchronization: Handling Network Latency
+
+Flaky UI tests occur when assertions execute before asynchronous operations finish:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Framework</th>
+        <th>Synchronization Mechanism</th>
+        <th>Best Practice &amp; Guidance</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Android Espresso</strong></td>
+        <td><code>CountingIdlingResource</code></td>
+        <td>Register with OkHttp client or coroutines dispatcher. Espresso pauses assertions automatically while background tasks are active.</td>
+      </tr>
+      <tr>
+        <td><strong>iOS XCUITest</strong></td>
+        <td><code>waitForExistence(timeout:)</code></td>
+        <td>Always use <code>element.waitForExistence(timeout: 5)</code> instead of hardcoded <code>Thread.sleep()</code>. Avoids flakiness on slower CI simulators.</td>
+      </tr>
+      <tr>
+        <td><strong>Maestro YAML</strong></td>
+        <td>Smart Polling Wait</td>
+        <td>Built into every command. Maestro automatically waits up to 2 seconds for views to stabilize before evaluating assertions.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 4. Local Execution &amp; CI Runner Commands
+
+### Running Android Espresso Locally
+```bash
+# Execute on connected device or emulator via Gradle
+./gradlew connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.enterprise.mobile.ui.OrderCheckoutEspressoTest
+```
+
+### Running iOS XCUITest Locally
+```bash
+# Execute on iOS Simulator via xcodebuild
+xcodebuild test \
+  -workspace EnterpriseMobile.xcworkspace \
+  -scheme EnterpriseMobileUITests \
+  -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.0'
+```
+
+### Running Maestro Locally
+```bash
+# Execute YAML flow against connected simulator/emulator
+maestro test .maestro/flows/02-offline-order-sync.yaml
+```
+
+---
+
+## 5. Screenshot Placeholders
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <h4 class="portal-screenshot-title">Android Studio Espresso Test Execution Matrix</h4>
+  </div>
+  <p class="portal-screenshot-desc">
+    Display the Android Studio Run view showing green execution checkmarks across all Espresso instrumentation tests with individual test duration timestamps.
+  </p>
+  <span class="portal-screenshot-path">docs/assets/testing/android-studio-espresso-run.png</span>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <h4 class="portal-screenshot-title">Xcode XCUITest Report with Automatic Failure Screen Diffs</h4>
+  </div>
+  <p class="portal-screenshot-desc">
+    Capture the Xcode Test Report Navigator window showing the hierarchy of XCUITest executions with duration timestamps and attached failure snapshots.
+  </p>
+  <span class="portal-screenshot-path">docs/assets/testing/xcode-xcuitest-report.png</span>
+</div>
+
+
+<!-- ============================================================================== -->
+<!-- END OF SECTION 7.2: UI & MAESTRO AUTOMATED E2E TESTING -->
+<!-- ============================================================================== -->
+
+
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+<!-- START OF SECTION 7.3: MOCKWEBSERVER & HERMETIC NETWORK STUBS -->
+<!-- SOURCE FILE: 07-mock-web-server.mdx -->
+<!-- RECOMMENDED GIT TARGET: docs/testing/07-mock-web-server.mdx -->
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+
+---
+title: "07.3 MockWebServer & Hermetic Network Stubs"
+description: "Hermetic API mocking and contract stubbing: OkHttp MockWebServer, iOS URLProtocol stubs, Mock Service Worker (MSW), and consumer-driven contract testing."
+---
+sidebar:
+  order: 4
+  label: "7.3 Mocking API & Contract Stubs"
+---
+
+import DiagramExpand from './DiagramExpand.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">HERMETIC TESTING</span>
+    <span class="portal-hub-tag">MODULE 07.3 &bull; NETWORK VIRTUALIZATION</span>
+  </div>
+  <h1 class="portal-hero-title">MockWebServer &amp; Hermetic Network Stubs</h1>
+  <p class="portal-hero-desc">
+    Hermetic test suites achieve 100% determinism by cutting off all external network egress. By virtualizing backend APIs using local loopback servers and URLProtocol stubs, mobile applications test real HTTP parsing, error recovery, token rotation, and network degradation without depending on flaky staging environments.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Zero Network Flake</div>
+      <div class="portal-cap-desc">100% offline determinism &bull; No staging environment outages</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Edge Case Injection</div>
+      <div class="portal-cap-desc">Simulate HTTP 429, 500, token expired 401, and socket timeouts</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Path Dispatchers</div>
+      <div class="portal-cap-desc">Dynamic route matching for complex multi-step user transactions</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Contract Verification</div>
+      <div class="portal-cap-desc">JSON schema validation &bull; Consumer-driven contract guarantees</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Hermetic Testing Architecture
+
+During automated execution, the application HTTP client is redirected to a local loopback listener running directly in the test process. Zero network packets escape to external servers:
+
+<DiagramExpand title="HERMETIC NETWORK INTERCEPTION ARCHITECTURE">
+
+```mermaid
+graph LR
+    subgraph AppCode ["MOBILE APP RUNTIME"]
+        UI["UI View / ViewModel"] --> Client["HTTP Engine<br/>Retrofit &bull; URLSession &bull; Axios"]
+    end
+
+    subgraph InterceptionBoundary ["HERMETIC TEST BOUNDARY"]
+        Client --> Interceptor{"Target URL Config"}
+        Interceptor -->|Debug / Prod| Cloud["External API Gateway<br/>https://api.enterprise.com<br/>(BLOCKED IN CI)"]
+        Interceptor -->|Test Execution| Loopback["Local Loopback Listener<br/>http://localhost:8080"]
+    end
+
+    subgraph MockEngine ["MOCK DISPATCH ENGINE"]
+        Loopback --> Dispatcher["Dynamic Path Dispatcher"]
+        Dispatcher -->|/api/v1/auth| R1["HTTP 200: auth_success.json"]
+        Dispatcher -->|/api/v1/orders| R2["HTTP 201: order_created.json"]
+        Dispatcher -->|/api/v1/sync| R3["HTTP 429: rate_limit.json"]
+        Dispatcher -->|Invalid Path| R4["HTTP 404: Not Found"]
+    end
+
+    classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
+    classDef iosNode fill:#25153a,stroke:#a855f7,stroke-width:1.5px,color:#d8b4fe;
+    classDef rnNode fill:#0d2833,stroke:#06b6d4,stroke-width:1.5px,color:#67e8f9;
+    classDef secNode fill:#31141e,stroke:#f43f5e,stroke-width:1.5px,color:#fda4af;
+    classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
+
+    class UI,Client platformNode;
+    class Interceptor,Loopback iosNode;
+    class Cloud secNode;
+    class Dispatcher,R1,R2,R3,R4 cloudNode;
+```
+
+</DiagramExpand>
+
+---
+
+## 2. Multi-Platform Implementation Patterns
+
+<Tabs>
+  <TabItem label="Android (OkHttp MockWebServer)">
+    Square's **MockWebServer** is the gold standard for Android. It runs an in-memory HTTP server on the test thread, allowing full verification of headers, bodies, and network retries:
+
+    ```kotlin
+    package com.enterprise.mobile.data.remote
+
+    import io.kotest.matchers.shouldBe
+    import kotlinx.coroutines.test.runTest
+    import okhttp3.OkHttpClient
+    import okhttp3.mockwebserver.Dispatcher
+    import okhttp3.mockwebserver.MockResponse
+    import okhttp3.mockwebserver.MockWebServer
+    import okhttp3.mockwebserver.RecordedRequest
+    import org.junit.jupiter.api.AfterEach
+    import org.junit.jupiter.api.BeforeEach
+    import org.junit.jupiter.api.Test
+    import retrofit2.Retrofit
+    import retrofit2.converter.kotlinx.serialization.asConverterFactory
+    import kotlinx.serialization.json.Json
+    import okhttp3.MediaType.Companion.toMediaType
+    import java.util.concurrent.TimeUnit
+
+    class HermeticOrderApiTest {
+
+        private lateinit var server: MockWebServer
+        private lateinit var api: OrderApiService
+
+        @BeforeEach
+        fun setUp() {
+            server = MockWebServer()
+            server.start()
+
+            val retrofit = Retrofit.Builder()
+                .baseUrl(server.url("/"))
+                .client(OkHttpClient.Builder().build())
+                .addConverterFactory(Json.asConverterFactory("application/json".toMediaType()))
+                .build()
+
+            api = retrofit.create(OrderApiService::class.java)
+        }
+
+        @AfterEach
+        fun tearDown() {
+            server.shutdown()
+        }
+
+        @Test
+        fun `given valid order, dispatcher responds with 200 and parses body`() = runTest {
+            // Configure custom path dispatcher
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    return when (request.path) {
+                        "/api/v1/orders/ORD-94812" -> MockResponse()
+                            .setResponseCode(200)
+                            .setHeader("Content-Type", "application/json")
+                            .setBody("""{"id":"ORD-94812","status":"APPROVED","totalCents":15400}""")
+                        else -> MockResponse().setResponseCode(404)
+                    }
+                }
+            }
+
+            // Act
+            val response = api.fetchOrder("ORD-94812")
+
+            // Assert
+            response.id shouldBe "ORD-94812"
+            response.status shouldBe "APPROVED"
+
+            // Verify outbound request headers
+            val recorded = server.takeRequest(5, TimeUnit.SECONDS)
+            recorded?.path shouldBe "/api/v1/orders/ORD-94812"
+            recorded?.getHeader("Accept") shouldBe "application/json"
+        }
+
+        @Test
+        fun `given 429 rate limit with retry-after header, client triggers backoff`() = runTest {
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(429)
+                    .setHeader("Retry-After", "5")
+                    .setBody("""{"error":"TOO_MANY_REQUESTS"}""")
+            )
+
+            val result = runCatching { api.fetchOrder("ORD-BURST") }
+            result.isFailure shouldBe true
+        }
+    }
+    ```
+  </TabItem>
+
+  <TabItem label="iOS (Custom URLProtocol Stub)">
+    On iOS, **`URLProtocol`** intercepts network traffic at the Foundation layer, making it completely invisible to application repositories:
+
+    ```swift
+    import Foundation
+    import Testing
+    @testable import EnterpriseOrderFeature
+
+    final class MockURLProtocol: URLProtocol {
+        static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+
+        override class func canInit(with request: URLRequest) -> Bool {
+            return true // Intercept all requests
+        }
+
+        override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+            return request
+        }
+
+        override func startLoading() {
+            guard let handler = MockURLProtocol.requestHandler else {
+                client?.urlProtocol(self, didFailWithError: URLError(.badURL))
+                return
+            }
+
+            do {
+                let (response, data) = try handler(request)
+                client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+                client?.urlProtocol(self, didLoad: data)
+                client?.urlProtocolDidFinishLoading(self)
+            } catch {
+                client?.urlProtocol(self, didFailWithError: error)
+            }
+        }
+
+        override func stopLoading() {}
+    }
+
+    @Suite("Hermetic Network Test Suite")
+    struct HermeticNetworkTests {
+
+        @Test("Interprets HTTP 500 error and triggers circuit breaker")
+        func testInternalServerErrorHandling() async throws {
+            // Configure custom session
+            let config = URLSessionConfiguration.ephemeral
+            config.protocolClasses = [MockURLProtocol.self]
+            let session = URLSession(configuration: config)
+
+            MockURLProtocol.requestHandler = { request in
+                let response = HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 500,
+                    httpVersion: nil,
+                    headerFields: ["Content-Type": "application/json"]
+                )!
+                let data = Data("""{"error":"INTERNAL_SERVER_ERROR"}""".utf8)
+                return (response, data)
+            }
+
+            let networkClient = APIClient(session: session)
+            let result = await networkClient.fetchOrder(id: "ORD-FAIL")
+
+            #expect(result == .serverError)
+        }
+    }
+    ```
+  </TabItem>
+
+  <TabItem label="React Native (MSW - Mock Service Worker)">
+    React Native uses **MSW (Mock Service Worker)** to intercept requests at the Node / React Native runtime level:
+
+    ```typescript
+    import { setupServer } from 'msw/node';
+    import { rest } from 'msw';
+    import { orderApiClient } from '../api/orderApiClient';
+
+    const server = setupServer(
+      rest.get('https://api.enterprise.internal/api/v1/orders/:id', (req, res, ctx) => {
+        const { id } = req.params;
+        if (id === 'ORD-94812') {
+          return res(
+            ctx.status(200),
+            ctx.json({ id: 'ORD-94812', totalCents: 15400, status: 'CONFIRMED' })
+          );
+        }
+        return res(ctx.status(404), ctx.json({ message: 'Order not found' }));
+      }),
+
+      rest.post('https://api.enterprise.internal/api/v1/orders', (req, res, ctx) => {
+        return res(
+          ctx.status(201),
+          ctx.delay(100), // Simulate network latency
+          ctx.json({ status: 'QUEUED' })
+        );
+      })
+    );
+
+    beforeAll(() => server.listen());
+    afterEach(() => server.resetHandlers());
+    afterAll(() => server.close());
+
+    test('successfully fetches order fixture without live network access', async () => {
+      const order = await orderApiClient.getOrder('ORD-94812');
+      expect(order.id).toBe('ORD-94812');
+      expect(order.totalCents).toBe(15400);
+    });
+    ```
+  </TabItem>
+</Tabs>
+
+---
+
+## 3. Simulating Network Degraded Scenarios
+
+To ensure resilience, test suites must explicitly assert behavior under hostile network conditions:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Scenario</th>
+        <th>Mock Implementation</th>
+        <th>Expected Client Behavior</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Token Expiry (HTTP 401)</strong></td>
+        <td>First request returns 401; second request (refresh) returns 200; third request retries original call.</td>
+        <td>Transparent token refresh without logging user out. Zero duplicate prompt screens.</td>
+      </tr>
+      <tr>
+        <td><strong>Rate Limiting (HTTP 429)</strong></td>
+        <td>Returns 429 with <code>Retry-After: 3</code> header.</td>
+        <td>Client honors backoff delay, transitions UI to non-blocking warning, and retries automatically.</td>
+      </tr>
+      <tr>
+        <td><strong>Bandwidth Throttling</strong></td>
+        <td><code>response.throttleBody(1024, 1, TimeUnit.SECONDS)</code> (1 KB/sec).</td>
+        <td>Progress bar updates smoothly; timeout cancellation works cleanly if user navigates away.</td>
+      </tr>
+      <tr>
+        <td><strong>Socket Timeout / Disconnect</strong></td>
+        <td><code>server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))</code></td>
+        <td>Immediate fallback to offline outbox queue; user notified via non-intrusive status toast.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 4. Screenshot Placeholders
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <h4 class="portal-screenshot-title">MockWebServer Terminal Execution &amp; Dispatcher Logs</h4>
+  </div>
+  <p class="portal-screenshot-desc">
+    Capture the console output during a test run showing MockWebServer receiving requests, logging HTTP methods and paths, and dispatching JSON responses in sub-milliseconds.
+  </p>
+  <span class="portal-screenshot-path">docs/assets/testing/mockwebserver-terminal-logs.png</span>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <h4 class="portal-screenshot-title">JSON Fixture Catalog Project Tree Structure</h4>
+  </div>
+  <p class="portal-screenshot-desc">
+    Display the IDE project navigator highlighting the `src/test/resources/fixtures/` directory containing standardized success, validation error, and edge case JSON payloads.
+  </p>
+  <span class="portal-screenshot-path">docs/assets/testing/json-fixtures-directory-tree.png</span>
+</div>
+
+
+<!-- ============================================================================== -->
+<!-- END OF SECTION 7.3: MOCKWEBSERVER & HERMETIC NETWORK STUBS -->
+<!-- ============================================================================== -->
+
+
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+<!-- START OF SECTION 7.4: QUALITY GATES, CODE COVERAGE THRESHOLDS & STATIC ANALYSIS -->
+<!-- SOURCE FILE: 07-quality-gates.mdx -->
+<!-- RECOMMENDED GIT TARGET: docs/testing/07-quality-gates.mdx -->
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+
+---
+title: "07.4 Quality Gates, Code Coverage Thresholds & Static Analysis"
+description: "Enterprise mobile quality gates: 80% test coverage thresholds, JaCoCo, Slather, SonarQube, Detekt, SwiftLint, and automated Danger PR verification."
+---
+sidebar:
+  order: 5
+  label: "7.4 Quality & Coverage Gates"
+---
+
+import DiagramExpand from './DiagramExpand.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">QUALITY GOVERNANCE</span>
+    <span class="portal-hub-tag">MODULE 07.4 &bull; QUALITY GATES &amp; METRICS</span>
+  </div>
+  <h1 class="portal-hero-title">Quality Gates &amp; Coverage Thresholds</h1>
+  <p class="portal-hero-desc">
+    Continuous quality verification is enforced by automated stage gates in CI/CD. The enterprise mandates an 80% line and branch coverage threshold on all new and modified code, coupled with strict static analysis via Detekt, SwiftLint, SonarQube, and automated Danger PR bot checks.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">80% Diff Coverage</div>
+      <div class="portal-cap-desc">Strict threshold on modified lines &bull; Zero repository regressions</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Multi-Tool Coverage</div>
+      <div class="portal-cap-desc">JaCoCo (Android) &bull; Slather (iOS) &bull; Istanbul LCOV (React Native)</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Automated Linting</div>
+      <div class="portal-cap-desc">Detekt &bull; ktlint &bull; SwiftLint &bull; ESLint &bull; TypeScript strict</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Danger PR Enforcement</div>
+      <div class="portal-cap-desc">Automated PR comments &bull; Blocks merging on coverage failure</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Quality Gate Architecture &amp; Enforcement Flow
+
+Every Pull Request submitted to an enterprise repository must pass through four sequential verification stages before merge approval:
+
+<DiagramExpand title="ENTERPRISE QUALITY GATES &amp; COVERAGE PIPELINE">
+
+```mermaid
+graph TD
+    subgraph TriggerPhase ["1. PULL REQUEST TRIGGER"]
+        PR["Developer Submits PR<br/>feature/order-summary &rarr; main"]
+    end
+
+    subgraph StaticPhase ["2. STATIC ANALYSIS &amp; LINTING"]
+        PR --> LintAndroid["Detekt &amp; ktlint<br/>Zero code smells"]
+        PR --> LintIOS["SwiftLint Strict<br/>Zero warnings"]
+        PR --> LintRN["ESLint &amp; TSC<br/>Zero type errors"]
+    end
+
+    subgraph TestCovPhase ["3. TEST EXECUTION &amp; COVERAGE INSTRUMENTATION"]
+        LintAndroid --> UnitAndroid["JUnit 5 Tests &rarr; JaCoCo XML"]
+        LintIOS --> UnitIOS["Swift Tests &rarr; Slather / xccov"]
+        LintRN --> UnitRN["Jest Tests &rarr; Istanbul LCOV"]
+    end
+
+    subgraph GovernancePhase ["4. SONARQUBE &amp; DANGER BOT GATEWAY"]
+        UnitAndroid --> Sonar["SonarQube Enterprise Analysis"]
+        UnitIOS --> Sonar
+        UnitRN --> Sonar
+        
+        Sonar --> Eval{"Diff Coverage &gt;= 80%<br/>&amp; Zero Sev 1 Vulnerabilities?"}
+        Eval -->|Passed| DangerPass["Danger Bot Posts Success<br/>Green GitHub Check"]
+        Eval -->|Failed| DangerFail["Danger Bot Blocks PR<br/>Detailed Missing Line Table"]
+    end
+
+    DangerPass --> Merge["Merge Allowed &bull; Bitrise Release Pipeline"]
+    DangerFail --> Blocked["Merge Blocked &bull; Author Action Required"]
+
+    classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
+    classDef iosNode fill:#25153a,stroke:#a855f7,stroke-width:1.5px,color:#d8b4fe;
+    classDef rnNode fill:#0d2833,stroke:#06b6d4,stroke-width:1.5px,color:#67e8f9;
+    classDef warnNode fill:#2a2012,stroke:#f59e0b,stroke-width:1.5px,color:#fde68a;
+    classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
+    classDef failNode fill:#31141e,stroke:#f43f5e,stroke-width:1.5px,color:#fda4af;
+
+    class PR,LintAndroid,UnitAndroid platformNode;
+    class LintIOS,UnitIOS iosNode;
+    class LintRN,UnitRN rnNode;
+    class Sonar,DangerPass,Merge cloudNode;
+    class Eval warnNode;
+    class DangerFail,Blocked failNode;
+```
+
+</DiagramExpand>
+
+---
+
+## 2. Multi-Platform Coverage Configuration
+
+<Tabs>
+  <TabItem label="Android (JaCoCo Gradle Setup)">
+    The Android configuration enforces exclusion patterns for generated code, Compose UI previews, and Hilt dependency injection classes:
+
+    ```groovy
+    // app/build.gradle.kts
+    plugins {
+        id("jacoco")
+    }
+
+    jacoco {
+        toolVersion = "0.8.11"
+    }
+
+    val fileFilter = listOf(
+        "**/R.class",
+        "**/R$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*Test*.*",
+        "android/**/*.*",
+        "**/*_Hilt*.class",
+        "**/Hilt_*.class",
+        "**/*_Factory.class",
+        "**/*_MembersInjector.class",
+        "**/*ComposableSingletons*.*",
+        "**/*Preview*.*"
+    )
+
+    tasks.register<JacocoReport>("jacocoTestReport") {
+        dependsOn("testDebugUnitTest")
+        group = "Reporting"
+        description = "Generate JaCoCo coverage reports for Debug unit tests"
+
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
+            csv.required.set(false)
+        }
+
+        val debugTree = fileTree("${layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+            exclude(fileFilter)
+        }
+        val mainSrc = "${project.projectDir}/src/main/java"
+
+        sourceDirectories.setFrom(files(mainSrc))
+        classDirectories.setFrom(files(debugTree))
+        executionData.setFrom(fileTree(layout.buildDirectory.get()) {
+            include("jacoco/testDebugUnitTest.exec")
+        })
+    }
+
+    tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
+        dependsOn("jacocoTestReport")
+        violationRules {
+            rule {
+                limit {
+                    minimum = "0.80".toBigDecimal() // 80% Minimum Threshold
+                }
+            }
+        }
+    }
+    ```
+  </TabItem>
+
+  <TabItem label="iOS (Slather & Xcode Coverage)">
+    On iOS, **Slather** parses native `.xccovreport` binaries generated by `xcodebuild -enableCodeCoverage YES` and produces SonarQube-compatible XML:
+
+    ```ruby
+    # .slather.yml
+    coverage_service: sonarqube_xml
+    xcodeproj: EnterpriseMobile.xcodeproj
+    scheme: EnterpriseMobile
+    output_directory: ./build/reports/slather
+    ignore:
+      - "EnterpriseMobileTests/*"
+      - "EnterpriseMobileUITests/*"
+      - "**/Generated/*"
+      - "**/Preview Content/*"
+      - "**/Mocks/*"
+    ```
+
+    Execution in Bitrise CI:
+    ```bash
+    # Run tests with coverage enabled
+    xcodebuild test \
+      -workspace EnterpriseMobile.xcworkspace \
+      -scheme EnterpriseMobile \
+      -destination "platform=iOS Simulator,name=iPhone 16,OS=18.0" \
+      -enableCodeCoverage YES \
+      -resultBundlePath ./build/TestResults.xcresult
+
+    # Generate XML report via Slather
+    bundle exec slather
+    ```
+  </TabItem>
+
+  <TabItem label="React Native (Jest Coverage Thresholds)">
+    React Native defines explicit coverage enforcement directly in `jest.config.js`:
+
+    ```javascript
+    // jest.config.js
+    module.exports = {
+      preset: 'react-native',
+      collectCoverage: true,
+      collectCoverageFrom: [
+        'src/**/*.{ts,tsx}',
+        '!src/**/*.d.ts',
+        '!src/**/styles.ts',
+        '!src/**/__tests__/**',
+        '!src/**/mocks/**',
+      ],
+      coverageReporters: ['text', 'lcov', 'json-summary'],
+      coverageThreshold: {
+        global: {
+          branches: 80,
+          functions: 80,
+          lines: 80,
+          statements: 80,
+        },
+      },
+    };
+    ```
+  </TabItem>
+</Tabs>
+
+---
+
+## 3. Automated Danger PR Bot Verification
+
+The **Danger PR bot** runs as the final step in the Bitrise CI pipeline, analyzing pull request metadata, static analysis findings, and code coverage numbers before posting an actionable review comment:
+
+```ruby
+# Dangerfile
+# Enforce PR description length
+fail("Please provide a meaningful PR summary explaining your architectural changes.") if github.pr_body.length < 30
+
+# Check for tests on modified business logic
+has_source_changes = git.modified_files.any? { |file| file.start_with?("src/main", "Sources/") }
+has_test_changes = git.modified_files.any? { |file| file.start_with?("src/test", "Tests/") }
+
+if has_source_changes && !has_test_changes
+  warn("This PR modifies core application code without corresponding test modifications.")
+end
+
+# Check SonarQube / JaCoCo coverage report
+jacoco_report = "app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml"
+if File.exist?(jacoco_report)
+  coverage = parse_jacoco_coverage(jacoco_report)
+  if coverage < 80.0
+    fail("PR Code Coverage is #{coverage}%, which fails the mandatory 80% threshold.")
+  else
+    message("PR Code Coverage: #{coverage}% (Exceeds 80% threshold)")
+  end
+end
+```
+
+---
+
+## 4. Screenshot Placeholders
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <h4 class="portal-screenshot-title">SonarQube Project Quality Gate Status Dashboard</h4>
+  </div>
+  <p class="portal-screenshot-desc">
+    Display the SonarQube dashboard for the enterprise mobile project showing the green "PASSED" badge with Line Coverage at 84.6%, zero High-Severity Security Hotspots, and zero critical code smells.
+  </p>
+  <span class="portal-screenshot-path">docs/assets/testing/sonarqube-quality-gate-passed.png</span>
+</div>
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <h4 class="portal-screenshot-title">Danger Bot Pull Request Verification Comment</h4>
+  </div>
+  <p class="portal-screenshot-desc">
+    Capture the GitHub Pull Request conversation tab showing the Danger bot automated comment with a formatted table of passed linters, code coverage statistics, and build status checkmarks.
+  </p>
+  <span class="portal-screenshot-path">docs/assets/testing/github-danger-pr-comment.png</span>
+</div>
+
+
+<!-- ============================================================================== -->
+<!-- END OF SECTION 7.4: QUALITY GATES, CODE COVERAGE THRESHOLDS & STATIC ANALYSIS -->
+<!-- ============================================================================== -->
+
+
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+<!-- START OF SECTION 7.5: REAL-DEVICE CLOUD TESTING WITH SAUCE LABS -->
+<!-- SOURCE FILE: 07-cloud-device-testing-saucelabs.mdx -->
+<!-- RECOMMENDED GIT TARGET: docs/testing/07-cloud-device-testing-saucelabs.mdx -->
+<!-- ============================================================================== -->
+<!-- ============================================================================== -->
+
+---
+title: "07.5 Real-Device Cloud Testing with Sauce Labs"
+description: "Master automated physical device testing in Bitrise using Sauce Labs: saucelabs.request.yml, saucectl runner, parallel device pools, and artifact collection."
+---
+sidebar:
+  order: 6
+  label: "7.5 Sauce Labs Device Cloud"
+---
+
+import DiagramExpand from './DiagramExpand.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<div class="portal-hero-card">
+  <div class="portal-hero-topbar">
+    <span class="portal-badge-hub">QUALITY ENGINEERING</span>
+    <span class="portal-hub-tag">MODULE 07.5 &bull; REAL-DEVICE TESTING</span>
+  </div>
+  <h1 class="portal-hero-title">Real-Device Cloud Testing with Sauce Labs</h1>
+  <p class="portal-hero-desc">
+    Eliminate device fragmentation and hardware-specific runtime crashes by automating testing on physical Android and iOS hardware. Learn how to configure the Sauce Labs device cloud, structure <code>saucelabs.request.yml</code> and <code>.sauce/config.yml</code>, orchestrate the two-step Bitrise test workflow, and inspect video recordings and device telemetry.
+  </p>
+  <div class="portal-caps-bar">
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Real-Device Farm</div>
+      <div class="portal-cap-desc">Thousands of physical iPhones &bull; Google Pixels &bull; Samsung Galaxies</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">2-Step Pipeline</div>
+      <div class="portal-cap-desc">Sauce Labs App Create &bull; Upload and Test &bull; Automatic ID export</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">saucectl CLI</div>
+      <div class="portal-cap-desc">Declarative runner &bull; Appium &bull; Espresso &bull; XCUITest &bull; Maestro</div>
+    </div>
+    <div class="portal-cap-item">
+      <div class="portal-cap-title">Rich Artifacts</div>
+      <div class="portal-cap-desc">Full video replays &bull; Screenshots &bull; Console logs &bull; Network HAR</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## 1. Why Real-Device Cloud Testing Matters
+
+Simulators and emulators on developer laptops cannot accurately replicate physical device realities:
+* **OEM Customizations**: Samsung One UI, Xiaomi MIUI, and Google Pixel skins alter background task execution, battery optimization, and push notification delivery.
+* **Hardware Sensors &amp; GPU Constraints**: Camera APIs, biometric sensors (Face ID, Fingerprint), and GPU rendering engines behave differently on physical chipsets.
+* **OS Version Fragmentation**: Testing simultaneously across Android 11 through 15 and iOS 16 through 18 ensures backwards compatibility before general availability.
+
+Sauce Labs provides an enterprise cloud of real, physical mobile devices hosted in secure data centers, enabling automated regression tests on every staging build.
+
+---
+
+## 2. Architecture at a Glance (The 2-Step Bitrise Workflow)
+
+The integration splits into two distinct, governed steps within your Bitrise pipeline:
+
+<DiagramExpand title="SAUCE LABS TWO-STEP PIPELINE ARCHITECTURE">
+
+```mermaid
+graph TD
+    subgraph BuildPhase ["1. COMPILATION PHASE"]
+        Clone["git-clone &bull; npm ci"] --> Compile["android-build or xcode-archive"]
+        Compile --> ReadyBin["Compiled Binary Ready<br/>$BITRISE_APK_PATH or $BITRISE_IPA_PATH"]
+    end
+
+    subgraph Step1 ["2. STEP 1: SAUCE LABS APP CREATE"]
+        ReqFile["Read saucelabs.request.yml<br/>from project root"] --> Register["Register App in Sauce Labs Storage API"]
+        Register --> ExportIDs["Export Environment Variables:<br/>$SAUCE_APP_NAME &bull; $SAUCE_APP_ID &bull; $SAUCE_APP_FILE_NAME"]
+    end
+
+    subgraph Step2 ["3. STEP 2: SAUCE LABS UPLOAD AND TEST"]
+        UploadBin["Upload Binary via Storage API<br/>https://api.us-west-1.saucelabs.com"] --> RunTest["Execute saucectl test_command<br/>Maestro / Espresso / XCUITest"]
+        RunTest --> StreamLogs["Stream Test Artifacts to Bitrise:<br/>Videos &bull; Screenshots &bull; HAR Network Logs"]
+    end
+
+    ReadyBin --> ReqFile
+    ExportIDs --> UploadBin
+
+    classDef platformNode fill:#0f2e1e,stroke:#22c55e,stroke-width:1.5px,color:#86efac;
+    classDef iosNode fill:#25153a,stroke:#a855f7,stroke-width:1.5px,color:#d8b4fe;
+    classDef rnNode fill:#0d2833,stroke:#06b6d4,stroke-width:1.5px,color:#67e8f9;
+    classDef cloudNode fill:#132238,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd;
+
+    class Clone,Compile,ReadyBin platformNode;
+    class ReqFile,Register,ExportIDs cloudNode;
+    class UploadBin,RunTest,StreamLogs iosNode;
+```
+
+</DiagramExpand>
+
+---
+
+## 3. Step 1: Create the Request File (`saucelabs.request.yml`)
+
+Create a file named `saucelabs.request.yml` in the root directory of your repository. This file identifies your application in Sauce Labs storage:
+
+```yaml
+app_name: my-mobile-app
+platform: android # Allowed: android or ios
+owner_email: mobile-engineering@enterprise.internal
+team: mobile-platform
+description: Enterprise mobile application provisioned via Bitrise CI/CD
+
+# Optional Metadata Fields
+business_unit: corporate
+environment: staging
+repository: https://git.enterprise.internal/mobile-engineering/my-mobile-app.git
+```
+
+### Field Validation Rules
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Field</th>
+        <th>Type</th>
+        <th>Constraint Rule</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>app_name</code></td>
+        <td>String</td>
+        <td>Must not be empty. Represents your application title in Sauce Labs App Storage.</td>
+      </tr>
+      <tr>
+        <td><code>platform</code></td>
+        <td>Enum</td>
+        <td>Must be exactly <code>android</code> or <code>ios</code>.</td>
+      </tr>
+      <tr>
+        <td><code>owner_email</code></td>
+        <td>Email</td>
+        <td>Must be a valid enterprise email address for test failure alerts.</td>
+      </tr>
+      <tr>
+        <td><code>team</code></td>
+        <td>String</td>
+        <td>Name of the owning mobile engineering squad.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 4. Step 2: Configure the Test Runner (`.sauce/config.yml`)
+
+Sauce Labs uses the declarative `saucectl` CLI to orchestrate test execution across real device pools.
+
+Create a folder named `.sauce/` in your repository root, and place a `config.yml` file inside it:
+
+<Tabs>
+  <TabItem label="Android (Espresso)">
+    **`.sauce/config.yml` (Android Espresso)**
+    ```yaml
+    apiVersion: v1alpha
+    kind: espresso
+    sauce:
+      region: us-west-1
+      concurrency: 2
+      metadata:
+        build: "Bitrise Build $BITRISE_BUILD_NUMBER"
+        tags:
+          - "staging"
+          - "espresso"
+
+    espresso:
+      app: storage:$SAUCE_APP_ID
+      testApp: storage:$SAUCE_TEST_APP_ID
+
+    suites:
+      - name: "Pixel-Real-Device-Espresso"
+        devices:
+          - name: "Google Pixel.*"
+            platformVersion: "14"
+        testOptions:
+          class:
+            - "com.enterprise.mobile.ui.OrderCheckoutEspressoTest"
+
+      - name: "Samsung-Galaxy-Espresso"
+        devices:
+          - name: "Samsung Galaxy S.*"
+            platformVersion: "13"
+    ```
+  </TabItem>
+
+  <TabItem label="iOS (XCUITest)">
+    **`.sauce/config.yml` (iOS XCUITest)**
+    ```yaml
+    apiVersion: v1alpha
+    kind: xcuitest
+    sauce:
+      region: us-west-1
+      concurrency: 2
+      metadata:
+        build: "Bitrise Build $BITRISE_BUILD_NUMBER"
+        tags:
+          - "staging"
+          - "xcuitest"
+
+    xcuitest:
+      app: storage:$SAUCE_APP_ID
+      testApp: storage:$SAUCE_TEST_APP_ID
+
+    suites:
+      - name: "iPhone-Real-Device-XCUITest"
+        devices:
+          - name: "iPhone (15|16).*"
+            platformVersion: "18"
+        testOptions:
+          class:
+            - "OrderCheckoutXCUITest"
+    ```
+  </TabItem>
+
+  <TabItem label="Cross-Platform (Maestro)">
+    **`.sauce/config.yml` (Maestro YAML Flows)**
+    ```yaml
+    apiVersion: v1alpha
+    kind: maestro
+    sauce:
+      region: us-west-1
+      concurrency: 2
+      metadata:
+        build: "Bitrise Build $BITRISE_BUILD_NUMBER"
+        tags:
+          - "staging"
+          - "maestro"
+
+    maestro:
+      app: storage:$SAUCE_APP_ID
+      flows:
+        - ".maestro/flows/02-offline-order-sync.yaml"
+
+    suites:
+      - name: "Real-Device-Maestro-Android"
+        devices:
+          - name: "Google Pixel.*"
+            platformVersion: "14"
+      - name: "Real-Device-Maestro-iOS"
+        devices:
+          - name: "iPhone 16.*"
+            platformVersion: "18"
+    ```
+  </TabItem>
+</Tabs>
+
+---
+
+## 5. Step 3: Configure Bitrise Secrets &amp; Steps
+
+### 5.1 Store Sauce Labs Credentials in Bitrise Secrets
+
+In Bitrise &gt; **Workflow Editor &gt; Secrets Tab**, declare your API credentials:
+* `$SAUCE_USERNAME`: Your Sauce Labs account username.
+* `$SAUCE_ACCESS_KEY`: Your Sauce Labs alphanumeric access key (found under User Settings &gt; Access Key).
+
+### 5.2 Add Steps to `bitrise.yml`
+
+Integrate the two steps into your `deploy-staging-qa` workflow:
+
+```yaml
+# 1. Register App in Sauce Labs Storage
+- git::https://git.enterprise.internal/mobile-engineering/bitrise-step-sauce-labs-app-create.git@v1:
+    title: Sauce Labs App Create
+    inputs:
+    - yaml_file_path: "saucelabs.request.yml"
+    - sauce_username: $SAUCE_USERNAME
+    - sauce_access_key: $SAUCE_ACCESS_KEY
+
+# 2. Upload Compiled Binary & Execute Tests
+- git::https://git.enterprise.internal/mobile-engineering/bitrise-step-sauce-labs-upload-and-test.git@v1:
+    title: Sauce Labs Mobile Upload and Test
+    inputs:
+    - sauce_username: $SAUCE_USERNAME
+    - sauce_access_key: $SAUCE_ACCESS_KEY
+    - sauce_region: "us-west-1"
+    - app_path: $BITRISE_APK_PATH
+    - app_name: $SAUCE_APP_FILE_NAME
+    - test_command: "saucectl run --config .sauce/config.yml"
+    - working_dir: $BITRISE_SOURCE_DIR
+    - test_fail_on_failure: "yes"
+```
+
+---
+
+## 6. Variables Passed Between Steps
+
+The two steps communicate through environment variables dynamically exported during execution:
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Variable Name</th>
+        <th>Exported By</th>
+        <th>Consumed By</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>$SAUCE_APP_ID</code></td>
+        <td><code>App Create</code></td>
+        <td><code>Upload and Test</code></td>
+        <td>Unique storage UUID assigned to the registered application in Sauce Labs.</td>
+      </tr>
+      <tr>
+        <td><code>$SAUCE_APP_NAME</code></td>
+        <td><code>App Create</code></td>
+        <td><code>Upload and Test</code></td>
+        <td>Canonical application title parsed from <code>saucelabs.request.yml</code>.</td>
+      </tr>
+      <tr>
+        <td><code>$SAUCE_APP_FILE_NAME</code></td>
+        <td><code>App Create</code></td>
+        <td><code>Upload and Test</code></td>
+        <td>Normalized binary filename (e.g., <code>my-mobile-app.apk</code>) used in cloud storage.</td>
+      </tr>
+      <tr>
+        <td><code>$CREATION_STATUS</code></td>
+        <td><code>App Create</code></td>
+        <td>Conditional steps</td>
+        <td>Status output (<code>created</code>, <code>already_exists</code>, or <code>failed</code>).</td>
+      </tr>
+      <tr>
+        <td><code>$SAUCE_TEST_EXIT_CODE</code></td>
+        <td><code>Upload and Test</code></td>
+        <td>Build summary</td>
+        <td>Exit code (<code>0</code> for pass, non-zero for test assertion failures).</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+---
+
+## 7. Visual Reference: Sauce Labs Automated Dashboard
+
+When tests complete, full execution telemetry is published to the Sauce Labs web portal:
+
+<div class="portal-screenshot-box">
+  <div class="portal-screenshot-header">
+    <span class="portal-screenshot-badge">SCREENSHOT REQUIRED</span>
+    <h4 class="portal-screenshot-title">Sauce Labs Automated Test Execution Dashboard</h4>
+  </div>
+  <p class="portal-screenshot-desc">
+    Open Sauce Labs &gt; Automated &gt; Test Results &gt; Click the latest test session. Capture the dashboard showing the physical device model (e.g., Google Pixel 8), video player with scrubbing timeline, screenshots, and passing test assertions.
+  </p>
+  <span class="portal-screenshot-path">docs/assets/testing/sauce-labs-test-dashboard.png</span>
+</div>
+
+---
+
+## 8. Troubleshooting Quick Reference
+
+<div class="portal-table-wrap">
+  <table class="portal-table">
+    <thead>
+      <tr>
+        <th>Symptom</th>
+        <th>Likely Root Cause</th>
+        <th>Resolution</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>401 Unauthorized during upload</code></td>
+        <td>Invalid or expired <code>$SAUCE_ACCESS_KEY</code> in Bitrise Secrets.</td>
+        <td>Open Sauce Labs &gt; User Settings &gt; Access Key. Regenerate key and update Bitrise secret.</td>
+      </tr>
+      <tr>
+        <td><code>App not found during test execution</code></td>
+        <td>Upload step failed or <code>$SAUCE_APP_ID</code> was not passed correctly.</td>
+        <td>Confirm upload step finished with HTTP 200 before test execution started.</td>
+      </tr>
+      <tr>
+        <td><code>Tests timeout waiting for a device</code></td>
+        <td>Requested device model is unavailable or concurrency limit reached.</td>
+        <td>Use wildcard regex (e.g. <code>Google Pixel.*</code>) instead of exact device IDs to pick available pool units.</td>
+      </tr>
+      <tr>
+        <td><code>saucectl: command not found</code></td>
+        <td>CLI runner not installed on the virtual machine stack.</td>
+        <td>Add an install script step before testing: <code>curl -L https://saucelabs.github.io/saucectl/install | bash</code>.</td>
+      </tr>
+      <tr>
+        <td><code>Wrong region error (HTTP 404)</code></td>
+        <td><code>sauce_region</code> mismatch between Bitrise step and Sauce Labs account data center.</td>
+        <td>Verify account data center (<code>us-west-1</code>, <code>us-east-4</code>, or <code>eu-central-1</code>) and align both configs.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ============================================================================== -->
+<!-- END OF SECTION 7.5: REAL-DEVICE CLOUD TESTING WITH SAUCE LABS -->
 <!-- ============================================================================== -->
 
