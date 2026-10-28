@@ -1,359 +1,2563 @@
 ---
 interface Props {
+  title?: string;
+  id?: string;
+}
+
+const { title = "ARCHITECTURE DIAGRAM", id } = Astro.props;
+const uniqueId = id || `diagram-${Math.random().toString(36).slice(2, 9)}`;
+---
+
+<div class="mermaid-premium-container" id={uniqueId}>
+  <div class="mermaid-header">
+    <div class="mermaid-title-wrap">
+      <span class="mermaid-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+        DIAGRAM
+      </span>
+      <span class="mermaid-title">{title}</span>
+    </div>
+
+    <div class="mermaid-toolbar">
+      <button type="button" class="mermaid-btn btn-zoom-out" title="Zoom Out (-)" aria-label="Zoom Out">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+
+      <span class="mermaid-zoom-indicator" title="Click to Reset View">100%</span>
+
+      <button type="button" class="mermaid-btn btn-zoom-in" title="Zoom In (+)" aria-label="Zoom In">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+
+      <div class="mermaid-divider"></div>
+
+      <button type="button" class="mermaid-btn btn-reset" title="Reset View (100%)" aria-label="Reset View">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+          <path d="M3 3v5h5"></path>
+        </svg>
+      </button>
+
+      <button type="button" class="mermaid-btn btn-fullscreen" title="Toggle Fullscreen" aria-label="Toggle Fullscreen">
+        <svg class="icon-expand" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+        </svg>
+        <svg class="icon-collapse" style="display: none;" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="mermaid-viewport">
+    <div class="mermaid-canvas">
+      <slot />
+    </div>
+
+    <div class="mermaid-tip">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+      Drag to pan &bull; Click + / - or scroll to zoom
+    </div>
+  </div>
+</div>
+
+<style>
+  .mermaid-premium-container {
+    position: relative;
+    background: var(--sl-color-bg-inline-code, #0f172a);
+    border: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.18));
+    border-radius: 12px;
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+    margin: 28px 0;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .mermaid-premium-container.is-fullscreen {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 999999;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    background: var(--sl-color-bg, #090d16);
+  }
+
+  .mermaid-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--sl-color-bg-nav, rgba(15, 23, 42, 0.9));
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.14));
+    user-select: none;
+    z-index: 10;
+  }
+
+  .mermaid-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .mermaid-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(56, 189, 248, 0.12);
+    color: var(--sl-color-text-accent, #38bdf8);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    flex-shrink: 0;
+  }
+
+  .mermaid-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--sl-color-text, #cbd5e1);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mermaid-toolbar {
+    display: flex;
+    align-items: center;
+    background: var(--sl-color-bg, rgba(30, 41, 59, 0.7));
+    border: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
+    border-radius: 8px;
+    padding: 2px;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .mermaid-btn {
+    background: transparent;
+    border: none;
+    color: var(--sl-color-gray-3, #94a3b8);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s ease;
+    padding: 0;
+  }
+
+  .mermaid-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--sl-color-white, #f8fafc);
+  }
+
+  .mermaid-btn:active {
+    transform: scale(0.92);
+  }
+
+  .mermaid-zoom-indicator {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--sl-color-gray-3, #94a3b8);
+    padding: 0 6px;
+    min-width: 42px;
+    text-align: center;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+  }
+
+  .mermaid-zoom-indicator:hover {
+    color: var(--sl-color-text-accent, #38bdf8);
+  }
+
+  .mermaid-divider {
+    width: 1px;
+    height: 14px;
+    background: var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
+    margin: 0 2px;
+  }
+
+  .mermaid-viewport {
+    position: relative;
+    flex: 1;
+    min-height: 380px;
+    overflow: hidden;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--sl-color-bg, #0d1527);
+    background-image: radial-gradient(var(--sl-color-gray-5, rgba(148, 163, 184, 0.15)) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .mermaid-premium-container.is-fullscreen .mermaid-viewport {
+    min-height: calc(100vh - 48px);
+    max-height: calc(100vh - 48px);
+  }
+
+  .mermaid-viewport.is-dragging {
+    cursor: grabbing;
+  }
+
+  .mermaid-canvas {
+    position: absolute;
+    transform-origin: center center;
+    transition: transform 0.05s linear;
+    will-change: transform;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .mermaid-canvas :global(svg) {
+    max-width: none !important;
+    height: auto !important;
+    display: block;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25));
+  }
+
+  .mermaid-canvas :global(.node rect),
+  .mermaid-canvas :global(.node circle),
+  .mermaid-canvas :global(.node polygon) {
+    rx: 8px !important;
+    ry: 8px !important;
+    stroke-width: 1.5px !important;
+  }
+
+  .mermaid-canvas :global(.cluster rect) {
+    rx: 12px !important;
+    ry: 12px !important;
+    stroke-width: 1.2px !important;
+    stroke-dasharray: 4 4 !important;
+    fill-opacity: 0.12 !important;
+  }
+
+  .mermaid-canvas :global(.edgePath path) {
+    stroke-width: 1.8px !important;
+  }
+
+  .mermaid-tip {
+    position: absolute;
+    bottom: 10px;
+    left: 14px;
+    font-size: 0.68rem;
+    color: var(--sl-color-gray-4, rgba(148, 163, 184, 0.6));
+    pointer-events: none;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+  }
+</style>
+
+<script>
+  function setupAllDiagrams() {
+    document.querySelectorAll('.mermaid-premium-container').forEach((container) => {
+      if ((container as any).__mermaidZoomInitialized) return;
+      (container as any).__mermaidZoomInitialized = true;
+
+      const viewport = container.querySelector('.mermaid-viewport') as HTMLElement | null;
+      const canvas = container.querySelector('.mermaid-canvas') as HTMLElement | null;
+      const btnIn = container.querySelector('.btn-zoom-in');
+      const btnOut = container.querySelector('.btn-zoom-out');
+      const btnReset = container.querySelector('.btn-reset');
+      const indicator = container.querySelector('.mermaid-zoom-indicator');
+      const btnFullscreen = container.querySelector('.btn-fullscreen');
+      const iconExpand = container.querySelector('.icon-expand') as HTMLElement | null;
+      const iconCollapse = container.querySelector('.icon-collapse') as HTMLElement | null;
+
+      if (!viewport || !canvas) return;
+
+      let scale = 1.0;
+      let panX = 0;
+      let panY = 0;
+      let isDragging = false;
+      let startX = 0;
+      let startY = 0;
+
+      function renderTransform() {
+        if (!canvas) return;
+        canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        if (indicator) {
+          indicator.textContent = `${Math.round(scale * 100)}%`;
+        }
+      }
+
+      function zoom(delta: number) {
+        const newScale = Math.min(Math.max(scale + delta, 0.3), 3.5);
+        scale = Number(newScale.toFixed(2));
+        renderTransform();
+      }
+
+      function reset() {
+        scale = 1.0;
+        panX = 0;
+        panY = 0;
+        renderTransform();
+      }
+
+      btnIn?.addEventListener('click', (e) => { e.preventDefault(); zoom(0.2); });
+      btnOut?.addEventListener('click', (e) => { e.preventDefault(); zoom(-0.2); });
+      btnReset?.addEventListener('click', (e) => { e.preventDefault(); reset(); });
+      indicator?.addEventListener('click', (e) => { e.preventDefault(); reset(); });
+
+      // Pan / Dragging
+      viewport.addEventListener('mousedown', (e) => {
+        if ((e.target as HTMLElement)?.closest('.mermaid-toolbar')) return;
+        isDragging = true;
+        viewport.classList.add('is-dragging');
+        startX = e.clientX - panX;
+        startY = e.clientY - panY;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        panX = e.clientX - startX;
+        panY = e.clientY - startY;
+        renderTransform();
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          viewport.classList.remove('is-dragging');
+        }
+      });
+
+      // Mouse Wheel Zoom
+      viewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.12 : 0.12;
+        zoom(delta);
+      }, { passive: false });
+
+      // Fullscreen Toggle
+      btnFullscreen?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isFull = container.classList.toggle('is-fullscreen');
+        if (iconExpand && iconCollapse) {
+          iconExpand.style.display = isFull ? 'none' : 'block';
+          iconCollapse.style.display = isFull ? 'block' : 'none';
+        }
+        reset();
+      });
+
+      // ESC exits fullscreen
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && container.classList.contains('is-fullscreen')) {
+          container.classList.remove('is-fullscreen');
+          if (iconExpand && iconCollapse) {
+            iconExpand.style.display = 'block';
+            iconCollapse.style.display = 'none';
+          }
+          reset();
+        }
+      });
+    });
+  }
+
+  setupAllDiagrams();
+  document.addEventListener('astro:page-load', setupAllDiagrams);
+</script>
+
+
+
+
+-------------------------
+
+
+---
+title: Welcome & Quick Start
+description: The central roadmap and navigation directory for onboarding to the Mobile Engineering Platform.
+sidebar:
+  order: 1
+  label: Welcome and Quick Start
+---
+
+import { Tabs, TabItem, CardGrid, Card, LinkCard } from '@astrojs/starlight/components';
+import MermaidZoom from './MermaidZoom.astro';
+
+export const PORTAL_BASE = '/mobile-draft'; // Set to '/mobile' when promoting to production
+
+:::tip[Master Onboarding Guide]
+Welcome to the Enterprise Mobile Engineering Platform. This page is your master orientation guide and routing hub. It outlines the structured onboarding sequence, clarifies prerequisites, and routes you directly to your tailored track without redundant steps.
+:::
+
+## Platform Pillars
+
+<CardGrid>
+  <Card title="Tier-1 Stacks" icon="open-book">
+    Native Android (Jetpack Compose), Native iOS (SwiftUI), and Cross-Platform React Native.
+  </Card>
+  <Card title="Shared Core SDKs" icon="puzzle">
+    Pre-built authentication, networking, analytics telemetry, and unified UI design tokens.
+  </Card>
+  <Card title="Automated CI/CD" icon="setting">
+    Bitrise build pipelines, automated Danger PR inspections, and coverage gate enforcement.
+  </Card>
+  <Card title="Clean Architecture" icon="document">
+    Standardized four-layer architecture from UI presentation to local data repositories.
+  </Card>
+</CardGrid>
+
+---
+
+## Onboarding Journey Map
+
+Follow this sequential roadmap to navigate through the foundational guides in this section:
+
+<MermaidZoom title="THE ONBOARDING JOURNEY MAP">
+
+```mermaid
+flowchart TD
+    Start["New Engineer Joins Platform"] --> POverview["Platform Overview"]
+    POverview --> PersonaCheck{"Developer Persona"}
+    
+    PersonaCheck -- "Web / Backend" --> NonMobile["Non-Mobile Track"]
+    PersonaCheck -- "Mobile Native" --> MobileTrack["Mobile Track"]
+    
+    NonMobile --> TechStack["Tech Stack Selection"]
+    MobileTrack --> TechStack
+    
+    TechStack --> MachineSetup["Machine Setup"]
+    MachineSetup --> FirstPR["Submit First Pull Request"]
+```
+
+</MermaidZoom>
+
+---
+
+## Onboarding Navigation Directory
+
+Select your developer background to see your tailored onboarding roadmap:
+
+<Tabs>
+  <TabItem label="Track A: Web & Backend Engineers">
+
+Designed specifically for web, frontend, and backend developers transitioning into native mobile development:
+
+<CardGrid>
+  <LinkCard
+    title="Platform Overview"
+    href={`${PORTAL_BASE}/onboarding/platform-overview/`}
+    description="Understand the mobile engineering ecosystem: shared architectural layers, core foundational libraries, and repository topology."
+  />
+  <LinkCard
+    title="Non-Mobile Engineer Track"
+    href={`${PORTAL_BASE}/onboarding/non-mobile-dev-guide/`}
+    description="Designed specifically for web, frontend, and backend developers. Explains native view hierarchies, threading, and app lifecycles."
+  />
+  <LinkCard
+    title="Tech Stack Selection"
+    href={`${PORTAL_BASE}/onboarding/tech-stack-matrix/`}
+    description="Evaluate technical trade-offs between Jetpack Compose, SwiftUI, and React Native New Architecture using the platform decision matrix."
+  />
+  <LinkCard
+    title="Machine Setup & Workstation"
+    href={`${PORTAL_BASE}/onboarding/machine-setup/`}
+    description="Automated scripts, Xcode and Android Studio versions, JDK 17 setup, simulator configurations, and Doctor CLI validation."
+  />
+</CardGrid>
+
+  </TabItem>
+  <TabItem label="Track B: Experienced Mobile Engineers">
+
+Accelerated path for senior engineers with prior iOS, Android, or React Native production experience:
+
+<CardGrid>
+  <LinkCard
+    title="Platform Overview"
+    href={`${PORTAL_BASE}/onboarding/platform-overview/`}
+    description="Understand the mobile engineering ecosystem: shared architectural layers, core foundational libraries, and repository topology."
+  />
+  <LinkCard
+    title="New Mobile Engineer Track"
+    href={`${PORTAL_BASE}/onboarding/new-mobile-engineer-track/`}
+    description="Accelerated path for experienced mobile developers. Jump directly into monorepo structures, internal package registries, and PR conventions."
+  />
+  <LinkCard
+    title="Tech Stack Selection"
+    href={`${PORTAL_BASE}/onboarding/tech-stack-matrix/`}
+    description="Evaluate technical trade-offs between Jetpack Compose, SwiftUI, and React Native New Architecture using the platform decision matrix."
+  />
+  <LinkCard
+    title="Machine Setup & Workstation"
+    href={`${PORTAL_BASE}/onboarding/machine-setup/`}
+    description="Automated scripts, Xcode and Android Studio versions, JDK 17 setup, simulator configurations, and Doctor CLI validation."
+  />
+</CardGrid>
+
+  </TabItem>
+</Tabs>
+
+---
+
+## Initial Access Prerequisites
+
+Submit these baseline entitlement requests via the corporate self-service portal so credentials provision in the background while you review the guides:
+
+| Platform System | Entitlement Group | Required Purpose | Validation Command |
+| :--- | :--- | :--- | :--- |
+| **Enterprise GitHub** | `org-mobile-engineering` | Clone core repositories and templates | `ssh -T git@git.enterprise.internal` |
+| **Artifact Registry** | `pkg-mobile-artifacts-read` | Pull shared Maven, CocoaPods & npm packages | `curl -I https://registry.enterprise.internal/health` |
+| **Bitrise CI / CD** | `bitrise-mobile-engineers` | Trigger builds and inspect PR status | Bitrise dashboard console login |
+| **Figma Design System** | `design-mobile-tokens` | Access unified UI components and design specs | Figma workspace project access |
+
+---
+
+:::caution[Foundational Platform Guardrails]
+Keep these non-negotiable principles in mind as you progress through each track:
+
+* **Strict Layered Separation:** UI components must only observe ViewModel state; direct repository or network calls from view layers are strictly prohibited.
+* **Zero Plaintext Credentials:** API secrets, auth tokens, and certificates must always reside in secure storage (KeyStore / Keychain), never in source control.
+* **Offline-First Resilience:** All features touching network endpoints must implement caching and Circuit Breaker resilience.
+* **Automated Gate Compliance:** Every pull request must pass Danger PR Bot static analysis and unit test suites prior to merge.
+:::
+
+
+
+
+-------------------------
+
+
+---
+title: Platform Overview
+description: Architectural topology, core capabilities, delivery lifecycle, and engineering domains of the Mobile Engineering Platform.
+sidebar:
+  order: 2
+  label: Platform Overview
+---
+
+import { Tabs, TabItem, CardGrid, Card, LinkCard } from '@astrojs/starlight/components';
+import MermaidZoom from './MermaidZoom.astro';
+
+export const PORTAL_BASE = '/mobile-draft'; // Set to '/mobile' when promoting to production
+
+:::tip[Ecosystem Topology]
+The Enterprise Mobile Engineering Platform establishes a unified delivery framework across iOS, Android, and React Native. It standardizes common capabilities into shared infrastructure—including identity, networking resilience, automated gate inspections, and telemetry—enabling teams to focus on domain features.
+:::
+
+## Key Platform Capabilities
+
+<CardGrid>
+  <Card title="Client Stacks" icon="open-book">
+    Jetpack Compose, SwiftUI, and React Native New Architecture with shared tokens.
+  </Card>
+  <Card title="CI/CD & Bitrise" icon="setting">
+    Automated build runners, Danger PR inspections, and Fastlane deployment pipelines.
+  </Card>
+  <Card title="Release Gates" icon="warning">
+    Automated coverage gates, Sauce Labs device regression, and NowSecure security scans.
+  </Card>
+  <Card title="Observability" icon="information">
+    Datadog RUM telemetry, real-time crash alerting, and remote feature flag management.
+  </Card>
+</CardGrid>
+
+---
+
+## Platform Delivery Lifecycle
+
+The Enterprise Mobile Platform follows a standardized delivery lifecycle from local feature creation through automated inspection, store distribution, and runtime production operations:
+
+<MermaidZoom title="PLATFORM DELIVERY LIFECYCLE">
+
+```mermaid
+flowchart TD
+    Dev["Local Workstation & Development\n(IDEs, Templates & Internal SDKs)"]
+    PR["GitHub Enterprise Pull Request"]
+
+    Dev --> PR
+
+    subgraph CI["Quality & Security (Bitrise CI Pipeline)"]
+        Danger["Danger PR Code Checks"]
+        Sauce["Sauce Labs Device Cloud"]
+        NowSec["NowSecure SAST/DAST"]
+
+        Danger --> Sauce --> NowSec
+    end
+
+    PR --> Danger
+
+    subgraph Dist["Store Distribution"]
+        PublicStore["Public App Stores\n(Google Play & Apple App Store)"]
+        EnterpriseStore["Enterprise App Portal\n(Internal Distribution)"]
+    end
+
+    NowSec --> PublicStore
+    NowSec --> EnterpriseStore
+
+    subgraph Ops["Production Operations"]
+        Users["Active Mobile Users"]
+        Datadog["Datadog RUM Telemetry\n& Crash Alerts"]
+
+        Users --> Datadog
+    end
+
+    PublicStore --> Users
+    EnterpriseStore --> Users
+```
+
+</MermaidZoom>
+
+* **Development:** Feature development executed in Android Studio, Xcode, or VS Code using enterprise templates and internal shared SDK packages.
+* **Quality & Security:** Automated Bitrise CI triggers on every pull request, executing static Danger inspections, unit test suites, cloud device regression, and binary vulnerability scanning.
+* **Distribution:** Automated deployment to public app stores (Apple App Store, Google Play Store) or private Enterprise App Distribution portals.
+* **Operations:** Real-time production telemetry via Datadog RUM, crash report tracking, and remote emergency kill switches.
+
+---
+
+## Supported Development Platforms
+
+The platform supports three tier-1 mobile architectures. Each stack is equipped with dedicated scaffolding templates, linting configurations, and enterprise SDK mirrors:
+
+<Tabs>
+  <TabItem label="React Native (New Architecture)">
+
+Optimized for feature velocity and high code reuse (80%+ default enterprise standard). Leverages Fabric native renderer, TurboModules, and internal TypeScript packages.
+
+* **Renderer:** Fabric C++ direct native engine
+* **Module Architecture:** JSI & TurboModules (zero async bridge serialization)
+* **Default State Engine:** Zustand + TanStack Query
+
+<a href={`${PORTAL_BASE}/development-platforms/react-native/`}>View React Native Architecture Guide &rarr;</a>
+
+  </TabItem>
+  <TabItem label="Native Android (Kotlin / Compose)">
+
+Engineered for hardware-intensive workflows, offline background sync daemons, Bluetooth peripherals, and deep Android OS integrations.
+
+* **Language:** Kotlin 1.9+ with Coroutines & Structured Concurrency
+* **UI Toolkit:** Jetpack Compose (Declarative)
+* **Dependency Injection:** Hilt & Dagger 2
+
+<a href={`${PORTAL_BASE}/development-platforms/android/`}>View Native Android Architecture Guide &rarr;</a>
+
+  </TabItem>
+  <TabItem label="Native iOS (Swift / SwiftUI)">
+
+Tailored for flagship Apple ecosystem experiences requiring native Metal graphics, CoreML acceleration, secure enclave operations, or advanced iOS system integrations.
+
+* **Language:** Swift 5.9+ with Swift Concurrency (`async/await`, Actors, `@MainActor`)
+* **UI Toolkit:** SwiftUI
+* **Security Enclave:** iOS Keychain Services & Biometric Gating
+
+<a href={`${PORTAL_BASE}/development-platforms/ios/`}>View Native iOS Architecture Guide &rarr;</a>
+
+  </TabItem>
+</Tabs>
+
+---
+
+## Quality and Security Gates
+
+Every production application binary progresses through a strict, automated verification pipeline before release approval:
+
+1. **Pull Request Validation:** Branch rules require all code to branch from and target `main` via short-lived feature branches.
+2. **Code Review:** Mandatory minimum of two passing reviews from code owners before merge.
+3. **Bitrise & Danger Bot:** Automated checks analyze bundle size deltas, verify conventional commit syntax, and enforce changelog updates.
+4. **Functional Testing (Sauce Labs):** Automated regression suites run across physical Android and iOS devices, validating UI state under varying battery, connectivity, and OS versions. Minimum 80% coverage required.
+5. **Security Scanning (NowSecure):** Automated SAST/DAST detects insecure data storage, hardcoded secrets, and network communication vulnerabilities.
+6. **Release Gate:** Staged rollout to test flights, enterprise internal portals, or public app stores.
+
+---
+
+## Engineering Domains
+
+The documentation portal is organized into core technical domains that collectively support the mobile engineering lifecycle:
+
+<MermaidZoom title="ENTERPRISE ENGINEERING DOMAINS">
+
+```mermaid
+flowchart TD
+    Mob["Enterprise Mobile Engineering Ecosystem"]
+
+    subgraph Found["Foundations & Platforms"]
+        D1["Architecture & Standards\n(Clean Architecture & Circuit Breaker)"]
+        D2["Client Stacks & SDKs\n(Compose, SwiftUI, React Native)"]
+    end
+
+    subgraph Pipeline["Build & Security Pipeline"]
+        D3["Build & Release CI/CD\n(Bitrise Pipelines & Code Signing)"]
+        D4["Security & Compliance\n(NowSecure SAST/DAST & TGRC)"]
+    end
+
+    subgraph Delivery["Distribution & Enablement"]
+        D5["App Distribution & Stores\n(Public Stores & Enterprise Internal)"]
+        D6["Developer Productivity\n(Doctor Diagnostic CLI & Templates)"]
+    end
+
+    Mob --> Found
+    Mob --> Pipeline
+    Mob --> Delivery
+```
+
+</MermaidZoom>
+
+* **Architecture & Standards:** Clean Architecture patterns, unidirectional data flow, Circuit Breaker resilience, and remote feature flag governance.
+* **Development Platforms:** In-depth guidelines, design tokens, and shared SDK catalogs for Android, iOS, and React Native.
+* **Build & Release:** Bitrise pipeline configurations, Fastlane lanes, automated code signing, and release train schedules.
+* **Security & Observability:** KeyStore/Keychain secure token storage, Datadog RUM monitoring, crash triaging, and NowSecure compliance.
+* **App Distribution:** Workflows for enterprise internal distribution, test flights, and public store releases.
+* **Developer Productivity:** Workstation setup automation, Doctor diagnostic CLI, and repository starter templates.
+
+---
+
+:::note[Completion Checklist]
+Before proceeding to your developer track, confirm you can answer the following:
+
+* **Major Architecture Components:** How client applications interact with enterprise backend APIs through shared SDKs and Circuit Breaker resilience.
+* **Application Delivery Lifecycle:** The path code travels from local feature development through automated quality gates to production.
+* **Quality and Security Verification:** Where automated Danger, Sauce Labs cloud devices, and NowSecure scans occur in CI.
+* **Supported Platforms:** The trade-offs and decision criteria for choosing React Native vs. Native Android vs. Native iOS.
+* **Platform Services:** The availability and integration patterns for shared push notifications, auth SSO, and Datadog telemetry.
+:::
+
+---
+
+## Next Steps
+
+<CardGrid>
+  <LinkCard
+    title="Non-Mobile Engineer Track"
+    href={`${PORTAL_BASE}/onboarding/non-mobile-dev-guide/`}
+    description="Bridge the gap from web/backend to native mobile development concepts."
+  />
+  <LinkCard
+    title="New Mobile Engineer Track"
+    href={`${PORTAL_BASE}/onboarding/new-mobile-engineer-track/`}
+    description="Accelerated onboarding for experienced iOS, Android, and React Native developers."
+  />
+</CardGrid>
+
+
+
+_-------------------------------------
+
+
+
+---
+title: Non-Mobile Engineer Track
+description: Comprehensive transition guide and foundational primer for web, frontend, and backend developers entering enterprise mobile engineering from scratch.
+sidebar:
+  order: 3
+  label: Non-Mobile Track
+---
+
+
+import { Tabs, TabItem, CardGrid, Card } from '@astrojs/starlight/components';
+import MermaidZoom from './MermaidZoom.astro';
+
+export const PORTAL_BASE = '/mobile-draft'; // Set to '/mobile' when promoting to production
+
+:::tip[Engineering Transition]
+Designed specifically for web (React, Vue, Node.js), backend (Java, Go, Python, C#), and fullstack engineers transitioning into mobile development. This guide demystifies native OS execution, the 60/120fps UI thread constraint, offline-first persistence, application sandboxing, and binary release lifecycles.
+:::
+
+## Key Paradigm Shifts
+
+<CardGrid>
+  <Card title="Paradigm Shifts" icon="setting">
+    Client sandboxing, process death, and strict main thread frame budgeting.
+  </Card>
+  <Card title="Concurrency" icon="laptop">
+    Coroutines, MainActor, and non-blocking asynchronous event loops.
+  </Card>
+  <Card title="Offline Resilience" icon="puzzle">
+    Circuit Breaker pattern, SQLite/Room persistence, and network caching.
+  </Card>
+  <Card title="Tooling & CI/CD" icon="document">
+    Android Studio, Xcode, Doctor CLI diagnostics, and Bitrise cloud runners.
+  </Card>
+</CardGrid>
+
+---
+
+## The Mental Model Shift: Web & Backend vs. Mobile
+
+Engineers entering mobile from web or backend microservices often encounter subtle architectural differences that lead to major production bugs if unaddressed:
+
+| Engineering Dimension | Web / Backend Architecture | Mobile Client Architecture | Why It Matters |
+| :--- | :--- | :--- | :--- |
+| **Runtime Environment** | Controlled servers or browser JS sandbox; predictable memory and CPU. | Heterogeneous mobile hardware (iOS & Android devices) with strict battery and RAM limits. | OS forcefully terminates apps that consume excessive RAM or background CPU. |
+| **Deployment & Rollback** | Instant continuous deployment. Fixes deploy to production servers in minutes. | Compiled binaries (`.aab` / `.ipa`) distributed through App Store and Google Play. | Zero instant rollbacks. App store reviews take 24–72 hours; users must manually download updates. |
+| **Execution & Threading** | Multi-threaded web servers or single-threaded event loop with async I/O. | Strict Main/UI thread (16.6ms frame budget). Background tasks require explicit dispatching. | Heavy computation on the Main Thread freezes the screen and triggers OS ANRs / app watchdog kills. |
+| **Network Topology** | Reliable low-latency datacenter LAN or stable home broadband. | Volatile cellular connectivity, tunnel cutouts, subway dead zones, and sudden airplane mode. | Apps must be designed offline-first. Unhandled network drops cause immediate crashes or empty states. |
+| **State & Lifecycle** | Stateless microservices or persistent browser tab until closed. | Transient OS lifecycle: Foreground &rarr; Background &rarr; Suspended &rarr; Process Death. | The OS can terminate background processes at any time; apps must restore state on relaunch. |
+| **Security & Secrets** | Secrets stored securely in server-side environment variables or HashiCorp Vault. | Code and assets reside on user hardware. Binaries can be decompiled and inspected. | Never hardcode API keys or secrets in client code. Use Secure Enclave / KeyStore. |
+
+---
+
+## Architectural Comparison
+
+The following diagram illustrates how standard web/backend tiering translates into mobile native client architecture:
+
+<MermaidZoom title="WEB/BACKEND VS. MOBILE NATIVE ARCHITECTURE">
+
+```mermaid
+flowchart TD
+    subgraph Web["Web & Backend Tiering"]
+        Browser["1. Browser Client\n(DOM & React Virtual DOM)"]
+        Server["2. Application Gateway\n(Express / Spring Boot / Go)"]
+        DB["3. Enterprise Database\n(PostgreSQL / Redis)"]
+        Browser -->|"HTTP / REST"| Server -->|"TCP / SQL"| DB
+    end
+
+    subgraph Mobile["Mobile Native Architecture"]
+        UI["1. Native UI Layer\n(Compose / SwiftUI / Fabric)"]
+        Worker["2. Background Dispatcher\n(Coroutines / Tasks / Worker Thread)"]
+        LocalCache["3. Local Offline Cache\n(Room SQLite / CoreData / MMKV)"]
+        UI -->|"Non-blocking events"| Worker
+        Worker -->|"Read / Write"| LocalCache
+    end
+```
+
+</MermaidZoom>
+
+---
+
+## The Golden Rule: Never Block the Main Thread
+
+On mobile platforms, the **Main Thread (UI Thread)** is solely responsible for rendering frames at 60Hz (16.6ms per frame) or 120Hz (8.3ms per frame) and responding to user gestures. 
+
+If your code executes heavy loops, synchronous JSON parsing, or network calls on the main thread:
+* **On Android:** Triggers an **ANR (Application Not Responding)** dialog after 5 seconds, prompting the user to force-close the app.
+* **On iOS:** Triggers the system **Watchdog timer**, which abruptly terminates the application process.
+
+### Concurrency Code Patterns Across Stacks
+
+<Tabs>
+  <TabItem label="React Native (TypeScript)">
+
+In React Native, JavaScript runs on its own engine thread, while native rendering occurs on the UI thread. Long-running synchronous calculations freeze touch responses; use `useTransition` or worker pools:
+
+```typescript
+import React, { useState, useTransition } from 'react';
+import { View, Text, FlatList, TextInput, ActivityIndicator, StyleSheet } from 'react-native';
+
+export function SearchableDirectory({ dataset }: { dataset: Array<{ id: string; name: string }> }) {
+  const [query, setQuery] = useState('');
+  const [filteredData, setFilteredData] = useState(dataset);
+  const [isPending, startTransition] = useTransition();
+
+  const handleSearch = (text: string) => {
+    setQuery(text);
+
+    // Non-blocking transition: preserves instant typing responsiveness on UI thread
+    startTransition(() => {
+      const lower = text.toLowerCase();
+      const results = dataset.filter(item => item.name.toLowerCase().includes(lower));
+      setFilteredData(results);
+    });
+  };
+
+  return (
+    <View style={styles.container}>
+      <TextInput
+        value={query}
+        onChangeText={handleSearch}
+        placeholder="Search enterprise directory..."
+        placeholderTextColor="#9ca3af"
+        style={styles.input}
+      />
+      {isPending && <ActivityIndicator color="#22c55e" style={styles.loader} />}
+      <FlatList
+        data={filteredData}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => <Text style={styles.itemText}>{item.name}</Text>}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 16, backgroundColor: '#0d1912' },
+  input: { height: 44, borderColor: '#1f3b2c', borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, color: '#e2e8f0' },
+  loader: { marginVertical: 8 },
+  itemText: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1f3b2c', color: '#cbd5e1' },
+});
+```
+
+  </TabItem>
+  <TabItem label="Native Android (Kotlin Coroutines)">
+
+Android uses Coroutines to cleanly move work between threads. Always switch to `Dispatchers.IO` for network or disk operations:
+
+```kotlin
+package com.enterprise.mobile.feature.orders
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+sealed interface OrderUiState {
+    object Loading : OrderUiState
+    data class Success(val orders: List<Order>) : OrderUiState
+    data class Error(val message: String) : OrderUiState
+}
+
+class OrdersViewModel(
+    private val repository: OrderRepository
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow<OrderUiState>(OrderUiState.Loading)
+    val uiState: StateFlow<OrderUiState> = _uiState.asStateFlow()
+
+    fun fetchOrders() {
+        viewModelScope.launch {
+            _uiState.value = OrderUiState.Loading
+            try {
+                // withContext(Dispatchers.IO) ensures network work runs off the Main Thread
+                val orderList = withContext(Dispatchers.IO) {
+                    repository.getOrdersFromRemote()
+                }
+                // Automatically resumes on Main Thread to safely update state
+                _uiState.value = OrderUiState.Success(orderList)
+            } catch (e: Exception) {
+                _uiState.value = OrderUiState.Error(e.localizedMessage ?: "Network request failed")
+            }
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="Native iOS (Swift & SwiftUI)">
+
+In modern Swift, annotate UI view models with `@MainActor` to guarantee that all UI updates are marshaled to the main thread:
+
+```swift
+import SwiftUI
+
+enum ViewState<T> {
+    case loading
+    case success(T)
+    case error(String)
+}
+
+@MainActor
+final class OrdersViewModel: ObservableObject {
+    @Published private(set) var state: ViewState<[Order]> = .loading
+    private let service: OrderServiceProtocol
+
+    init(service: OrderServiceProtocol = OrderService()) {
+        self.service = service
+    }
+
+    func loadOrders() async {
+        state = .loading
+        do {
+            // Asynchronous network call executes on background thread pool
+            let orders = try await service.fetchOrders()
+            // MainActor guarantees state assignment occurs on the Main Thread
+            self.state = .success(orders)
+        } catch {
+            self.state = .error(error.localizedDescription)
+        }
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## Network Resilience: The Circuit Breaker Pattern
+
+Mobile connections drop frequently. The enterprise standard requires that all remote network calls use a **Circuit Breaker** to avoid cascading socket timeouts and drain device battery:
+
+<MermaidZoom title="CIRCUIT BREAKER STATE MACHINE">
+
+```mermaid
+flowchart TD
+    subgraph Breaker["Circuit Breaker States"]
+        Closed["1. Closed (Normal)\nAll requests pass through"]
+        Open["2. Open (Tripped)\nFails immediately to cache"]
+        HalfOpen["3. Half-Open (Testing)\nTests probe request"]
+
+        Closed -->|"Failure threshold exceeded"| Open
+        Open -->|"Reset timeout expires"| HalfOpen
+        HalfOpen -->|"Probe succeeds"| Closed
+        HalfOpen -->|"Probe fails"| Open
+    end
+```
+
+</MermaidZoom>
+
+### Implementing Circuit Breaker & Offline Fallback
+
+The following TypeScript snippet demonstrates how client apps query remote endpoints with an automatic local storage fallback:
+
+```typescript
+import { CircuitBreaker } from '@enterprise/resilience-sdk';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+}
+
+// 1. Configure the Circuit Breaker with thresholds
+const profileBreaker = new CircuitBreaker({
+  failureThreshold: 3,        // Trip after 3 consecutive network failures
+  resetTimeoutMs: 30000,      // Wait 30s before probing server again
+  requestTimeoutMs: 5000,     // Timeout individual request after 5s
+});
+
+export async function getUserProfile(userId: string): Promise<UserProfile> {
+  const cacheKey = `@cache:user:${userId}`;
+
+  try {
+    // 2. Execute network request inside Circuit Breaker
+    return await profileBreaker.execute(async () => {
+      const response = await fetch(`https://api.enterprise.internal/v1/users/${userId}`);
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      
+      const data: UserProfile = await response.json();
+      // Cache fresh data locally for offline scenarios
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+      return data;
+    });
+  } catch (err) {
+    // 3. Gracefully serve stale cache when offline or circuit is open
+    const cachedData = await AsyncStorage.getItem(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData) as UserProfile;
+    }
+    throw new Error('Offline and no cached data available for this user.');
+  }
+}
+```
+
+---
+
+## Application Lifecycle & State Restoration
+
+Unlike server processes that stay active indefinitely, the mobile OS continuously manages application processes to preserve memory and battery:
+
+<MermaidZoom title="APPLICATION LIFECYCLE & PROCESS DEATH">
+
+```mermaid
+flowchart TD
+    subgraph Life["Application Lifecycle States"]
+        FG["1. Active Foreground\n(User interacting on screen)"]
+        BG["2. Background / Paused\n(App minimized or screen locked)"]
+        Susp["3. Suspended in RAM\n(No CPU execution allowed)"]
+        Dead["4. Process Terminated\n(OS reclaims RAM for camera/system)"]
+
+        FG -->|"User presses Home"| BG
+        BG -->|"System reclaims CPU"| Susp
+        Susp -->|"Low memory condition"| Dead
+        Dead -->|"User taps icon"| FG
+    end
+```
+
+</MermaidZoom>
+
+### Handling Process Death with State Restoration
+
+When the user minimizes the app and opens a memory-intensive tool (like the device camera), the OS may silently kill your background process. When the user returns, the OS restores the view, but in-memory variables are lost.
+
+#### State Restoration Code Pattern (Android Kotlin)
+
+```kotlin
+package com.enterprise.mobile.feature.checkout
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+
+class CheckoutViewModel(
+    private val savedStateHandle: SavedStateHandle
+) : ViewModel() {
+
+    // SavedStateHandle automatically persists state across OS process termination
+    var currentStep: Int
+        get() = savedStateHandle["checkout_step"] ?: 1
+        set(value) { savedStateHandle["checkout_step"] = value }
+
+    var selectedShippingId: String?
+        get() = savedStateHandle["shipping_id"]
+        set(value) { savedStateHandle["shipping_id"] = value }
+
+    fun advanceToNextStep(shippingId: String) {
+        this.selectedShippingId = shippingId
+        this.currentStep = currentStep + 1
+    }
+}
+```
+
+---
+
+## Tech Stack Recommendation for Non-Mobile Engineers
+
+Select your starting platform path based on your existing engineering skill set:
+
+<CardGrid>
+  <Card title="React Native (New Architecture)" icon="laptop">
+    **Recommended for 80% • Web & Fullstack Developers**
+
+    Ideal for React, web, TypeScript, and fullstack developers. Reuses your component lifecycle knowledge, JSX, state patterns, and npm ecosystem to deliver unified iOS and Android apps.
+
+    <a href={`${PORTAL_BASE}/development-platforms/react-native/`}>Start React Native Guide &rarr;</a>
+  </Card>
+
+  <Card title="Native Android (Kotlin / Compose)" icon="open-book">
+    **Backend & JVM Developers**
+
+    Ideal for Java, Kotlin, and backend JVM engineers. Leverages familiar Gradle builds, strong typing, declarative Jetpack Compose UI, and direct access to Android hardware APIs.
+
+    <a href={`${PORTAL_BASE}/development-platforms/android/`}>Start Android Native Guide &rarr;</a>
+  </Card>
+
+  <Card title="Native iOS (Swift / SwiftUI)" icon="star">
+    **Systems & C++ Developers**
+
+    Ideal for engineers comfortable with strong typing, memory ownership, and macOS development. Builds flagship Apple ecosystem applications using SwiftUI, async/await, and CoreML.
+
+    <a href={`${PORTAL_BASE}/development-platforms/ios/`}>Start iOS Native Guide &rarr;</a>
+  </Card>
+</CardGrid>
+
+---
+
+## Step-by-Step 0-to-1 Local Development Setup
+
+Boot your first enterprise mobile application locally using the starter templates:
+
+<Tabs>
+  <TabItem label="React Native (Recommended)">
+
+```bash
+# Step 1: Verify your workstation toolchain with Doctor CLI
+npx @enterprise/doctor-cli check --platform=react-native
+
+# Step 2: Clone the enterprise starter template
+git clone git@github.enterprise.com:mobile-starters/react-native-starter.git my-mobile-app
+cd my-mobile-app
+
+# Step 3: Install verified enterprise dependencies
+npm install
+
+# Step 4: Boot the iOS Simulator (macOS required)
+npm run ios
+
+# Step 5: Boot the Android Emulator
+npm run android
+```
+
+  </TabItem>
+  <TabItem label="Native Android (Kotlin)">
+
+```bash
+# Step 1: Verify your workstation toolchain with Doctor CLI
+npx @enterprise/doctor-cli check --platform=android
+
+# Step 2: Clone the Android starter template
+git clone git@github.enterprise.com:mobile-starters/android-compose-starter.git my-android-app
+cd my-android-app
+
+# Step 3: Open in Android Studio or build via Gradle
+./gradlew assembleDebug
+
+# Step 4: Launch on active Android emulator
+./gradlew installDebug
+```
+
+  </TabItem>
+  <TabItem label="Native iOS (Swift)">
+
+```bash
+# Step 1: Verify your workstation toolchain with Doctor CLI
+npx @enterprise/doctor-cli check --platform=ios
+
+# Step 2: Clone the iOS starter template
+git clone git@github.enterprise.com:mobile-starters/ios-swiftui-starter.git my-ios-app
+cd my-ios-app
+
+# Step 3: Install CocoaPods dependencies
+pod install
+
+# Step 4: Open Xcode workspace and build
+open EnterpriseApp.xcworkspace
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## Top 5 Pitfalls Web & Backend Engineers Must Avoid
+
+:::caution[Security & Stability Pitfalls]
+* **1. Never Hardcode API Keys or Secrets:** Client application binaries are public assets. Anyone can decompile an `.apk` or `.ipa` package and extract string constants. Store tokens exclusively in KeyStore/Keychain or resolve them at runtime via OAuth SSO.
+* **2. Never Run Heavy Loops on the Main Thread:** Long computations, synchronous file I/O, or parsing large JSON payloads freeze the screen, triggering OS crashes. Always dispatch work to background workers or coroutine dispatchers.
+* **3. Never Assume Continuous Connectivity:** Always handle offline states, network timeouts, and flaky cellular signals. Provide local caching and retry mechanisms.
+* **4. Clean Up Event Listeners to Prevent Memory Leaks:** Mobile OS devices have constrained RAM. Dangling event subscribers, uncancelled timers, and retained singleton delegates keep screens in memory, causing OOM (Out-of-Memory) termination.
+* **5. Never Build Production Binaries on Personal Laptops:** Official application packages must be built, signed, and distributed exclusively through automated Bitrise CI pipelines to guarantee tamper-proof audit trails.
+:::
+
+---
+
+:::note[Completion Checklist]
+Confirm you understand the following principles before building your first feature:
+
+* **Main Thread Budget:** Why keeping work off the Main Thread is critical to prevent ANRs and system watchdog kills.
+* **Offline Resilience:** How the Circuit Breaker pattern protects client applications against slow or dropped mobile networks.
+* **Process Death:** How the OS reclaims RAM from background applications and how to preserve user state across launches.
+* **Toolchain Setup:** Successful execution of `npx @enterprise/doctor-cli check` with all green passes.
+* **Framework Direction:** Whether your team is adopting React Native or native Android/iOS for your domain application.
+:::
+
+
+
+
+
+
+
+
+
+----------------------------------
+
+
+
+---
+title: New Mobile Engineer Track
+description: Accelerated onboarding fast-track for experienced iOS, Android, and React Native developers joining enterprise mobile engineering.
+sidebar:
+  order: 4
+  label: Mobile Native Track
+---
+
+
+import { Tabs, TabItem, CardGrid, Card } from '@astrojs/starlight/components';
+import MermaidZoom from './MermaidZoom.astro';
+
+:::tip[Accelerated Track]
+An accelerated onboarding path for experienced native iOS, native Android, and React Native engineers. Skip the generic mobile fundamentals and focus directly on enterprise repository topologies, internal private artifact registries, architectural conventions, Danger PR automated inspections, and Bitrise CI/CD release trains.
+:::
+
+## Fast-Track Pillars
+
+<CardGrid>
+  <Card title="5-Phase Fast Track" icon="rocket">
+    Access, starter templates, clean architecture, PR verification & team sync.
+  </Card>
+  <Card title="Private Registries" icon="setting">
+    Configuring internal Maven, CocoaPods & npm credentials for package resolution.
+  </Card>
+  <Card title="Core SDK Bootstrap" icon="puzzle">
+    One-line initialization for SSO Auth, Datadog RUM & Circuit Breaker resilience.
+  </Card>
+  <Card title="Quality Gates" icon="warning">
+    Danger PR Bot, Sauce Labs device cloud & automated branch policies.
+  </Card>
+</CardGrid>
+
+---
+
+## Fast-Track Onboarding Flow
+
+Experienced mobile engineers should progress through the following phases to submit their first production-ready pull request within their first week:
+
+<MermaidZoom title="FAST-TRACK ONBOARDING FLOW">
+
+```mermaid
+flowchart TD
+    subgraph Setup["Environment & Repository"]
+        P1["Access & Setup\n(Git, Stores, CI/CD & Doctor CLI)"]
+        P2["Starter Template\n(Clone Repo, Sync Dependencies & Boot Simulator)"]
+        P1 --> P2
+    end
+
+    subgraph Build["Architecture & Quality"]
+        P3["Clean Architecture\n(4-Layer Standard & AI IDE Rules)"]
+        P4["PR & Quality Gate\n(Branching, Danger Checks & Unit Tests)"]
+        P2 --> P3
+        P3 --> P4
+    end
+
+    subgraph Deploy["Release & Support"]
+        P5["Release Train & Sync\n(Internal Distribution & Teams Support)"]
+        P4 --> P5
+    end
+```
+
+</MermaidZoom>
+
+---
+
+## Access Provisioning & Workstation Setup
+
+Before writing code, verify you have been granted read/write access to the core enterprise mobile platforms:
+
+| System / Service | Required Group Access | Verification Command / Action |
+| :--- | :--- | :--- |
+| **Enterprise GitHub** | `org-mobile-engineering` | `ssh -T git@github.enterprise.com` |
+| **Artifact Registry** | `mobile-pkg-readers` | `curl -I https://registry.enterprise.internal/health` |
+| **Bitrise CI / CD** | `bitrise-mobile-engineers` | Log in to Bitrise Console via enterprise SSO |
+| **Apple Developer Portal** | `App Store Connect Team Member` | Verify certificate profile in Xcode &rarr; Accounts |
+| **Google Play Console** | `Internal Release Track Access` | Verify access to organizational dashboard |
+| **Sauce Labs Device Cloud** | `qa-device-cloud-users` | Verify SSO login at `saucelabs.enterprise.internal` |
+
+
+### Running the Workstation Verification Script
+
+Run the automated Doctor diagnostic utility in your terminal to validate compilers, SDK paths, and proxy certificates:
+
+```bash
+# Run the enterprise toolchain diagnostic CLI
+npx @enterprise/doctor-cli check --verbose
+
+# Sample green validation report:
+# [PASS] macOS Sonoma 14.5+ or macOS Sequoia 15.x
+# [PASS] Xcode 16.x & Command Line Tools (/Applications/Xcode.app)
+# [PASS] Android Studio Jellyfish / Koala (ANDROID_HOME set)
+# [PASS] Java OpenJDK 17.0.x (JAVA_HOME set)
+# [PASS] Node.js 20.x LTS & npm 10.x
+# [PASS] CocoaPods 1.15.x / Swift Package Manager
+# [PASS] Enterprise Root CA Certificates Installed in Keychain
+```
+
+---
+
+## Private Artifact Registry Configuration
+
+All internal SDKs—including `@enterprise/identity-sso`, `@enterprise/resilience-sdk`, and the `@enterprise/ui-tokens` design system—are published to private enterprise registries. Configure your package managers before building:
+
+<Tabs>
+  <TabItem label="npm (.npmrc)">
+
+Add the scoped registry URL and authentication token to your user home `~/.npmrc` or project-level `.npmrc`:
+
+```ini
+# Scope enterprise packages to private registry
+@enterprise:registry=https://registry.enterprise.internal/repository/npm-hosted/
+//registry.enterprise.internal/repository/npm-hosted/:_authToken=${ENTERPRISE_NPM_TOKEN}
+always-auth=true
+```
+
+  </TabItem>
+  <TabItem label="Android (settings.gradle.kts)">
+
+Configure Gradle to authenticate with the internal Maven repository:
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url = uri("https://registry.enterprise.internal/repository/maven-releases/")
+            credentials {
+                username = System.getenv("ENTERPRISE_MAVEN_USER") ?: ""
+                password = System.getenv("ENTERPRISE_MAVEN_TOKEN") ?: ""
+            }
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="iOS (Podfile)">
+
+Point your project `Podfile` to the private Specs repository:
+
+```ruby
+# Podfile
+platform :ios, '16.0'
+use_frameworks!
+
+# Public CocoaPods CDN
+source 'https://cdn.cocoapods.org/'
+
+# Enterprise Private Specs Repository
+source 'git@github.enterprise.com:mobile-infra/cocoapods-specs.git'
+
+target 'EnterpriseApp' do
+  pod 'EnterpriseIdentity', '~> 2.4.0'
+  pod 'EnterpriseResilience', '~> 1.8.0'
+  pod 'DatadogRUM', '~> 2.12.0'
+end
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## Core Architecture & SDK Bootstrap
+
+Enterprise applications adhere to a strict **4-Layer Clean Architecture**:
+
+<MermaidZoom title="4-LAYER CLEAN ARCHITECTURE STANDARD">
+
+```mermaid
+flowchart TD
+    subgraph Arch["4-Layer Clean Architecture Standard"]
+        UI["1. Presentation Layer\n(SwiftUI / Compose / React Native UI Components)"]
+        Domain["2. Domain Layer\n(Use Cases, Business Rules & Pure Models)"]
+        Data["3. Data Layer\n(Repository Pattern & Offline Cache / Room / SQLite)"]
+        Core["4. Infrastructure & Shared SDKs\n(Enterprise Auth SSO, Circuit Breaker, Datadog RUM)"]
+
+        UI --> Domain
+        Domain --> Data
+        Data --> Core
+    end
+```
+
+</MermaidZoom>
+
+### Initializing Core SDKs in Your App Entry Point
+
+Bootstrap Identity, Telemetry, and Resilience at application startup:
+
+<Tabs>
+  <TabItem label="React Native (App.tsx)">
+
+```typescript
+import React, { useEffect } from 'react';
+import { SafeAreaView, StatusBar, Text } from 'react-native';
+import { initializeEnterpriseAuth } from '@enterprise/identity-sso';
+import { initializeDatadogRUM } from '@enterprise/telemetry';
+
+export default function App() {
+  useEffect(() => {
+    // 1. Initialize Datadog Real User Monitoring
+    initializeDatadogRUM({
+      clientToken: 'pub_rum_prod_token_sample',
+      applicationId: 'app_id_guid_enterprise',
+      env: 'production',
+      trackUserInteractions: true,
+      trackFrustrations: true,
+    });
+
+    // 2. Initialize Single Sign-On (SSO) OAuth2 Configuration
+    initializeEnterpriseAuth({
+      clientId: 'mobile-client-01',
+      issuer: 'https://sso.enterprise.internal/oauth2/v1',
+      redirectUrl: 'com.enterprise.app://oauthredirect',
+      scopes: ['openid', 'profile', 'email', 'offline_access'],
+    });
+  }, []);
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0d1912' }}>
+      <StatusBar barStyle="light-content" />
+      <Text style={{ color: '#e2e8f0', padding: 20 }}>Enterprise Mobile Application Initialized</Text>
+    </SafeAreaView>
+  );
+}
+```
+
+  </TabItem>
+  <TabItem label="Android (MainApplication.kt)">
+
+```kotlin
+package com.enterprise.mobile
+
+import android.app.Application
+import com.enterprise.identity.EnterpriseAuth
+import com.enterprise.telemetry.EnterpriseDatadogConfig
+import com.enterprise.telemetry.EnterpriseTelemetry
+
+class MainApplication : Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+
+        // 1. Initialize Enterprise Telemetry & RUM
+        EnterpriseTelemetry.initialize(
+            this,
+            EnterpriseDatadogConfig(
+                clientToken = "pub_rum_prod_token_sample",
+                applicationId = "app_id_guid_enterprise",
+                environment = "production",
+                trackErrors = true
+            )
+        )
+
+        // 2. Initialize Enterprise SSO Auth Session
+        EnterpriseAuth.initialize(
+            context = this,
+            clientId = "mobile-android-client-01",
+            discoveryUri = "https://sso.enterprise.internal/.well-known/openid-configuration"
+        )
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="iOS (EnterpriseApp.swift)">
+
+```swift
+import SwiftUI
+import EnterpriseIdentity
+import EnterpriseTelemetry
+
+@main
+struct EnterpriseApp: App {
+
+    init() {
+        // 1. Initialize Datadog RUM Telemetry
+        EnterpriseTelemetry.start(
+            applicationId: "app_id_guid_enterprise",
+            clientToken: "pub_rum_prod_token_sample",
+            env: "production"
+        )
+
+        // 2. Initialize SSO Authentication Configuration
+        EnterpriseAuth.configure(
+            issuer: "https://sso.enterprise.internal/oauth2/v1",
+            clientId: "mobile-ios-client-01",
+            redirectURI: "com.enterprise.app://oauthredirect"
+        )
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## PR Quality Gates & CI/CD Automation
+
+Every pull request triggers Bitrise cloud runners that execute automated static analysis and device regression.
+
+### Automated PR Workflow Flowchart
+
+<MermaidZoom title="AUTOMATED PR QUALITY GATES WORKFLOW">
+
+```mermaid
+flowchart TD
+    subgraph PR["PR Submission & Bot Checks"]
+        Commit["1. Conventional Commit Push\n(feat: add offline sync)"]
+        DangerBot["2. Danger PR Bot Inspection\n(Changelog & Size Delta Check)"]
+        Commit --> DangerBot
+    end
+
+    subgraph CI["Automated CI Verification"]
+        UnitTests["3. Parallel Unit Tests\n(Minimum 80% Coverage Gate)"]
+        SauceCloud["4. Sauce Labs Physical Devices\n(Automated Smoke Regression)"]
+        NowSec["5. NowSecure SAST/DAST\n(Vulnerability Security Scan)"]
+        DangerBot --> UnitTests
+        UnitTests --> SauceCloud
+        SauceCloud --> NowSec
+    end
+
+    subgraph Approval["Release Approval"]
+        MergeGate["6. Merge Approved\n(2 Peer Reviews Required)"]
+        NowSec --> MergeGate
+    end
+```
+
+</MermaidZoom>
+
+### The Enterprise Dangerfile Rules (`Dangerfile.ts`)
+
+Danger runs automatically on every Bitrise PR build. Ensure your PR complies with these programmatic checks:
+
+```typescript
+import { danger, warn, fail, message } from 'danger';
+
+// 1. Enforce changelog update for any non-trivial PR
+const hasCodeChanges = danger.git.modified_files.some(f => f.startsWith('src/') || f.startsWith('app/'));
+const hasChangelog = danger.git.modified_files.includes('CHANGELOG.md');
+
+if (hasCodeChanges && !hasChangelog) {
+  warn('Please add a summary of your changes to CHANGELOG.md.');
+}
+
+// 2. Validate Conventional Commit message formatting
+const validPrefixes = ['feat:', 'fix:', 'docs:', 'refactor:', 'test:', 'chore:'];
+const commitSubject = danger.github.pr.title;
+const isValidTitle = validPrefixes.some(prefix => commitSubject.startsWith(prefix));
+
+if (!isValidTitle) {
+  fail(`PR title must follow Conventional Commits (e.g., 'feat: add user profile' or 'fix: resolve crash').`);
+}
+
+// 3. Monitor bundle size and large PR warning
+const totalLinesChanged = danger.github.pr.additions + danger.github.pr.deletions;
+if (totalLinesChanged > 600) {
+  warn(`This PR is large (${totalLinesChanged} lines). Consider breaking it into smaller reviewable units.`);
+}
+```
+
+---
+
+## Production Deployment & Team Support
+
+Once merged into `main`, Bitrise compiles signed binaries (`.aab` and `.ipa`) using enterprise signing certificates and deploys them to internal testing rings:
+
+1. **Merge to Main:** Trigger automated Bitrise CI build.
+2. **Fastlane Signing:** Sign binary using enterprise certificates.
+3. **TestFlight / Internal Distribution:** Deploy to internal testing rings and beta groups.
+4. **Production Ring:** Staged phased rollout to production users.
+
+---
+
+## Enterprise Conventions & Best Practices
+
+:::caution[Critical Production Conventions]
+* **Branch Naming Standard:** Always use `feat/JIRA-1234-brief-name`, `fix/JIRA-1234-brief-name`, or `chore/brief-name`.
+* **No Raw Secrets in Git:** Never commit `.env` or keystore credentials. Credentials are injected dynamically by Bitrise secrets vault during CI runs.
+* **Code Coverage Threshold:** All new business logic in domain layers must maintain at least 80% unit test coverage.
+* **Datadog Crash Triaging:** All fatal crashes must have an assigned owner within 24 hours of notification in the mobile telemetry channel.
+:::
+
+---
+
+:::note[Completion Checklist]
+Confirm you have achieved the following milestones before taking your first Jira sprint ticket:
+
+* **Toolchain Diagnostics:** All checks in `npx @enterprise/doctor-cli check` report green passes.
+* **Registry Authentication:** Successful resolution of `@enterprise/*` packages or internal Maven/CocoaPods dependencies.
+* **Local Simulator Boot:** Able to run the starter project locally on both iOS Simulator and Android Emulator.
+* **Core SDK Familiarity:** Understand how Identity SSO and Datadog RUM are initialized in the application entry point.
+* **PR Quality Gate Ready:** Understand Conventional Commit requirements and Danger PR Bot rules.
+:::
+
+
+
+
+
+
+----------------------------
+
+---
+title: Tech Stack Selection Matrix
+description: Architectural decision matrix and evaluation criteria for selecting React Native vs. Native Android (Compose) vs. Native iOS (SwiftUI) across enterprise mobile projects.
+sidebar:
+  order: 5
+  label: Tech Stack Matrix
+---
+
+
+import { Tabs, TabItem, CardGrid, Card } from '@astrojs/starlight/components';
+import MermaidZoom from './MermaidZoom.astro';
+
+export const PORTAL_BASE = '/mobile-draft'; // Set to '/mobile' when promoting to production
+
+:::tip[Platform Governance]
+Official architectural evaluation matrix for enterprise mobile engineering. Defines objective criteria for selecting between React Native (New Architecture), Native Android (Kotlin & Jetpack Compose), and Native iOS (Swift & SwiftUI). React Native is the standard enterprise recommendation for 80%+ of business applications to maximize velocity and code reuse.
+:::
+
+## Selection Highlights
+
+<CardGrid>
+  <Card title="Enterprise Default" icon="star">
+    React Native is the default for 80%+ of cross-platform business apps.
+  </Card>
+  <Card title="Native Android" icon="open-book">
+    Reserved for rugged hardware, USB/OTG, Bluetooth serial & background daemons.
+  </Card>
+  <Card title="Native iOS" icon="laptop">
+    Reserved for Metal GPU shaders, CoreML on-device inference & Apple Secure Enclave.
+  </Card>
+  <Card title="Architecture Review" icon="document">
+    Mandatory ARB sign-off before committing project repositories.
+  </Card>
+</CardGrid>
+
+---
+
+## Architectural Decision Framework
+
+Use this structured decision tree to determine the optimal mobile technology stack for your application:
+
+<MermaidZoom title="ARCHITECTURAL DECISION FRAMEWORK">
+
+```mermaid
+flowchart TD
+    Start["New Enterprise Mobile Project"] --> Q1{"Does the app require custom Bluetooth Classic,\nUSB-OTG hardware, or Metal shaders?"}
+
+    Q1 -->|"Yes"| Hardware["Select Native Platform"]
+    Hardware --> AndroidNative["Native Android\n(Kotlin / Compose)\nFor rugged scanners & Bluetooth serial"]
+    Hardware --> IOSNative["Native iOS\n(Swift / SwiftUI)\nFor Apple ecosystem & CoreML"]
+
+    Q1 -->|"No"| Q2{"Is the app targeted exclusively at\na single platform (e.g. iPad-only)?"}
+
+    Q2 -->|"Yes"| SinglePlatform["Platform-Specific Native\n(SwiftUI or Jetpack Compose)"]
+    Q2 -->|"No"| ReactDefault["ENTERPRISE DEFAULT RECOMMENDED:\nReact Native (New Architecture)\n90%+ Shared TypeScript Codebase"]
+```
+
+</MermaidZoom>
+
+---
+
+## Comprehensive Platform Evaluation Matrix
+
+Compare the technical trade-offs across all three tier-1 supported stacks:
+
+| Evaluation Dimension | React Native (New Architecture) | Native Android (Kotlin / Compose) | Native iOS (Swift / SwiftUI) |
+| :--- | :--- | :--- | :--- |
+| **Enterprise Recommendation** | **Default Recommended (80%+ Apps)** | Hardware & Rugged Scenarios | Flagship Apple Ecosystem |
+| **Code Reuse** | 90%–95% shared logic, UI, and test suites across iOS & Android. | 0% (Android only). Dual team required for iOS. | 0% (iOS only). Dual team required for Android. |
+| **Time to Market** | Fastest delivery velocity. Single sprint backlog and shared components. | Moderate. Requires dedicated native Android specialists. | Moderate. Requires dedicated native iOS specialists. |
+| **UI Engine** | Fabric C++ Native Renderer with Yoga Flexbox layout. | Jetpack Compose declarative layout engine. | SwiftUI declarative layout engine. |
+| **Hardware & Bluetooth** | High-level BLE via TurboModules. Custom C++ native bindings. | Direct access to Android OS APIs, Bluetooth Classic, USB/OTG, and NDK. | Direct access to CoreBluetooth, ExternalAccessory, and Metal. |
+| **Runtime & Startup** | Near-native cold boot via Hermes bytecode pre-compilation. | Native ART runtime ahead-of-time (AOT) compilation. | Native binary compiled directly to ARM64 machine instructions. |
+| **Design System Mirroring** | Native JSX design tokens from `@enterprise/ui-tokens`. | Composable design tokens via Material 3 theme wrapper. | SwiftUI Color/Typography tokens via asset catalog. |
+| **CI/CD Complexity** | Single Bitrise pipeline building both `.aab` and `.ipa`. | Gradle runner building `.aab`. | macOS runner building signed `.ipa`. |
+
+
+---
+
+## Detailed Stack Profiles
+
+<CardGrid>
+  <Card title="React Native (New Architecture)" icon="laptop">
+    **Recommended for 80%+ of Apps • Field Operations & Portals**
+
+    The default enterprise choice for field operations, logistics workflows, customer portals, and internal employee tools. Delivers native 60fps performance through Fabric and C++ TurboModules with 90%+ code reuse.
+
+    <a href={`${PORTAL_BASE}/development-platforms/react-native/`}>View React Native Guide &rarr;</a>
+  </Card>
+
+  <Card title="Native Android (Kotlin / Compose)" icon="open-book">
+    **Hardware & Rugged Scenarios • Zebra & Scanners**
+
+    Selected when applications interface directly with specialized warehouse hardware (Zebra, Honeywell rugged scanners), custom serial Bluetooth devices, continuous GPS background workers, or Android OS services.
+
+    <a href={`${PORTAL_BASE}/development-platforms/android/`}>View Android Guide &rarr;</a>
+  </Card>
+
+  <Card title="Native iOS (Swift / SwiftUI)" icon="star">
+    **Flagship Apple & Secure Enclave**
+
+    Selected for flagship Apple-exclusive enterprise deployments (iPad executive dashboards, retail kiosk systems) requiring custom Metal GPU rendering, on-device CoreML neural inference, or hardware-bound Apple Secure Enclave operations.
+
+    <a href={`${PORTAL_BASE}/development-platforms/ios/`}>View iOS Guide &rarr;</a>
+  </Card>
+</CardGrid>
+
+---
+
+## Code Comparison: UI State & Data Fetching
+
+To evaluate the developer experience across stacks, compare this standard enterprise pattern—fetching an order list with loading states and pull-to-refresh:
+
+<Tabs>
+  <TabItem label="React Native (TypeScript)">
+
+```typescript
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
+import { useOrdersQuery } from '@enterprise/orders-sdk';
+
+export function OrderListScreen() {
+  const { data: orders, isLoading, isError, refetch } = useOrdersQuery();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
+
+  if (isLoading && !refreshing) {
+    return <ActivityIndicator size="large" color="#22c55e" style={styles.center} />;
+  }
+
+  if (isError) {
+    return <Text style={styles.errorText}>Unable to load enterprise orders.</Text>;
+  }
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={orders}
+        keyExtractor={item => item.id}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22c55e" />}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <Text style={styles.title}>{item.orderNumber}</Text>
+            <Text style={styles.status}>{item.status}</Text>
+          </View>
+        )}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0d1912', padding: 16 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  card: { padding: 14, backgroundColor: '#13251c', borderRadius: 8, marginBottom: 10, borderColor: '#1f3b2c', borderWidth: 1 },
+  title: { color: '#f3d17b', fontWeight: '700', fontSize: 16 },
+  status: { color: '#cbd5e1', marginTop: 4, fontSize: 14 },
+  errorText: { color: '#ef4444', textAlign: 'center', marginTop: 40 },
+});
+```
+
+  </TabItem>
+  <TabItem label="Native Android (Kotlin / Compose)">
+
+```kotlin
+package com.enterprise.mobile.feature.orders
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+@Composable
+fun OrderListScreen(
+    viewModel: OrdersViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0D1912))
+            .padding(16.dp)
+    ) {
+        when (val state = uiState) {
+            is OrderUiState.Loading -> {
+                CircularProgressIndicator(
+                    color = Color(0xFF22C55E),
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+            is OrderUiState.Error -> {
+                Text(
+                    text = state.message,
+                    color = Color(0xFFEF4444),
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+            is OrderUiState.Success -> {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(state.orders) { order ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF13251C)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text(order.orderNumber, color = Color(0xFFF3D17B), style = MaterialTheme.typography.titleMedium)
+                                Text(order.status, color = Color(0xFFCBD5E1), style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="Native iOS (Swift / SwiftUI)">
+
+```swift
+import SwiftUI
+
+struct OrderListView: View {
+    @StateObject private var viewModel = OrdersViewModel()
+
+    var body: some View {
+        ZStack {
+            Color(red: 13/255, green: 25/255, blue: 18/255)
+                .ignoresSafeArea()
+
+            switch viewModel.state {
+            case .loading:
+                ProgressView()
+                    .tint(Color(red: 34/255, green: 197/255, blue: 94/255))
+            case .error(let message):
+                Text(message)
+                    .foregroundColor(.red)
+            case .success(let orders):
+                List(orders) { order in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(order.orderNumber)
+                            .font(.headline)
+                            .foregroundColor(Color(red: 243/255, green: 209/255, blue: 123/255))
+                        Text(order.status)
+                            .font(.subheadline)
+                            .foregroundColor(Color(red: 203/255, green: 213/255, blue: 225/255))
+                    }
+                    .listRowBackground(Color(red: 19/255, green: 37/255, blue: 28/255))
+                }
+                .scrollContentBackground(.hidden)
+                .refreshable {
+                    await viewModel.loadOrders()
+                }
+            }
+        }
+        .task {
+            await viewModel.loadOrders()
+        }
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## When to Use the Native Escape Hatch (TurboModules)
+
+Choosing **React Native** does not lock you out of native device capabilities. When high-performance hardware drivers or proprietary native SDKs are required, write a lightweight **TurboModule** in C++ or Swift/Kotlin rather than rewriting the application:
+
+```typescript
+// Specifying a Type-Safe TurboModule in React Native (TypeScript Spec)
+import type { TurboModule } from 'react-native';
+import { TurboModuleRegistry } from 'react-native';
+
+export interface Spec extends TurboModule {
+  // Direct C++ JSI call into native hardware driver without JSON bridge serialization
+  scanBarcodeHardware(timeoutMs: number): Promise<string>;
+  getBatteryHealth(): Promise<number>;
+}
+
+export default TurboModuleRegistry.getEnforcing<Spec>('EnterpriseHardwareScanner');
+```
+
+---
+
+## Architecture Review Board (ARB) Sign-Off Checklist
+
+:::note[ARB Evaluation Checklist]
+Verify that your proposed stack selection satisfies all enterprise governance criteria before repository initialization:
+
+* **Cross-Platform Default:** If proposing a Native-only stack instead of React Native, have you documented the hard technical blocker (e.g. Bluetooth Classic serial or Metal shaders)?
+* **Team Resourcing:** If selecting separate native iOS and Android stacks, do you have funding and headcount for two distinct engineering teams?
+* **Design System Support:** Does the chosen framework mirror the enterprise token system from `@enterprise/ui-tokens`?
+* **CI/CD Enrollment:** Is the repository configured with the standardized Bitrise automated pipeline template?
+* **Security Sign-Off:** Does the data model comply with the enterprise encryption-at-rest and Remote Data Wipe protocols?
+:::
+
+
+--------------------
+
+
+---
+title: Machine Setup & Workstation Guide
+description: Step-by-step MacBook workstation setup guide for Android Native, iOS Native, and React Native engineering teams.
+sidebar:
+  order: 6
+  label: Machine Setup (MacBook)
+---
+
+import { Tabs, TabItem, CardGrid, Card } from '@astrojs/starlight/components';
+
+:::tip[Workstation Bootstrap]
+Step-by-step workstation configuration for engineers on corporate MacBooks (Apple Silicon M1/M2/M3/M4 or Intel). Follow the common baseline prerequisites, then select your platform tab below for comprehensive terminal commands, environment variables, simulator configurations, and Doctor CLI validation.
+:::
+
+## Setup Targets
+
+<CardGrid>
+  <Card title="Hardware Target" icon="laptop">
+    macOS Sonoma (14.5+) or macOS Sequoia (15.x) on Apple Silicon / Intel.
+  </Card>
+  <Card title="Android Toolchain" icon="open-book">
+    OpenJDK 17, Android Studio Koala/Ladybug, Android SDK 34/35 & AVD.
+  </Card>
+  <Card title="iOS Toolchain" icon="star">
+    Xcode 16.x, Command Line Tools, CocoaPods & iOS Simulator.
+  </Card>
+  <Card title="React Native" icon="setting">
+    Node.js 20 LTS (via FNM), Watchman & unified dual-platform toolchain.
+  </Card>
+</CardGrid>
+
+
+## Common MacBook Baseline Prerequisites
+
+Before installing platform-specific SDKs, execute these three foundational configuration steps on your MacBook:
+
+### 1. Install Homebrew (Package Manager)
+
+Homebrew is required to manage command-line developer utilities on macOS:
+
+```bash
+# Install Homebrew
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# For Apple Silicon MacBooks (M1/M2/M3/M4), add Homebrew to your shell environment:
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+# Verify Homebrew installation
+brew --version
+```
+
+### 2. Install Enterprise Proxy Certificates
+
+Corporate MacBooks route network traffic through internal SSL proxies. Install the enterprise root certificate into your macOS System Keychain so package managers (curl, git, npm, Gradle) trust internal endpoints:
+
+```bash
+# Download and trust the Enterprise Root CA in your macOS System Keychain
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain \
+  /Library/Application\ Support/Enterprise/Certs/EnterpriseRootCA.crt
+
+# Verify certificate is trusted
+security find-certificate -c "Enterprise Root CA" /Library/Keychains/System.keychain
+```
+
+### 3. Generate SSH Key for Enterprise GitHub
+
+```bash
+# Generate a modern ed25519 SSH key
+ssh-keygen -t ed25519 -C "your_username@enterprise.com" -f ~/.ssh/id_ed25519_enterprise
+
+# Configure SSH agent to automatically load keys from macOS Keychain
+cat << 'EOF' >> ~/.ssh/config
+Host github.enterprise.com
+  IdentityFile ~/.ssh/id_ed25519_enterprise
+  AddKeysToAgent yes
+  UseKeychain yes
+EOF
+
+# Add key to Keychain and test connection
+ssh-add --apple-use-keychain ~/.ssh/id_ed25519_enterprise
+ssh -T git@github.enterprise.com
+```
+
+---
+
+## Platform-Specific Installation Instructions
+
+Select your primary development platform tab below to configure your MacBook toolchain:
+
+<Tabs>
+  <TabItem label="Android (Kotlin / Compose)">
+
+### Step 1: Install OpenJDK 17
+
+Android Gradle Plugin 8.x requires Java 17. Install OpenJDK 17 via Homebrew:
+
+```bash
+# Install OpenJDK 17
+brew install openjdk@17
+
+# Create a symlink so macOS system Java wrapper recognizes OpenJDK 17
+sudo ln -sfn /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-17.jdk
+
+# Verify Java version
+java -version
+# Expected: openjdk version "17.0.x"
+```
+
+### Step 2: Install Android Studio
+
+Download and install **Android Studio (Koala or Ladybug release)** optimized for Apple Silicon (`.dmg (Mac with Apple chip)`):
+
+```bash
+# Optional: Install via Homebrew Cask
+brew install --cask android-studio
+```
+
+Launch Android Studio and complete the **Setup Wizard**:
+* Choose **Standard** setup type.
+* Agree to license agreements for `android-sdk-license` and `intel-android-extra-license`.
+
+### Step 3: Install Required SDK Components
+
+In Android Studio, open **Settings / Preferences &rarr; Languages & Frameworks &rarr; Android SDK**:
+
+1. Under **SDK Platforms**, check:
+   * **Android 14.0 (UpsideDownCake) - API Level 34**
+   * **Android 15.0 (VanillaIceCream) - API Level 35**
+2. Under **SDK Tools**, check:
+   * **Android SDK Build-Tools 34.0.0**
+   * **Android SDK Command-line Tools (latest)**
+   * **Android SDK Platform-Tools**
+   * **Android Emulator**
+3. Click **Apply** to install the selected packages.
+
+### Step 4: Configure `~/.zshrc` Environment Variables
+
+Add Android SDK paths to your `~/.zshrc` file:
+
+```bash
+# Open ~/.zshrc in your editor
+cat << 'EOF' >> ~/.zshrc
+
+# Java Home (OpenJDK 17)
+export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+
+# Android SDK Environment Variables
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$PATH:$ANDROID_HOME/emulator"
+export PATH="$PATH:$ANDROID_HOME/platform-tools"
+export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
+export PATH="$PATH:$ANDROID_HOME/tools"
+export PATH="$PATH:$ANDROID_HOME/tools/bin"
+
+EOF
+
+# Reload shell configuration
+source ~/.zshrc
+```
+
+### Step 5: Verify Android CLI & Create an AVD Emulator
+
+Verify that `adb` and the emulator binaries are globally accessible in your terminal:
+
+```bash
+# 1. Verify adb is active
+adb version
+
+# 2. Install Google Play system image for ARM64 (Apple Silicon)
+sdkmanager "system-images;android-34;google_apis;arm64-v8a"
+
+# 3. Create a Pixel 8 virtual device
+avdmanager create avd \
+  -n "Pixel_8_API_34" \
+  -k "system-images;android-34;google_apis;arm64-v8a" \
+  -d "pixel_8"
+
+# 4. Launch the Android Emulator from terminal
+emulator -avd Pixel_8_API_34 -netdelay none -netspeed full &
+```
+
+  </TabItem>
+
+  <TabItem label="iOS (Swift / SwiftUI)">
+
+### Step 1: Install Xcode from the Mac App Store
+
+1. Open the macOS **App Store** and search for **Xcode**.
+2. Install the latest official release (Xcode 16.x).
+3. Open Xcode once to complete initial system component installations.
+
+### Step 2: Configure Xcode Command Line Tools
+
+Ensure your terminal uses the full Xcode developer tools directory rather than standalone command-line tools:
+
+```bash
+# Point active developer directory to Xcode.app
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+# Verify active developer path
+xcode-select -p
+# Expected: /Applications/Xcode.app/Contents/Developer
+```
+
+### Step 3: Accept Xcode License Agreement & Download Platforms
+
+```bash
+# Accept Xcode license agreement
+sudo xcodebuild -license accept
+
+# Pre-install iOS Simulator runtime platform
+sudo xcodebuild -downloadPlatform iOS
+
+# First-time launch setup
+sudo xcodebuild -runFirstLaunch
+```
+
+### Step 4: Install CocoaPods Package Manager
+
+Install CocoaPods for projects requiring third-party Objective-C/Swift pods:
+
+```bash
+# Install CocoaPods via Homebrew (recommended on Apple Silicon)
+brew install cocoapods
+
+# Verify CocoaPods installation
+pod --version
+```
+
+### Step 5: Configure Apple Developer Account in Xcode
+
+1. Open Xcode and navigate to **Settings &rarr; Accounts** (`Cmd + ,`).
+2. Click **+ &rarr; Apple ID** and authenticate with your corporate enterprise Apple credentials.
+3. Select your team: **Enterprise Mobile Engineering Team**.
+4. Click **Download Manual Profiles** to sync enterprise provisioning profiles into your local keychain.
+
+### Step 6: Launch and Verify iOS Simulator via CLI
+
+You can boot simulators directly from your terminal:
+
+```bash
+# List all available iOS device simulators
+xcrun simctl list devices available | grep "iPhone"
+
+# Boot an iPhone 15 Pro simulator
+xcrun simctl boot "iPhone 15 Pro"
+
+# Open the macOS Simulator graphical interface
+open -a Simulator
+```
+
+  </TabItem>
+
+  <TabItem label="React Native (Cross-Platform)">
+
+### Step 1: Install Node.js 20 LTS via FNM (Fast Node Manager)
+
+We recommend **FNM** over NVM because it is built in Rust, loads 40x faster, and handles shell integration seamlessly:
+
+```bash
+# Install FNM and Watchman file observer
+brew install fnm watchman
+
+# Configure FNM in ~/.zshrc
+echo 'eval "$(fnm env --use-on-cd)"' >> ~/.zshrc
+source ~/.zshrc
+
+# Install and activate Node.js 20 LTS
+fnm install 20
+fnm use 20
+fnm default 20
+
+# Verify versions
+node -v   # Expected: v20.x.x
+npm -v    # Expected: 10.x.x
+```
+
+### Step 2: Unified Toolchain Setup (Android & iOS Combined)
+
+React Native projects compile to both platforms. Ensure you complete:
+1. **Android Setup:** OpenJDK 17, `ANDROID_HOME`, and `platform-tools` (from the Android Tab).
+2. **iOS Setup:** Xcode 16, Command Line Tools, and CocoaPods (from the iOS Tab).
+
+Add the combined environment block to your `~/.zshrc`:
+
+```bash
+cat << 'EOF' >> ~/.zshrc
+
+# Java 17 for React Native Android compilation
+export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+
+# Android SDK
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$PATH:$ANDROID_HOME/emulator"
+export PATH="$PATH:$ANDROID_HOME/platform-tools"
+export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
+
+# CocoaPods & Homebrew paths
+export PATH="/opt/homebrew/bin:$PATH"
+
+EOF
+
+source ~/.zshrc
+```
+
+### Step 3: Run the Enterprise Doctor Diagnostic CLI
+
+Run the automated Doctor toolchain checker to verify your dual-platform setup:
+
+```bash
+# Execute workstation check
+npx @enterprise/doctor-cli check
+
+# Expected validation output:
+# [PASS] Node.js 20.x detected
+# [PASS] Watchman 2024.x detected
+# [PASS] Xcode Command Line Tools (/Applications/Xcode.app)
+# [PASS] CocoaPods installed
+# [PASS] OpenJDK 17 installed
+# [PASS] ANDROID_HOME configured
+# [PASS] adb connected to local platform-tools
+```
+
+### Step 4: Boot Your First Starter Application
+
+```bash
+# Clone the enterprise React Native starter repository
+git clone git@github.enterprise.com:mobile-starters/react-native-starter.git my-app
+cd my-app
+
+# Install project dependencies
+npm install
+
+# Install iOS CocoaPod native dependencies
+cd ios && pod install && cd ..
+
+# Boot the app on iOS Simulator
+npm run ios
+
+# Boot the app on Android Emulator (ensure AVD is started)
+npm run android
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## Universal Workstation Verification
+
+Regardless of which platform tab you configured, run the enterprise Doctor CLI to produce your final system health report:
+
+```bash
+npx @enterprise/doctor-cli check --verbose
+```
+
+```
+============================================================
+       ENTERPRISE MOBILE WORKSTATION HEALTH REPORT
+============================================================
+ [OK] Operating System: macOS 15.0.1 (Apple M3 Max)
+ [OK] Terminal Shell: zsh 5.9
+ [OK] Homebrew: 4.4.2 (/opt/homebrew/bin/brew)
+ [OK] Enterprise Root Certificate: Installed in System Keychain
+ [OK] OpenJDK: 17.0.12 (/Library/Java/JavaVirtualMachines/openjdk-17.jdk)
+ [OK] Android SDK: 34.0.0 (/Users/developer/Library/Android/sdk)
+ [OK] Android Debug Bridge: 1.0.41 (Version 35.0.2)
+ [OK] Xcode: 16.0 (Build 16A242d)
+ [OK] CocoaPods: 1.15.2
+ [OK] Node.js: v20.18.0
+ [OK] Watchman: 2024.10.07.00
+------------------------------------------------------------
+ RESULT: 11 Passed, 0 Failed, 0 Warnings
+ Workstation is fully certified for Enterprise Mobile Engineering.
+============================================================
+```
+
+---
+
+## Apple Silicon MacBook Troubleshooting
+
+:::caution[M-Series (ARM64) MacBook Tips]
+* **Android Emulator Acceleration:** On Apple Silicon (M1/M2/M3/M4), do *not* attempt to install Intel HAXM. The Android Emulator uses Apple's native Hypervisor.framework out of the box. Always select the `arm64-v8a` ABI system image.
+* **Homebrew Binary Path:** Homebrew installs to `/opt/homebrew/bin` on Apple Silicon and `/usr/local/bin` on Intel. Never copy `~/.zshrc` files from an Intel Mac without adjusting paths.
+* **Rosetta 2 for Legacy Pods:** If an older third-party pod fails with an architecture compilation error, install Rosetta 2: `softwareupdate --install-rosetta --agree-to-license`.
+* **Node.js Architecture Mismatch:** If you see `mach-o file, but is an incompatible architecture`, verify that your Node binary is native ARM64: `node -p "process.arch"` should return `arm64`.
+:::
+
+---
+
+:::note[Completion Checklist]
+Confirm your MacBook workstation meets the baseline development standard:
+
+* **Doctor Pass:** Successful execution of `npx @enterprise/doctor-cli check` with 0 errors.
+* **Simulator Readiness:** Ability to launch both iOS Simulator and Android Emulator without UI freezing.
+* **Shell Configured:** `~/.zshrc` contains valid `JAVA_HOME` and `ANDROID_HOME` environment exports.
+* **Git & Certificates:** SSH authentication verified for `git@github.enterprise.com` and enterprise proxy CA cert installed in Keychain.
+:::
+
+
+
+
+----------------------
+
+
+
+
+---
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+interface Props {
   basePath?: string;
 }
 
 const { basePath = '/mobile-draft' } = Astro.props;
-const PORTAL_BASE = basePath; // When switching to production tomorrow, simply change '/mobile-draft' to '/mobile'
+const PORTAL_BASE = basePath; // When changing to '/mobile' tomorrow, simply change this constant or pass the prop
 ---
 
-<div class="portal-hero-card portal-hero-row">
-  <div class="portal-hero-icon">
-    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
-      <line x1="12" y1="18" x2="12.01" y2="18"/>
-    </svg>
-  </div>
-  <div>
-    <div class="portal-hero-title">Mobile Engineering Platform Hub</div>
-    <div class="portal-hero-sub">Centralized developer portal for architecture standards, automated CI/CD, analytics, App Store distribution, and engineering guidelines.</div>
-  </div>
-</div>
+<CardGrid stagger>
+  <Card title="Build and Release Kit" icon="rocket">
+    <p>Complete mobile toolchain bootstrap, workstation provisioning for macOS &amp; Windows, and SDK dependencies.</p>
+    <ul>
+      <li><a href={`${PORTAL_BASE}/build-and-release-kit/`}>Build Kit Overview</a></li>
+      <li><a href={`${PORTAL_BASE}/build-and-release-kit/setup/`}>Workstation Setup</a></li>
+      <li><a href={`${PORTAL_BASE}/build-and-release-kit/dependencies/`}>SDK Dependencies</a></li>
+    </ul>
+  </Card>
 
-<div class="portal-disclaimer-banner">
-  <div class="portal-disclaimer-icon">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-      <line x1="12" y1="9" x2="12" y2="13"/>
-      <line x1="12" y1="17" x2="12.01" y2="17"/>
-    </svg>
-  </div>
-  <div class="portal-disclaimer-content">
-    <div class="portal-disclaimer-title">PORTAL NAVIGATION NOTICE</div>
-    <p class="portal-disclaimer-text">
-      Currently routing through <strong><code>{PORTAL_BASE}</code></strong>. Select any card below to jump directly into the verified documentation runbooks, SDK setups, or deployment checklists.
-    </p>
-  </div>
-</div>
+  <Card title="Architecture Pattern" icon="puzzle">
+    <p>4-Layer Clean Architecture, boundary rules, Circuit Breaker network resilience, and offline caching.</p>
+    <ul>
+      <li><a href={`${PORTAL_BASE}/architecture-pattern/`}>Clean Architecture</a></li>
+      <li><a href={`${PORTAL_BASE}/architecture-pattern/circuit-breaker/`}>Circuit Breaker</a></li>
+      <li><a href={`${PORTAL_BASE}/architecture-pattern/offline-sync/`}>Offline Cache</a></li>
+    </ul>
+  </Card>
 
-<div class="portal-cards-grid">
+  <Card title="Analytics & Monitoring" icon="information">
+    <p>Real User Monitoring (RUM), crash telemetry, synthetic monitoring, and the iOS Datadog wrapper library.</p>
+    <ul>
+      <li><a href={`${PORTAL_BASE}/analytics/`}>Analytics Overview</a></li>
+      <li><a href={`${PORTAL_BASE}/analytics/datadog/setup/`}>Datadog Setup</a></li>
+      <li><a href={`${PORTAL_BASE}/analytics/ios-datadog-wrapper/`}>iOS Wrapper Library</a></li>
+    </ul>
+  </Card>
 
-  {/* Build and Release Kit */}
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-icon-badge badge-green">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
-            <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Build and Release Kit</h3>
-        <span class="portal-tag-pill">TOOLING</span>
-      </div>
-      <p class="portal-card-desc">
-        Complete mobile toolchain bootstrap, workstation provisioning for macOS &amp; Windows, and starter kits.
-      </p>
-      <div class="portal-card-pills">
-        <a href={`${PORTAL_BASE}/build-and-release-kit/`} class="portal-pill-link">Build Kit Overview</a>
-        <a href={`${PORTAL_BASE}/build-and-release-kit/setup/`} class="portal-pill-link">Workstation Setup</a>
-        <a href={`${PORTAL_BASE}/build-and-release-kit/dependencies/`} class="portal-pill-link">SDK Dependencies</a>
-      </div>
-    </div>
-    <div class="portal-card-foot">
-      <a href={`${PORTAL_BASE}/build-and-release-kit/`} class="portal-card-link">Explore Build Kit &rarr;</a>
-    </div>
-  </div>
+  <Card title="App Store & Distribution" icon="laptop">
+    <p>Apple AppStore uploads, code signing certs, remote data wipe, Enterprise Store, and Google Play.</p>
+    <ul>
+      <li><a href={`${PORTAL_BASE}/app-store/apple-appstore-upload/`}>Apple Upload</a></li>
+      <li><a href={`${PORTAL_BASE}/app-store/code-signing/`}>Code Signing</a></li>
+      <li><a href={`${PORTAL_BASE}/app-store/data-wipe/`}>Remote Data Wipe</a></li>
+      <li><a href={`${PORTAL_BASE}/app-store/enterprise-app-store/`}>Enterprise Store</a></li>
+      <li><a href={`${PORTAL_BASE}/app-store/google-app-store-deployment/`}>Google Play</a></li>
+    </ul>
+  </Card>
 
-  {/* Architecture Pattern */}
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-icon-badge badge-green">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="7" height="7"/>
-            <rect x="14" y="3" width="7" height="7"/>
-            <rect x="14" y="14" width="7" height="7"/>
-            <rect x="3" y="14" width="7" height="7"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Architecture Pattern</h3>
-        <span class="portal-tag-pill">STANDARDS</span>
-      </div>
-      <p class="portal-card-desc">
-        4-Layer Clean Architecture, boundary rules, Circuit Breaker network resilience, and offline caching.
-      </p>
-      <div class="portal-card-pills">
-        <a href={`${PORTAL_BASE}/architecture-pattern/`} class="portal-pill-link">Clean Architecture</a>
-        <a href={`${PORTAL_BASE}/architecture-pattern/circuit-breaker/`} class="portal-pill-link">Circuit Breaker</a>
-        <a href={`${PORTAL_BASE}/architecture-pattern/offline-sync/`} class="portal-pill-link">Offline Cache</a>
-      </div>
-    </div>
-    <div class="portal-card-foot">
-      <a href={`${PORTAL_BASE}/architecture-pattern/`} class="portal-card-link">View Architecture &rarr;</a>
-    </div>
-  </div>
+  <Card title="Bitrise MCP" icon="setting">
+    <p>Model Context Protocol gateway integration to inspect builds, trigger workflows, and debug CI/CD failures via AI.</p>
+    <ul>
+      <li><a href={`${PORTAL_BASE}/bitrise-mcp/`}>MCP Overview</a></li>
+      <li><a href={`${PORTAL_BASE}/bitrise-mcp/gateway-setup/`}>Gateway Auth</a></li>
+      <li><a href={`${PORTAL_BASE}/bitrise-mcp/cursor-copilot/`}>IDE Integration</a></li>
+    </ul>
+  </Card>
 
-  {/* Analytics & Monitoring */}
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-icon-badge badge-purple">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Analytics &amp; Monitoring</h3>
-        <span class="portal-tag-pill">DATADOG</span>
-      </div>
-      <p class="portal-card-desc">
-        Real User Monitoring (RUM), crash telemetry, synthetic monitoring, and the iOS Datadog wrapper library.
-      </p>
-      <div class="portal-card-pills">
-        <a href={`${PORTAL_BASE}/analytics/`} class="portal-pill-link">Analytics Overview</a>
-        <a href={`${PORTAL_BASE}/analytics/datadog/setup/`} class="portal-pill-link">Datadog Setup</a>
-        <a href={`${PORTAL_BASE}/analytics/ios-datadog-wrapper/`} class="portal-pill-link">iOS Wrapper Library</a>
-      </div>
-    </div>
-    <div class="portal-card-foot">
-      <a href={`${PORTAL_BASE}/analytics/`} class="portal-card-link">View Analytics &rarr;</a>
-    </div>
-  </div>
+  <Card title="CI/CD & Automation" icon="setting">
+    <p>Bitrise shared workflows, camp.yml build declarative specs, Danger PR review automation, and coverage gates.</p>
+    <ul>
+      <li><a href={`${PORTAL_BASE}/cicd/`}>Pipelines Overview</a></li>
+      <li><a href={`${PORTAL_BASE}/cicd/camp-spec/`}>camp.yml Spec</a></li>
+      <li><a href={`${PORTAL_BASE}/cicd/danger-bot/`}>Danger Inspection</a></li>
+    </ul>
+  </Card>
 
-  {/* App Store & Distribution */}
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-icon-badge badge-rose">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="21 8 21 21 3 21 3 8"/>
-            <rect x="1" y="3" width="22" height="5"/>
-            <line x1="10" y1="12" x2="14" y2="12"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">App Store &amp; Distribution</h3>
-        <span class="portal-tag-pill">PUBLISHING</span>
-      </div>
-      <p class="portal-card-desc">
-        Apple AppStore uploads, code signing certs, remote data wipe on stolen devices, Enterprise Store, and Google Play.
-      </p>
-      <div class="portal-card-pills">
-        <a href={`${PORTAL_BASE}/app-store/apple-appstore-upload/`} class="portal-pill-link">Apple Upload</a>
-        <a href={`${PORTAL_BASE}/app-store/code-signing/`} class="portal-pill-link">Code Signing</a>
-        <a href={`${PORTAL_BASE}/app-store/data-wipe/`} class="portal-pill-link">Remote Data Wipe</a>
-        <a href={`${PORTAL_BASE}/app-store/enterprise-app-store/`} class="portal-pill-link">Enterprise Store</a>
-        <a href={`${PORTAL_BASE}/app-store/google-app-store-deployment/`} class="portal-pill-link">Google Play</a>
-      </div>
-    </div>
-    <div class="portal-card-foot">
-      <a href={`${PORTAL_BASE}/app-store/`} class="portal-card-link">Manage Distribution &rarr;</a>
-    </div>
-  </div>
+  <Card title="Development Platforms" icon="open-book">
+    <p>Native Android (Kotlin &amp; Compose), Native iOS (Swift &amp; SwiftUI), and Cross-Platform React Native standards.</p>
+    <ul>
+      <li><a href={`${PORTAL_BASE}/development-platforms/android/`}>Android (Kotlin)</a></li>
+      <li><a href={`${PORTAL_BASE}/development-platforms/ios/`}>iOS (Swift)</a></li>
+      <li><a href={`${PORTAL_BASE}/development-platforms/react-native/`}>React Native</a></li>
+    </ul>
+  </Card>
 
-  {/* Bitrise MCP */}
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-icon-badge badge-teal">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="4" y="4" width="16" height="16" rx="2"/>
-            <rect x="9" y="9" width="6" height="6"/>
-            <line x1="9" y1="1" x2="9" y2="4"/>
-            <line x1="15" y1="1" x2="15" y2="4"/>
-            <line x1="9" y1="20" x2="9" y2="23"/>
-            <line x1="15" y1="20" x2="15" y2="23"/>
-            <line x1="20" y1="9" x2="23" y2="9"/>
-            <line x1="20" y1="14" x2="23" y2="14"/>
-            <line x1="1" y1="9" x2="4" y2="9"/>
-            <line x1="1" y1="14" x2="4" y2="14"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Bitrise MCP</h3>
-        <span class="portal-tag-pill">AI ASSISTANT</span>
-      </div>
-      <p class="portal-card-desc">
-        Model Context Protocol gateway integration to inspect builds, trigger workflows, and debug CI/CD failures via AI chat.
-      </p>
-      <div class="portal-card-pills">
-        <a href={`${PORTAL_BASE}/bitrise-mcp/`} class="portal-pill-link">MCP Overview</a>
-        <a href={`${PORTAL_BASE}/bitrise-mcp/gateway-setup/`} class="portal-pill-link">Gateway Auth</a>
-        <a href={`${PORTAL_BASE}/bitrise-mcp/cursor-copilot/`} class="portal-pill-link">IDE Integration</a>
-      </div>
-    </div>
-    <div class="portal-card-foot">
-      <a href={`${PORTAL_BASE}/bitrise-mcp/`} class="portal-card-link">Connect Bitrise MCP &rarr;</a>
-    </div>
-  </div>
+  <Card title="Push Notifications Backend" icon="comment">
+    <p>Push architecture through Firebase Cloud Messaging (FCM), backend Java implementations, and PushJS library.</p>
+    <ul>
+      <li><a href={`${PORTAL_BASE}/push-notifications-backend/firebase-cloud-messaging/`}>Firebase FCM</a></li>
+      <li><a href={`${PORTAL_BASE}/push-notifications-backend/java/`}>Java Backend</a></li>
+      <li><a href={`${PORTAL_BASE}/push-notifications-backend/pushjs/`}>PushJS Library</a></li>
+    </ul>
+  </Card>
 
-  {/* CI/CD & Automation */}
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-icon-badge badge-coral">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="23 4 23 10 17 10"/>
-            <polyline points="1 20 1 14 7 14"/>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">CI/CD &amp; Automation</h3>
-        <span class="portal-tag-pill">PIPELINES</span>
-      </div>
-      <p class="portal-card-desc">
-        Bitrise shared workflows, camp.yml build declarative specs, Danger PR code review automation, and 80% coverage gates.
-      </p>
-      <div class="portal-card-pills">
-        <a href={`${PORTAL_BASE}/cicd/`} class="portal-pill-link">Pipelines Overview</a>
-        <a href={`${PORTAL_BASE}/cicd/camp-spec/`} class="portal-pill-link">camp.yml Spec</a>
-        <a href={`${PORTAL_BASE}/cicd/danger-bot/`} class="portal-pill-link">Danger Inspection</a>
-      </div>
-    </div>
-    <div class="portal-card-foot">
-      <a href={`${PORTAL_BASE}/cicd/`} class="portal-card-link">View CI/CD Workflows &rarr;</a>
-    </div>
-  </div>
+  <Card title="Guidelines & Governance" icon="document">
+    <p>Enterprise security baselines, OWASP MASVS compliance, Git branching policies, PR rules, and quality standards.</p>
+    <ul>
+      <li><a href={`${PORTAL_BASE}/guidelines/`}>Engineering Guidelines</a></li>
+      <li><a href={`${PORTAL_BASE}/guidelines/security/`}>Security Policies</a></li>
+      <li><a href={`${PORTAL_BASE}/guidelines/branching/`}>Branching Strategy</a></li>
+    </ul>
+  </Card>
 
-  {/* Development Platforms */}
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-icon-badge badge-purple">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="16 18 22 12 16 6"/>
-            <polyline points="8 6 2 12 8 18"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Development Platforms</h3>
-        <span class="portal-tag-pill">SDKs &amp; STACKS</span>
-      </div>
-      <p class="portal-card-desc">
-        Native Android (Kotlin &amp; Compose), Native iOS (Swift &amp; SwiftUI), and Cross-Platform React Native standards.
-      </p>
-      <div class="portal-card-pills">
-        <a href={`${PORTAL_BASE}/development-platforms/android/`} class="portal-pill-link">Android (Kotlin)</a>
-        <a href={`${PORTAL_BASE}/development-platforms/ios/`} class="portal-pill-link">iOS (Swift)</a>
-        <a href={`${PORTAL_BASE}/development-platforms/react-native/`} class="portal-pill-link">React Native</a>
-      </div>
-    </div>
-    <div class="portal-card-foot">
-      <a href={`${PORTAL_BASE}/development-platforms/`} class="portal-card-link">Browse Platforms &rarr;</a>
-    </div>
-  </div>
+  <Card title="Engineering FAQs & Self-Service" icon="magnifier">
+    <p>Keyword searchable runbooks and verified answers across workstation setups, SSL certs, CI/CD, and App Store releases.</p>
+    <ul>
+      <li><a href={`${PORTAL_BASE}/faqs/`}>Browse FAQs</a></li>
+      <li><a href={`${PORTAL_BASE}/faqs/troubleshooting/`}>Runbooks</a></li>
+      <li><a href={`${PORTAL_BASE}/support/`}>Live Support</a></li>
+    </ul>
+  </Card>
+</CardGrid>
 
-  {/* Push Notifications Backend */}
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-icon-badge badge-amber">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Push Notifications Backend</h3>
-        <span class="portal-tag-pill">MESSAGING</span>
-      </div>
-      <p class="portal-card-desc">
-        Push architecture through Firebase Cloud Messaging (FCM), backend Java implementations, and the PushJS library.
-      </p>
-      <div class="portal-card-pills">
-        <a href={`${PORTAL_BASE}/push-notifications-backend/firebase-cloud-messaging/`} class="portal-pill-link">Firebase FCM</a>
-        <a href={`${PORTAL_BASE}/push-notifications-backend/java/`} class="portal-pill-link">Java Backend</a>
-        <a href={`${PORTAL_BASE}/push-notifications-backend/pushjs/`} class="portal-pill-link">PushJS Library</a>
-      </div>
-    </div>
-    <div class="portal-card-foot">
-      <a href={`${PORTAL_BASE}/push-notifications-backend/`} class="portal-card-link">View Push Services &rarr;</a>
-    </div>
-  </div>
+## Support & Assistance
 
-  {/* Guidelines & Governance */}
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-icon-badge badge-green">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Guidelines &amp; Governance</h3>
-        <span class="portal-tag-pill">COMPLIANCE</span>
-      </div>
-      <p class="portal-card-desc">
-        Enterprise security baselines, OWASP MASVS compliance, Git branching policies, PR rules, and quality standards.
-      </p>
-      <div class="portal-card-pills">
-        <a href={`${PORTAL_BASE}/guidelines/`} class="portal-pill-link">Engineering Guidelines</a>
-        <a href={`${PORTAL_BASE}/guidelines/security/`} class="portal-pill-link">Security Policies</a>
-        <a href={`${PORTAL_BASE}/guidelines/branching/`} class="portal-pill-link">Branching Strategy</a>
-      </div>
-    </div>
-    <div class="portal-card-foot">
-      <a href={`${PORTAL_BASE}/guidelines/`} class="portal-card-link">View Guidelines &rarr;</a>
-    </div>
-  </div>
+<CardGrid>
+  <LinkCard
+    title="Ask in #mobile-platform-support"
+    href="https://teams.enterprise.internal/l/channel/mobile-platform-support"
+    description="Connect with on-call platform engineers for immediate live assistance."
+  />
+  <LinkCard
+    title="Browse Engineering FAQs"
+    href={`${PORTAL_BASE}/faqs/`}
+    description="Instant answers to common developer questions and environment setups."
+  />
+  <LinkCard
+    title="View Support Channels & SLAs"
+    href={`${PORTAL_BASE}/support/`}
+    description="Escalation paths, response SLAs, and team contacts."
+  />
+</CardGrid>
 
-  {/* Engineering FAQs & Self-Service */}
-  <div class="portal-card">
-    <div>
-      <div class="portal-card-topbar">
-        <div class="portal-icon-badge badge-teal">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-        </div>
-        <h3 class="portal-card-title">Engineering FAQs &amp; Self-Service</h3>
-        <span class="portal-tag-pill">KNOWLEDGE BASE</span>
-      </div>
-      <p class="portal-card-desc">
-        Instant keyword searchable runbooks and verified answers across workstation setups, SSL certs, Bitrise CI/CD, and App Store releases.
-      </p>
-      <div class="portal-card-pills">
-        <a href={`${PORTAL_BASE}/faqs/`} class="portal-pill-link">Browse FAQs</a>
-        <a href={`${PORTAL_BASE}/faqs/troubleshooting/`} class="portal-pill-link">Runbooks</a>
-        <a href={`${PORTAL_BASE}/support/`} class="portal-pill-link">Live Support</a>
-      </div>
-    </div>
-    <div class="portal-card-foot">
-      <a href={`${PORTAL_BASE}/faqs/`} class="portal-card-link">Search FAQs &rarr;</a>
-    </div>
-  </div>
 
-</div>
 
-<div class="portal-support-spotlight">
-  <div class="portal-support-spotlight-header" style="margin-bottom: 12px; padding-bottom: 12px;">
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <div class="portal-icon-badge badge-green">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-      </div>
-      <div>
-        <div style="font-size: 1.15rem; font-weight: 800; color: var(--portal-gold, #f3d17b);">
-          Need Live Technical Support or Incident Escalation?
-        </div>
-        <div style="font-size: 0.86rem; color: var(--portal-text-body, #cbd5e1);">
-          Reach the on-call Mobile Platform Engineers in <code>#mobile-platform-support</code> or explore self-service engineering FAQs.
-        </div>
-      </div>
-    </div>
-    <span class="portal-support-live-pill">
-      <span class="portal-support-pulse"></span>
-      LIVE HELP &bull; P1 SLA
-    </span>
-  </div>
-  <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-    <a href="https://teams.enterprise.internal/l/channel/mobile-platform-support" target="_blank" rel="noopener noreferrer" class="portal-support-cta" style="width: auto; margin-top: 0; padding: 10px 18px;">
-      Ask in #mobile-platform-support &rarr;
-    </a>
-    <a href={`${PORTAL_BASE}/faqs/`} class="portal-download-btn portal-download-btn-secondary" style="padding: 10px 18px;">
-      Browse Engineering FAQs
-    </a>
-    <a href={`${PORTAL_BASE}/support/`} class="portal-download-btn" style="padding: 10px 18px;">
-      View Support Channels &amp; SLAs
-    </a>
-  </div>
-</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
