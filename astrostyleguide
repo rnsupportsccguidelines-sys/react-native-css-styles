@@ -2796,7 +2796,8 @@ Welcome to the central developer portal for enterprise mobile application develo
 <h2>Platform Capabilities</h2>
 
 <div class="portal-grid-3col">
-  <CardGrid stagger>
+  <!-- CardGrid WITHOUT stagger so all 3 columns align evenly at the exact same top baseline -->
+  <CardGrid>
     <!-- 1. Get Started -->
     <Card title="1. Get Started" icon="rocket">
       <p>Platform ecosystem, workstation setup, fast-track checklists, and framework selection.</p>
@@ -2805,7 +2806,6 @@ Welcome to the central developer portal for enterprise mobile application develo
         <li><a href={`${PORTAL_BASE}/onboarding/welcome-quickstart/`}>Engineer Onboarding</a></li>
         <li><a href={`${PORTAL_BASE}/onboarding/non-mobile-dev-guide/`}>Non-Mobile Guide</a></li>
         <li><a href={`${PORTAL_BASE}/onboarding/tech-stack-matrix/`}>Tech Stack Selection</a></li>
-        <li><a href={`${PORTAL_BASE}/onboarding/machine-setup/`}>Workstation Setup</a></li>
       </ul>
       <div class="card-footer-end">
         <a href={`${PORTAL_BASE}/onboarding/`} class="view-all-link">View All &rarr;</a>
@@ -2820,7 +2820,6 @@ Welcome to the central developer portal for enterprise mobile application develo
         <li><a href={`${PORTAL_BASE}/architecture/resilience-circuit-breaker/`}>Resilience</a></li>
         <li><a href={`${PORTAL_BASE}/architecture/feature-flagging/`}>Feature Flags</a></li>
         <li><a href={`${PORTAL_BASE}/architecture/git-branching-strategy/`}>Git Rules</a></li>
-        <li><a href={`${PORTAL_BASE}/architecture/offline-sync/`}>Offline Cache</a></li>
       </ul>
       <div class="card-footer-end">
         <a href={`${PORTAL_BASE}/architecture/`} class="view-all-link">View All &rarr;</a>
@@ -2917,7 +2916,6 @@ Welcome to the central developer portal for enterprise mobile application develo
       <ul>
         <li><a href="https://teams.enterprise.internal/l/channel/mobile-platform-support">Support Group</a></li>
         <li><a href={`${PORTAL_BASE}/support/faqs/`}>FAQ</a></li>
-        <li><a href={`${PORTAL_BASE}/support/`}>Support Overview</a></li>
       </ul>
       <div class="card-footer-end">
         <a href={`${PORTAL_BASE}/support/`} class="view-all-link">View All &rarr;</a>
@@ -2947,47 +2945,119 @@ Welcome to the central developer portal for enterprise mobile application develo
 </CardGrid>
 
 <style>
-  /* 3-COLUMN DESKTOP RESPONSIVE GRID */
+  /* 3-COLUMN DESKTOP RESPONSIVE GRID (NO STAGGER OFFSET) */
+  .portal-grid-3col :global(.card-grid) {
+    display: grid !important;
+    gap: 1.25rem !important;
+    grid-template-columns: 1fr;
+    margin-top: 1rem;
+  }
+
+  @media (min-width: 48rem) {
+    .portal-grid-3col :global(.card-grid) {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+  }
+
   @media (min-width: 68rem) {
     .portal-grid-3col :global(.card-grid) {
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     }
   }
 
-  /* RIGHT-ALIGNED 'VIEW ALL' BUTTON AT BOTTOM END OF CARD */
+  /* EQUAL HEIGHT CARDS & FLEX COLUMN */
   .portal-grid-3col :global(.card) {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100%;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    height: 100% !important;
+    margin: 0 !important;
+    transform: none !important; /* Cancel any stagger translation */
+    background: var(--sl-color-bg-nav, rgba(15, 23, 42, 0.7)) !important;
+    border: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.2)) !important;
+    border-radius: 10px !important;
+    padding: 1.25rem !important;
+    box-sizing: border-box !important;
   }
 
+  .portal-grid-3col :global(.card p) {
+    font-size: 0.88rem !important;
+    color: var(--sl-color-gray-3, #94a3b8) !important;
+    line-height: 1.45 !important;
+    margin-bottom: 1rem !important;
+  }
+
+  /* 2x2 PILL BUTTONS (MATCHING DESIRED COMPACT LOOK) */
+  .portal-grid-3col :global(.card ul) {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 0 1rem 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px 10px !important;
+    width: 100% !important;
+  }
+
+  .portal-grid-3col :global(.card ul li) {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+  }
+
+  .portal-grid-3col :global(.card ul li a) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-height: 38px !important;
+    padding: 6px 10px !important;
+    background: rgba(30, 41, 59, 0.6) !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    border-radius: 6px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    color: #f1f5f9 !important;
+    text-decoration: none !important;
+    text-align: center !important;
+    transition: all 0.15s ease !important;
+    line-height: 1.25 !important;
+    box-sizing: border-box !important;
+  }
+
+  .portal-grid-3col :global(.card ul li a:hover) {
+    background: rgba(34, 197, 94, 0.15) !important;
+    border-color: #22c55e !important;
+    color: #22c55e !important;
+    transform: translateY(-1px) !important;
+  }
+
+  /* PINNED BOTTOM FOOTER WITH RIGHT-ALIGNED 'VIEW ALL' */
   .card-footer-end {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    margin-top: auto;
-    padding-top: 12px;
-    border-top: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
-    width: 100%;
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    margin-top: auto !important;
+    padding-top: 10px !important;
+    border-top: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.15)) !important;
+    width: 100% !important;
   }
 
   .view-all-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.84rem;
-    font-weight: 700;
-    color: var(--sl-color-text-accent, #22c55e);
-    text-decoration: none;
-    margin-left: auto;
-    transition: color 0.15s ease, transform 0.15s ease;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    color: #22c55e !important;
+    text-decoration: none !important;
+    margin-left: auto !important;
+    transition: transform 0.15s ease, color 0.15s ease !important;
   }
 
   .view-all-link:hover {
-    color: var(--sl-color-white, #ffffff);
-    transform: translateX(3px);
-    text-decoration: underline;
+    color: #4ade80 !important;
+    transform: translateX(3px) !important;
+    text-decoration: underline !important;
   }
 </style>
 
