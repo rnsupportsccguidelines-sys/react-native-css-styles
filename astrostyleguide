@@ -1,918 +1,54 @@
 ---
-interface Props {
-  title?: string;
-  id?: string;
-}
-
-const { title = "ARCHITECTURE DIAGRAM", id } = Astro.props;
-const uniqueId = id || `diagram-${Math.random().toString(36).slice(2, 9)}`;
----
-
-<div class="mermaid-premium-container" id={uniqueId}>
-  <!-- COMPACT HEADER -->
-  <div class="mermaid-header">
-    <div class="mermaid-title-wrap">
-      <span class="mermaid-badge">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-          <polyline points="2 17 12 22 22 17"></polyline>
-          <polyline points="2 12 12 17 22 12"></polyline>
-        </svg>
-        DIAGRAM
-      </span>
-      <span class="mermaid-title">{title}</span>
-    </div>
-
-    <div class="mermaid-toolbar">
-      <button type="button" class="mermaid-btn btn-zoom-out" title="Zoom Out (-)" aria-label="Zoom Out">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
-
-      <span class="mermaid-zoom-indicator" title="Click to Reset View">100%</span>
-
-      <button type="button" class="mermaid-btn btn-zoom-in" title="Zoom In (+)" aria-label="Zoom In">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
-
-      <div class="mermaid-divider"></div>
-
-      <button type="button" class="mermaid-btn btn-reset" title="Reset View (100%)" aria-label="Reset View">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-          <path d="M3 3v5h5"></path>
-        </svg>
-      </button>
-
-      <div class="mermaid-divider"></div>
-
-      <!-- Expand Button into Top-Layer Popup -->
-      <button type="button" class="mermaid-btn btn-expand-modal" title="Expand Fullscreen Popup" aria-label="Expand Fullscreen Popup">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
-        </svg>
-        <span>Expand</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- COMPACT VIEWPORT: Naturally hugs the diagram without tall empty gaps -->
-  <div class="mermaid-viewport">
-    <div class="mermaid-canvas">
-      <slot />
-    </div>
-
-    <div class="mermaid-tip">
-      Click + / − to zoom &bull; Click Expand for full popup
-    </div>
-  </div>
-
-  <!-- NATIVE TOP-LAYER POPUP DIALOG (Guaranteed ABOVE website sticky topbars) -->
-  <dialog class="mermaid-modal" id={`${uniqueId}-modal`}>
-    <div class="modal-header">
-      <div class="modal-title-wrap">
-        <span class="mermaid-badge">EXPANDED VIEW</span>
-        <span class="modal-title">{title}</span>
-      </div>
-
-      <div class="modal-controls">
-        <div class="mermaid-toolbar">
-          <button type="button" class="mermaid-btn modal-btn-zoom-out" title="Zoom Out (-)" aria-label="Zoom Out">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </button>
-          <span class="mermaid-zoom-indicator modal-zoom-indicator" title="Reset View">100%</span>
-          <button type="button" class="mermaid-btn modal-btn-zoom-in" title="Zoom In (+)" aria-label="Zoom In">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </button>
-          <div class="mermaid-divider"></div>
-          <button type="button" class="mermaid-btn modal-btn-reset" title="Reset View" aria-label="Reset View">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-              <path d="M3 3v5h5"></path>
-            </svg>
-          </button>
-        </div>
-
-        <!-- HIGH-VISIBILITY CLOSE BUTTON: ALWAYS VISIBLE ON TOP -->
-        <button type="button" class="btn-close-modal" title="Close Popup (Esc)" aria-label="Close Popup">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-          <span>Close (Esc)</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- MODAL VIEWPORT FOR DRAG & UNBOUNDED ZOOM -->
-    <div class="modal-viewport">
-      <!-- The canvas moves here dynamically upon opening -->
-      <div class="modal-floating-tip">
-        Click &amp; Drag to pan &bull; Mouse wheel to zoom &bull; Press Esc to close
-      </div>
-    </div>
-  </dialog>
-</div>
-
-<style>
-  .mermaid-premium-container {
-    position: relative;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    background: var(--sl-color-bg, #1e293b);
-    border: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.25));
-    border-radius: 10px;
-    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.25);
-    overflow: hidden;
-    margin: 20px 0;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* SLIM, COMPACT INLINE HEADER */
-  .mermaid-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 7px 12px;
-    background: var(--sl-color-bg-nav, #1e293b);
-    border-bottom: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
-    user-select: none;
-    gap: 8px;
-    z-index: 5;
-  }
-
-  .mermaid-title-wrap {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  .mermaid-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 2px 7px;
-    border-radius: 4px;
-    background: rgba(56, 189, 248, 0.14);
-    color: var(--sl-color-text-accent, #38bdf8);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    flex-shrink: 0;
-  }
-
-  .mermaid-title {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--sl-color-text, #cbd5e1);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .mermaid-toolbar {
-    display: inline-flex;
-    align-items: center;
-    background: rgba(30, 41, 59, 0.9);
-    border: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.25));
-    border-radius: 6px;
-    padding: 2px 4px;
-    gap: 3px;
-    margin-left: auto;
-    box-sizing: border-box;
-    height: 32px;
-  }
-
-  .mermaid-btn {
-    box-sizing: border-box !important;
-    background: transparent;
-    border: 1px solid transparent;
-    color: var(--sl-color-gray-3, #94a3b8);
-    height: 26px;
-    padding: 0 6px !important;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 0.74rem;
-    font-weight: 600;
-    line-height: 1 !important;
-    margin: 0 !important;
-    vertical-align: middle;
-    transition: all 0.15s ease;
-    gap: 5px;
-    flex-shrink: 0;
-  }
-
-  .mermaid-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    color: var(--sl-color-white, #ffffff);
-    border-color: rgba(255, 255, 255, 0.15);
-  }
-
-  .mermaid-btn:active {
-    transform: scale(0.95);
-  }
-
-  .mermaid-btn svg {
-    display: block;
-    flex-shrink: 0;
-    margin: 0;
-  }
-
-  .mermaid-btn span {
-    display: inline-flex;
-    align-items: center;
-    line-height: 1;
-    font-size: 0.74rem;
-    font-weight: 600;
-    margin: 0;
-    padding: 0;
-  }
-
-  .btn-expand-modal {
-    background: rgba(56, 189, 248, 0.14);
-    color: var(--sl-color-text-accent, #38bdf8);
-    border: 1px solid rgba(56, 189, 248, 0.35) !important;
-    padding: 0 8px !important;
-  }
-
-  .btn-expand-modal:hover {
-    background: rgba(56, 189, 248, 0.25);
-    color: #ffffff;
-    border-color: rgba(56, 189, 248, 0.55) !important;
-  }
-
-  .mermaid-zoom-indicator {
-    box-sizing: border-box;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--sl-color-gray-3, #94a3b8);
-    padding: 0 4px;
-    min-width: 40px;
-    text-align: center;
-    cursor: pointer;
-    font-variant-numeric: tabular-nums;
-    user-select: none;
-    line-height: 26px;
-    height: 26px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .mermaid-zoom-indicator:hover {
-    color: var(--sl-color-text-accent, #38bdf8);
-  }
-
-  .mermaid-divider {
-    width: 1px;
-    height: 14px;
-    background: var(--sl-color-gray-5, rgba(148, 163, 184, 0.25));
-    margin: 0 2px;
-    flex-shrink: 0;
-  }
-
-  /* RESPONSIVE COMFORTABLE VIEWPORT: High-visibility height with zero clipping */
-  .mermaid-viewport {
-    position: relative;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    height: 360px; /* Generous, comfortable height requested by user */
-    min-height: 320px;
-    max-height: 520px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--sl-color-bg-nav, #131b2e);
-    background-image: radial-gradient(rgba(148, 163, 184, 0.18) 1px, transparent 1px);
-    background-size: 16px 16px;
-    padding: 16px 20px;
-    box-sizing: border-box;
-  }
-
-  .mermaid-canvas {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transform-origin: center center;
-    transition: transform 0.05s linear;
-    will-change: transform;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    height: auto;
-  }
-
-  /* INLINE VIEW: SVG scales proportionally to width, height hugs viewBox without clipping */
-  .mermaid-viewport .mermaid-canvas :global(svg) {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto !important;
-    max-height: 325px !important;
-    display: block !important;
-    margin: 0 auto !important;
-    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
-  }
-
-  .mermaid-canvas :global(pre.mermaid),
-  .mermaid-canvas :global(.mermaid) {
-    background: transparent !important;
-    border: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
-
-  /* When zoomed in via + or wheel */
-  .mermaid-premium-container.is-zoomed .mermaid-canvas {
-    width: auto;
-    cursor: grab;
-  }
-
-  .mermaid-premium-container.is-zoomed .mermaid-viewport .mermaid-canvas :global(svg) {
-    max-width: none !important;
-    max-height: none !important;
-  }
-
-  .mermaid-premium-container.is-dragging .mermaid-canvas {
-    cursor: grabbing;
-  }
-
-  .mermaid-tip {
-    position: absolute;
-    bottom: 6px;
-    left: 10px;
-    font-size: 0.65rem;
-    color: var(--sl-color-gray-4, rgba(148, 163, 184, 0.65));
-    background: rgba(15, 23, 42, 0.7);
-    backdrop-filter: blur(4px);
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: 1px solid rgba(148, 163, 184, 0.1);
-    pointer-events: none;
-    user-select: none;
-  }
-
-  /* ========================================================
-     TOP-LAYER POPUP MODAL (NATIVE HTML5 <dialog>)
-     90% WIDTH & 90% HEIGHT WITH OPAQUE BACKDROP
-     ======================================================== */
-  dialog.mermaid-modal {
-    position: fixed;
-    inset: 0;
-    width: 90vw;
-    height: 90vh;
-    max-width: 90vw;
-    max-height: 90vh;
-    margin: auto;
-    padding: 0;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    border-radius: 14px;
-    box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.06);
-    background: #090d16;
-    color: #e2e8f0;
-    z-index: 2147483647; /* Maximum possible z-index in Top Layer */
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  dialog.mermaid-modal:not([open]) {
-    display: none;
-  }
-
-  /* BACKDROP: Modern comfortable translucent overlay */
-  dialog.mermaid-modal::backdrop {
-    background: rgba(15, 23, 42, 0.75);
-    backdrop-filter: blur(8px);
-  }
-
-  .mermaid-modal {
-    position: fixed;
-    inset: 0;
-    width: 90vw;
-    height: 90vh;
-    max-width: 90vw;
-    max-height: 90vh;
-    margin: auto;
-    padding: 0;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    border-radius: 12px;
-    box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
-    background: #0f172a;
-    color: #e2e8f0;
-    z-index: 2147483647; /* Maximum possible z-index in Top Layer */
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  dialog.mermaid-modal:not([open]) {
-    display: none;
-  }
-
-  /* MODAL HEADER */
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 16px;
-    background: #1e293b;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-    z-index: 100;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
-    gap: 12px;
-    flex-shrink: 0;
-    height: 52px;
-    box-sizing: border-box;
-  }
-
-  .modal-title-wrap {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .modal-title {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #f8fafc;
-  }
-
-  .modal-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-left: auto;
-  }
-
-  /* PROMINENT CLOSE BUTTON: PERFECTLY ALIGNED AT 32PX HEIGHT */
-  .btn-close-modal {
-    box-sizing: border-box !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    height: 32px !important;
-    padding: 0 12px !important;
-    gap: 6px;
-    background: #ef4444;
-    color: #ffffff;
-    border: 1px solid rgba(239, 68, 68, 0.6);
-    border-radius: 6px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    line-height: 1 !important;
-    margin: 0 !important;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
-    flex-shrink: 0;
-  }
-
-  .btn-close-modal svg {
-    display: block;
-    flex-shrink: 0;
-    margin: 0;
-  }
-
-  .btn-close-modal span {
-    display: inline-flex;
-    align-items: center;
-    line-height: 1;
-    font-size: 0.76rem;
-    font-weight: 700;
-    margin: 0;
-    padding: 0;
-  }
-
-  .btn-close-modal:hover {
-    background: #dc2626;
-    border-color: #b91c1c;
-    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.45);
-  }
-
-  .btn-close-modal:active {
-    transform: scale(0.96);
-  }
-
-  /* MODAL VIEWPORT */
-  .modal-viewport {
-    position: relative;
-    flex: 1;
-    width: 100%;
-    height: calc(90vh - 52px);
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #0f172a;
-    background-image: radial-gradient(rgba(148, 163, 184, 0.18) 1px, transparent 1px);
-    background-size: 24px 24px;
-    cursor: grab;
-    user-select: none;
-  }
-
-  .modal-viewport.is-dragging {
-    cursor: grabbing;
-  }
-
-  /* WHEN CANVAS MOVES INTO MODAL VIEWPORT */
-  .modal-viewport .mermaid-canvas {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transform-origin: center center;
-    transition: transform 0.05s linear;
-    will-change: transform;
-    width: auto !important;
-    height: auto !important;
-    padding: 30px;
-  }
-
-  .modal-viewport .mermaid-canvas :global(svg) {
-    max-width: none !important;
-    max-height: none !important;
-    display: block !important;
-    margin: 0 auto !important;
-    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
-  }
-
-  .modal-floating-tip {
-    position: absolute;
-    bottom: 14px;
-    left: 18px;
-    font-size: 0.72rem;
-    color: rgba(148, 163, 184, 0.8);
-    background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: blur(4px);
-    padding: 4px 10px;
-    border-radius: 5px;
-    border: 1px solid rgba(148, 163, 184, 0.15);
-    pointer-events: none;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .canvas-placeholder {
-    display: none;
-  }
-</style>
-
-<script>
-  function getSvgDimensions(svgEl: SVGSVGElement) {
-    if (svgEl.viewBox && svgEl.viewBox.baseVal && svgEl.viewBox.baseVal.width > 0) {
-      return {
-        width: svgEl.viewBox.baseVal.width,
-        height: svgEl.viewBox.baseVal.height
-      };
-    }
-    const vb = svgEl.getAttribute('viewBox');
-    if (vb) {
-      const parts = vb.trim().split(/[\s,]+/).map(Number);
-      if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
-        return { width: parts[2], height: parts[3] };
-      }
-    }
-    const w = parseFloat(svgEl.getAttribute('width') || '0');
-    const h = parseFloat(svgEl.getAttribute('height') || '0');
-    if (w > 0 && h > 0) {
-      return { width: w, height: h };
-    }
-    const rect = svgEl.getBoundingClientRect();
-    return {
-      width: rect.width || 800,
-      height: rect.height || 600
-    };
-  }
-
-  function setupAllDiagrams() {
-    document.querySelectorAll('.mermaid-premium-container').forEach((container) => {
-      if ((container as any).__mermaidModalInitialized) return;
-      (container as any).__mermaidModalInitialized = true;
-
-      const inlineViewport = container.querySelector('.mermaid-viewport') as HTMLElement | null;
-      const inlineCanvas = container.querySelector('.mermaid-canvas') as HTMLElement | null;
-      const inlineIndicator = container.querySelector('.mermaid-zoom-indicator');
-      const btnIn = container.querySelector('.btn-zoom-in');
-      const btnOut = container.querySelector('.btn-zoom-out');
-      const btnReset = container.querySelector('.btn-reset');
-      const btnOpen = container.querySelector('.btn-expand-modal');
-
-      const modal = container.querySelector('dialog.mermaid-modal') as HTMLDialogElement | null;
-      if (!modal || !inlineViewport || !inlineCanvas) return;
-
-      const modalViewport = modal.querySelector('.modal-viewport') as HTMLElement | null;
-      const btnCloseModal = modal.querySelector('.btn-close-modal');
-      const modalIndicator = modal.querySelector('.modal-zoom-indicator');
-      const modalBtnIn = modal.querySelector('.modal-btn-zoom-in');
-      const modalBtnOut = modal.querySelector('.modal-btn-zoom-out');
-      const modalBtnReset = modal.querySelector('.modal-btn-reset');
-
-      let placeholder: HTMLElement | null = null;
-      let dims = { width: 800, height: 600 };
-
-      // --- INLINE ZOOM LOGIC ---
-      let inlineScale = 1.0;
-      let inlinePanX = 0;
-      let inlinePanY = 0;
-      let inlineDragging = false;
-      let inlineStartX = 0;
-      let inlineStartY = 0;
-
-      function renderInline() {
-        if (!inlineCanvas) return;
-        inlineCanvas.style.transform = `translate(${inlinePanX}px, ${inlinePanY}px) scale(${inlineScale})`;
-        if (inlineIndicator) inlineIndicator.textContent = `${Math.round(inlineScale * 100)}%`;
-
-        if (inlineScale > 1.05 || inlinePanX !== 0 || inlinePanY !== 0) {
-          container.classList.add('is-zoomed');
-        } else {
-          container.classList.remove('is-zoomed');
-        }
-      }
-
-      function zoomInline(delta: number) {
-        inlineScale = Math.min(Math.max(inlineScale + delta, 0.4), 3.0);
-        inlineScale = Number(inlineScale.toFixed(2));
-        renderInline();
-      }
-
-      function resetInline() {
-        inlineScale = 1.0;
-        inlinePanX = 0;
-        inlinePanY = 0;
-        renderInline();
-      }
-
-      btnIn?.addEventListener('click', () => zoomInline(0.2));
-      btnOut?.addEventListener('click', () => zoomInline(-0.2));
-      btnReset?.addEventListener('click', resetInline);
-      inlineIndicator?.addEventListener('click', resetInline);
-
-      inlineViewport.addEventListener('mousedown', (e) => {
-        if ((e.target as HTMLElement)?.closest('.mermaid-toolbar')) return;
-        inlineDragging = true;
-        container.classList.add('is-dragging');
-        inlineStartX = e.clientX - inlinePanX;
-        inlineStartY = e.clientY - inlinePanY;
-      });
-
-      window.addEventListener('mousemove', (e) => {
-        if (!inlineDragging) return;
-        inlinePanX = e.clientX - inlineStartX;
-        inlinePanY = e.clientY - inlineStartY;
-        renderInline();
-      });
-
-      window.addEventListener('mouseup', () => {
-        if (inlineDragging) {
-          inlineDragging = false;
-          container.classList.remove('is-dragging');
-        }
-      });
-
-      inlineViewport.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        zoomInline(e.deltaY > 0 ? -0.1 : 0.1);
-      }, { passive: false });
-
-      inlineViewport.addEventListener('dblclick', (e) => {
-        if ((e.target as HTMLElement)?.closest('.mermaid-toolbar')) return;
-        btnOpen?.click();
-      });
-
-      // --- TOP-LAYER MODAL ZOOM & PAN LOGIC ---
-      let modalScale = 1.0;
-      let modalPanX = 0;
-      let modalPanY = 0;
-      let modalDragging = false;
-      let modalStartX = 0;
-      let modalStartY = 0;
-
-      function renderModal() {
-        if (!inlineCanvas) return;
-        inlineCanvas.style.transform = `translate(${modalPanX}px, ${modalPanY}px) scale(${modalScale})`;
-        if (modalIndicator) modalIndicator.textContent = `${Math.round(modalScale * 100)}%`;
-      }
-
-      function zoomModal(delta: number) {
-        modalScale = Math.min(Math.max(modalScale + delta, 0.2), 4.0);
-        modalScale = Number(modalScale.toFixed(2));
-        renderModal();
-      }
-
-      function resetModal() {
-        const modalW = window.innerWidth * 0.90;
-        const modalH = window.innerHeight * 0.90;
-        const availW = modalW - 60;
-        const availH = modalH - 120;
-        const scaleW = availW / dims.width;
-        const scaleH = availH / dims.height;
-        const fitScale = Math.min(scaleW, scaleH);
-        modalScale = fitScale < 1 ? Number(fitScale.toFixed(2)) : 1.0;
-        modalPanX = 0;
-        modalPanY = 0;
-        renderModal();
-      }
-
-      // OPEN MODAL (NATIVE HTML5 .showModal() -> GUARANTEED TOP LAYER!)
-      btnOpen?.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (!modalViewport) return;
-
-        const svg = inlineCanvas.querySelector('svg') as SVGSVGElement | null;
-        if (svg) {
-          dims = getSvgDimensions(svg);
-          // Concrete dimensions guarantee SVG NEVER collapses to 0 in flexbox
-          svg.style.width = `${dims.width}px`;
-          svg.style.height = `${dims.height}px`;
-          svg.style.maxWidth = 'none';
-          svg.style.maxHeight = 'none';
-          svg.style.display = 'block';
-          svg.style.margin = '0 auto';
-        }
-
-        // Insert placeholder into inline container and move canvas into modal viewport
-        placeholder = document.createElement('div');
-        placeholder.className = 'canvas-placeholder';
-        inlineCanvas.parentNode?.insertBefore(placeholder, inlineCanvas);
-        modalViewport.appendChild(inlineCanvas);
-
-        modal.showModal();
-        resetModal();
-      });
-
-      // CLOSE MODAL: Restore canvas to inline container
-      function closeModal() {
-        if (!modal) return;
-        const svg = inlineCanvas.querySelector('svg') as SVGSVGElement | null;
-        if (svg) {
-          svg.style.width = '';
-          svg.style.height = '';
-          svg.style.maxWidth = '';
-          svg.style.maxHeight = '';
-          svg.style.display = '';
-          svg.style.margin = '';
-        }
-
-        if (placeholder && placeholder.parentNode) {
-          placeholder.parentNode.insertBefore(inlineCanvas, placeholder);
-          placeholder.remove();
-          placeholder = null;
-        }
-
-        if (modal.open) {
-          modal.close();
-        }
-        resetInline();
-      }
-
-      btnCloseModal?.addEventListener('click', (e) => {
-        e.preventDefault();
-        closeModal();
-      });
-
-      modal.addEventListener('close', () => {
-        if (placeholder) closeModal();
-      });
-
-      // Click outside 90% dialog (on opaque backdrop) to close
-      modal.addEventListener('click', (e) => {
-        const rect = modal.getBoundingClientRect();
-        const isInDialog = (
-          rect.top <= e.clientY &&
-          e.clientY <= rect.top + rect.height &&
-          rect.left <= e.clientX &&
-          e.clientX <= rect.left + rect.width
-        );
-        if (!isInDialog) {
-          closeModal();
-        }
-      });
-
-      modalBtnIn?.addEventListener('click', () => zoomModal(0.2));
-      modalBtnOut?.addEventListener('click', () => zoomModal(-0.2));
-      modalBtnReset?.addEventListener('click', resetModal);
-      modalIndicator?.addEventListener('click', resetModal);
-
-      // Pan inside modal
-      if (modalViewport) {
-        modalViewport.addEventListener('mousedown', (e) => {
-          modalDragging = true;
-          modalViewport.classList.add('is-dragging');
-          modalStartX = e.clientX - modalPanX;
-          modalStartY = e.clientY - modalPanY;
-        });
-
-        window.addEventListener('mousemove', (e) => {
-          if (!modalDragging) return;
-          modalPanX = e.clientX - modalStartX;
-          modalPanY = e.clientY - modalStartY;
-          renderModal();
-        });
-
-        window.addEventListener('mouseup', () => {
-          if (modalDragging) {
-            modalDragging = false;
-            modalViewport.classList.remove('is-dragging');
-          }
-        });
-
-        modalViewport.addEventListener('wheel', (e) => {
-          e.preventDefault();
-          zoomModal(e.deltaY > 0 ? -0.12 : 0.12);
-        }, { passive: false });
-      }
-    });
-  }
-
-  setupAllDiagrams();
-  document.addEventListener('astro:page-load', setupAllDiagrams);
-</script>
-
-
-
-
-----------------------
-
-
----
-title: Welcome & Quick Start
-description: The central roadmap and navigation directory for onboarding to the Mobile Engineering Platform.
+title: Architecture & Platform Standards Overview
+description: Master architectural overview and engineering framework for enterprise mobile applications across iOS, Android, and React Native.
 sidebar:
   order: 1
-  label: Welcome and Quick Start
+  label: Architecture Overview
 ---
 
-import { Tabs, TabItem, CardGrid, Card, LinkCard } from '@astrojs/starlight/components';
-import MermaidZoom from './MermaidZoom.astro';
+import { CardGrid, Card, LinkCard, Aside } from '@astrojs/starlight/components';
+import DiagramExpand from './DiagramExpand.astro';
 
 export const PORTAL_BASE = '/mobile';
 
-:::tip[Master Onboarding Guide]
-Welcome to the Enterprise Mobile Engineering Platform. This page is your master orientation guide and routing hub. It outlines the structured onboarding sequence, clarifies prerequisites, and routes you directly to your tailored track without redundant steps.
-:::
+<Aside type="tip" title="Master Architectural Blueprint">
+Governing all enterprise iOS, Android, and React Native applications. Enforces strict 4-layer clean architecture, unidirectional data flow (UDF), offline-first network resilience, runtime feature flag governance, and hardware-backed credential storage.
+</Aside>
 
-## Platform Pillars
+## Macro Architecture Topology
 
-<CardGrid>
-  <Card title="Tier-1 Stacks" icon="open-book">
-    Native Android (Jetpack Compose), Native iOS (SwiftUI), and Cross-Platform React Native.
-  </Card>
-  <Card title="Shared Core SDKs" icon="puzzle">
-    Pre-built authentication, networking, analytics telemetry, and unified UI design tokens.
-  </Card>
-  <Card title="Automated CI/CD" icon="setting">
-    Bitrise build pipelines, automated Danger PR inspections, and coverage gate enforcement.
-  </Card>
-  <Card title="Clean Architecture" icon="document">
-    Standardized four-layer architecture from UI presentation to local data repositories.
-  </Card>
-</CardGrid>
+The enterprise mobile ecosystem is organized into four distinct operational tiers, from client devices to enterprise cloud backends:
 
----
-
-## Onboarding Journey Map
-
-Follow this sequential roadmap to navigate through the foundational guides in this section:
-
-<MermaidZoom title="THE ONBOARDING JOURNEY MAP">
+<DiagramExpand title="ENTERPRISE MACRO TOPOLOGY">
 
 ```mermaid
 flowchart TD
-    Start["New Engineer Joins Platform"] --> POverview["Platform Overview"]
-    POverview --> PersonaCheck{"Developer Persona"}
-    
-    PersonaCheck -- "Web / Backend" --> NonMobile["Non-Mobile Track"]
-    PersonaCheck -- "Mobile Native" --> MobileTrack["New Mobile Track"]
-    
-    NonMobile --> MobileTrack
-    MobileTrack --> TechStack["Tech Stack Selection"]
-    
-    TechStack --> MachineSetup["Machine Setup"]
-    MachineSetup --> FirstPR["Submit First Pull Request"]
+    subgraph Clients["Tier 1: Client Application Tier"]
+        RN["React Native (Fabric & TypeScript)"]
+        Android["Native Android (Kotlin & Compose)"]
+        iOS["Native iOS (Swift & SwiftUI)"]
+    end
+
+    subgraph SDKs["Tier 2: Enterprise Shared Foundation Tier"]
+        Auth["Identity SSO (OAuth2 / OIDC)"]
+        Breaker["Resilience Client (Circuit Breaker)"]
+        RUM["Telemetry & Crash Analytics"]
+        Tokens["Design System Tokens"]
+    end
+
+    subgraph Gateway["Tier 3: Enterprise Edge Gateway"]
+        Edge["API Management Gateway (Rate Limiting)"]
+        WAF["Web Application Firewall & mTLS"]
+    end
+
+    subgraph Backend["Tier 4: Enterprise Core Services"]
+        APIs["Domain Microservices (Orders, Billing)"]
+        Kafka["Enterprise Event Hub (Kafka Streams)"]
+    end
+
+    Clients --> SDKs
+    SDKs --> Gateway
+    Gateway --> Backend
 
     classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
     classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
@@ -920,2183 +56,1934 @@ flowchart TD
     classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
     classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
 
-    class Start,FirstPR networkLayer;
-    class POverview,TechStack,MachineSetup domainLayer;
-    class PersonaCheck securityLayer;
-    class NonMobile,MobileTrack uiLayer;
+    class RN,Android,iOS uiLayer;
+    class Auth,Breaker,RUM,Tokens domainLayer;
+    class Edge,WAF securityLayer;
+    class APIs,Kafka networkLayer;
 ```
 
-</MermaidZoom>
+</DiagramExpand>
 
 ---
 
-## Onboarding Navigation Directory
+## Core Architectural Pillars
 
-Select your developer background to see your tailored onboarding roadmap:
+All mobile applications delivered across the enterprise must implement the four foundational architectural pillars:
 
-<Tabs>
-  <TabItem label="Track A: Web & Backend Engineers">
-
-Designed specifically for web, frontend, and backend developers transitioning into enterprise mobile development. Follow the sequential progression: **Non-Mobile Guide &rarr; New Mobile Track &rarr; Tech Stack Selection &rarr; Machine Setup**:
-
-<CardGrid>
-  <LinkCard
-    title="Platform Overview"
-    href={`${PORTAL_BASE}/onboarding/platform-overview/`}
-    description="Understand the mobile engineering ecosystem: shared architectural layers, core foundational libraries, and repository topology."
-  />
-  <LinkCard
-    title="Non-Mobile Engineer Track"
-    href={`${PORTAL_BASE}/onboarding/non-mobile-dev-guide/`}
-    description="Bridge the gap from web/backend to mobile: understand UI thread budgeting, application lifecycle, and offline caching."
-  />
-  <LinkCard
-    title="New Mobile Engineer Track"
-    href={`${PORTAL_BASE}/onboarding/new-mobile-engineer-track/`}
-    description="Enterprise mobile foundations: 4-layer clean architecture, private registries, core SDK initialization, and Danger PR bots."
-  />
-  <LinkCard
-    title="Tech Stack Selection"
-    href={`${PORTAL_BASE}/onboarding/tech-stack-matrix/`}
-    description="Evaluate technical trade-offs between Jetpack Compose, SwiftUI, and React Native New Architecture using the platform decision matrix."
-  />
-  <LinkCard
-    title="Machine Setup & Workstation"
-    href={`${PORTAL_BASE}/onboarding/machine-setup/`}
-    description="Automated scripts, Xcode and Android Studio versions, JDK 17 setup, simulator configurations, and Doctor CLI validation."
-  />
-</CardGrid>
-
-  </TabItem>
-  <TabItem label="Track B: Experienced Mobile Engineers">
-
-Accelerated path for senior engineers with prior iOS, Android, or React Native production experience:
-
-<CardGrid>
-  <LinkCard
-    title="Platform Overview"
-    href={`${PORTAL_BASE}/onboarding/platform-overview/`}
-    description="Understand the mobile engineering ecosystem: shared architectural layers, core foundational libraries, and repository topology."
-  />
-  <LinkCard
-    title="New Mobile Engineer Track"
-    href={`${PORTAL_BASE}/onboarding/new-mobile-engineer-track/`}
-    description="Accelerated path for experienced mobile developers. Jump directly into monorepo structures, internal package registries, and PR conventions."
-  />
-  <LinkCard
-    title="Tech Stack Selection"
-    href={`${PORTAL_BASE}/onboarding/tech-stack-matrix/`}
-    description="Evaluate technical trade-offs between Jetpack Compose, SwiftUI, and React Native New Architecture using the platform decision matrix."
-  />
-  <LinkCard
-    title="Machine Setup & Workstation"
-    href={`${PORTAL_BASE}/onboarding/machine-setup/`}
-    description="Automated scripts, Xcode and Android Studio versions, JDK 17 setup, simulator configurations, and Doctor CLI validation."
-  />
-</CardGrid>
-
-  </TabItem>
-</Tabs>
-
----
-
-## Access Provisioning & Workstation Setup
-
-Before contributing to a mobile repository, request the platform access required for your assigned project through the Enterprise Access Portal:
-
-| System or Service | Exact Entitlement Keyword | Purpose |
-| :--- | :--- | :--- |
-| **GitHub Enterprise** | `GitHub Enterprise on AzureAD` | Access source repositories, branches, Pull Requests, and code reviews |
-| **Bitrise** | `Bitrise on AzureAD` | Access mobile CI/CD workflows and build results |
-| **Unleash** | `Unleash on AzureAD` | Access feature flags and remote configuration |
-| **Datadog** | `Datadog on AzureAD` | Access monitoring, analytics, observability, and troubleshooting capabilities |
-| **NowSecure** | `NowSecure SSO on AzureAD` | Access mobile application security scans and reports |
-| **Atlassian Group** | `Jira-Mobile, Confluence on AzureAD` | Access Jira, Confluence, and associated engineering workflows |
-| **Developer App** | `API/Enterprise-Developers on Active Directory` | Obtain developer group membership and access to development resources |
-| **Enterprise VPN** | `Enterprise VPN Global on AzureAD` | Access internal repositories, APIs, services, and engineering resources |
-| **Directory Services** | `e-MD3 Directory Readers on AzureAD` | Access directory information required by supported identity implementations |
-| **Mobile Platform Vault** | `Mobile Platform Vault on AzureAD` | Access approved protected configuration when required |
-| **macOS Management** | `macOS JAMF Users on AzureAD` | Register and manage an enterprise-issued MacBook through JAMF |
-| **Mobile Platform MCP** | `engineering-mobile-mcp/mobile-bitrise-mcp on AzureAD` | Access the Mobile Platform Bitrise MCP integration when required |
-
-:::note[Access Scope & Workstation Preparation]
-Access requirements vary by application, role, and assigned responsibilities. Application-specific access, including store-console permissions, should be coordinated with the project team.
-
-Detailed workstation preparation is covered in the [Machine Setup & Workstation Guide](${PORTAL_BASE}/onboarding/machine-setup/).
-:::
-
----
-
-:::caution[Foundational Platform Guardrails]
-Keep these non-negotiable principles in mind as you progress through each track:
-
-* **Strict Layered Separation:** UI components must only observe ViewModel state; direct repository or network calls from view layers are strictly prohibited.
-* **Zero Plaintext Credentials:** API secrets, auth tokens, and certificates must always reside in secure storage (KeyStore / Keychain), never in source control.
-* **Offline-First Resilience:** All features touching network endpoints must implement caching and Circuit Breaker resilience.
-* **Automated Gate Compliance:** Every pull request must pass Danger PR Bot static analysis and unit test suites prior to merge.
-:::
-
-
-
-
------------------------
-
----
-title: Platform Overview
-description: Architectural topology, core capabilities, delivery lifecycle, and engineering domains of the Mobile Engineering Platform.
-sidebar:
-  order: 2
-  label: Platform Overview
----
-
-import { Tabs, TabItem, CardGrid, Card, LinkCard } from '@astrojs/starlight/components';
-import MermaidZoom from './MermaidZoom.astro';
-
-export const PORTAL_BASE = '/mobile';
-
-:::tip[Ecosystem Topology]
-The Enterprise Mobile Engineering Platform establishes a unified delivery framework across iOS, Android, and React Native. It standardizes common capabilities into shared infrastructure—including identity, networking resilience, automated gate inspections, and telemetry—enabling teams to focus on domain features.
-:::
-
-## Key Platform Capabilities
-
-<CardGrid>
-  <Card title="Client Stacks" icon="open-book">
-    Jetpack Compose, SwiftUI, and React Native New Architecture with shared tokens.
-  </Card>
-  <Card title="CI/CD & Bitrise" icon="setting">
-    Automated build runners, Danger PR inspections, and Fastlane deployment pipelines.
-  </Card>
-  <Card title="Release Gates" icon="warning">
-    Automated coverage gates, Sauce Labs device regression, and NowSecure security scans.
-  </Card>
-  <Card title="Observability" icon="information">
-    Datadog RUM telemetry, real-time crash alerting, and remote feature flag management.
-  </Card>
-</CardGrid>
-
----
-
-## Platform Delivery Lifecycle
-
-The Enterprise Mobile Platform follows a standardized delivery lifecycle from local feature creation through automated inspection, store distribution, and runtime production operations:
-
-<MermaidZoom title="PLATFORM DELIVERY LIFECYCLE">
-
-```mermaid
-flowchart TD
-    Dev["Local Workstation & Development\n(IDEs, Templates & Internal SDKs)"]
-    PR["GitHub Enterprise Pull Request"]
-
-    Dev --> PR
-
-    subgraph CI["Quality & Security (Bitrise CI Pipeline)"]
-        Danger["Danger PR Code Checks"]
-        Sauce["Sauce Labs Device Cloud"]
-        NowSec["NowSecure SAST/DAST"]
-
-        Danger --> Sauce --> NowSec
-    end
-
-    PR --> Danger
-
-    subgraph Dist["Store Distribution"]
-        PublicStore["Public App Stores\n(Google Play & Apple App Store)"]
-        EnterpriseStore["Enterprise App Portal\n(Internal Distribution)"]
-    end
-
-    NowSec --> PublicStore
-    NowSec --> EnterpriseStore
-
-    subgraph Ops["Production Operations"]
-        Users["Active Mobile Users"]
-        Datadog["Datadog RUM Telemetry\n& Crash Alerts"]
-
-        Users --> Datadog
-    end
-
-    PublicStore --> Users
-    EnterpriseStore --> Users
-
-    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
-
-    class Dev,Users uiLayer;
-    class PR domainLayer;
-    class Danger,NowSec securityLayer;
-    class Sauce,PublicStore,EnterpriseStore networkLayer;
-    class Datadog dataLayer;
-```
-
-</MermaidZoom>
-
-* **Development:** Feature development executed in Android Studio, Xcode, or VS Code using enterprise templates and internal shared SDK packages.
-* **Quality & Security:** Automated Bitrise CI triggers on every pull request, executing static Danger inspections, unit test suites, cloud device regression, and binary vulnerability scanning.
-* **Distribution:** Automated deployment to public app stores (Apple App Store, Google Play Store) or private Enterprise App Distribution portals.
-* **Operations:** Real-time production telemetry via Datadog RUM, crash report tracking, and remote emergency kill switches.
-
----
-
-## Supported Development Platforms
-
-The platform supports three tier-1 mobile architectures. Each stack is equipped with dedicated scaffolding templates, linting configurations, and enterprise SDK mirrors:
-
-<Tabs>
-  <TabItem label="React Native (New Architecture)">
-
-Optimized for feature velocity and high code reuse (80%+ default enterprise standard). Leverages Fabric native renderer, TurboModules, and internal TypeScript packages.
-
-* **Renderer:** Fabric C++ direct native engine
-* **Module Architecture:** JSI & TurboModules (zero async bridge serialization)
-* **Default State Engine:** Zustand + TanStack Query
-
-<a href={`${PORTAL_BASE}/platforms/react-native-standards/`}>View React Native Architecture Guide &rarr;</a>
-
-  </TabItem>
-  <TabItem label="Native Android (Kotlin / Compose)">
-
-Engineered for hardware-intensive workflows, offline background sync daemons, Bluetooth peripherals, and deep Android OS integrations.
-
-* **Language:** Kotlin 1.9+ with Coroutines & Structured Concurrency
-* **UI Toolkit:** Jetpack Compose (Declarative)
-* **Dependency Injection:** Hilt & Dagger 2
-
-<a href={`${PORTAL_BASE}/platforms/android-standards/`}>View Native Android Architecture Guide &rarr;</a>
-
-  </TabItem>
-  <TabItem label="Native iOS (Swift / SwiftUI)">
-
-Tailored for flagship Apple ecosystem experiences requiring native Metal graphics, CoreML acceleration, secure enclave operations, or advanced iOS system integrations.
-
-* **Language:** Swift 5.9+ with Swift Concurrency (`async/await`, Actors, `@MainActor`)
-* **UI Toolkit:** SwiftUI
-* **Security Enclave:** iOS Keychain Services & Biometric Gating
-
-<a href={`${PORTAL_BASE}/platforms/ios-standards/`}>View Native iOS Architecture Guide &rarr;</a>
-
-  </TabItem>
-</Tabs>
-
----
-
-## Quality and Security Gates
-
-Every production application binary progresses through a strict, automated verification pipeline before release approval:
-
-1. **Pull Request Validation:** Branch rules require all code to branch from and target `main` via short-lived feature branches.
-2. **Code Review:** Mandatory minimum of two passing reviews from code owners before merge.
-3. **Bitrise & Danger Bot:** Automated checks analyze bundle size deltas, verify conventional commit syntax, and enforce changelog updates.
-4. **Functional Testing (Sauce Labs):** Automated regression suites run across physical Android and iOS devices, validating UI state under varying battery, connectivity, and OS versions. Minimum 80% coverage required.
-5. **Security Scanning (NowSecure):** Automated SAST/DAST detects insecure data storage, hardcoded secrets, and network communication vulnerabilities.
-6. **Release Gate:** Staged rollout to test flights, enterprise internal portals, or public app stores.
-
----
-
-## Engineering Domains
-
-The documentation portal is organized into core technical domains that collectively support the mobile engineering lifecycle:
-
-<MermaidZoom title="ENTERPRISE ENGINEERING DOMAINS">
-
-```mermaid
-flowchart TD
-    Mob["Enterprise Mobile Engineering Ecosystem"]
-
-    subgraph Found["Foundations & Platforms"]
-        D1["Architecture & Standards\n(Clean Architecture & Circuit Breaker)"]
-        D2["Client Stacks & SDKs\n(Compose, SwiftUI, React Native)"]
-    end
-
-    subgraph Pipeline["Build & Security Pipeline"]
-        D3["Build & Release CI/CD\n(Bitrise Pipelines & Code Signing)"]
-        D4["Security & Compliance\n(NowSecure SAST/DAST & TGRC)"]
-    end
-
-    subgraph Delivery["Distribution & Enablement"]
-        D5["App Distribution & Stores\n(Public Stores & Enterprise Internal)"]
-        D6["Developer Productivity\n(Doctor Diagnostic CLI & Templates)"]
-    end
-
-    Mob --> Found
-    Mob --> Pipeline
-    Mob --> Delivery
-
-    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
-
-    class Mob domainLayer;
-    class D1,D2 uiLayer;
-    class D3,D6 dataLayer;
-    class D4 securityLayer;
-    class D5 networkLayer;
-```
-
-</MermaidZoom>
-
-* **Architecture & Standards:** Clean Architecture patterns, unidirectional data flow, Circuit Breaker resilience, and remote feature flag governance.
-* **Development Platforms:** In-depth guidelines, design tokens, and shared SDK catalogs for Android, iOS, and React Native.
-* **Build & Release:** Bitrise pipeline configurations, Fastlane lanes, automated code signing, and release train schedules.
-* **Security & Observability:** KeyStore/Keychain secure token storage, Datadog RUM monitoring, crash triaging, and NowSecure compliance.
-* **App Distribution:** Workflows for enterprise internal distribution, test flights, and public store releases.
-* **Developer Productivity:** Workstation setup automation, Doctor diagnostic CLI, and repository starter templates.
-
----
-
-:::note[Completion Checklist]
-Before proceeding to your developer track, confirm you can answer the following:
-
-* **Major Architecture Components:** How client applications interact with enterprise backend APIs through shared SDKs and Circuit Breaker resilience.
-* **Application Delivery Lifecycle:** The path code travels from local feature development through automated quality gates to production.
-* **Quality and Security Verification:** Where automated Danger, Sauce Labs cloud devices, and NowSecure scans occur in CI.
-* **Supported Platforms:** The trade-offs and decision criteria for choosing React Native vs. Native Android vs. Native iOS.
-* **Platform Services:** The availability and integration patterns for shared push notifications, auth SSO, and Datadog telemetry.
-:::
-
----
-
-## Next Steps
-
-<CardGrid>
-  <LinkCard
-    title="Non-Mobile Engineer Track"
-    href={`${PORTAL_BASE}/onboarding/non-mobile-dev-guide/`}
-    description="Bridge the gap from web/backend to native mobile development concepts."
-  />
-  <LinkCard
-    title="New Mobile Engineer Track"
-    href={`${PORTAL_BASE}/onboarding/new-mobile-engineer-track/`}
-    description="Accelerated onboarding for experienced iOS, Android, and React Native developers."
-  />
-</CardGrid>
-
-
-
-
---------------------
-
-
-
----
-title: Non-Mobile Engineer Track
-description: Comprehensive transition guide and foundational primer for web, frontend, and backend developers entering enterprise mobile engineering from scratch.
-sidebar:
-  order: 3
-  label: Non-Mobile Track
----
-
-import { Tabs, TabItem, CardGrid, Card, LinkCard, Aside } from '@astrojs/starlight/components';
-import MermaidZoom from './MermaidZoom.astro';
-
-export const PORTAL_BASE = '/mobile';
-
-:::tip[Engineering Transition Primer]
-Designed specifically for web (React, Vue, Node.js), backend (Java, Go, Python, C#), and fullstack engineers transitioning into enterprise mobile engineering. This guide demystifies native OS execution, the 60/120fps UI thread budget, offline-first persistence, application sandboxing, memory management, and binary release lifecycles.
-:::
-
-## Key Paradigm Shifts
-
-<CardGrid>
-  <Card title="Client Sandboxing & OS Lifecycle" icon="setting">
-    Process death, background suspension, and strict system watchdog termination rules.
-  </Card>
-  <Card title="Main Thread Frame Budget" icon="laptop">
-    16.6ms at 60Hz and 8.3ms at 120Hz. Offloading computation to non-blocking dispatchers.
-  </Card>
-  <Card title="Offline-First Resilience" icon="puzzle">
-    Circuit Breaker pattern, local storage fallback, and volatile cellular connectivity.
-  </Card>
-  <Card title="Memory & Reference Ownership" icon="document">
-    Automatic Reference Counting (ARC), garbage collection differences, and leak prevention.
-  </Card>
-</CardGrid>
-
----
-
-## The Mental Model Shift: Web & Backend vs. Mobile
-
-Engineers entering mobile from web or backend microservices often encounter architectural differences that lead to major production defects if unaddressed:
-
-| Engineering Dimension | Web / Backend Architecture | Mobile Client Architecture | Architectural Impact |
+| Architectural Pillar | Standard Enforced | Engineering Purpose | Verification Method |
 | :--- | :--- | :--- | :--- |
-| **Runtime Environment** | Controlled cloud servers or browser JS sandbox; predictable CPU, RAM, and stable AC power. | Heterogeneous mobile hardware (iOS & Android devices) with battery constraints and aggressive thermal throttling. | The OS aggressively terminates apps that consume excessive RAM or background CPU. |
-| **Deployment & Rollback** | Instant continuous deployment. Hotfixes deploy to production servers and CDNs in minutes. | Compiled binaries (`.aab` / `.ipa`) distributed via App Store and Google Play review pipelines. | Zero instant rollbacks. Reviews take 24–72 hours; users must manually download updates. |
-| **Execution & Threading** | Multi-threaded web servers (Tomcat, Go routines) or single-threaded event loop with async I/O. | Strict Main/UI thread (16.6ms frame budget). Background tasks require explicit dispatching. | Heavy computation on the Main Thread freezes the screen, triggering OS ANRs or watchdog kills. |
-| **Network Topology** | Reliable low-latency datacenter LAN or stable home broadband connection. | Volatile cellular connectivity, tunnel cutouts, subway dead zones, and sudden airplane mode. | Apps must be designed offline-first. Unhandled network drops cause immediate crashes or blank screens. |
-| **State & Lifecycle** | Stateless microservices or persistent browser tab until closed. | Transient OS lifecycle: Foreground &rarr; Background &rarr; Suspended &rarr; Process Death. | The OS can kill background processes at any time; apps must restore state on relaunch. |
-| **Memory Management** | Server garbage collectors with gigabytes of heap, or browser tab memory garbage collection. | Constrained device RAM (typically 2GB–6GB total shared with OS and camera subsystems). | Memory leaks trigger Out-Of-Memory (OOM) operating system kills without crash tracebacks. |
-| **Security & Secrets** | Secrets stored securely in server-side environment variables or secret vaults. | Code and assets reside on end-user hardware. Binaries can be decompiled and inspected. | Never hardcode API keys or secrets in client code. Use Secure Enclave or Android KeyStore. |
+| **Clean Architecture** | Strict 4-layer model (Presentation, Domain, Data, Core). Domain layer has zero external dependencies. | Decouples pure business rules from volatile UI frameworks and databases. Guarantees 100% portable domain testing. | Danger PR code structure audit & unit tests. |
+| **Network Resilience** | Threshold-based Circuit Breaker wrapping all remote HTTP calls with local offline cache fallback. | Prevents cascading connection timeouts, stops battery drain, and maintains offline usability in dead zones. | Automated unit tests with simulated 500/timeout responses. |
+| **Remote Config & Flags** | Dynamic feature flags and emergency kill switches decoupled from store release cycles. | Enables staged percentage rollouts (5% &rarr; 25% &rarr; 100%) and instant kill-switching without waiting for store review. | Integration with enterprise feature flag client. |
+| **Hardware-Backed Security** | OAuth2/OIDC SSO tokens stored in hardware KeyStore (Android) or Keychain (iOS). Zero plain-text credentials. | Protects against binary reverse engineering, memory dumping, and stolen device credential exfiltration. | Automated SAST/DAST security scanning. |
 
 ---
 
-## Architectural Comparison
+## Unidirectional Data Flow & State Architecture
 
-The following diagram illustrates how standard web/backend tiering translates into mobile native client architecture:
+To prevent race conditions, stale views, and inconsistent screen states, all user actions follow a strict **Unidirectional Data Flow (UDF)** loop:
 
-<MermaidZoom title="WEB/BACKEND VS. MOBILE NATIVE ARCHITECTURE">
+<DiagramExpand title="UNIDIRECTIONAL DATA FLOW">
 
 ```mermaid
 flowchart TD
-    subgraph Web["Web & Backend Tiering"]
-        Browser["1. Browser Client\n(DOM & React Virtual DOM)"]
-        Server["2. Application Gateway\n(Express / Spring Boot / Go)"]
-        DB["3. Enterprise Database\n(PostgreSQL / Redis)"]
-        Browser -->|"HTTP / REST"| Server -->|"TCP / SQL"| DB
-    end
+    subgraph Loop["Unidirectional Data Flow Cycle"]
+        UI["Declarative View (Renders current immutable state)"]
+        Action["User Intent or Action (Button tap, pull to refresh)"]
+        Reducer["ViewModel or Hook Controller (Processes intent via Domain Use Case)"]
+        NewState["New Immutable State Snapshot (Emitted to UI)"]
 
-    subgraph Mobile["Mobile Native Architecture"]
-        UI["1. Native UI Layer\n(Compose / SwiftUI / Fabric)"]
-        Worker["2. Background Dispatcher\n(Coroutines / Tasks / Worker Thread)"]
-        LocalCache["3. Local Offline Cache\n(Room SQLite / CoreData / MMKV)"]
-        UI -->|"Non-blocking events"| Worker
-        Worker -->|"Read / Write"| LocalCache
+        UI -->|"User interacts"| Action
+        Action -->|"Dispatched to"| Reducer
+        Reducer -->|"Calculates and emits"| NewState
+        NewState -->|"Re-renders view"| UI
     end
 
     classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
     classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
     classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
 
-    class Browser,UI uiLayer;
-    class Server,Worker domainLayer;
-    class DB,LocalCache dataLayer;
+    class UI,Action uiLayer;
+    class Reducer domainLayer;
+    class NewState dataLayer;
 ```
 
-</MermaidZoom>
+</DiagramExpand>
 
----
+### Implementing State Modeling (TypeScript Example)
 
-## The Golden Rule: Never Block the Main Thread
-
-On mobile platforms, the **Main Thread (UI Thread)** is solely responsible for rendering frames at 60Hz (16.6ms per frame) or 120Hz ProMotion (8.3ms per frame) and responding to user gestures. 
-
-If your code executes heavy loops, synchronous JSON parsing, or network calls on the main thread:
-* **On Android:** Triggers an **ANR (Application Not Responding)** dialog after 5 seconds, prompting the user to force-close the app.
-* **On iOS:** Triggers the system **Watchdog timer**, which abruptly terminates the application process (crash exception code `0x8badf00d`).
-
-### Concurrency Code Patterns Across Stacks
-
-<Tabs>
-  <TabItem label="React Native (TypeScript)">
-
-In React Native, JavaScript runs on its own engine thread, while native rendering occurs on the UI thread. Long-running synchronous calculations freeze touch responses; use `useTransition` or worker pools:
+Every screen model must be expressed as an immutable, discriminated state union to eliminate undefined or conflicting intermediate UI states:
 
 ```typescript
-import React, { useState, useTransition } from 'react';
-import { View, Text, FlatList, TextInput, ActivityIndicator, StyleSheet } from 'react-native';
+// 1. Define explicit, exhaustive UI state variants
+export type ScreenState<T> =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: T; isStaleFromCache: boolean }
+  | { status: 'error'; message: string; canRetry: boolean };
 
-export function SearchableDirectory({ dataset }: { dataset: Array<{ id: string; name: string }> }) {
-  const [query, setQuery] = useState('');
-  const [filteredData, setFilteredData] = useState(dataset);
-  const [isPending, startTransition] = useTransition();
+// 2. Define user actions (Intents)
+export type OrderAction =
+  | { type: 'FETCH_ORDERS' }
+  | { type: 'REFRESH_ORDERS' }
+  | { type: 'CANCEL_ORDER'; orderId: string };
 
-  const handleSearch = (text: string) => {
-    setQuery(text);
-
-    // Non-blocking transition: preserves instant typing responsiveness on UI thread
-    startTransition(() => {
-      const lower = text.toLowerCase();
-      const results = dataset.filter(item => item.name.toLowerCase().includes(lower));
-      setFilteredData(results);
-    });
-  };
-
-  return (
-    <View style={styles.container}>
-      <TextInput
-        value={query}
-        onChangeText={handleSearch}
-        placeholder="Search directory..."
-        placeholderTextColor="#9ca3af"
-        style={styles.input}
-      />
-      {isPending && <ActivityIndicator color="#22c55e" style={styles.loader} />}
-      <FlatList
-        data={filteredData}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => <Text style={styles.itemText}>{item.name}</Text>}
-      />
-    </View>
-  );
+// 3. State Reducer (Guarantees predictable state transitions)
+export function orderReducer<T>(state: ScreenState<T>, action: OrderAction): ScreenState<T> {
+  switch (action.type) {
+    case 'FETCH_ORDERS':
+      return { status: 'loading' };
+    case 'REFRESH_ORDERS':
+      // Preserve existing data while refreshing in background
+      return state.status === 'success' ? state : { status: 'loading' };
+    default:
+      return state;
+  }
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#0f172a' },
-  input: { height: 44, borderColor: '#334155', borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, color: '#f8fafc' },
-  loader: { marginVertical: 8 },
-  itemText: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#334155', color: '#cbd5e1' },
-});
 ```
 
-  </TabItem>
-  <TabItem label="Native Android (Kotlin Coroutines)">
+---
 
-Android uses Kotlin Coroutines to cleanly move work between threads. Always switch to `Dispatchers.IO` for network or disk operations:
+## Architecture Navigation Directory
 
+Explore the dedicated architecture specifications to implement specific technical standards:
+
+<CardGrid>
+  <LinkCard
+    title="Clean Architecture Specification"
+    description="Deep dive into the 4-layer structure with complete code implementations across React Native, Kotlin Jetpack Compose, and Swift SwiftUI."
+    href={`${PORTAL_BASE}/mobile-architecture/`}
+  />
+  <LinkCard
+    title="Circuit Breaker & Resilience"
+    description="Threshold configuration, state machines (Closed, Open, Half-Open), and offline storage fallbacks to prevent cascading socket failures."
+    href={`${PORTAL_BASE}/circuit-breaker-resilience/`}
+  />
+  <LinkCard
+    title="Feature Flags & Remote Config"
+    description="Runtime feature toggling, dynamic rollouts by user segment, and emergency production kill switches decoupled from app store review queues."
+    href={`${PORTAL_BASE}/feature-flags/`}
+  />
+  <LinkCard
+    title="Offline Synchronization & Storage"
+    description="Local database standards (Room SQLite, SwiftData/CoreData, AsyncStorage), schema migrations, and sync conflict resolution protocols."
+    href={`${PORTAL_BASE}/offline-sync/`}
+  />
+  <LinkCard
+    title="Branching & PR Conventions"
+    description="Standardized GitFlow branch models, Conventional Commits formatting rules, and automated Danger PR verification checks."
+    href={`${PORTAL_BASE}/branching-prs/`}
+  />
+</CardGrid>
+
+---
+
+## Architectural Non-Negotiables
+
+<Aside type="caution" title="Mandatory Architectural Enforcement">
+The following five constraints are programmatically enforced via CI and trigger automated PR rejection if violated:
+
+1. **No Direct Network or Database Access from UI:** Views and ViewModels must never instantiate raw HTTP clients or execute direct SQL queries. All persistence and remote queries must be dispatched through Domain Use Cases.
+2. **Zero Framework Imports in the Domain Layer:** The Domain layer must remain pure business logic. It must never import UI or platform framework packages (`android.view`, `UIKit`, `SwiftUI`, `react-native`).
+3. **Mandatory Resilience Wrapping on Remote Calls:** All external API endpoints called from mobile clients must be encapsulated inside a resilience wrapper with offline cache fallback.
+4. **Hardware-Backed Credential Storage:** Auth tokens and cryptographic keys must be stored in Android KeyStore or iOS Keychain with biometric gating where required. Never store tokens in plain local storage or commit them in code.
+5. **Minimum 80% Unit Test Coverage on Domain Logic:** All Use Cases, validation logic, and business rules must have automated unit test coverage with mock repositories.
+</Aside>
+
+---
+
+## Quality Gate PR Merge Checklist
+
+Before submitting a pull request that introduces or refactors architectural components, verify every baseline item:
+
+- [ ] **Layer Separation Verified:** Repository package structure strictly mirrors Presentation, Domain, Data, and Core layers.
+- [ ] **Unidirectional Data Flow:** State is modeled as immutable discriminated unions; UI dispatches explicit user intents.
+- [ ] **Resilience Wrapper Active:** Remote HTTP calls handle offline scenarios and emit typed domain error states.
+- [ ] **Zero Hardcoded Secrets:** API endpoints, client credentials, and environment flags use runtime configuration providers.
+- [ ] **Hardware Enclave Storage:** SSO tokens and sensitive tokens reside in Android KeyStore or iOS Keychain.
+- [ ] **Unit Tests Passing:** Automated test suites verify domain use cases with at least 80% branch coverage.
+
+
+
+
+---------------------
+
+
+---
+title: Enterprise Standard Mobile Architecture
+description: Comprehensive specification of the 4-Layer Clean Architecture standard enforced across all enterprise iOS, Android, and React Native applications.
+sidebar:
+  order: 2
+  label: Clean Architecture
+---
+
+import { Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import DiagramExpand from './DiagramExpand.astro';
+
+<Aside type="tip" title="ARCHITECTURE MANDATE">
+The 4-layer clean architecture pattern is mandatory across all enterprise iOS, Android, and React Native applications. By strictly decoupling Presentation, Domain, Data, and Core Infrastructure into distinct layers governed by Dependency Inversion, applications achieve 100% portable business logic, predictable unidirectional data flow, and isolated unit testability.
+</Aside>
+
+## Four-Layer Clean Architecture Model
+
+Every enterprise mobile codebase must strictly adhere to the four architectural layers defined below:
+
+| Architectural Layer | Primary Responsibilities | Allowed Inward Dependencies | Prohibited Elements |
+| :--- | :--- | :--- | :--- |
+| **Presentation Layer** | Renders reactive declarative UI views, captures user input, and manages screen lifecycle state. | Depends only on the **Domain Layer** (executes Use Cases and observes state). | Direct SQL queries, raw HTTP client calls, network DTO models. |
+| **Domain Layer** | Encapsulates pure enterprise business rules, entity models, and abstract repository contracts. | **Zero external dependencies.** Pure language code (zero Android, iOS, or React imports). | UI widgets, database drivers, third-party platform SDKs. |
+| **Data Layer** | Implements domain repository contracts. Coordinates remote APIs with offline local databases. | Depends on the **Domain Layer** (implements interfaces) and **Core Infrastructure**. | Direct UI rendering logic, lifecycle observation, business rule mutation. |
+| **Core Infrastructure** | Shared cross-cutting foundations: SSO Auth, Resilience Circuit Breaker, Datadog Telemetry, KeyStore. | Standalone shared modules consumed by Data and Presentation layers. | Feature-specific business domain logic. Must remain universally reusable. |
+
+---
+
+## Dependency Inversion & Data Flow Diagram
+
+The **Dependency Inversion Principle** dictates that source code dependencies must point strictly inward toward higher-level business logic. The Domain layer is the system center and maintains zero knowledge of databases, network protocols, or UI widgets:
+
+<DiagramExpand title="CLEAN ARCHITECTURE DATA FLOW">
+
+```mermaid
+flowchart TD
+    subgraph Client["1. Presentation Layer"]
+        UI["UI Views (SwiftUI / Jetpack Compose / React Native)"]
+        VM["State Holders (ViewModels / React Hooks / Controllers)"]
+        UI -->|"User Event"| VM
+    end
+
+    subgraph CoreDomain["2. Domain Layer (Pure Business Core)"]
+        UC["Use Cases & Interactors (SubmitOrderUseCase)"]
+        Entities["Pure Business Entities (Order, LineItem, User)"]
+        RepoContract["Repository Interfaces (OrderRepository Contract)"]
+        VM -->|"Executes"| UC
+        UC -->|"Operates On"| Entities
+        UC -->|"Invokes Contract"| RepoContract
+    end
+
+    subgraph DataInfra["3. Data & Infrastructure Layer"]
+        RepoImpl["Repository Implementation (OrderRepositoryImpl)"]
+        LocalSource["Local Offline Cache (Room SQLite / CoreData / AsyncStorage)"]
+        RemoteSource["Remote API Client (Circuit Breaker + Auth Headers)"]
+        RepoImpl -.->|"Implements"| RepoContract
+        RepoImpl -->|"Read / Write"| LocalSource
+        RepoImpl -->|"HTTP Network"| RemoteSource
+    end
+
+    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+
+    class UI,VM uiLayer;
+    class UC,Entities,RepoContract domainLayer;
+    class RepoImpl,LocalSource dataLayer;
+    class RemoteSource networkLayer;
+```
+
+</DiagramExpand>
+
+---
+
+## Cross-Platform Clean Architecture Implementation
+
+The complete 4-layer structure is demonstrated below across all tier-1 mobile platforms:
+
+<Tabs>
+<TabItem label="React Native (TypeScript)">
+
+### Domain Layer: Entities, Contract & Use Case
+```typescript
+// src/domain/entities/Order.ts
+export interface OrderItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface Order {
+  id: string;
+  items: OrderItem[];
+  totalAmount: number;
+}
+
+// src/domain/repositories/OrderRepository.ts
+export interface OrderRepository {
+  submitOrder(order: Order): Promise<{ confirmationId: string }>;
+}
+
+// src/domain/usecases/SubmitOrderUseCase.ts
+import { Order } from '../entities/Order';
+import { OrderRepository } from '../repositories/OrderRepository';
+
+export class SubmitOrderUseCase {
+  constructor(private orderRepository: OrderRepository) {}
+
+  async execute(order: Order): Promise<{ confirmationId: string }> {
+    if (order.items.length === 0) {
+      throw new Error('Cannot submit an order with zero items.');
+    }
+    return await this.orderRepository.submitOrder(order);
+  }
+}
+```
+
+### Data Layer: Repository Implementation with Resilience
+```typescript
+// src/data/repositories/OrderRepositoryImpl.ts
+import { OrderRepository } from '../../domain/repositories/OrderRepository';
+import { Order } from '../../domain/entities/Order';
+import { CircuitBreaker } from '../../core/resilience/CircuitBreaker';
+
+export class OrderRepositoryImpl implements OrderRepository {
+  private breaker = new CircuitBreaker({ failureThreshold: 3, resetTimeoutMs: 15000 });
+
+  async submitOrder(order: Order): Promise<{ confirmationId: string }> {
+    return await this.breaker.execute(async () => {
+      const response = await fetch('https://api.enterprise.com/v1/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order),
+      });
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      return await response.json();
+    });
+  }
+}
+```
+
+### Presentation Layer: Hook & View Component
+```typescript
+// src/presentation/hooks/useSubmitOrder.ts
+import { useState } from 'react';
+import { SubmitOrderUseCase } from '../../domain/usecases/SubmitOrderUseCase';
+import { Order } from '../../domain/entities/Order';
+
+export function useSubmitOrder(useCase: SubmitOrderUseCase) {
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmationId, setConfirmationId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (order: Order) => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await useCase.execute(order);
+      setConfirmationId(result.confirmationId);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown submission error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return { submit, submitting, confirmationId, error };
+}
+```
+</TabItem>
+
+<TabItem label="Android (Kotlin)">
+
+### Domain Layer: Entities, Contract & Use Case
 ```kotlin
-package com.enterprise.mobile.feature.orders
+package com.enterprise.mobile.domain
+
+data class OrderItem(
+    val id: String,
+    val name: String,
+    val quantity: Int,
+    val unitPrice: Double
+)
+
+data class Order(
+    val id: String,
+    val totalAmount: Double,
+    val items: List<OrderItem>
+)
+
+interface OrderRepository {
+    suspend fun submitOrder(order: Order): Result<String>
+}
+
+class SubmitOrderUseCase(
+    private val repository: OrderRepository
+) {
+    suspend operator fun invoke(order: Order): Result<String> {
+        if (order.items.isEmpty()) {
+            return Result.failure(IllegalArgumentException("Order must contain at least one item."))
+        }
+        return repository.submitOrder(order)
+    }
+}
+```
+
+### Data Layer: Repository Implementation with Local Persistence
+```kotlin
+package com.enterprise.mobile.data
+
+import com.enterprise.mobile.domain.Order
+import com.enterprise.mobile.domain.OrderRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+class OrderRepositoryImpl(
+    private val apiService: OrderApiService,
+    private val orderDao: OrderDao
+) : OrderRepository {
+
+    override suspend fun submitOrder(order: Order): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.postOrder(order.toDto())
+            orderDao.insertOrder(order.toEntity(response.confirmationId))
+            Result.success(response.confirmationId)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
+```
+
+### Presentation Layer: ViewModel & StateFlow
+```kotlin
+package com.enterprise.mobile.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
+import com.enterprise.mobile.domain.Order
+import com.enterprise.mobile.domain.SubmitOrderUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-sealed interface OrderUiState {
-    object Loading : OrderUiState
-    data class Success(val orders: List<Order>) : OrderUiState
-    data class Error(val message: String) : OrderUiState
+sealed interface OrderState {
+    object Idle : OrderState
+    object Loading : OrderState
+    data class Success(val confirmationId: String) : OrderState
+    data class Error(val message: String) : OrderState
 }
 
-class OrdersViewModel(
-    private val repository: OrderRepository
+class OrderViewModel(
+    private val submitOrderUseCase: SubmitOrderUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<OrderUiState>(OrderUiState.Loading)
-    val uiState: StateFlow<OrderUiState> = _uiState.asStateFlow()
+    private val _state = MutableStateFlow<OrderState>(OrderState.Idle)
+    val state: StateFlow<OrderState> = _state
 
-    fun fetchOrders() {
+    fun submit(order: Order) {
         viewModelScope.launch {
-            _uiState.value = OrderUiState.Loading
-            try {
-                // withContext(Dispatchers.IO) ensures network work runs off the Main Thread
-                val orderList = withContext(Dispatchers.IO) {
-                    repository.getOrdersFromRemote()
-                }
-                // Automatically resumes on Main Thread to safely update UI state
-                _uiState.value = OrderUiState.Success(orderList)
-            } catch (e: Exception) {
-                _uiState.value = OrderUiState.Error(e.localizedMessage ?: "Network request failed")
-            }
+            _state.value = OrderState.Loading
+            submitOrderUseCase(order).fold(
+                onSuccess = { _state.value = OrderState.Success(it) },
+                onFailure = { _state.value = OrderState.Error(it.localizedMessage ?: "Submission failed") }
+            )
         }
     }
 }
 ```
+</TabItem>
 
-  </TabItem>
-  <TabItem label="Native iOS (Swift & SwiftUI)">
+<TabItem label="iOS (Swift)">
 
-In modern Swift, annotate UI view models with `@MainActor` to guarantee that all UI updates are marshaled to the main thread:
+### Domain Layer: Entities, Protocol & Interactor
+```swift
+import Foundation
 
+struct OrderItem: Identifiable {
+    let id: String
+    let name: String
+    let quantity: Int
+    let unitPrice: Decimal
+}
+
+struct Order: Identifiable {
+    let id: String
+    let totalAmount: Decimal
+    let items: [OrderItem]
+}
+
+protocol OrderRepositoryProtocol {
+    func submitOrder(_ order: Order) async throws -> String
+}
+
+enum DomainError: Error {
+    case emptyOrder
+}
+
+final class SubmitOrderUseCase {
+    private let repository: OrderRepositoryProtocol
+
+    init(repository: OrderRepositoryProtocol) {
+        self.repository = repository
+    }
+
+    func execute(order: Order) async throws -> String {
+        guard !order.items.isEmpty else {
+            throw DomainError.emptyOrder
+        }
+        return try await repository.submitOrder(order)
+    }
+}
+```
+
+### Data Layer: Repository Implementation
+```swift
+import Foundation
+
+final class OrderRepositoryImpl: OrderRepositoryProtocol {
+    private let networkClient: NetworkClientProtocol
+    private let database: LocalDatabaseProtocol
+
+    init(networkClient: NetworkClientProtocol, database: LocalDatabaseProtocol) {
+        self.networkClient = networkClient
+        self.database = database
+    }
+
+    func submitOrder(_ order: Order) async throws -> String {
+        let dto = OrderRequestDTO(from: order)
+        let response: OrderResponseDTO = try await networkClient.post("/v1/orders", body: dto)
+        try await database.persistOrderConfirmation(response.confirmationId)
+        return response.confirmationId
+    }
+}
+```
+
+### Presentation Layer: ViewModel with `@MainActor`
 ```swift
 import SwiftUI
 
-enum ViewState<T> {
-    case loading
-    case success(T)
-    case error(String)
-}
-
 @MainActor
-final class OrdersViewModel: ObservableObject {
-    @Published private(set) var state: ViewState<[Order]> = .loading
-    private let service: OrderServiceProtocol
+final class OrderViewModel: ObservableObject {
+    @Published var state: ViewState<String> = .idle
+    private let useCase: SubmitOrderUseCase
 
-    init(service: OrderServiceProtocol = OrderService()) {
-        self.service = service
+    init(useCase: SubmitOrderUseCase) {
+        self.useCase = useCase
     }
 
-    func loadOrders() async {
+    func submit(order: Order) async {
         state = .loading
         do {
-            // Asynchronous network call executes on background thread pool
-            let orders = try await service.fetchOrders()
-            // MainActor guarantees state assignment occurs safely on the Main Thread
-            self.state = .success(orders)
+            let confirmationId = try await useCase.execute(order: order)
+            self.state = .success(confirmationId)
         } catch {
             self.state = .error(error.localizedDescription)
         }
     }
 }
 ```
-
-  </TabItem>
+</TabItem>
 </Tabs>
 
 ---
 
-## Memory Management & Leak Prevention: Web vs. Mobile
+## Architectural Boundary Anti-Patterns
 
-Web developers rely on JavaScript garbage collection, and backend engineers rely on JVM or Go runtime GC. On mobile devices, memory leaks directly cause the OS to kill your application:
+<Aside type="danger" title="ARCHITECTURAL VIOLATIONS">
+The following anti-patterns trigger automatic PR review rejections:
 
-* **Automatic Reference Counting (iOS ARC):** Swift does not have a generational garbage collector. It tracks reference counts at runtime. Circular strong references between two objects cause permanent memory leaks until the app process dies.
-* **Context Leaks (Android):** Holding a static reference to an Android `Activity` or view retains the entire view tree, bitmaps, and fragment managers in memory.
-* **Dangling Subscriptions (React Native):** Event listeners, timers, and WebSocket connections not cleaned up in component unmount retain entire closures and component subtrees.
+1. **Direct UI-to-DataSource Access:** Never execute database queries, direct network requests, or KeyStore lookups directly from a SwiftUI View, Jetpack Compose Composable, or React component. All access must be brokered through a Domain Use Case.
+2. **Platform Framework Imports in Domain:** The Domain layer must never import `android.*`, `UIKit`, `SwiftUI`, or `react-native`. Pure business logic must remain 100% portable and unit testable on pure host runtimes.
+3. **Leaking Network DTOs to the UI:** Raw API DTOs must be transformed into immutable Domain Entities before leaving the Data layer. This protects UI components from backend schema migrations.
+4. **Fat State Holders:** ViewModels and hooks must only coordinate UI state and invoke Use Cases. Business validation and caching rules belong strictly in Use Cases and Repositories.
+</Aside>
 
-### Memory Leak Prevention Patterns Across Stacks
+---
+
+## Quality Gate PR Merge Checklist
+
+Before opening a pull request containing architectural changes, verify all mandatory criteria:
+
+- [ ] **Clean Layer Separation:** Presentation, Domain, Data, and Core are organized into explicit packages or modules.
+- [ ] **Inward Dependency Direction:** All dependencies point inward toward the Domain layer; Domain has zero dependencies on Data or Presentation.
+- [ ] **Domain Unit Test Coverage:** All Use Cases and validation rules maintain at least 80% unit test coverage using mock repositories.
+- [ ] **Resilience Protection:** All remote HTTP requests in repository implementations incorporate failure recovery and local caching.
+- [ ] **State Immutability:** State models in ViewModels are exposed as read-only streams (`StateFlow` on Android, `@Published private(set)` on iOS, immutable React state).
+
+
+
+
+
+----------------------------------
+
+
+---
+title: Circuit Breaker & Network Resilience Pattern
+description: Production-grade Circuit Breaker pattern implementation across iOS, Android, and React Native to eliminate cascading network timeouts and support offline continuity.
+sidebar:
+  order: 3
+  label: Circuit Breaker & Resilience
+---
+
+import { Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import DiagramExpand from './DiagramExpand.astro';
+
+<Aside type="tip" title="RESILIENCE MANDATE">
+All mobile network requests executed in data repositories must be encapsulated inside a threshold-based Circuit Breaker with offline storage fallbacks. Applications must fail fast without holding cellular radio sockets open, draining battery, or freezing user interfaces.
+</Aside>
+
+## Mobile Network Reliability Challenges
+
+Mobile devices operate across fluctuating radio conditions where cellular connections experience packet loss, intermittent handoffs, and transient dead zones.
+
+When a backend microservice degrades or drops offline, standard mobile HTTP clients without a circuit breaker cause severe client-side instability:
+* **Modem Power State Locking:** Hanging TCP sockets force cellular modems into continuous high-power radio states (RRC Connected mode), draining battery life rapidly.
+* **Thread Exhaustion:** Thread pools become blocked waiting on timed-out sockets, delaying UI rendering and background workers.
+* **Cascading Retry Storms:** Unconstrained client retries bombard recovering backend clusters, prolonging backend outages.
+
+---
+
+## Circuit Breaker State Machine
+
+The enterprise Circuit Breaker operates as a state machine with three strictly defined states: **Closed**, **Open**, and **Half-Open**:
+
+<DiagramExpand title="CIRCUIT BREAKER STATE MACHINE">
+
+```mermaid
+flowchart TD
+    subgraph States["Circuit Breaker State Machine"]
+        Closed["Closed (Normal Operation)\n• All HTTP requests pass to network\n• Successes reset failure count\n• 3 consecutive 5xx or timeouts trip breaker"]
+        Open["Open (Fault Tripped)\n• Requests fail fast immediately\n• Zero network calls dispatched\n• Serves local encrypted cache fallback\n• Starts 30-second cooldown timer"]
+        HalfOpen["Half-Open (Canary Probe)\n• Cooldown timer expires\n• Allows single trial request through\n• If successful: resets to Closed\n• If failed: returns to Open"]
+
+        Closed -->|"Failure threshold exceeded (3 errors)"| Open
+        Open -->|"Cooldown timer expires (30s)"| HalfOpen
+        HalfOpen -->|"Canary probe succeeds"| Closed
+        HalfOpen -->|"Canary probe fails"| Open
+    end
+
+    classDef closedState fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef openState fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+    classDef halfOpenState fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+
+    class Closed closedState;
+    class Open openState;
+    class HalfOpen halfOpenState;
+```
+
+</DiagramExpand>
+
+---
+
+## Standard Configuration Parameters
+
+Enterprise mobile applications must initialize circuit breakers using standardized parameters:
+
+| Configuration Parameter | Recommended Baseline | Operational Behavior |
+| :--- | :--- | :--- |
+| `failureThreshold` | `3 consecutive failures` | Number of 5xx errors or socket timeouts before transitioning from **Closed** to **Open**. |
+| `requestTimeoutMs` | `5,000 ms (5 seconds)` | Maximum duration for an individual network request before triggering a timeout error. |
+| `resetTimeoutMs` | `30,000 ms (30 seconds)` | Duration the breaker remains in **Open** before allowing a canary probe in **Half-Open**. |
+| `maxRetriesWithBackoff` | `2 retries` | Exponential backoff with jitter applied only while in **Closed** state before incrementing failures. |
+
+---
+
+## Implementation Across Platforms
+
+The Circuit Breaker pattern is implemented below using standard platform concurrency primitives:
 
 <Tabs>
-  <TabItem label="React Native (TypeScript)">
+<TabItem label="React Native (TypeScript)">
 
-Always return a cleanup function from `useEffect` to unsubscribe from native listeners and timers:
+### Self-Contained TypeScript Circuit Breaker & Repository
 
 ```typescript
-import React, { useEffect } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+// src/core/resilience/CircuitBreaker.ts
+export type BreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
-export function useSessionHeartbeat(onForeground: () => void) {
-  useEffect(() => {
-    const handleAppStateChange = (nextState: AppStateStatus) => {
-      if (nextState === 'active') {
-        onForeground();
+export interface CircuitBreakerOptions {
+  failureThreshold?: number;
+  resetTimeoutMs?: number;
+}
+
+export class CircuitBreaker {
+  private state: BreakerState = 'CLOSED';
+  private failureCount = 0;
+  private lastFailureTime = 0;
+  private readonly failureThreshold: number;
+  private readonly resetTimeoutMs: number;
+
+  constructor(options: CircuitBreakerOptions = {}) {
+    this.failureThreshold = options.failureThreshold ?? 3;
+    this.resetTimeoutMs = options.resetTimeoutMs ?? 30000;
+  }
+
+  getState(): BreakerState {
+    if (this.state === 'OPEN' && Date.now() - this.lastFailureTime > this.resetTimeoutMs) {
+      this.state = 'HALF_OPEN';
+    }
+    return this.state;
+  }
+
+  async execute<T>(
+    primaryAction: () => Promise<T>,
+    fallbackAction: (error: Error) => Promise<T>
+  ): Promise<T> {
+    const currentState = this.getState();
+
+    if (currentState === 'OPEN') {
+      return fallbackAction(new Error('Circuit breaker is OPEN. Fast-failing network call.'));
+    }
+
+    try {
+      const result = await primaryAction();
+      if (currentState === 'HALF_OPEN') {
+        this.state = 'CLOSED';
+        this.failureCount = 0;
       }
-    };
+      return result;
+    } catch (err: unknown) {
+      this.failureCount++;
+      this.lastFailureTime = Date.now();
 
-    // 1. Subscribe to native OS events
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
+      if (this.failureCount >= this.failureThreshold) {
+        this.state = 'OPEN';
+      }
 
-    // 2. CRITICAL: Return cleanup function to remove subscriber on unmount
-    return () => {
-      subscription.remove();
-    };
-  }, [onForeground]);
+      const error = err instanceof Error ? err : new Error(String(err));
+      return fallbackAction(error);
+    }
+  }
 }
 ```
 
-  </TabItem>
-  <TabItem label="Native Android (Kotlin)">
+### Data Repository Using Local Storage Fallback
 
-Never pass an `Activity` context to long-lived singleton classes or repositories. Always use `applicationContext`:
+```typescript
+// src/data/repositories/OrderRepositoryImpl.ts
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CircuitBreaker } from '../../core/resilience/CircuitBreaker';
+
+export interface OrderDashboard {
+  userId: string;
+  activeOrders: number;
+  totalSpent: number;
+}
+
+export class OrderRepositoryImpl {
+  private breaker = new CircuitBreaker({ failureThreshold: 3, resetTimeoutMs: 30000 });
+
+  async getOrderDashboard(userId: string): Promise<OrderDashboard> {
+    const cacheKey = `@dashboard_${userId}`;
+
+    return await this.breaker.execute(
+      // Primary Action: Remote Network Query
+      async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        try {
+          const response = await fetch(`https://api.enterprise.com/v1/orders/dashboard/${userId}`, {
+            headers: { 'Accept': 'application/json' },
+            signal: controller.signal,
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP Error: ${response.status}`);
+          }
+
+          const freshData: OrderDashboard = await response.json();
+          await AsyncStorage.setItem(cacheKey, JSON.stringify(freshData));
+          return freshData;
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      },
+      // Fallback Action: Local Cache on Breaker Trip or Network Failure
+      async (error: Error) => {
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) {
+          return JSON.parse(cached) as OrderDashboard;
+        }
+        throw new Error(`Service unavailable and no local cache found: ${error.message}`);
+      }
+    );
+  }
+}
+```
+</TabItem>
+
+<TabItem label="Android (Kotlin)">
+
+### Self-Contained Kotlin Circuit Breaker
 
 ```kotlin
-package com.enterprise.mobile.core
+package com.enterprise.mobile.core.resilience
 
-import android.content.Context
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-class AnalyticsTracker private constructor(private val appContext: Context) {
+enum class BreakerState { CLOSED, OPEN, HALF_OPEN }
 
-    fun trackEvent(eventName: String) {
-        // Safe: appContext lives for the entire app process, not bound to an Activity view
-    }
+class CircuitBreaker(
+    private val failureThreshold: Int = 3,
+    private val resetTimeoutMs: Long = 30000L
+) {
+    private val mutex = Mutex()
+    private var state = BreakerState.CLOSED
+    private var failureCount = 0
+    private var lastFailureTime = 0L
 
-    companion object {
-        @Volatile private var instance: AnalyticsTracker? = null
-
-        fun getInstance(context: Context): AnalyticsTracker =
-            instance ?: synchronized(this) {
-                // Use applicationContext to prevent leaking the calling Activity
-                instance ?: AnalyticsTracker(context.applicationContext).also { instance = it }
+    suspend fun <T> execute(
+        action: suspend () -> T,
+        fallback: suspend (Throwable) -> T
+    ): T {
+        val currentState = mutex.withLock {
+            if (state == BreakerState.OPEN && System.currentTimeMillis() - lastFailureTime > resetTimeoutMs) {
+                state = BreakerState.HALF_OPEN
             }
+            state
+        }
+
+        if (currentState == BreakerState.OPEN) {
+            return fallback(IllegalStateException("Circuit Breaker is OPEN"))
+        }
+
+        return try {
+            val result = action()
+            mutex.withLock {
+                if (state == BreakerState.HALF_OPEN) {
+                    state = BreakerState.CLOSED
+                    failureCount = 0
+                }
+            }
+            result
+        } catch (t: Throwable) {
+            mutex.withLock {
+                failureCount++
+                lastFailureTime = System.currentTimeMillis()
+                if (failureCount >= failureThreshold) {
+                    state = BreakerState.OPEN
+                }
+            }
+            fallback(t)
+        }
     }
 }
 ```
 
-  </TabItem>
-  <TabItem label="Native iOS (Swift)">
+### Android Repository Integration
 
-Break circular reference retain cycles using `[weak self]` in asynchronous closures:
+```kotlin
+package com.enterprise.mobile.data.repository
+
+import com.enterprise.mobile.core.resilience.CircuitBreaker
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+class OrderRepositoryImpl(
+    private val api: OrderApiService,
+    private val dao: OrderDao
+) {
+    private val breaker = CircuitBreaker(failureThreshold = 3, resetTimeoutMs = 30000L)
+
+    suspend fun getOrders(): Result<List<Order>> = withContext(Dispatchers.IO) {
+        breaker.execute(
+            action = {
+                val remoteOrders = api.fetchOrders()
+                dao.insertAll(remoteOrders.map { it.toEntity() })
+                Result.success(remoteOrders.map { it.toDomain() })
+            },
+            fallback = { throwable ->
+                val cached = dao.getAllOrders()
+                if (cached.isNotEmpty()) {
+                    Result.success(cached.map { it.toDomain() })
+                } else {
+                    Result.failure(throwable)
+                }
+            }
+        )
+    }
+}
+```
+</TabItem>
+
+<TabItem label="iOS (Swift)">
+
+### Thread-Safe Swift Actor Circuit Breaker
 
 ```swift
 import Foundation
 
-final class LocationTracker {
-    var onLocationUpdate: ((String) -> Void)?
+public actor CircuitBreaker {
+    public enum State {
+        case closed, open, halfOpen
+    }
 
-    func startTracking() {
-        // Pass closure with [weak self] to avoid strong retain cycle
-        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            self.onLocationUpdate?("Current Location: 37.7749, -122.4194")
+    private var state: State = .closed
+    private var failureCount = 0
+    private let failureThreshold: Int
+    private let resetTimeout: TimeInterval
+    private var lastFailureTime: Date?
+
+    public init(failureThreshold: Int = 3, resetTimeout: TimeInterval = 30) {
+        self.failureThreshold = failureThreshold
+        self.resetTimeout = resetTimeout
+    }
+
+    public func execute<T>(
+        action: () async throws -> T,
+        fallback: (Error) async throws -> T
+    ) async throws -> T {
+        if state == .open, let lastFail = lastFailureTime, Date().timeIntervalSince(lastFail) > resetTimeout {
+            state = .halfOpen
         }
-    }
-}
-```
 
-  </TabItem>
-</Tabs>
+        if state == .open {
+            return try await fallback(NSError(domain: "CircuitBreakerOpen", code: 503))
+        }
 
----
-
-## Network Resilience: The Circuit Breaker Pattern
-
-Mobile connections drop frequently. The enterprise standard requires that all remote network calls use a **Circuit Breaker** to avoid cascading socket timeouts and draining device battery:
-
-<MermaidZoom title="CIRCUIT BREAKER STATE MACHINE">
-
-```mermaid
-flowchart TD
-    subgraph Breaker["Circuit Breaker States"]
-        Closed["1. Closed (Normal)\nAll requests pass through"]
-        Open["2. Open (Tripped)\nFails immediately to cache"]
-        HalfOpen["3. Half-Open (Testing)\nTests probe request"]
-
-        Closed -->|"Failure threshold exceeded"| Open
-        Open -->|"Reset timeout expires"| HalfOpen
-        HalfOpen -->|"Probe succeeds"| Closed
-        HalfOpen -->|"Probe fails"| Open
-    end
-
-    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
-
-    class Closed dataLayer;
-    class Open securityLayer;
-    class HalfOpen networkLayer;
-```
-
-</MermaidZoom>
-
-### Implementing Circuit Breaker & Offline Fallback
-
-The following TypeScript snippet demonstrates how mobile applications implement a resilient Circuit Breaker pattern with local offline caching using standard `@react-native-async-storage/async-storage`:
-
-```typescript
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Standard Circuit Breaker state machine
-export class CircuitBreaker {
-  private failureCount = 0;
-  private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
-  private nextAttempt = Date.now();
-
-  constructor(
-    private failureThreshold = 3,
-    private resetTimeoutMs = 30000
-  ) {}
-
-  async execute<T>(action: () => Promise<T>): Promise<T> {
-    if (this.state === 'OPEN') {
-      if (Date.now() > this.nextAttempt) {
-        this.state = 'HALF_OPEN';
-      } else {
-        throw new Error('Circuit breaker is OPEN: fast-failing request.');
-      }
-    }
-
-    try {
-      const result = await action();
-      this.failureCount = 0;
-      this.state = 'CLOSED';
-      return result;
-    } catch (error) {
-      this.failureCount++;
-      if (this.failureCount >= this.failureThreshold) {
-        this.state = 'OPEN';
-        this.nextAttempt = Date.now() + this.resetTimeoutMs;
-      }
-      throw error;
-    }
-  }
-}
-
-interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-}
-
-const profileBreaker = new CircuitBreaker(3, 30000);
-
-export async function getUserProfile(userId: string): Promise<UserProfile> {
-  const cacheKey = `@cache:user:${userId}`;
-
-  try {
-    // Execute request within resilience guard
-    return await profileBreaker.execute(async () => {
-      const response = await fetch(`https://api.example.com/v1/users/${userId}`);
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-      
-      const data: UserProfile = await response.json();
-      await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
-      return data;
-    });
-  } catch (err) {
-    // Gracefully serve stale cached data when offline or circuit is open
-    const cachedData = await AsyncStorage.getItem(cacheKey);
-    if (cachedData) {
-      return JSON.parse(cachedData) as UserProfile;
-    }
-    throw new Error('Offline and no cached data available for this user.');
-  }
-}
-```
-
----
-
-## Application Lifecycle & State Restoration
-
-Unlike server processes that stay active indefinitely, the mobile OS continuously manages application processes to preserve memory and battery:
-
-<MermaidZoom title="APPLICATION LIFECYCLE & PROCESS DEATH">
-
-```mermaid
-flowchart TD
-    subgraph Life["Application Lifecycle States"]
-        FG["1. Active Foreground\n(User interacting on screen)"]
-        BG["2. Background / Paused\n(App minimized or screen locked)"]
-        Susp["3. Suspended in RAM\n(No CPU execution allowed)"]
-        Dead["4. Process Terminated\n(OS reclaims RAM for camera/system)"]
-
-        FG -->|"User presses Home"| BG
-        BG -->|"System reclaims CPU"| Susp
-        Susp -->|"Low memory condition"| Dead
-        Dead -->|"User taps icon"| FG
-    end
-
-    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
-
-    class FG uiLayer;
-    class BG domainLayer;
-    class Susp networkLayer;
-    class Dead securityLayer;
-```
-
-</MermaidZoom>
-
-### Handling Process Death with State Restoration
-
-When the user minimizes the app and opens a memory-intensive tool (like the device camera), the OS may silently kill your background process. When the user returns, the OS restores the view, but in-memory variables are lost.
-
-<Tabs>
-  <TabItem label="Android (SavedStateHandle)">
-
-```kotlin
-package com.enterprise.mobile.feature.checkout
-
-import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.ViewModel
-
-class CheckoutViewModel(
-    private val savedStateHandle: SavedStateHandle
-) : ViewModel() {
-
-    // SavedStateHandle automatically persists state across OS process termination
-    var currentStep: Int
-        get() = savedStateHandle["checkout_step"] ?: 1
-        set(value) { savedStateHandle["checkout_step"] = value }
-
-    var selectedShippingId: String?
-        get() = savedStateHandle["shipping_id"]
-        set(value) { savedStateHandle["shipping_id"] = value }
-
-    fun advanceToNextStep(shippingId: String) {
-        this.selectedShippingId = shippingId
-        this.currentStep = currentStep + 1
-    }
-}
-```
-
-  </TabItem>
-  <TabItem label="iOS (SceneStorage)">
-
-```swift
-import SwiftUI
-
-struct CheckoutView: View {
-    // SceneStorage persists lightweight view state across app suspends and relaunches
-    @SceneStorage("checkout_step") private var currentStep: Int = 1
-    @SceneStorage("shipping_id") private var selectedShippingId: String = ""
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Text("Checkout Step: \(currentStep)")
-                .font(.headline)
-
-            Button("Next Step") {
-                currentStep += 1
+        do {
+            let result = try await action()
+            if state == .halfOpen {
+                state = .closed
+                failureCount = 0
             }
+            return result
+        } catch {
+            failureCount += 1
+            lastFailureTime = Date()
+            if failureCount >= failureThreshold {
+                state = .open
+            }
+            return try await fallback(error)
         }
-        .padding()
     }
 }
 ```
-
-  </TabItem>
-  <TabItem label="React Native (AppState & Storage)">
-
-```typescript
-import React, { useEffect, useState } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-export function usePersistedDraft(formId: string, initialDraft: string) {
-  const [draft, setDraft] = useState(initialDraft);
-  const storageKey = `@draft:${formId}`;
-
-  useEffect(() => {
-    // 1. Restore draft on initial mount
-    AsyncStorage.getItem(storageKey).then(saved => {
-      if (saved) setDraft(saved);
-    });
-
-    // 2. Persist to storage when app moves to background
-    const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
-      if (nextState === 'background' || nextState === 'inactive') {
-        AsyncStorage.setItem(storageKey, draft);
-      }
-    });
-
-    return () => subscription.remove();
-  }, [formId, draft]);
-
-  return [draft, setDraft] as const;
-}
-```
-
-  </TabItem>
+</TabItem>
 </Tabs>
 
 ---
 
-## Tech Stack Recommendation for Non-Mobile Engineers
+## Telemetry & Operational Monitoring
 
-Select your starting platform path based on your existing engineering skill set:
+All circuit state transitions emit structured telemetry events to provide visibility into backend degradation:
 
-<CardGrid>
-  <Card title="React Native (New Architecture)" icon="laptop">
-    **Recommended for 80% • Web & Fullstack Developers**
+<DiagramExpand title="TELEMETRY EMISSION FLOW">
 
-    Ideal for React, web, TypeScript, and fullstack developers. Reuses your component lifecycle knowledge, JSX, state patterns, and npm ecosystem to deliver unified iOS and Android apps.
+```mermaid
+flowchart TD
+    subgraph Flow["Telemetry Emission Flow"]
+        App["Mobile Application (Breaker State Change)"]
+        Telemetry["Telemetry Client (Event Formatted)"]
+        Dashboard["Mobile Operations Dashboard (Alerts when > 1% users trip breaker)"]
 
-    <a href={`${PORTAL_BASE}/platforms/react-native-standards/`}>Start React Native Guide &rarr;</a>
-  </Card>
+        App -->|"circuit_breaker.transition (from: closed, to: open)"| Telemetry
+        Telemetry -->|"Encrypted Telemetry Dispatch"| Dashboard
+    end
 
-  <Card title="Native Android (Kotlin / Compose)" icon="open-book">
-    **Backend & JVM Developers**
+    classDef clientNode fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef telemetryNode fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef monitorNode fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
 
-    Ideal for Java, Kotlin, and backend JVM engineers. Leverages familiar Gradle builds, strong typing, declarative Jetpack Compose UI, and direct access to Android hardware APIs.
-
-    <a href={`${PORTAL_BASE}/platforms/android-standards/`}>Start Android Native Guide &rarr;</a>
-  </Card>
-
-  <Card title="Native iOS (Swift / SwiftUI)" icon="star">
-    **Systems & C++ Developers**
-
-    Ideal for engineers comfortable with strong typing, memory ownership, and macOS development. Builds flagship Apple ecosystem applications using SwiftUI, async/await, and CoreML.
-
-    <a href={`${PORTAL_BASE}/platforms/ios-standards/`}>Start iOS Native Guide &rarr;</a>
-  </Card>
-</CardGrid>
-
----
-
-## Local Development Setup (0 to 1)
-
-Boot your first mobile application locally using standard platform commands:
-
-<Tabs>
-  <TabItem label="React Native (Recommended)">
-
-```bash
-# Step 1: Verify your workstation toolchain
-npx react-native doctor
-
-# Step 2: Initialize project using React Native CLI
-npx @react-native-community/cli init MyMobileApp
-cd MyMobileApp
-
-# Step 3: Install dependencies
-npm install
-
-# Step 4: Boot iOS Simulator (macOS required)
-npm run ios
-
-# Step 5: Boot Android Emulator
-npm run android
+    class App clientNode;
+    class Telemetry telemetryNode;
+    class Dashboard monitorNode;
 ```
 
-  </TabItem>
-  <TabItem label="Native Android (Kotlin)">
-
-```bash
-# Step 1: Open project directory
-cd my-android-app
-
-# Step 2: Build debug APK using Gradle wrapper
-./gradlew assembleDebug
-
-# Step 3: Run unit test suite
-./gradlew test
-
-# Step 4: Install and launch on active emulator
-./gradlew installDebug
-```
-
-  </TabItem>
-  <TabItem label="Native iOS (Swift)">
-
-```bash
-# Step 1: Open project directory
-cd my-ios-app
-
-# Step 2: Install CocoaPods dependencies
-pod install
-
-# Step 3: Open Xcode workspace
-open MyIosApp.xcworkspace
-
-# Step 4: Build project via CLI
-xcodebuild -workspace MyIosApp.xcworkspace -scheme MyIosApp -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 15' build
-```
-
-  </TabItem>
-</Tabs>
+</DiagramExpand>
 
 ---
 
-## Top 5 Pitfalls Web & Backend Engineers Must Avoid
+## Architectural Anti-Patterns
 
-:::caution[Security & Stability Pitfalls]
-* **1. Never Hardcode API Keys or Secrets:** Client application binaries are public assets. Anyone can decompile an `.apk` or `.ipa` package and extract string constants. Store tokens exclusively in KeyStore/Keychain or resolve them at runtime via OAuth SSO.
-* **2. Never Run Heavy Loops on the Main Thread:** Long computations, synchronous file I/O, or parsing large JSON payloads freeze the screen, triggering OS crashes. Always dispatch work to background workers or coroutine dispatchers.
-* **3. Never Assume Continuous Connectivity:** Always handle offline states, network timeouts, and flaky cellular signals. Provide local caching and retry mechanisms.
-* **4. Clean Up Event Listeners to Prevent Memory Leaks:** Mobile OS devices have constrained RAM. Dangling event subscribers, uncancelled timers, and retained singleton delegates keep screens in memory, causing OOM (Out-of-Memory) termination.
-* **5. Never Build Production Binaries on Personal Laptops:** Official application packages must be built, signed, and distributed exclusively through automated Bitrise CI pipelines to guarantee tamper-proof audit trails.
-:::
+<Aside type="danger" title="RESILIENCE VIOLATIONS">
+The following practices compromise application resilience and are rejected during PR review:
 
----
-
-:::note[Completion Checklist]
-Confirm you understand the following principles before building your first feature:
-
-* **Main Thread Budget:** Why keeping work off the Main Thread is critical to prevent ANRs and system watchdog kills.
-* **Offline Resilience:** How the Circuit Breaker pattern protects client applications against slow or dropped mobile networks.
-* **Process Death:** How the OS reclaims RAM from background applications and how to preserve user state across launches.
-* **Toolchain Setup:** Successful execution of `npx react-native doctor` with all green passes.
-* **Framework Direction:** Whether your team is adopting React Native or native Android/iOS for your domain application.
-:::
+1. **Unbounded Infinite Retries:** Never loop HTTP retries without exponential backoff, jitter, and a hard upper cap (maximum 2 retries).
+2. **Blocking the Main Thread on Fallback:** Local cache queries (SQLite, CoreData, AsyncStorage) must execute on background dispatchers, never blocking UI rendering.
+3. **Suppressing Errors Silently:** Never swallow network exceptions without updating UI error state or serving a valid local cache.
+4. **Omitting Socket Timeouts:** Raw HTTP requests without explicit 5-second connection/read timeouts allow modems to hang indefinitely.
+</Aside>
 
 ---
 
-## Next Steps
+## Quality Gate PR Merge Checklist
 
-Now that you have mastered mobile client fundamentals, proceed to the next milestone in your onboarding path:
+Before submitting code incorporating remote API communication, verify every requirement:
 
-<CardGrid>
-  <LinkCard
-    title="New Mobile Engineer Track"
-    href={`${PORTAL_BASE}/onboarding/new-mobile-engineer-track/`}
-    description="Proceed to enterprise repository topologies, internal artifact registries, 4-layer clean architecture, and Danger PR bot rules."
-  />
-  <LinkCard
-    title="Tech Stack Selection Matrix"
-    href={`${PORTAL_BASE}/onboarding/tech-stack-matrix/`}
-    description="Compare technical trade-offs across React Native, Jetpack Compose, and SwiftUI for your application."
-  />
-</CardGrid>
+- [ ] **Circuit Breaker Active:** Remote HTTP calls in repositories are protected by a failure threshold and cooldown timer.
+- [ ] **Explicit Request Timeouts:** HTTP requests specify a timeout no greater than 5,000 ms.
+- [ ] **Encrypted Cache Fallback:** Failed requests return cached records or an explicit user-facing offline state.
+- [ ] **Thread Concurrency Verified:** Swift implementation uses `actor`; Kotlin implementation uses `Mutex` and `Dispatchers.IO`.
+- [ ] **Unit Tests for All States:** Tests verify transitions between Closed, Open, and Half-Open states with simulated HTTP 500 responses.
 
 
 
---------------------------_
 
+
+----------------------------
 
 
 ---
-title: New Mobile Engineer Track
-description: Accelerated onboarding fast-track for experienced iOS, Android, and React Native developers joining enterprise mobile engineering.
+title: Feature Flags & Remote Configuration (Unleash)
+description: Enterprise mobile specification for runtime feature toggling, staged percentage rollouts, and instant kill switches using Unleash Proxy Client.
 sidebar:
   order: 4
-  label: Mobile Native Track
+  label: Feature Flags
 ---
 
-import { CardGrid, Card, LinkCard } from '@astrojs/starlight/components';
-import MermaidZoom from './MermaidZoom.astro';
+import { Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import DiagramExpand from './DiagramExpand.astro';
 
-export const PORTAL_BASE = '/mobile';
+<Aside type="tip" title="RELEASE GOVERNANCE MANDATE">
+All new features and user-facing capabilities must be shipped behind dynamic runtime feature flags evaluated via the Unleash Mobile Edge Proxy. Code is deployed continuously in dark mode and released progressively without waiting for app store binary review queues.
+</Aside>
 
-:::tip[Accelerated Track]
-This onboarding path is designed for experienced Android, iOS, and React Native engineers. It focuses on enterprise platform access, repository structure, architectural conventions, Pull Request standards, and build and release workflows.
-:::
+## Mobile Release Decoupling
 
-## Fast-Track Pillars
+Coupling feature releases directly to compiled binary updates introduces operational challenges:
+* **Store Review Latency:** Emergency bug fixes can take 24 to 72 hours for store approval across Apple App Store and Google Play.
+* **Variable Client Adoption:** Users update apps asynchronously, leaving a fraction of users on legacy binaries.
+* **All-or-Nothing Blast Radius:** Releasing directly to 100% of devices risks service degradation if backend services experience unexpected load spikes.
 
-<CardGrid>
-  <Card title="Platform Access" icon="laptop">
-    Access to source repositories, development tools, CI/CD services, telemetry platform, and project resources.
-  </Card>
-  <Card title="Repository Familiarization" icon="open-book">
-    Project structure, shared dependencies, build configuration, team documentation, and repository conventions.
-  </Card>
-  <Card title="Architecture Standards" icon="puzzle">
-    Layered architecture, platform-specific patterns, resilience, feature management, and shared platform capabilities.
-  </Card>
-  <Card title="Quality Gates" icon="warning">
-    Pull Request reviews, Danger automation, testing, security scanning, and approved CI/CD workflows.
-  </Card>
-</CardGrid>
+The enterprise mandates **Unleash Proxy Client** to decouple binary deployment from feature activation. Code is delivered dark in sprint builds and activated dynamically at runtime.
 
 ---
 
-## Fast-Track Onboarding Flow
+## Unleash Mobile Edge Proxy Topology
 
-Experienced mobile engineers should progress through the following phases before beginning active sprint contributions:
+Mobile clients must never connect directly to the core Unleash database or management console. All mobile applications communicate exclusively with the **Unleash Edge Proxy**:
 
-<MermaidZoom title="FAST-TRACK ONBOARDING FLOW">
+<DiagramExpand title="UNLEASH EDGE PROXY TOPOLOGY">
 
 ```mermaid
 flowchart TD
-    P1["1. Platform Access & Setup\n(AzureAD Entitlements, Repositories, Vault)"]
-    P2["2. Repository Familiarization\n(Structure, Build Config, Shared Dependencies)"]
-    P3["3. Architecture & Standards\n(Layered Model, Resilience, Platform Capabilities)"]
-    P4["4. Quality Gates & PR Flow\n(Branching, Danger Bot, Unit & Security Scans)"]
-    P5["5. Build & Distribution\n(CI Pipelines, Store Publishing, Team Collaboration)"]
+    subgraph Clients["Mobile Client Tier"]
+        RN["React Native App (unleash-proxy-client)"]
+        Android["Android Native App (Unleash Proxy SDK)"]
+        iOS["iOS Native App (UnleashProxyClientSwift)"]
+    end
 
-    P1 --> P2
-    P2 --> P3
-    P3 --> P4
-    P4 --> P5
+    subgraph Edge["Enterprise Edge Layer"]
+        Proxy["Unleash Proxy Edge\n• Evaluates client context\n• Enforces read-only client tokens\n• Shields core systems\n• Sub-5ms cached evaluation"]
+    end
 
-    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+    subgraph Core["Central Platform Core"]
+        AdminServer["Unleash Enterprise Server\n• Strategy configuration & targeting\n• Audit logging & RBAC permissions\n• Telemetry webhook triggers"]
+        Postgres[(Unleash PostgreSQL DB)]
+    end
 
-    class P1 networkLayer;
-    class P2 domainLayer;
-    class P3 uiLayer;
-    class P4 securityLayer;
-    class P5 dataLayer;
+    RN -->|"Polls /proxy (15s)"| Proxy
+    Android -->|"Polls /proxy (15s)"| Proxy
+    iOS -->|"Polls /proxy (15s)"| Proxy
+    Proxy -->|"Syncs state / API"| AdminServer
+    AdminServer --> Postgres
+
+    classDef clientLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef edgeLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef coreLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef dbLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+
+    class RN,Android,iOS clientLayer;
+    class Proxy edgeLayer;
+    class AdminServer coreLayer;
+    class Postgres dbLayer;
 ```
 
-</MermaidZoom>
+</DiagramExpand>
+
+### Operational Edge Guarantees
+* **Credential Isolation:** Mobile clients receive a restricted client secret that can only query flag evaluation for registered contexts, preventing administration token exposure.
+* **Core Protection:** The proxy caches evaluated payloads in memory, shielding core databases from millions of polling mobile instances.
+* **Offline Fallback:** Local encrypted storage caches evaluate flags instantly on cold start before any network roundtrip completes.
 
 ---
 
-## Access Provisioning & Workstation Setup
+## Standard Configuration Parameters
 
-Before contributing to a mobile repository, request the platform access required for your assigned project through the Enterprise Access Portal:
+Enterprise mobile applications must initialize Unleash clients using standardized parameters:
 
-| System or Service | Exact Entitlement Keyword | Purpose |
+| Configuration Parameter | Standard Value | Operational Purpose |
 | :--- | :--- | :--- |
-| **GitHub Enterprise** | `GitHub Enterprise on AzureAD` | Access source repositories, branches, Pull Requests, and code reviews |
-| **Bitrise** | `Bitrise on AzureAD` | Access mobile CI/CD workflows and build results |
-| **Unleash** | `Unleash on AzureAD` | Access feature flags and remote configuration |
-| **Datadog** | `Datadog on AzureAD` | Access monitoring, analytics, observability, and troubleshooting capabilities |
-| **NowSecure** | `NowSecure SSO on AzureAD` | Access mobile application security scans and reports |
-| **Atlassian Group** | `Jira-Mobile, Confluence on AzureAD` | Access Jira, Confluence, and associated engineering workflows |
-| **Developer App** | `API/Enterprise-Developers on Active Directory` | Obtain developer group membership and access to development resources |
-| **Enterprise VPN** | `Enterprise VPN Global on AzureAD` | Access internal repositories, APIs, services, and engineering resources |
-| **Directory Services** | `e-MD3 Directory Readers on AzureAD` | Access directory information required by supported identity implementations |
-| **Mobile Platform Vault** | `Mobile Platform Vault on AzureAD` | Access approved protected configuration when required |
-| **macOS Management** | `macOS JAMF Users on AzureAD` | Register and manage an enterprise-issued MacBook through JAMF |
-| **Mobile Platform MCP** | `engineering-mobile-mcp/mobile-bitrise-mcp on AzureAD` | Access the Mobile Platform Bitrise MCP integration when required |
-
-:::note[Access Scope & Workstation Preparation]
-Access requirements vary by application, role, and assigned responsibilities. Application-specific access, including store-console permissions, should be coordinated with the project team.
-
-Detailed workstation preparation is covered in the [Machine Setup & Workstation Guide](${PORTAL_BASE}/onboarding/machine-setup/).
-:::
+| `refreshInterval` | `15 seconds` | Background polling cadence to detect remote toggle updates. |
+| `context.userId` | Authenticated SSO User ID | Enables sticky percentage rollouts and targeted user segmentation. |
+| `context.appName` | Application bundle identifier | Segregates configuration sets per mobile binary target. |
+| `context.environment` | `development` / `production` | Enforces environment segregation across test and live users. |
 
 ---
 
-## Repository Familiarization
+## Multi-Platform Implementation with Unleash
 
-Before making changes, review the application repository and understand:
-
-* **Application purpose and business context:** Understand the core user journeys, business domain, and whether the app targets field operations, internal enterprise logistics, or public customers.
-* **Supported mobile platforms:** Identify platform targets (iOS only, Android only, or cross-platform React Native) and minimum supported OS versions (iOS 16+, Android 10+ / API 29+).
-* **Source-code and module organization:** Review monorepo packages, core shared modules, and feature directories to understand code boundaries and visibility.
-* **Build configuration:** Inspect Gradle configurations (`build.gradle.kts`), Xcode projects (`.xcodeproj` / `Podfile`), or React Native Metro configs (`metro.config.js`).
-* **Shared dependencies:** Verify internal shared modules, UI design token libraries, and third-party dependencies resolved via package managers.
-* **Environment configuration:** Review build flavors, schemes, and configuration files (`dev`, `staging`, `prod`) to understand API endpoint switches and feature flag overrides.
-* **Team documentation:** Review repository `README.md`, contributing guidelines, and architecture decision records stored in `docs/architecture/`.
-* **Branching and Pull Request conventions:** Review branch naming conventions (`feat/JIRA-1234-description`), PR templates, and required reviewers.
-* **Repository ownership and support model:** Identify code owners, primary platform maintainers, and on-call escalation channels for the repository.
-
-The objective is not to understand every implementation detail. The objective is to gain enough context to navigate the repository and contribute effectively.
-
----
-
-## Architecture & Platform Standards
-
-Enterprise mobile applications follow a layered architecture that separates user experience, business logic, data access, and backend integrations:
-
-<MermaidZoom title="LAYERED MOBILE ARCHITECTURE">
-
-```mermaid
-flowchart TD
-    subgraph Client["Mobile Client Architecture"]
-        Presentation["Presentation Layer\n(UI, Navigation & View State)"]
-        Domain["Domain Layer\n(Business Rules & Use Cases)"]
-        Data["Data Layer\n(Repositories & Data Sources)"]
-        
-        Presentation --> Domain
-        Domain --> Data
-    end
-
-    subgraph External["Backend Services & External Systems"]
-        Backend["APIs, Microservices, Identity,\nTelemetry & Push Providers"]
-    end
-
-    Data --> Backend
-
-    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
-
-    class Presentation uiLayer;
-    class Domain domainLayer;
-    class Data dataLayer;
-    class Backend networkLayer;
-```
-
-</MermaidZoom>
-
-### Presentation Layer
-Responsible for:
-* **User interface:** Composable UI declarative layouts (Jetpack Compose, SwiftUI, React Native Fabric).
-* **User interaction:** Capturing touch gestures, button clicks, and navigation events.
-* **Input handling:** Validating local input formats, text sanitization, and form submission.
-* **View state:** Observing immutable UI state streams emitted by ViewModel or Hook controllers (Unidirectional Data Flow). Views must never execute raw network requests or database queries directly.
-* **Accessibility:** Dynamic Type scaling, VoiceOver / TalkBack semantics, high-contrast theming, and minimum touch targets (48x48dp / 44x44pt).
-
-### Domain Layer
-Responsible for:
-* **Business rules:** Enterprise business logic, calculations, and domain constraints.
-* **Use cases:** Pure, framework-agnostic interactors that encapsulate a single business operation (e.g., `SubmitOrderUseCase`).
-* **Application workflow:** Coordinating multiple repository calls to satisfy a complete business flow.
-* **State management:** Encapsulating state transitions and ensuring business invariants are maintained.
-* **Decision-making:** Pure decision logic executed off the main thread, easily unit-testable without platform UI or OS dependencies.
-
-### Data Layer
-Responsible for:
-* **API communication:** Serializing requests and deserializing responses via typed HTTP clients.
-* **Local caching:** Offline-first caching strategies utilizing Room SQLite, CoreData, or MMKV key-value storage.
-* **Data transformation:** Mapping raw network Data Transfer Objects (DTOs) into clean Domain Entities before exposing them to the domain layer.
-* **Storage persistence:** Managing secure encrypted storage for authentication tokens and sensitive customer records.
-
-### Backend Services & External Systems
-Responsible for:
-* **APIs and microservices:** RESTful and GraphQL enterprise gateway endpoints.
-* **Identity providers:** OAuth 2.0 / OpenID Connect authorization servers and single sign-on (SSO) gateways.
-* **Telemetry endpoints:** Real-time logging, metrics, and Datadog RUM ingestion services.
-* **Third-party integrations:** Cloud device testing grids, push notification gateways (APNs / FCM), and payment or scanner SDKs.
-
-Application layers should maintain clear responsibilities and follow the dependency direction defined by the Architecture Overview.
-
----
-
-## Shared Platform Capabilities
-
-Mobile applications may use shared capabilities that operate across multiple architectural layers:
-
-* **Authentication:** Identity, access control, OAuth 2.0 Authorization Code Flow with PKCE, silent token refresh via interceptors, biometric authentication (Face ID / BiometricPrompt), and secure session termination.
-* **Feature Management:** Runtime feature flags via Unleash, client-side targeting, percentage-based staged rollouts, dynamic configuration, and remote emergency kill switches.
-* **Observability:** Datadog Real User Monitoring (RUM) session tracking, crash reporting with de-obfuscated symbolication (ProGuard mappings, dSYM files, JS source maps), performance traces, and distributed HTTP header propagation.
-* **Resilience:** Retry strategies with exponential backoff and jitter, strict socket timeout policies (5s connect / 10s read), offline request queuing, graceful degradation, and Circuit Breakers.
-* **Security:** Secure storage (iOS Keychain, Android KeyStore / EncryptedSharedPreferences), OWASP Mobile Top 10 compliance, SSL certificate pinning, root and jailbreak detection, and tamper verification.
-* **Push Notifications:** Event-driven communication via APNs and FCM, payload parsing, notification service extensions for rich notifications, and background silent sync triggers.
-
-Detailed implementation guidance is documented in the corresponding architecture, platform-service, and SDK documentation.
-
----
-
-## Pull Request & Quality Gates
-
-Application changes are submitted through Pull Requests and progress through the quality controls configured for the repository:
-
-<MermaidZoom title="PULL REQUEST QUALITY FLOW">
-
-```mermaid
-flowchart TD
-    Branch["Feature Branch Push\n(feat: JIRA-1234-brief-name)"] --> PRCreate["Pull Request Created"]
-    
-    subgraph Gates["Automated CI Verification"]
-        Danger["Danger PR Bot Checks\n(Conventional Commits, Size, Changelog)"]
-        Tests["Unit & Integration Tests\n(Coverage Gate Threshold)"]
-        Security["SAST / Security & Dependency Scans\n(NowSecure & Vulnerability Audit)"]
-        
-        Danger --> Tests
-        Tests --> Security
-    end
-
-    PRCreate --> Danger
-    
-    subgraph Approvals["Peer Review & Merge"]
-        Reviewers["Code Review Approvals\n(Required Peer & Code Owner Reviews)"]
-        Merge["Merge to Main Branch\n(Triggers Release Pipeline)"]
-        
-        Reviewers --> Merge
-    end
-
-    Security --> Reviewers
-
-    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
-
-    class Branch,PRCreate uiLayer;
-    class Danger,Security securityLayer;
-    class Tests dataLayer;
-    class Reviewers,Merge domainLayer;
-```
-
-</MermaidZoom>
-
-Repository quality controls may include:
-* **Branch protections:** Enforced linear Git history targeting `main`. Direct pushes to `main` are strictly blocked.
-* **Code review approvals:** Minimum of two passing peer reviews, including at least one designated Code Owner approval.
-* **Automated unit and integration checks:** Automated test suites running in Bitrise CI runners. Minimum 80% coverage on new business logic.
-* **Static analysis and linting:** Danger PR bot verifying Conventional Commit formatting, changelog updates, and bundle size deltas.
-* **Dependency and security checks:** NowSecure SAST/DAST binary vulnerability scans and automated dependency vulnerability audits.
-
-The exact checks and approval requirements are defined by the repository configuration and team standards. Detailed branching, review, and Danger guidance is covered in Branching & PR Standards.
-
----
-
-## Build, Distribution & Team Collaboration
-
-Depending on the application, target audience, and environment, builds are distributed through:
-
-* **Automated CI pipelines** for continuous validation, linting, and automated unit testing on every push.
-* **Internal distribution channels** for development, QA testing, and stakeholder preview builds.
-* **Enterprise distribution platforms** for internal business users managed through corporate Mobile Device Management (MDM).
-* **Public application stores** (Apple App Store and Google Play Store) when required by the product scope, deploying through staged rollout phases.
-
-Build pipelines, signing configurations, release approval, and store distribution are covered in the Build & Release and App Store & Distribution sections.
-
-Platform questions, issues, and discussions should be directed through approved team channels:
-* **Dedicated team channels** for project-specific discussion and sprint planning.
-* **Enterprise mobile engineering channels** for platform-wide guidance, SDK updates, and architectural discussions.
-* **Office hours and team syncs** for synchronous platform support and engineering collaboration.
-
----
-
-## Engineering Conventions
-
-:::caution[Important Engineering Conventions]
-* **Repository-First Exploration:** Explore existing patterns before introducing new dependencies or architectures.
-* **PR Size Discipline:** Keep pull requests small and focused to improve review velocity and quality.
-* **Continuous Security:** Never hardcode secrets, API keys, or certificates; always use approved secret-management mechanisms.
-* **Observability by Default:** Ensure errors, crashes, and key workflows are instrumented using Datadog before shipping.
-* **Dependency Economy:** Favor existing shared libraries and approved dependencies over introducing external packages.
-* **Operational Visibility:** Ensure application failures and low operational latency can be diagnosed through approved monitoring services.
-:::
-
----
-
-## Pre-Merge Quality Gate Checklist
-
-Confirm all items are satisfied before submitting your pull request:
-
-* [ ] **Branch Naming:** Branch conforms to `feat/JIRA-1234-brief-name` or `fix/JIRA-1234-brief-name`.
-* [ ] **Conventional Commits:** PR title and commit messages follow standard format (e.g. `feat: add offline order queue`).
-* [ ] **Changelog Updated:** Detailed release notes and summary added to `CHANGELOG.md`.
-* [ ] **Zero Hardcoded Secrets:** No API keys, passwords, or private endpoints in source code.
-* [ ] **Unit Tests:** New domain and data logic covered with unit tests maintaining the 80%+ threshold.
-* [ ] **Local Doctor Pass:** Verified clean toolchain with zero compiler warnings or errors.
-
----
-
-## Next Steps
-
-<CardGrid>
-  <LinkCard
-    title="Tech Stack Selection Matrix"
-    href={`${PORTAL_BASE}/onboarding/tech-stack-matrix/`}
-    description="Compare technical trade-offs across React Native, Jetpack Compose, and SwiftUI."
-  />
-  <LinkCard
-    title="Machine Setup & Workstation"
-    href={`${PORTAL_BASE}/onboarding/machine-setup/`}
-    description="Configure your MacBook workstation with OpenJDK 17, Android Studio, Xcode 16, and Doctor CLI validation."
-  />
-</CardGrid>
-
-
----------------------------
-
-
----
-title: Tech Stack Selection Matrix
-description: Architectural decision matrix and evaluation criteria for selecting React Native vs. Native Android (Compose) vs. Native iOS (SwiftUI) across enterprise mobile projects.
-sidebar:
-  order: 5
-  label: Tech Stack Matrix
----
-
-
-import { Tabs, TabItem, CardGrid, Card, LinkCard } from '@astrojs/starlight/components';
-import MermaidZoom from './MermaidZoom.astro';
-
-export const PORTAL_BASE = '/mobile';
-
-:::tip[Platform Governance]
-Official architectural evaluation matrix for enterprise mobile engineering. Defines objective criteria for selecting between React Native (New Architecture), Native Android (Kotlin & Jetpack Compose), and Native iOS (Swift & SwiftUI). React Native is the standard enterprise recommendation for 80%+ of business applications to maximize velocity and code reuse.
-:::
-
-## Selection Highlights
-
-<CardGrid>
-  <Card title="Enterprise Default" icon="star">
-    React Native is the default for 80%+ of cross-platform business apps.
-  </Card>
-  <Card title="Native Android" icon="open-book">
-    Reserved for rugged hardware, USB/OTG, Bluetooth serial & background daemons.
-  </Card>
-  <Card title="Native iOS" icon="laptop">
-    Reserved for Metal GPU shaders, CoreML on-device inference & Apple Secure Enclave.
-  </Card>
-  <Card title="Cross-Platform Parity" icon="document">
-    Consistent design tokens, networking resilience, and automated CI/CD across all stacks.
-  </Card>
-</CardGrid>
-
----
-
-## Architectural Decision Framework
-
-Use this structured decision tree to determine the optimal mobile technology stack for your application:
-
-<MermaidZoom title="ARCHITECTURAL DECISION FRAMEWORK">
-
-```mermaid
-flowchart TD
-    Start["New Enterprise Mobile Project"] --> Q1{"Does the app require custom Bluetooth Classic,\nUSB-OTG hardware, or Metal shaders?"}
-
-    Q1 -->|"Yes"| Hardware["Select Native Platform"]
-    Hardware --> AndroidNative["Native Android\n(Kotlin / Compose)\nFor rugged scanners & Bluetooth serial"]
-    Hardware --> IOSNative["Native iOS\n(Swift / SwiftUI)\nFor Apple ecosystem & CoreML"]
-
-    Q1 -->|"No"| Q2{"Is the app targeted exclusively at\na single platform (e.g. iPad-only)?"}
-
-    Q2 -->|"Yes"| SinglePlatform["Platform-Specific Native\n(SwiftUI or Jetpack Compose)"]
-    Q2 -->|"No"| ReactDefault["ENTERPRISE DEFAULT RECOMMENDED:\nReact Native (New Architecture)\n90%+ Shared TypeScript Codebase"]
-
-    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
-
-    class Start domainLayer;
-    class Q1,Q2 securityLayer;
-    class Hardware,SinglePlatform networkLayer;
-    class AndroidNative,IOSNative uiLayer;
-    class ReactDefault dataLayer;
-```
-
-</MermaidZoom>
-
----
-
-## Comprehensive Platform Evaluation Matrix
-
-Compare the technical trade-offs across all three tier-1 supported stacks:
-
-| Evaluation Dimension | React Native (New Architecture) | Native Android (Kotlin / Compose) | Native iOS (Swift / SwiftUI) |
-| :--- | :--- | :--- | :--- |
-| **Enterprise Recommendation** | **Default Recommended (80%+ Apps)** | Hardware & Rugged Scenarios | Flagship Apple Ecosystem |
-| **Code Reuse** | 90%–95% shared logic, UI, and test suites across iOS & Android. | 0% (Android only). Dual team required for iOS. | 0% (iOS only). Dual team required for Android. |
-| **Time to Market** | Fastest delivery velocity. Single sprint backlog and shared components. | Moderate. Requires dedicated native Android specialists. | Moderate. Requires dedicated native iOS specialists. |
-| **UI Engine** | Fabric C++ Native Renderer with Yoga Flexbox layout. | Jetpack Compose declarative layout engine. | SwiftUI declarative layout engine. |
-| **Hardware & Bluetooth** | High-level BLE via TurboModules. Custom C++ native bindings. | Direct access to Android OS APIs, Bluetooth Classic, USB/OTG, and NDK. | Direct access to CoreBluetooth, ExternalAccessory, and Metal. |
-| **Runtime & Startup** | Near-native cold boot via Hermes bytecode pre-compilation. | Native ART runtime ahead-of-time (AOT) compilation. | Native binary compiled directly to ARM64 machine instructions. |
-| **Design System Mirroring** | Shared cross-platform design tokens via StyleSheet. | Composable design tokens via Material 3 theme wrapper. | SwiftUI Color/Typography tokens via asset catalog. |
-| **CI/CD Complexity** | Single Bitrise pipeline building both `.aab` and `.ipa`. | Gradle runner building `.aab`. | macOS runner building signed `.ipa`. |
-
-
----
-
-## Detailed Stack Profiles
-
-<CardGrid>
-  <Card title="React Native (New Architecture)" icon="laptop">
-    **Recommended for 80%+ of Apps • Field Operations & Portals**
-
-    The default enterprise choice for field operations, logistics workflows, customer portals, and internal employee tools. Delivers native 60fps performance through Fabric and C++ TurboModules with 90%+ code reuse.
-
-    <a href={`${PORTAL_BASE}/platforms/react-native-standards/`}>View React Native Guide &rarr;</a>
-  </Card>
-
-  <Card title="Native Android (Kotlin / Compose)" icon="open-book">
-    **Hardware & Rugged Scenarios • Zebra & Scanners**
-
-    Selected when applications interface directly with specialized warehouse hardware (Zebra, Honeywell rugged scanners), custom serial Bluetooth devices, continuous GPS background workers, or Android OS services.
-
-    <a href={`${PORTAL_BASE}/platforms/android-standards/`}>View Android Guide &rarr;</a>
-  </Card>
-
-  <Card title="Native iOS (Swift / SwiftUI)" icon="star">
-    **Flagship Apple & Secure Enclave**
-
-    Selected for flagship Apple-exclusive enterprise deployments (iPad executive dashboards, retail kiosk systems) requiring custom Metal GPU rendering, on-device CoreML neural inference, or hardware-bound Apple Secure Enclave operations.
-
-    <a href={`${PORTAL_BASE}/platforms/ios-standards/`}>View iOS Guide &rarr;</a>
-  </Card>
-</CardGrid>
-
----
-
-## Code Comparison: UI State & Data Fetching
-
-To evaluate the developer experience across stacks, compare this standard enterprise pattern—fetching an order list with loading states and pull-to-refresh:
+Every application repository must wrap the Unleash Proxy Client in a clean, type-safe architecture layer with synchronous local caching:
 
 <Tabs>
-  <TabItem label="React Native (TypeScript)">
+<TabItem label="React Native (TypeScript)">
+
+### Unleash Service Implementation (`src/core/flags/UnleashService.ts`)
 
 ```typescript
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
+import { UnleashClient } from 'unleash-proxy-client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState, AppStateStatus } from 'react-native';
 
-interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-}
+export class UnleashService {
+  private static instance: UnleashClient | null = null;
 
-export function OrderListScreen() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isError, setIsError] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  static initialize(userId: string, appVersion: string): UnleashClient {
+    if (!this.instance) {
+      this.instance = new UnleashClient({
+        url: 'https://flags.enterprise.com/proxy',
+        clientKey: process.env.EXPO_PUBLIC_UNLEASH_CLIENT_KEY ?? '',
+        appName: 'enterprise-mobile-app',
+        refreshInterval: 15,
+        storageProvider: {
+          save: (name: string, data: any) => AsyncStorage.setItem(name, JSON.stringify(data)),
+          get: async (name: string) => {
+            const data = await AsyncStorage.getItem(name);
+            return data ? JSON.parse(data) : undefined;
+          },
+        },
+        context: {
+          userId,
+          appName: 'enterprise-mobile-app',
+          environment: __DEV__ ? 'development' : 'production',
+          properties: {
+            appVersion,
+            platform: 'react-native',
+          },
+        },
+      });
 
-  const fetchOrders = async () => {
-    try {
-      setIsError(false);
-      const res = await fetch('https://api.example.com/v1/orders');
-      if (!res.ok) throw new Error('Network error');
-      const data: Order[] = await res.json();
-      setOrders(data);
-    } catch (err) {
-      setIsError(true);
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
+      this.instance.start();
+
+      AppState.addEventListener('change', (nextState: AppStateStatus) => {
+        if (nextState === 'active' && this.instance) {
+          this.instance.updateContext({ userId });
+        }
+      });
     }
-  };
+
+    return this.instance;
+  }
+
+  static isEnabled(flagName: string, fallback = false): boolean {
+    if (!this.instance) return fallback;
+    return this.instance.isEnabled(flagName);
+  }
+}
+```
+
+### React Hook for Screen Components (`src/presentation/hooks/useFeatureFlag.ts`)
+
+```typescript
+import { useEffect, useState } from 'react';
+import { UnleashService } from '../../core/flags/UnleashService';
+
+export function useFeatureFlag(flagName: string, fallback = false): boolean {
+  const [enabled, setEnabled] = useState<boolean>(() =>
+    UnleashService.isEnabled(flagName, fallback)
+  );
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    const checkState = () => {
+      const currentState = UnleashService.isEnabled(flagName, fallback);
+      setEnabled(currentState);
+    };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchOrders();
-  };
+    checkState();
+  }, [flagName, fallback]);
 
-  if (isLoading && !refreshing) {
-    return <ActivityIndicator size="large" color="#22c55e" style={styles.center} />;
-  }
-
-  if (isError) {
-    return <Text style={styles.errorText}>Unable to load enterprise orders.</Text>;
-  }
-
-  return (
-    <View style={styles.container}>
-      <FlatList
-        data={orders}
-        keyExtractor={item => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22c55e" />}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.title}>{item.orderNumber}</Text>
-            <Text style={styles.status}>{item.status}</Text>
-          </View>
-        )}
-      />
-    </View>
-  );
+  return enabled;
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0d1912', padding: 16 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  card: { padding: 14, backgroundColor: '#13251c', borderRadius: 8, marginBottom: 10, borderColor: '#1f3b2c', borderWidth: 1 },
-  title: { color: '#f3d17b', fontWeight: '700', fontSize: 16 },
-  status: { color: '#cbd5e1', marginTop: 4, fontSize: 14 },
-  errorText: { color: '#ef4444', textAlign: 'center', marginTop: 40 },
-});
 ```
+</TabItem>
 
-  </TabItem>
-  <TabItem label="Native Android (Kotlin / Compose)">
+<TabItem label="Android (Kotlin)">
+
+### Android Unleash Manager (`UnleashManager.kt`)
 
 ```kotlin
-package com.enterprise.mobile.feature.orders
+package com.enterprise.mobile.core.flags
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import android.content.Context
+import io.getunleash.UnleashClient
+import io.getunleash.UnleashConfig
+import io.getunleash.UnleashContext
 
-@Composable
-fun OrderListScreen(
-    viewModel: OrdersViewModel = viewModel()
-) {
-    val uiState by viewModel.uiState.collectAsState()
+object UnleashManager {
+    private var client: UnleashClient? = null
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF0D1912))
-            .padding(16.dp)
-    ) {
-        when (val state = uiState) {
-            is OrderUiState.Loading -> {
-                CircularProgressIndicator(
-                    color = Color(0xFF22C55E),
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
-            is OrderUiState.Error -> {
-                Text(
-                    text = state.message,
-                    color = Color(0xFFEF4444),
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
-            is OrderUiState.Success -> {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(state.orders) { order ->
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF13251C)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Text(order.orderNumber, color = Color(0xFFF3D17B), style = MaterialTheme.typography.titleMedium)
-                                Text(order.status, color = Color(0xFFCBD5E1), style = MaterialTheme.typography.bodyMedium)
-                            }
-                        }
-                    }
-                }
-            }
+    fun initialize(context: Context, userId: String, appVersion: String) {
+        if (client == null) {
+            val unleashContext = UnleashContext.newBuilder()
+                .userId(userId)
+                .appName("enterprise-android-app")
+                .environment("production")
+                .addProperty("appVersion", appVersion)
+                .build()
+
+            val config = UnleashConfig.newBuilder()
+                .proxyUrl("https://flags.enterprise.com/proxy")
+                .clientKey("android-client-key-placeholder")
+                .appName("enterprise-android-app")
+                .instanceId(userId)
+                .fetchTogglesInterval(15)
+                .build()
+
+            client = UnleashClient(config, context, unleashContext)
         }
+    }
+
+    fun isEnabled(flagName: String, fallback: Boolean = false): Boolean {
+        return client?.isEnabled(flagName) ?: fallback
     }
 }
 ```
+</TabItem>
 
-  </TabItem>
-  <TabItem label="Native iOS (Swift / SwiftUI)">
+<TabItem label="iOS (Swift)">
+
+### Swift Unleash Manager (`UnleashManager.swift`)
 
 ```swift
-import SwiftUI
+import Foundation
+import UnleashProxyClientSwift
 
-struct OrderListView: View {
-    @StateObject private var viewModel = OrdersViewModel()
+public final class UnleashManager {
+    public static let shared = UnleashManager()
+    private var client: UnleashClient?
 
-    var body: some View {
-        ZStack {
-            Color(red: 13/255, green: 25/255, blue: 18/255)
-                .ignoresSafeArea()
+    private init() {}
 
-            switch viewModel.state {
-            case .loading:
-                ProgressView()
-                    .tint(Color(red: 34/255, green: 197/255, blue: 94/255))
-            case .error(let message):
-                Text(message)
-                    .foregroundColor(.red)
-            case .success(let orders):
-                List(orders) { order in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(order.orderNumber)
-                            .font(.headline)
-                            .foregroundColor(Color(red: 243/255, green: 209/255, blue: 123/255))
-                        Text(order.status)
-                            .font(.subheadline)
-                            .foregroundColor(Color(red: 203/255, green: 213/255, blue: 225/255))
-                    }
-                    .listRowBackground(Color(red: 19/255, green: 37/255, blue: 28/255))
-                }
-                .scrollContentBackground(.hidden)
-                .refreshable {
-                    await viewModel.loadOrders()
-                }
+    public func initialize(userId: String, appVersion: String) {
+        client = UnleashClient(
+            unleashUrl: "https://flags.enterprise.com/proxy",
+            clientKey: "ios-client-key-placeholder",
+            refreshInterval: 15,
+            appName: "enterprise-ios-app",
+            environment: "production"
+        )
+
+        client?.context = [
+            "userId": userId,
+            "appVersion": appVersion,
+            "platform": "ios"
+        ]
+
+        client?.start { error in
+            if let error = error {
+                NSLog("[Unleash] Failed to connect: %@", error.localizedDescription)
             }
         }
-        .task {
-            await viewModel.loadOrders()
+    }
+
+    public func isEnabled(_ flagName: String, fallback: Boolean = false) -> Bool {
+        return client?.isEnabled(name: flagName) ?? fallback
+    }
+}
+```
+</TabItem>
+</Tabs>
+
+---
+
+## Staged Rollout Strategy
+
+Enterprise features roll out through four monitored stages using a **Gradual Rollout Strategy** with **User ID Stickiness**:
+
+<DiagramExpand title="STAGED ROLLOUT RINGS">
+
+```mermaid
+flowchart LR
+    Ring0["Stage 0: Internal\n• Internal testers\n• Verification in QA"] --> Ring1
+    Ring1["Stage 1: Canary\n• 5% User Population\n• Telemetry & crash watch"] --> Ring2
+    Ring2["Stage 2: Ramp\n• 25% User Population\n• API latency verification"] --> Ring3
+    Ring3["Stage 3: Broad\n• 50% Population\n• Geographic validation"] --> Ring4
+    Ring4["Stage 4: General Availability\n• 100% All Users\n• Retirement planned"]
+
+    classDef ring0 fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef ring1 fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef ring2 fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef ring3 fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef ring4 fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+
+    class Ring0 ring0;
+    class Ring1 ring1;
+    class Ring2 ring2;
+    class Ring3 ring3;
+    class Ring4 ring4;
+```
+
+</DiagramExpand>
+
+* **Stickiness (`stickiness: userId`):** Guarantees that once a user is allocated to a feature variant, they remain on that variant across app restarts and network reconnections. Never use `random` stickiness on mobile apps.
+* **Progressive Verification:** Staged at `5%` &rarr; `25%` &rarr; `50%` &rarr; `100%`. Each stage requires metric stability verification in mobile observability before expanding.
+
+---
+
+## Emergency Kill-Switch Protocol
+
+If an unexpected crash spike or backend latency surge occurs, a feature can be deactivated remotely in under 60 seconds without submitting a store binary update:
+
+<DiagramExpand title="EMERGENCY KILL SWITCH SEQUENCE">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Ops as Mobile Operations
+    participant Unleash as Unleash Console
+    participant Proxy as Unleash Proxy Edge
+    participant App as Mobile Application
+
+    Ops->>Unleash: Toggle Flag to OFF
+    Unleash->>Proxy: Sync state update
+    App->>Proxy: Polling query /proxy (within 15s)
+    Proxy-->>App: Return updated toggle payload (flag: false)
+    App->>App: Fall back to stable legacy path immediately
+```
+
+</DiagramExpand>
+
+---
+
+## Flag Hygiene & Retirement Policy
+
+Feature flags must not remain in the codebase indefinitely. Stale flags increase code complexity and inflate test matrices:
+
+| Flag Category | Recommended Lifecycle | Engineering Action |
+| :--- | :--- | :--- |
+| **Release Flags** | Deprecate post-100% stable rollout | Remove flag checks, purge legacy fallback code, archive flag. |
+| **Kill Switches** | Permanent (Audited periodically) | Retain for high-risk integrations; verify fallback path regularly. |
+| **Experiment Flags** | Remove upon experiment completion | Merge winning variant; delete alternative paths. |
+
+---
+
+## Architectural Non-Negotiables
+
+<Aside type="danger" title="FEATURE FLAG ANTI-PATTERNS">
+The following practices are strictly prohibited:
+
+1. **Direct Core Unleash Connections:** Mobile applications must never connect directly to the core Unleash database or management server. All connections must route through the Unleash Proxy Edge.
+2. **Blocking App Launch:** Never block app cold start waiting for a network flag response. Always initialize synchronously from local storage cache.
+3. **Omitting Fallback Defaults:** Every `isEnabled()` evaluation must specify an explicit, safe fallback boolean to guarantee proper offline behavior.
+4. **Random Stickiness:** Never configure `random` stickiness in mobile rollouts, as user experience would fluctuate between app launches.
+5. **Non-Standard Flag Naming:** Flags must adhere to the naming schema: `mobile.[platform].[domain].[feature_name]` (e.g. `mobile.all.checkout.one_click_pay`).
+</Aside>
+
+---
+
+## Quality Gate PR Merge Checklist
+
+Before submitting code introducing or modifying feature flags, verify every criterion:
+
+- [ ] **Unleash Proxy Target Verified:** Target endpoint points to the enterprise edge proxy URL.
+- [ ] **Local Storage Cache Configured:** Synchronous local storage provider registered to prevent cold-start UI flickering.
+- [ ] **Safe Fallback Specified:** All evaluation points specify a safe offline fallback value.
+- [ ] **Stickiness Configured to User ID:** Rollout strategy uses `userId` stickiness for stable cohort assignment.
+- [ ] **Unit Tests for Both Branches:** Tests verify application behavior with the flag enabled and disabled.
+
+
+
+
+
+
+
+
+----------------------------
+
+---
+title: Offline Synchronization & Storage Standards
+description: Enterprise mobile specification for offline-first data architectures, local storage tiering, Outbox sync queues, and conflict resolution protocols.
+sidebar:
+  order: 5
+  label: Offline & Storage
+---
+
+import { Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import DiagramExpand from './DiagramExpand.astro';
+
+<Aside type="tip" title="OFFLINE-FIRST MANDATE">
+Mobile applications operate in an offline-first data lifecycle where network disconnections are treated as standard operational states. UI views render immediately from local storage, and mutations are guaranteed through an idempotent Outbox synchronization queue.
+</Aside>
+
+## Zero-Spinner Mobile Philosophy
+
+Traditional mobile architectures follow a network-first approach where opening a screen displays a loading spinner waiting on an HTTP response. In low-connectivity environments, users experience high latency and UI freezes.
+
+Enterprise applications enforce a **Zero-Spinner** architecture:
+1. **Instant Render from Local Storage:** Screens render immediately (&lt;16ms) using cached data from the local database upon cold start.
+2. **Background Network Reconciliation:** Remote queries execute asynchronously in the background. Reactive data streams (`StateFlow`, `@Published`, React hooks) update the UI seamlessly when new records arrive.
+3. **Optimistic Local Mutations:** User actions (such as order submissions or status updates) apply to local stores immediately and enqueue to a durable **Outbox Queue**.
+
+---
+
+## Tiered Local Storage Architecture
+
+Enterprise applications must select local storage engines based on data structure and query patterns:
+
+| Storage Tier | Recommended Technology | Ideal Use Cases | Security Requirement |
+| :--- | :--- | :--- | :--- |
+| **Secure Key-Value** | MMKV / SecureStore | User preferences, session flags, feature toggle cache | AES-128 encryption with hardware-backed keys |
+| **Relational Database** | Room (Android) / CoreData or SwiftData (iOS) | Complex entity graphs, offline sync outbox, indexed search | File-level hardware encryption (SQLCipher where required) |
+| **Hardware Enclave** | KeyStore (Android) / Keychain (iOS) | OAuth tokens, refresh tokens, cryptographic signing keys | Hardware enclave backing with biometric gating |
+
+---
+
+## Outbox Synchronization Pattern
+
+To guarantee that user mutations are never lost during cellular dead zones, applications decouple user interactions from immediate network calls using the **Outbox Pattern**:
+
+<DiagramExpand title="OUTBOX SYNCHRONIZATION PATTERN">
+
+```mermaid
+flowchart TD
+    subgraph Client["1. Mobile Client Execution"]
+        UI["User Action (Submit Order)"]
+        LocalDB["Local Entity Store (Room / CoreData / SQLite)"]
+        OutboxQueue["Durable Outbox Queue (Idempotency Key + Mutation)"]
+
+        UI -->|"1. Optimistic write"| LocalDB
+        UI -->|"2. Enqueue mutation"| OutboxQueue
+        LocalDB -->|"3. Instant UI render"| UI
+    end
+
+    subgraph SyncWorker["2. Background Synchronization Engine"]
+        Scheduler["Background Task Scheduler (WorkManager / BGAppRefresh)"]
+        Batcher["Outbox Drainer (Reads PENDING records sequentially)"]
+        Scheduler -->|"Radio connected & active"| Batcher
+        OutboxQueue -.->|"Pulls pending records"| Batcher
+    end
+
+    subgraph Backend["3. Enterprise Cloud Core"]
+        Gateway["Enterprise API Gateway (Validates Idempotency Key)"]
+        Microservice["Backend Service & Database"]
+
+        Batcher -->|"HTTP POST /mutations (X-Idempotency-Key: UUID)"| Gateway
+        Gateway -->|"Idempotent transaction"| Microservice
+        Microservice -->>|"200 OK Authoritative Response"| Batcher
+        Batcher -->|"Mark SYNCED and prune"| OutboxQueue
+    end
+
+    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+
+    class UI uiLayer;
+    class Scheduler,Batcher domainLayer;
+    class LocalDB,OutboxQueue dataLayer;
+    class Gateway,Microservice networkLayer;
+```
+
+</DiagramExpand>
+
+### Outbox Operational Lifecycle
+1. **Atomic Local Commit:** When the user triggers an action, the mutation updates the local relational database for immediate UI display and appends an entry to the outbox queue in a single local transaction.
+2. **Idempotency Guarantee:** Every mutation generates a client-side UUID sent in the `X-Idempotency-Key` HTTP header. This prevents duplicate transactions if the connection drops after the server processes the request but before the response reaches the device.
+3. **Sequential Queue Draining:** When network connectivity is restored, the background worker processes pending mutations in strict FIFO sequence.
+
+---
+
+## Conflict Resolution Protocols
+
+When a client operates offline for extended periods, local mutations may conflict with updates made by other users:
+
+| Resolution Strategy | Enforcement Mechanism | Applicable Domain |
+| :--- | :--- | :--- |
+| **Server-Authoritative** | Server state overwrites local pending state; client refreshes with canonical backend payload. | Financial balances, inventory stock levels, order approval states. |
+| **Client Last-Write-Wins (LWW)** | Higher ISO-8601 UTC timestamp takes precedence. | Draft notes, user display preferences, form field inputs. |
+| **Manual User Resolution** | App presents side-by-side diff modal allowing the user to select conflicting versions. | Collaborative document edits, shared task assignments. |
+
+---
+
+## Multi-Platform Implementation
+
+<Tabs>
+<TabItem label="React Native (TypeScript)">
+
+### Storage Service & Outbox Manager
+
+```typescript
+// src/core/storage/StorageService.ts
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export const StorageService = {
+  setString: async (key: string, value: string) => AsyncStorage.setItem(key, value),
+  getString: async (key: string): Promise<string | null> => AsyncStorage.getItem(key),
+  setObject: async <T>(key: string, value: T) => AsyncStorage.setItem(key, JSON.stringify(value)),
+  getObject: async <T>(key: string): Promise<T | null> => {
+    const raw = await AsyncStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  },
+  delete: async (key: string) => AsyncStorage.removeItem(key),
+};
+```
+
+### Durable Outbox Sync Queue
+
+```typescript
+// src/core/sync/OutboxManager.ts
+import NetInfo from '@react-native-community/netinfo';
+import { StorageService } from '../storage/StorageService';
+
+export interface OutboxMutation {
+  id: string; // Idempotency UUID
+  endpoint: string;
+  payload: Record<string, unknown>;
+  createdAt: number;
+  retryCount: number;
+}
+
+export class OutboxManager {
+  private static QUEUE_KEY = '@offline_outbox_queue';
+  private static isDraining = false;
+
+  static async enqueue(endpoint: string, payload: Record<string, unknown>): Promise<string> {
+    const queue = (await StorageService.getObject<OutboxMutation[]>(this.QUEUE_KEY)) ?? [];
+    const mutation: OutboxMutation = {
+      id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      endpoint,
+      payload,
+      createdAt: Date.now(),
+      retryCount: 0,
+    };
+
+    queue.push(mutation);
+    await StorageService.setObject(this.QUEUE_KEY, queue);
+    this.drainQueue();
+    return mutation.id;
+  }
+
+  static async drainQueue(): Promise<void> {
+    if (this.isDraining) return;
+    const netState = await NetInfo.fetch();
+    if (!netState.isConnected) return;
+
+    this.isDraining = true;
+    try {
+      const queue = (await StorageService.getObject<OutboxMutation[]>(this.QUEUE_KEY)) ?? [];
+      const remaining: OutboxMutation[] = [];
+
+      for (const item of queue) {
+        try {
+          const res = await fetch(item.endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Idempotency-Key': item.id,
+            },
+            body: JSON.stringify(item.payload),
+          });
+
+          if (!res.ok && res.status >= 500) {
+            item.retryCount++;
+            remaining.push(item);
+          }
+        } catch {
+          item.retryCount++;
+          remaining.push(item);
+        }
+      }
+
+      await StorageService.setObject(this.QUEUE_KEY, remaining);
+    } finally {
+      this.isDraining = false;
+    }
+  }
+}
+```
+</TabItem>
+
+<TabItem label="Android (Kotlin)">
+
+### Room Database & Outbox Entity
+
+```kotlin
+package com.enterprise.mobile.core.storage
+
+import androidx.room.*
+
+@Entity(tableName = "outbox_mutations")
+data class OutboxEntity(
+    @PrimaryKey val idempotencyKey: String,
+    val endpoint: String,
+    val payloadJson: String,
+    val createdAtTimestamp: Long = System.currentTimeMillis(),
+    val retryCount: Int = 0
+)
+
+@Dao
+interface OutboxDao {
+    @Query("SELECT * FROM outbox_mutations ORDER BY createdAtTimestamp ASC")
+    suspend fun getPendingMutations(): List<OutboxEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun enqueue(mutation: OutboxEntity)
+
+    @Delete
+    suspend fun delete(mutation: OutboxEntity)
+}
+```
+
+### Android Sync Worker
+
+```kotlin
+package com.enterprise.mobile.core.sync
+
+import android.content.Context
+import androidx.work.CoroutineWorker
+import androidx.work.WorkerParameters
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+
+class OutboxSyncWorker(
+    appContext: Context,
+    workerParams: WorkerParameters,
+    private val outboxDao: OutboxDao,
+    private val httpClient: OkHttpClient
+) : CoroutineWorker(appContext, workerParams) {
+
+    override suspend fun doWork(): Result {
+        val pending = outboxDao.getPendingMutations()
+
+        for (mutation in pending) {
+            val request = Request.Builder()
+                .url(mutation.endpoint)
+                .header("X-Idempotency-Key", mutation.idempotencyKey)
+                .post(mutation.payloadJson.toRequestBody("application/json".toMediaType()))
+                .build()
+
+            try {
+                val response = httpClient.newCall(request).execute()
+                if (response.isSuccessful) {
+                    outboxDao.delete(mutation)
+                }
+            } catch (e: Exception) {
+                return Result.retry()
+            }
+        }
+
+        return Result.success()
+    }
+}
+```
+</TabItem>
+
+<TabItem label="iOS (Swift)">
+
+### Swift Outbox Record & Queue Manager
+
+```swift
+import Foundation
+
+public struct OutboxRecord: Codable {
+    public let id: UUID
+    public let endpoint: URL
+    public let payload: Data
+    public let timestamp: Date
+}
+
+public actor OutboxSyncManager {
+    public static let shared = OutboxSyncManager()
+    private let storageKey = "enterprise_outbox_queue"
+
+    public func enqueue(endpoint: URL, payload: Data) {
+        var current = fetchRecords()
+        let record = OutboxRecord(id: UUID(), endpoint: endpoint, payload: payload, timestamp: Date())
+        current.append(record)
+        saveRecords(current)
+    }
+
+    public func drainQueue() async {
+        var current = fetchRecords()
+        guard !current.isEmpty else { return }
+
+        var remaining: [OutboxRecord] = []
+
+        for record in current {
+            var request = URLRequest(url: record.endpoint)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(record.id.uuidString, forHTTPHeaderField: "X-Idempotency-Key")
+            request.httpBody = record.payload
+
+            do {
+                let (_, response) = try await URLSession.shared.data(for: request)
+                if let httpRes = response as? HTTPURLResponse, httpRes.statusCode >= 500 {
+                    remaining.append(record)
+                }
+            } catch {
+                remaining.append(record)
+            }
+        }
+
+        saveRecords(remaining)
+    }
+
+    private func fetchRecords() -> [OutboxRecord] {
+        guard let data = UserDefaults.standard.data(forKey: storageKey),
+              let decoded = try? JSONDecoder().decode([OutboxRecord].self, from: data) else {
+            return []
+        }
+        return decoded
+    }
+
+    private func saveRecords(_ records: [OutboxRecord]) {
+        if let data = try? JSONEncoder().encode(records) {
+            UserDefaults.standard.set(data, forKey: storageKey)
         }
     }
 }
 ```
-
-  </TabItem>
+</TabItem>
 </Tabs>
 
 ---
 
-## When to Use the Native Escape Hatch (TurboModules)
+## Database Schema Versioning & Migrations
 
-Choosing **React Native** does not lock you out of native device capabilities. When high-performance hardware drivers or proprietary native SDKs are required, write a lightweight **TurboModule** in C++ or Swift/Kotlin rather than rewriting the application:
+Mobile binary updates must never crash or wipe local user data due to unhandled database schema changes:
 
-```typescript
-// Specifying a Type-Safe TurboModule in React Native (TypeScript Spec)
-import type { TurboModule } from 'react-native';
-import { TurboModuleRegistry } from 'react-native';
+<DiagramExpand title="DATABASE SCHEMA MIGRATION LIFECYCLE">
 
-export interface Spec extends TurboModule {
-  // Direct C++ JSI call into native hardware driver without JSON bridge serialization
-  scanBarcodeHardware(timeoutMs: number): Promise<string>;
-  getBatteryHealth(): Promise<number>;
-}
+```mermaid
+flowchart LR
+    V1["Schema Version 1\n(Shipped in App v1.0)"] -->|"Migration 1 to 2\n(Add nullable column)"| V2
+    V2["Schema Version 2\n(Shipped in App v1.1)"] -->|"Migration 2 to 3\n(Add table & index)"| V3
+    V3["Schema Version 3\n(Shipped in App v2.0)"]
 
-export default TurboModuleRegistry.getEnforcing<Spec>('EnterpriseHardwareScanner');
+    classDef v1 fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef v2 fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef v3 fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+
+    class V1 v1;
+    class V2 v2;
+    class V3 v3;
 ```
 
----
+</DiagramExpand>
 
-## Next Steps
-
-<CardGrid>
-  <LinkCard
-    title="Machine Setup & Workstation Guide"
-    href={`${PORTAL_BASE}/onboarding/machine-setup/`}
-    description="Configure your MacBook workstation with the certified toolchain, compilers, and Doctor CLI validation."
-  />
-  <LinkCard
-    title="Platform Architecture"
-    href={`${PORTAL_BASE}/architecture/clean-architecture-spec/`}
-    description="Explore the standardized 4-layer clean architecture, repository patterns, and unidirectional data flow."
-  />
-</CardGrid>
-
-
-
-
---------------------------
-
+### Mandatory Migration Rules
+1. **Zero Destructive Fallbacks in Production:** Android's `.fallbackToDestructiveMigration()` or unversioned store replacement is strictly prohibited in release builds.
+2. **Nullable Columns for Schema Expansion:** All newly introduced columns must be `NULLABLE` or specify a safe default value.
+3. **Automated Migration Test Suites:** Every schema modification PR must include an automated migration unit test verifying that existing records upgrade cleanly from version $N-1$ to $N$.
 
 ---
-title: Machine Setup & Workstation Guide
-description: Step-by-step MacBook workstation setup guide for Android Native, iOS Native, and React Native engineering teams.
+
+## Architectural Non-Negotiables
+
+<Aside type="danger" title="PERSISTENCE VIOLATIONS">
+The following anti-patterns trigger automatic PR review rejection:
+
+1. **Main Thread Database I/O:** Never execute SQLite queries, CoreData fetches, or disk writes on the UI main thread. All database calls must execute on background threads (`Dispatchers.IO` in Kotlin, background Swift actors, asynchronous JavaScript threads).
+2. **Plain-Text Credentials in Database:** User tokens, passwords, and private API keys must never be stored in plain database columns or unencrypted storage. Tokens belong exclusively in Android KeyStore or iOS Keychain.
+3. **Missing Idempotency Keys:** Every mutating outbox record must generate a unique client UUID sent via the `X-Idempotency-Key` header to prevent duplicate server actions during network reconnects.
+4. **Unconstrained Caching:** All cached entity stores must specify time-to-live (TTL) limits or eviction rules to prevent application binary bloat and operating system storage purges.
+</Aside>
+
+---
+
+## Quality Gate PR Merge Checklist
+
+Before submitting code introducing or modifying offline storage logic, verify every requirement:
+
+- [ ] **Offline Launch Tested:** Application launches, renders cached records, and accepts offline inputs with device radio disabled.
+- [ ] **Idempotency Header Included:** Outbox synchronization transmits a unique client UUID in `X-Idempotency-Key`.
+- [ ] **Background Thread Dispatching:** All SQLite, Room, or CoreData operations execute off the main UI thread.
+- [ ] **Migration Test Added:** Database schema increments include an automated unit test verifying data retention from prior versions.
+- [ ] **Encrypted Storage for Secrets:** Sensitive tokens reside strictly in hardware-backed storage (Keychain / KeyStore).
+
+
+
+
+-----------------------
+
+
+---
+title: Branching & Pull Request Guidelines
+description: Enterprise Git branching strategy, pull request protocols, release workflows, and code review standards for mobile engineering teams.
 sidebar:
   order: 6
-  label: Machine Setup (MacBook)
+  label: Branching & PR Guidelines
 ---
 
-import { Tabs, TabItem, CardGrid, Card } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
+import DiagramExpand from './DiagramExpand.astro';
 
-:::tip[Workstation Bootstrap]
-Step-by-step workstation configuration for engineers on corporate MacBooks (Apple Silicon M1/M2/M3/M4 or Intel). Follow the common baseline prerequisites, then select your platform tab below for comprehensive terminal commands, environment variables, simulator configurations, and Doctor CLI validation.
-:::
+<Aside type="tip" title="SOURCE CONTROL MANDATE">
+All mobile repositories enforce strict GitFlow branch isolation, peer reviews, automated CI quality gates, and Conventional Commits. Direct pushes to integration and production branches are blocked by branch protection policies.
+</Aside>
 
-## Setup Targets
+## Core Engineering Principles
 
-<CardGrid>
-  <Card title="Hardware Target" icon="laptop">
-    macOS Sonoma (14.5+) or macOS Sequoia (15.x) on Apple Silicon / Intel.
-  </Card>
-  <Card title="Android Toolchain" icon="open-book">
-    OpenJDK 17, Android Studio Koala/Ladybug, Android SDK 34/35 & AVD.
-  </Card>
-  <Card title="iOS Toolchain" icon="star">
-    Xcode 16.x, Command Line Tools, CocoaPods & iOS Simulator.
-  </Card>
-  <Card title="React Native" icon="setting">
-    Node.js 20 LTS (via FNM), Watchman & unified dual-platform toolchain.
-  </Card>
-</CardGrid>
-
-
-## Common MacBook Baseline Prerequisites
-
-Before installing platform-specific SDKs, execute these three foundational configuration steps on your MacBook:
-
-### Install Homebrew Package Manager
-
-Homebrew is required to manage command-line developer utilities on macOS:
-
-```bash
-# Install Homebrew
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# For Apple Silicon MacBooks (M1/M2/M3/M4), add Homebrew to your shell environment:
-echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-eval "$(/opt/homebrew/bin/brew shellenv)"
-
-# Verify Homebrew installation
-brew --version
-```
-
-### Install Enterprise Proxy Certificates
-
-Corporate MacBooks route network traffic through internal SSL proxies. Install the enterprise root certificate into your macOS System Keychain so package managers (curl, git, npm, Gradle) trust internal endpoints:
-
-```bash
-# Download and trust the Enterprise Root CA in your macOS System Keychain
-sudo security add-trusted-cert -d -r trustRoot \
-  -k /Library/Keychains/System.keychain \
-  /Library/Application\ Support/Enterprise/Certs/EnterpriseRootCA.crt
-
-# Verify certificate is trusted
-security find-certificate -c "Enterprise Root CA" /Library/Keychains/System.keychain
-```
-
-### Generate SSH Key for Enterprise GitHub
-
-```bash
-# Generate a modern ed25519 SSH key
-ssh-keygen -t ed25519 -C "your_username@enterprise.com" -f ~/.ssh/id_ed25519_enterprise
-
-# Configure SSH agent to automatically load keys from macOS Keychain
-cat << 'EOF' >> ~/.ssh/config
-Host github.enterprise.com
-  IdentityFile ~/.ssh/id_ed25519_enterprise
-  AddKeysToAgent yes
-  UseKeychain yes
-EOF
-
-# Add key to Keychain and test connection
-ssh-add --apple-use-keychain ~/.ssh/id_ed25519_enterprise
-ssh -T git@github.enterprise.com
-```
+Every engineer contributing to enterprise mobile repositories adheres to these foundational principles:
+* **Maintain Branch Stability:** Production code in `master` must always represent deployable, audited software.
+* **Isolate Feature Development:** All work occurs in dedicated, short-lived feature or bugfix branches.
+* **Pull Request Enforcement:** Code enters shared branches exclusively through tracked Pull Requests.
+* **Peer Review Mandate:** Every PR requires approval from qualified peers before merging.
+* **Automated CI Gates:** Automated test suites, lint checks, and security scans must pass completely.
+* **Traceable Commits:** Commit messages and branch names reference corresponding Jira issue keys.
 
 ---
 
-## Platform-Specific Installation Instructions
-
-Select your primary development platform tab below to configure your MacBook toolchain:
-
-<Tabs>
-  <TabItem label="Android (Kotlin / Compose)">
-
-### Install OpenJDK 17
-
-Android Gradle Plugin 8.x requires Java 17. Install OpenJDK 17 via Homebrew:
-
-```bash
-# Install OpenJDK 17
-brew install openjdk@17
-
-# Create a symlink so macOS system Java wrapper recognizes OpenJDK 17
-sudo ln -sfn /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-17.jdk
-
-# Verify Java version
-java -version
-# Expected: openjdk version "17.0.x"
-```
-
-### Install Android Studio
-
-Download and install **Android Studio (Koala or Ladybug release)** optimized for Apple Silicon (`.dmg (Mac with Apple chip)`):
-
-```bash
-# Optional: Install via Homebrew Cask
-brew install --cask android-studio
-```
-
-Launch Android Studio and complete the **Setup Wizard**:
-* Choose **Standard** setup type.
-* Agree to license agreements for `android-sdk-license` and `intel-android-extra-license`.
-
-### Install Required SDK Components
-
-In Android Studio, open **Settings / Preferences &rarr; Languages & Frameworks &rarr; Android SDK**:
-
-1. Under **SDK Platforms**, check:
-   * **Android 14.0 (UpsideDownCake) - API Level 34**
-   * **Android 15.0 (VanillaIceCream) - API Level 35**
-2. Under **SDK Tools**, check:
-   * **Android SDK Build-Tools 34.0.0**
-   * **Android SDK Command-line Tools (latest)**
-   * **Android SDK Platform-Tools**
-   * **Android Emulator**
-3. Click **Apply** to install the selected packages.
-
-### Configure Shell Environment Variables
-
-Add Android SDK paths to your `~/.zshrc` file:
-
-```bash
-# Open ~/.zshrc in your editor
-cat << 'EOF' >> ~/.zshrc
-
-# Java Home (OpenJDK 17)
-export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-
-# Android SDK Environment Variables
-export ANDROID_HOME="$HOME/Library/Android/sdk"
-export PATH="$PATH:$ANDROID_HOME/emulator"
-export PATH="$PATH:$ANDROID_HOME/platform-tools"
-export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
-export PATH="$PATH:$ANDROID_HOME/tools"
-export PATH="$PATH:$ANDROID_HOME/tools/bin"
-
-EOF
-
-# Reload shell configuration
-source ~/.zshrc
-```
-
-### Verify Android CLI & Create AVD Emulator
-
-Verify that `adb` and the emulator binaries are globally accessible in your terminal:
-
-```bash
-# 1. Verify adb is active
-adb version
-
-# 2. Install Google Play system image for ARM64 (Apple Silicon)
-sdkmanager "system-images;android-34;google_apis;arm64-v8a"
-
-# 3. Create a Pixel 8 virtual device
-avdmanager create avd \
-  -n "Pixel_8_API_34" \
-  -k "system-images;android-34;google_apis;arm64-v8a" \
-  -d "pixel_8"
-
-# 4. Launch the Android Emulator from terminal
-emulator -avd Pixel_8_API_34 -netdelay none -netspeed full &
-```
-
-  </TabItem>
-
-  <TabItem label="iOS (Swift / SwiftUI)">
-
-### Install Xcode from Mac App Store
-
-1. Open the macOS **App Store** and search for **Xcode**.
-2. Install the latest official release (Xcode 16.x).
-3. Open Xcode once to complete initial system component installations.
-
-### Configure Xcode Command Line Tools
-
-Ensure your terminal uses the full Xcode developer tools directory rather than standalone command-line tools:
-
-```bash
-# Point active developer directory to Xcode.app
-sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-# Verify active developer path
-xcode-select -p
-# Expected: /Applications/Xcode.app/Contents/Developer
-```
-
-### Accept Xcode License Agreement & Download Platforms
-
-```bash
-# Accept Xcode license agreement
-sudo xcodebuild -license accept
-
-# Pre-install iOS Simulator runtime platform
-sudo xcodebuild -downloadPlatform iOS
-
-# First-time launch setup
-sudo xcodebuild -runFirstLaunch
-```
-
-### Install CocoaPods Package Manager
-
-Install CocoaPods for projects requiring third-party Objective-C/Swift pods:
-
-```bash
-# Install CocoaPods via Homebrew (recommended on Apple Silicon)
-brew install cocoapods
-
-# Verify CocoaPods installation
-pod --version
-```
-
-### Configure Apple Developer Account in Xcode
-
-1. Open Xcode and navigate to **Settings &rarr; Accounts** (`Cmd + ,`).
-2. Click **+ &rarr; Apple ID** and authenticate with your corporate enterprise Apple credentials.
-3. Select your team: **Enterprise Mobile Engineering Team**.
-4. Click **Download Manual Profiles** to sync enterprise provisioning profiles into your local keychain.
-
-### Launch and Verify iOS Simulator via CLI
-
-You can boot simulators directly from your terminal:
-
-```bash
-# List all available iOS device simulators
-xcrun simctl list devices available | grep "iPhone"
-
-# Boot an iPhone 15 Pro simulator
-xcrun simctl boot "iPhone 15 Pro"
-
-# Open the macOS Simulator graphical interface
-open -a Simulator
-```
-
-  </TabItem>
-
-  <TabItem label="React Native (Cross-Platform)">
-
-### Install Node.js 20 LTS via FNM
-
-We recommend **FNM** over NVM because it is built in Rust, loads 40x faster, and handles shell integration seamlessly:
-
-```bash
-# Install FNM and Watchman file observer
-brew install fnm watchman
-
-# Configure FNM in ~/.zshrc
-echo 'eval "$(fnm env --use-on-cd)"' >> ~/.zshrc
-source ~/.zshrc
-
-# Install and activate Node.js 20 LTS
-fnm install 20
-fnm use 20
-fnm default 20
-
-# Verify versions
-node -v   # Expected: v20.x.x
-npm -v    # Expected: 10.x.x
-```
-
-### Unified Toolchain Setup (Android & iOS Combined)
-
-React Native projects compile to both platforms. Ensure you complete:
-1. **Android Setup:** OpenJDK 17, `ANDROID_HOME`, and `platform-tools` (from the Android Tab).
-2. **iOS Setup:** Xcode 16, Command Line Tools, and CocoaPods (from the iOS Tab).
-
-Add the combined environment block to your `~/.zshrc`:
-
-```bash
-cat << 'EOF' >> ~/.zshrc
-
-# Java 17 for React Native Android compilation
-export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-
-# Android SDK
-export ANDROID_HOME="$HOME/Library/Android/sdk"
-export PATH="$PATH:$ANDROID_HOME/emulator"
-export PATH="$PATH:$ANDROID_HOME/platform-tools"
-export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
-
-# CocoaPods & Homebrew paths
-export PATH="/opt/homebrew/bin:$PATH"
-
-EOF
-
-source ~/.zshrc
-```
-
-### Run React Native Doctor Diagnostic CLI
-
-Run the automated Doctor toolchain checker to verify your dual-platform setup:
-
-```bash
-# Execute workstation check via standard React Native Doctor
-npx react-native doctor
-
-# Expected validation output:
-# Common
-#  ✓ Node.js
-#  ✓ yarn / npm
-#  ✓ Watchman
-# Android
-#  ✓ JDK
-#  ✓ Android Studio
-#  ✓ ANDROID_HOME
-#  ✓ Android SDK
-# iOS
-#  ✓ Xcode
-#  ✓ CocoaPods
-```
-
-### Boot Application
-
-```bash
-# Initialize a new React Native application
-npx @react-native-community/cli init MyMobileApp
-cd MyMobileApp
-
-# Install dependencies
-npm install
-
-# Install iOS CocoaPod native dependencies
-cd ios && pod install && cd ..
-
-# Boot the app on iOS Simulator
-npm run ios
-
-# Boot the app on Android Emulator (ensure AVD is started)
-npm run android
-```
-
-  </TabItem>
-</Tabs>
+## Standard Repository Branches
+
+Enterprise mobile repositories utilize a standardized branch hierarchy:
+
+| Branch Name | Operational Role | Protection Policy | Target Merge Policy |
+| :--- | :--- | :--- | :--- |
+| `master` / `prod` | Authoritative production release code. Every commit is tagged (`vYYYY.MM.build`). | Direct push blocked. Strict branch protection. | Squash and merge from release or hotfix branches. |
+| `develop` | Primary integration branch for active sprint development. | Direct push blocked. Requires CI pass + review approval. | Squash and merge from feature and bugfix branches. |
+| `release-*` | Release candidate staging branch (`release-2026.10`). Only bug fixes and version bumps. | Push restricted to release engineers. | Merges into `master` and back-merges into `develop`. |
+| `feature-*` | Temporary branch for new capabilities (`feature-checkout-flow`). | Open to assigned engineers. | Deleted upon merge into `develop`. |
+| `bugfix-*` | Temporary branch for non-urgent defect resolution (`bugfix-cart-recalculation`). | Open to assigned engineers. | Deleted upon merge into `develop`. |
+| `hotfix-*` | Emergency patch branched directly from `master` (`hotfix-session-crash`). | Restricted to hotfix squads. | Mandatory dual-merge into `master` and `develop`. |
 
 ---
 
-## Universal Workstation Verification
+## Feature Branch Workflow
 
-Regardless of which platform tab you configured, run the React Native Doctor CLI to produce your final system health report:
+### Creating a Feature Branch
+Always branch from the latest state of the `develop` branch:
 
 ```bash
-npx react-native doctor
+# 1. Ensure develop is up to date
+git checkout develop
+git pull origin develop
+
+# 2. Cut a new feature branch
+git checkout -b feature-PROJ-1234-order-tracking
 ```
 
-```
-============================================================
-              REACT NATIVE ENVIRONMENT REPORT
-============================================================
- Common
-  [OK] Node.js (v20.18.0)
-  [OK] npm (10.8.2)
-  [OK] Watchman (2024.10.07.00)
- Android
-  [OK] JDK (17.0.12)
-  [OK] Android Studio (Koala 2024.1.1)
-  [OK] ANDROID_HOME (/Users/developer/Library/Android/sdk)
-  [OK] Android SDK Platforms (API 34, API 35)
-  [OK] Android Debug Bridge (1.0.41)
- iOS
-  [OK] Xcode (16.0)
-  [OK] Command Line Tools (16.0.0)
-  [OK] CocoaPods (1.15.2)
-------------------------------------------------------------
- RESULT: All core components passed.
- Workstation is certified for Enterprise Mobile Engineering.
-============================================================
-```
+### Branch Naming Conventions
+Branch names must follow structured prefixes incorporating the issue tracking key:
+
+| Branch Type | Syntax Format | Example |
+| :--- | :--- | :--- |
+| **New Feature** | `feature-[JIRA_KEY]-[short-description]` | `feature-MOB-4120-biometric-login` |
+| **Bug Fix** | `bugfix-[JIRA_KEY]-[short-description]` | `bugfix-MOB-4155-cart-total-precision` |
+| **Emergency Hotfix** | `hotfix-[JIRA_KEY]-[short-description]` | `hotfix-MOB-4201-auth-token-refresh` |
+| **Technical Debt** | `chore-[JIRA_KEY]-[short-description]` | `chore-MOB-4089-upgrade-gradle-wrapper` |
 
 ---
 
-## Apple Silicon MacBook Troubleshooting
+## Development Flows
 
-:::caution[M-Series (ARM64) MacBook Tips]
-* **Android Emulator Acceleration:** On Apple Silicon (M1/M2/M3/M4), do *not* attempt to install Intel HAXM. The Android Emulator uses Apple's native Hypervisor.framework out of the box. Always select the `arm64-v8a` ABI system image.
-* **Homebrew Binary Path:** Homebrew installs to `/opt/homebrew/bin` on Apple Silicon and `/usr/local/bin` on Intel. Never copy `~/.zshrc` files from an Intel Mac without adjusting paths.
-* **Rosetta 2 for Legacy Pods:** If an older third-party pod fails with an architecture compilation error, install Rosetta 2: `softwareupdate --install-rosetta --agree-to-license`.
-* **Node.js Architecture Mismatch:** If you see `mach-o file, but is an incompatible architecture`, verify that your Node binary is native ARM64: `node -p "process.arch"` should return `arm64`.
-:::
+### Feature Development Flow
+Standard sprint tasks follow a sequential path from local development to `develop` integration:
+
+<DiagramExpand title="FEATURE DEVELOPMENT WORKFLOW">
+
+```mermaid
+flowchart TD
+    DevStart["develop (Latest integration state)"] -->|"git checkout -b feature-*"| Feat["feature-* Branch\n(Local commits & unit tests)"]
+    Feat -->|"git push --set-upstream"| PR["Pull Request (GitHub Enterprise)\n• CI test suites execute\n• Peer code review (1-2 approvals)"]
+    PR -->|"Squash and merge"| DevEnd["develop (Updated)\n(Triggers automated nightly build)"]
+
+    classDef devLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef featLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef prLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+
+    class DevStart,DevEnd devLayer;
+    class Feat featLayer;
+    class PR prLayer;
+```
+
+</DiagramExpand>
 
 ---
 
-:::note[Completion Checklist]
-Confirm your MacBook workstation meets the baseline development standard:
+### Release Candidate Flow
+When sprint scope freezes, code transitions through release staging for final stakeholder and user acceptance testing:
 
-* **Doctor Pass:** Successful execution of `npx react-native doctor` with 0 errors.
-* **Simulator Readiness:** Ability to launch both iOS Simulator and Android Emulator without UI freezing.
-* **Shell Configured:** `~/.zshrc` contains valid `JAVA_HOME` and `ANDROID_HOME` environment exports.
-* **Git & Certificates:** SSH authentication verified for enterprise repositories and proxy CA cert installed in Keychain.
-:::
+<DiagramExpand title="RELEASE CANDIDATE WORKFLOW">
 
+```mermaid
+flowchart TD
+    Dev["develop (Feature Freeze)"] -->|"Branch release-YYYY.MM"| Rel["release-2026.10\n(Version bump & release notes)"]
+    Rel -->|"Deploy candidate"| UAT["User Acceptance Testing\n(Stakeholder QA & regression testing)"]
+    UAT -->|"Validation passes"| Master["master / prod\n(Tagged release v2026.10)\nDeploy to App Store & Google Play"]
+    Master -.->|"Back-merge release fixes"| Dev
 
+    classDef devLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef relLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef uatLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef prodLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
 
+    class Dev devLayer;
+    class Rel relLayer;
+    class UAT uatLayer;
+    class Master prodLayer;
+```
 
+</DiagramExpand>
 
+* Release branches contain exclusively bug fixes, localization updates, and release metadata.
+* No new feature development is permitted after a release branch is cut.
 
+---
 
+### Emergency Hotfix Flow
+When a critical production defect requires an immediate patch:
 
+<DiagramExpand title="EMERGENCY HOTFIX WORKFLOW">
 
+```mermaid
+flowchart TD
+    Prod["master / prod (Critical defect detected)"] -->|"Branch hotfix-*"| Hotfix["hotfix-payment-timeout\n(Minimal surgical fix)"]
+    Hotfix -->|"Deploy patch"| QA["Testing Validation\n(Rapid smoke test)"]
+    QA -->|"Approved"| Split{"Dual-Merge Requirement"}
+    Split -->|"1. Merge to Production"| ProdFix["master / prod\n(Tagged patch release v2026.10.1)"]
+    Split -->|"2. Merge to Development"| DevFix["develop\n(Prevents regression in next release)"]
 
+    classDef prodLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+    classDef hotfixLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef testLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef devLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
 
+    class Prod,ProdFix prodLayer;
+    class Hotfix,Split hotfixLayer;
+    class QA testLayer;
+    class DevFix devLayer;
+```
 
+</DiagramExpand>
 
+<Aside type="danger" title="MANDATORY DUAL-MERGE RULE">
+Hotfixes must be merged back into BOTH `master` and `develop`. This ensures the patch is incorporated into the active development trunk and prevents regressions during future release cycles.
+</Aside>
 
+---
 
+## Pull Request Protocols
+
+### Creating a Pull Request
+1. Push your branch to the central remote: `git push --set-upstream origin feature-branch-name`.
+2. Open GitHub Enterprise and navigate to the repository.
+3. Open a **New Pull Request** targeting `develop` as the base branch.
+4. Fill out the pull request template completely, referencing the Jira ticket.
+5. Assign designated peer reviewers.
+
+### Code Review Standards
+Reviewers evaluate submissions against explicit criteria:
+* **Architectural Boundaries:** Strict separation between Presentation, Domain, Data, and Core layers.
+* **Thread Safety:** Asynchronous calls properly dispatched (`Dispatchers.IO`, `@MainActor`, async/await).
+* **Test Coverage:** Automated unit tests covering new business logic and edge cases.
+* **Error Resilience:** Network requests encapsulated with timeout and failure fallbacks.
+* **Clean Code:** Adherence to style guides, no dead code, and explicit typings.
+
+---
+
+## Repository Health Practices
+
+| Best Practices (Recommended) | Prohibited Practices (Rejected) |
+| :--- | :--- |
+| **Isolate work in feature branches:** Keep changes scoped to a single capability. | **Direct commits to develop or master:** All changes must route through peer-reviewed PRs. |
+| **Keep PRs focused:** Limit diffs to under 400 lines for thorough, high-quality review. | **Long-lived branches:** Branches left unmerged for extended periods accumulate painful conflicts. |
+| **Run tests locally before pushing:** Verify unit suites pass before opening PRs. | **Bypassing failing CI builds:** Never force-merge PRs with failing automated checks. |
+| **Follow Conventional Commits:** Use structured prefixes (`feat:`, `fix:`, `refactor:`). | **Leaving dead or commented code:** Delete unused code prior to PR submission. |
+
+---
+
+## Quality Gate PR Merge Checklist
+
+Before merging any Pull Request, verify all criteria are satisfied:
+
+- [ ] **Target Branch Verified:** Pull request targets `develop` (or `master` for production hotfixes).
+- [ ] **Automated CI Passing:** Build, unit tests, lint checks, and security scanners pass with zero failures.
+- [ ] **Peer Approvals Acquired:** Required peer review approvals registered in GitHub Enterprise.
+- [ ] **Unit Tests Included:** New functionality and bug fixes include corresponding unit tests.
+- [ ] **Clean Git History:** Branch rebased on latest `develop` with linear, descriptive commit messages.
