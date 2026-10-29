@@ -1,458 +1,4 @@
 ---
-interface Props {
-  title?: string;
-  id?: string;
-}
-
-const { title = "ARCHITECTURE DIAGRAM", id } = Astro.props;
-const uniqueId = id || `diagram-${Math.random().toString(36).slice(2, 9)}`;
----
-
-<div class="mermaid-premium-container" id={uniqueId}>
-  <div class="mermaid-header">
-    <div class="mermaid-title-wrap">
-      <span class="mermaid-badge">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-          <polyline points="2 17 12 22 22 17"></polyline>
-          <polyline points="2 12 12 17 22 12"></polyline>
-        </svg>
-        DIAGRAM
-      </span>
-      <span class="mermaid-title">{title}</span>
-    </div>
-
-    <div class="mermaid-toolbar">
-      <button type="button" class="mermaid-btn btn-zoom-out" title="Zoom Out (-)" aria-label="Zoom Out">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
-
-      <span class="mermaid-zoom-indicator" title="Click to Reset View">100%</span>
-
-      <button type="button" class="mermaid-btn btn-zoom-in" title="Zoom In (+)" aria-label="Zoom In">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </button>
-
-      <div class="mermaid-divider"></div>
-
-      <button type="button" class="mermaid-btn btn-reset" title="Reset View (100%)" aria-label="Reset View">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-          <path d="M3 3v5h5"></path>
-        </svg>
-      </button>
-
-      <!-- Expand Button (Shown in normal mode) -->
-      <button type="button" class="mermaid-btn btn-expand" title="Expand Diagram Fullscreen" aria-label="Expand Diagram Fullscreen">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
-        </svg>
-        <span class="btn-expand-text">Expand</span>
-      </button>
-    </div>
-
-    <!-- Prominent Close Button (Shown when Expanded in Popup Modal) -->
-    <button type="button" class="mermaid-close-popup-btn" title="Close Popup (Esc)" aria-label="Close Popup">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-      <span>Close</span>
-    </button>
-  </div>
-
-  <div class="mermaid-viewport">
-    <div class="mermaid-canvas">
-      <slot />
-    </div>
-
-    <div class="mermaid-tip">
-      Drag to pan &bull; Click + / − to zoom &bull; Click Expand for full popup
-    </div>
-  </div>
-</div>
-
-<style>
-  .mermaid-premium-container {
-    position: relative;
-    background: var(--sl-color-bg-inline-code, #0f172a);
-    border: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
-    border-radius: 12px;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
-    overflow: hidden;
-    margin: 24px 0;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.2s ease;
-  }
-
-  /* FULLSCREEN POPUP MODAL */
-  .mermaid-premium-container.is-fullscreen {
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 999999 !important;
-    margin: 0 !important;
-    border-radius: 0 !important;
-    border: none !important;
-    background: var(--sl-color-bg, #080d1a) !important;
-  }
-
-  .mermaid-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    background: var(--sl-color-bg-nav, rgba(15, 23, 42, 0.95));
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.15));
-    user-select: none;
-    z-index: 10;
-    gap: 12px;
-  }
-
-  .mermaid-title-wrap {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-  }
-
-  .mermaid-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 6px;
-    background: rgba(56, 189, 248, 0.14);
-    color: var(--sl-color-text-accent, #38bdf8);
-    border: 1px solid rgba(56, 189, 248, 0.28);
-    flex-shrink: 0;
-  }
-
-  .mermaid-title {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--sl-color-text, #cbd5e1);
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .mermaid-toolbar {
-    display: flex;
-    align-items: center;
-    background: var(--sl-color-bg, rgba(30, 41, 59, 0.75));
-    border: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
-    border-radius: 8px;
-    padding: 2px 4px;
-    gap: 3px;
-    margin-left: auto;
-  }
-
-  .mermaid-btn {
-    background: transparent;
-    border: none;
-    color: var(--sl-color-gray-3, #94a3b8);
-    height: 28px;
-    padding: 0 6px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 0.78rem;
-    font-weight: 600;
-    transition: all 0.15s ease;
-    gap: 4px;
-  }
-
-  .mermaid-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    color: var(--sl-color-white, #f8fafc);
-  }
-
-  .mermaid-btn:active {
-    transform: scale(0.94);
-  }
-
-  .btn-expand-text {
-    font-size: 0.75rem;
-  }
-
-  .mermaid-zoom-indicator {
-    font-size: 0.74rem;
-    font-weight: 600;
-    color: var(--sl-color-gray-3, #94a3b8);
-    padding: 0 4px;
-    min-width: 40px;
-    text-align: center;
-    cursor: pointer;
-    font-variant-numeric: tabular-nums;
-    user-select: none;
-  }
-
-  .mermaid-zoom-indicator:hover {
-    color: var(--sl-color-text-accent, #38bdf8);
-  }
-
-  .mermaid-divider {
-    width: 1px;
-    height: 14px;
-    background: var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
-    margin: 0 2px;
-  }
-
-  /* PROMINENT CLOSE BUTTON FOR POPUP MODAL */
-  .mermaid-close-popup-btn {
-    display: none;
-    align-items: center;
-    gap: 6px;
-    background: #ef4444;
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    padding: 6px 14px;
-    font-size: 0.82rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    box-shadow: 0 2px 10px rgba(239, 68, 68, 0.45);
-    flex-shrink: 0;
-  }
-
-  .mermaid-close-popup-btn:hover {
-    background: #dc2626;
-    transform: scale(1.04);
-  }
-
-  /* Show Close button only when expanded */
-  .mermaid-premium-container.is-fullscreen .mermaid-close-popup-btn {
-    display: inline-flex;
-  }
-
-  /* Hide Expand button when expanded */
-  .mermaid-premium-container.is-fullscreen .btn-expand {
-    display: none;
-  }
-
-  /* VIEWPORT: In normal inline mode, it auto-fits the diagram! */
-  .mermaid-viewport {
-    position: relative;
-    width: 100%;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--sl-color-bg, #0b1120);
-    background-image: radial-gradient(var(--sl-color-gray-5, rgba(148, 163, 184, 0.12)) 1px, transparent 1px);
-    background-size: 20px 20px;
-    padding: 24px;
-    box-sizing: border-box;
-    min-height: 240px;
-  }
-
-  /* In fullscreen popup mode */
-  .mermaid-premium-container.is-fullscreen .mermaid-viewport {
-    flex: 1;
-    height: calc(100vh - 54px);
-    min-height: calc(100vh - 54px);
-    padding: 40px;
-  }
-
-  .mermaid-canvas {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transform-origin: center center;
-    transition: transform 0.05s linear;
-    will-change: transform;
-    width: 100%;
-  }
-
-  /* 1. FULL DIAGRAM VIEW INITIALLY:
-     Ensure the entire SVG is completely visible without any cropping! */
-  .mermaid-canvas :global(svg) {
-    max-width: 100% !important;
-    height: auto !important;
-    display: block !important;
-    margin: 0 auto !important;
-    filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.35));
-  }
-
-  .mermaid-canvas :global(pre.mermaid),
-  .mermaid-canvas :global(.mermaid) {
-    background: transparent !important;
-    border: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
-
-  /* When zoomed in or panned, allow the SVG to expand freely */
-  .mermaid-premium-container.is-zoomed .mermaid-canvas {
-    width: auto;
-    cursor: grab;
-  }
-
-  .mermaid-premium-container.is-zoomed .mermaid-canvas :global(svg) {
-    max-width: none !important;
-  }
-
-  .mermaid-premium-container.is-dragging .mermaid-canvas {
-    cursor: grabbing;
-  }
-
-  /* Floating tip */
-  .mermaid-tip {
-    position: absolute;
-    bottom: 8px;
-    left: 12px;
-    font-size: 0.68rem;
-    color: var(--sl-color-gray-4, rgba(148, 163, 184, 0.65));
-    background: rgba(15, 23, 42, 0.7);
-    backdrop-filter: blur(4px);
-    padding: 3px 8px;
-    border-radius: 4px;
-    border: 1px solid rgba(148, 163, 184, 0.1);
-    pointer-events: none;
-    user-select: none;
-  }
-</style>
-
-<script>
-  function setupAllDiagrams() {
-    document.querySelectorAll('.mermaid-premium-container').forEach((container) => {
-      if ((container as any).__mermaidZoomInitialized) return;
-      (container as any).__mermaidZoomInitialized = true;
-
-      const viewport = container.querySelector('.mermaid-viewport') as HTMLElement | null;
-      const canvas = container.querySelector('.mermaid-canvas') as HTMLElement | null;
-      const indicator = container.querySelector('.mermaid-zoom-indicator');
-      const btnIn = container.querySelector('.btn-zoom-in');
-      const btnOut = container.querySelector('.btn-zoom-out');
-      const btnReset = container.querySelector('.btn-reset');
-      const btnExpand = container.querySelector('.btn-expand');
-      const btnClose = container.querySelector('.mermaid-close-popup-btn');
-
-      if (!viewport || !canvas) return;
-
-      let scale = 1.0;
-      let panX = 0;
-      let panY = 0;
-      let isDragging = false;
-      let startX = 0;
-      let startY = 0;
-
-      function renderTransform() {
-        if (!canvas) return;
-        canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-        if (indicator) {
-          indicator.textContent = `${Math.round(scale * 100)}%`;
-        }
-
-        if (scale > 1.05 || panX !== 0 || panY !== 0) {
-          container.classList.add('is-zoomed');
-        } else {
-          container.classList.remove('is-zoomed');
-        }
-      }
-
-      function zoom(delta: number) {
-        const newScale = Math.min(Math.max(scale + delta, 0.3), 3.5);
-        scale = Number(newScale.toFixed(2));
-        renderTransform();
-      }
-
-      function reset() {
-        scale = 1.0;
-        panX = 0;
-        panY = 0;
-        renderTransform();
-      }
-
-      btnIn?.addEventListener('click', (e) => { e.preventDefault(); zoom(0.2); });
-      btnOut?.addEventListener('click', (e) => { e.preventDefault(); zoom(-0.2); });
-      btnReset?.addEventListener('click', (e) => { e.preventDefault(); reset(); });
-      indicator?.addEventListener('click', (e) => { e.preventDefault(); reset(); });
-
-      // OPEN POPUP / FULLSCREEN
-      btnExpand?.addEventListener('click', (e) => {
-        e.preventDefault();
-        container.classList.add('is-fullscreen');
-        reset();
-      });
-
-      // CLOSE POPUP / FULLSCREEN
-      btnClose?.addEventListener('click', (e) => {
-        e.preventDefault();
-        container.classList.remove('is-fullscreen');
-        reset();
-      });
-
-      // ESC KEY CLOSES POPUP
-      window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && container.classList.contains('is-fullscreen')) {
-          container.classList.remove('is-fullscreen');
-          reset();
-        }
-      });
-
-      // PAN / DRAG
-      viewport.addEventListener('mousedown', (e) => {
-        if ((e.target as HTMLElement)?.closest('.mermaid-toolbar') || (e.target as HTMLElement)?.closest('.mermaid-close-popup-btn')) return;
-        isDragging = true;
-        container.classList.add('is-dragging');
-        startX = e.clientX - panX;
-        startY = e.clientY - panY;
-      });
-
-      window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        panX = e.clientX - startX;
-        panY = e.clientY - startY;
-        renderTransform();
-      });
-
-      window.addEventListener('mouseup', () => {
-        if (isDragging) {
-          isDragging = false;
-          container.classList.remove('is-dragging');
-        }
-      });
-
-      // MOUSE WHEEL ZOOM
-      viewport.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const delta = e.deltaY > 0 ? -0.12 : 0.12;
-        zoom(delta);
-      }, { passive: false });
-    });
-  }
-
-  setupAllDiagrams();
-  document.addEventListener('astro:page-load', setupAllDiagrams);
-</script>
-
-
-
--------------------------
-
-
----
 title: Welcome & Quick Start
 description: The central roadmap and navigation directory for onboarding to the Mobile Engineering Platform.
 sidebar:
@@ -603,7 +149,7 @@ Keep these non-negotiable principles in mind as you progress through each track:
 
 
 
--------------------------
+-------------------------------
 
 
 ---
@@ -818,7 +364,7 @@ Before proceeding to your developer track, confirm you can answer the following:
 
 
 
-_-------------------------------------
+--------------------------------------
 
 
 
@@ -1213,7 +759,7 @@ Select your starting platform path based on your existing engineering skill set:
 
 ---
 
-## Step-by-Step 0-to-1 Local Development Setup
+## Local Development Setup (0 to 1)
 
 Boot your first enterprise mobile application locally using the starter templates:
 
@@ -1304,12 +850,12 @@ Confirm you understand the following principles before building your first featu
 
 
 
+-----------------------------------
 
 
 
 
 
-----------------------------------
 
 
 
@@ -1723,8 +1269,8 @@ Confirm you have achieved the following milestones before taking your first Jira
 
 
 
+----------------------------------
 
-----------------------------
 
 ---
 title: Tech Stack Selection Matrix
@@ -2040,7 +1586,10 @@ Verify that your proposed stack selection satisfies all enterprise governance cr
 :::
 
 
---------------------
+
+
+
+--------------------------------------
 
 
 ---
@@ -2137,7 +1686,7 @@ Select your primary development platform tab below to configure your MacBook too
 <Tabs>
   <TabItem label="Android (Kotlin / Compose)">
 
-### Step 1: Install OpenJDK 17
+### Install OpenJDK 17
 
 Android Gradle Plugin 8.x requires Java 17. Install OpenJDK 17 via Homebrew:
 
@@ -2153,7 +1702,7 @@ java -version
 # Expected: openjdk version "17.0.x"
 ```
 
-### Step 2: Install Android Studio
+### Install Android Studio
 
 Download and install **Android Studio (Koala or Ladybug release)** optimized for Apple Silicon (`.dmg (Mac with Apple chip)`):
 
@@ -2166,7 +1715,7 @@ Launch Android Studio and complete the **Setup Wizard**:
 * Choose **Standard** setup type.
 * Agree to license agreements for `android-sdk-license` and `intel-android-extra-license`.
 
-### Step 3: Install Required SDK Components
+### Install Required SDK Components
 
 In Android Studio, open **Settings / Preferences &rarr; Languages & Frameworks &rarr; Android SDK**:
 
@@ -2180,7 +1729,7 @@ In Android Studio, open **Settings / Preferences &rarr; Languages & Frameworks &
    * **Android Emulator**
 3. Click **Apply** to install the selected packages.
 
-### Step 4: Configure `~/.zshrc` Environment Variables
+### Configure Shell Environment Variables
 
 Add Android SDK paths to your `~/.zshrc` file:
 
@@ -2205,7 +1754,7 @@ EOF
 source ~/.zshrc
 ```
 
-### Step 5: Verify Android CLI & Create an AVD Emulator
+### Verify Android CLI & Create AVD Emulator
 
 Verify that `adb` and the emulator binaries are globally accessible in your terminal:
 
@@ -2230,13 +1779,13 @@ emulator -avd Pixel_8_API_34 -netdelay none -netspeed full &
 
   <TabItem label="iOS (Swift / SwiftUI)">
 
-### Step 1: Install Xcode from the Mac App Store
+### Install Xcode from Mac App Store
 
 1. Open the macOS **App Store** and search for **Xcode**.
 2. Install the latest official release (Xcode 16.x).
 3. Open Xcode once to complete initial system component installations.
 
-### Step 2: Configure Xcode Command Line Tools
+### Configure Xcode Command Line Tools
 
 Ensure your terminal uses the full Xcode developer tools directory rather than standalone command-line tools:
 
@@ -2249,7 +1798,7 @@ xcode-select -p
 # Expected: /Applications/Xcode.app/Contents/Developer
 ```
 
-### Step 3: Accept Xcode License Agreement & Download Platforms
+### Accept Xcode License Agreement & Download Platforms
 
 ```bash
 # Accept Xcode license agreement
@@ -2262,7 +1811,7 @@ sudo xcodebuild -downloadPlatform iOS
 sudo xcodebuild -runFirstLaunch
 ```
 
-### Step 4: Install CocoaPods Package Manager
+### Install CocoaPods Package Manager
 
 Install CocoaPods for projects requiring third-party Objective-C/Swift pods:
 
@@ -2274,14 +1823,14 @@ brew install cocoapods
 pod --version
 ```
 
-### Step 5: Configure Apple Developer Account in Xcode
+### Configure Apple Developer Account in Xcode
 
 1. Open Xcode and navigate to **Settings &rarr; Accounts** (`Cmd + ,`).
 2. Click **+ &rarr; Apple ID** and authenticate with your corporate enterprise Apple credentials.
 3. Select your team: **Enterprise Mobile Engineering Team**.
 4. Click **Download Manual Profiles** to sync enterprise provisioning profiles into your local keychain.
 
-### Step 6: Launch and Verify iOS Simulator via CLI
+### Launch and Verify iOS Simulator via CLI
 
 You can boot simulators directly from your terminal:
 
@@ -2300,7 +1849,7 @@ open -a Simulator
 
   <TabItem label="React Native (Cross-Platform)">
 
-### Step 1: Install Node.js 20 LTS via FNM (Fast Node Manager)
+### Install Node.js 20 LTS via FNM
 
 We recommend **FNM** over NVM because it is built in Rust, loads 40x faster, and handles shell integration seamlessly:
 
@@ -2322,7 +1871,7 @@ node -v   # Expected: v20.x.x
 npm -v    # Expected: 10.x.x
 ```
 
-### Step 2: Unified Toolchain Setup (Android & iOS Combined)
+### Unified Toolchain Setup (Android & iOS Combined)
 
 React Native projects compile to both platforms. Ensure you complete:
 1. **Android Setup:** OpenJDK 17, `ANDROID_HOME`, and `platform-tools` (from the Android Tab).
@@ -2350,7 +1899,7 @@ EOF
 source ~/.zshrc
 ```
 
-### Step 3: Run the Enterprise Doctor Diagnostic CLI
+### Run Enterprise Doctor Diagnostic CLI
 
 Run the automated Doctor toolchain checker to verify your dual-platform setup:
 
@@ -2368,7 +1917,7 @@ npx @enterprise/doctor-cli check
 # [PASS] adb connected to local platform-tools
 ```
 
-### Step 4: Boot Your First Starter Application
+### Boot Starter Application
 
 ```bash
 # Clone the enterprise React Native starter repository
@@ -2447,117 +1996,937 @@ Confirm your MacBook workstation meets the baseline development standard:
 
 
 
-----------------------
-
-
+-------------------------------
 
 
 ---
-import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+interface Props {
+  title?: string;
+  id?: string;
+}
+
+const { title = "ARCHITECTURE DIAGRAM", id } = Astro.props;
+const uniqueId = id || `diagram-${Math.random().toString(36).slice(2, 9)}`;
+---
+
+<div class="mermaid-premium-container" id={uniqueId}>
+  <!-- COMPACT HEADER -->
+  <div class="mermaid-header">
+    <div class="mermaid-title-wrap">
+      <span class="mermaid-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+        DIAGRAM
+      </span>
+      <span class="mermaid-title">{title}</span>
+    </div>
+
+    <div class="mermaid-toolbar">
+      <button type="button" class="mermaid-btn btn-zoom-out" title="Zoom Out (-)" aria-label="Zoom Out">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+
+      <span class="mermaid-zoom-indicator" title="Click to Reset View">100%</span>
+
+      <button type="button" class="mermaid-btn btn-zoom-in" title="Zoom In (+)" aria-label="Zoom In">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+
+      <div class="mermaid-divider"></div>
+
+      <button type="button" class="mermaid-btn btn-reset" title="Reset View (100%)" aria-label="Reset View">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+          <path d="M3 3v5h5"></path>
+        </svg>
+      </button>
+
+      <!-- Expand Button into Top-Layer Popup -->
+      <button type="button" class="mermaid-btn btn-expand-modal" title="Expand Fullscreen Popup" aria-label="Expand Fullscreen Popup">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+        </svg>
+        <span>Expand</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- COMPACT VIEWPORT: Naturally hugs the diagram without tall empty gaps -->
+  <div class="mermaid-viewport">
+    <div class="mermaid-canvas">
+      <slot />
+    </div>
+
+    <div class="mermaid-tip">
+      Click + / − to zoom &bull; Click Expand for full popup
+    </div>
+  </div>
+
+  <!-- NATIVE TOP-LAYER POPUP DIALOG (Guaranteed ABOVE website sticky topbars) -->
+  <dialog class="mermaid-modal" id={`${uniqueId}-modal`}>
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="mermaid-badge">EXPANDED VIEW</span>
+        <span class="modal-title">{title}</span>
+      </div>
+
+      <div class="modal-controls">
+        <div class="mermaid-toolbar">
+          <button type="button" class="mermaid-btn modal-btn-zoom-out" title="Zoom Out (-)" aria-label="Zoom Out">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <span class="mermaid-zoom-indicator modal-zoom-indicator" title="Reset View">100%</span>
+          <button type="button" class="mermaid-btn modal-btn-zoom-in" title="Zoom In (+)" aria-label="Zoom In">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <button type="button" class="mermaid-btn modal-btn-reset" title="Reset View" aria-label="Reset View">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+              <path d="M3 3v5h5"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- HIGH-VISIBILITY CLOSE BUTTON: ALWAYS VISIBLE ON TOP -->
+        <button type="button" class="btn-close-modal" title="Close Popup (Esc)" aria-label="Close Popup">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>Close (Esc)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL VIEWPORT FOR DRAG & UNBOUNDED ZOOM -->
+    <div class="modal-viewport">
+      <!-- The canvas moves here dynamically upon opening -->
+      <div class="modal-floating-tip">
+        Click &amp; Drag to pan &bull; Mouse wheel to zoom &bull; Press Esc to close
+      </div>
+    </div>
+  </dialog>
+</div>
+
+<style>
+  .mermaid-premium-container {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    background: var(--sl-color-bg-inline-code, #0f172a);
+    border: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
+    border-radius: 10px;
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* SLIM, COMPACT INLINE HEADER */
+  .mermaid-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 12px;
+    background: var(--sl-color-bg-nav, rgba(15, 23, 42, 0.95));
+    border-bottom: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.15));
+    user-select: none;
+    gap: 8px;
+    z-index: 5;
+  }
+
+  .mermaid-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .mermaid-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(56, 189, 248, 0.14);
+    color: var(--sl-color-text-accent, #38bdf8);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    flex-shrink: 0;
+  }
+
+  .mermaid-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--sl-color-text, #cbd5e1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mermaid-toolbar {
+    display: flex;
+    align-items: center;
+    background: rgba(30, 41, 59, 0.85);
+    border: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
+    border-radius: 6px;
+    padding: 2px 4px;
+    gap: 2px;
+    margin-left: auto;
+  }
+
+  .mermaid-btn {
+    background: transparent;
+    border: none;
+    color: var(--sl-color-gray-3, #94a3b8);
+    height: 26px;
+    padding: 0 6px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.74rem;
+    font-weight: 600;
+    transition: all 0.15s ease;
+    gap: 4px;
+  }
+
+  .mermaid-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--sl-color-white, #ffffff);
+  }
+
+  .mermaid-btn:active {
+    transform: scale(0.94);
+  }
+
+  .btn-expand-modal {
+    background: rgba(56, 189, 248, 0.12);
+    color: var(--sl-color-text-accent, #38bdf8);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+  }
+
+  .btn-expand-modal:hover {
+    background: rgba(56, 189, 248, 0.22);
+    color: #ffffff;
+  }
+
+  .mermaid-zoom-indicator {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--sl-color-gray-3, #94a3b8);
+    padding: 0 4px;
+    min-width: 38px;
+    text-align: center;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+  }
+
+  .mermaid-zoom-indicator:hover {
+    color: var(--sl-color-text-accent, #38bdf8);
+  }
+
+  .mermaid-divider {
+    width: 1px;
+    height: 12px;
+    background: var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
+    margin: 0 2px;
+  }
+
+  /* RESPONSIVE COMFORTABLE VIEWPORT: High-visibility height with zero clipping */
+  .mermaid-viewport {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: 360px; /* Generous, comfortable height requested by user */
+    min-height: 320px;
+    max-height: 520px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--sl-color-bg, #0b1120);
+    background-image: radial-gradient(var(--sl-color-gray-5, rgba(148, 163, 184, 0.1)) 1px, transparent 1px);
+    background-size: 16px 16px;
+    padding: 16px 20px;
+    box-sizing: border-box;
+  }
+
+  .mermaid-canvas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform-origin: center center;
+    transition: transform 0.05s linear;
+    will-change: transform;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto;
+  }
+
+  /* INLINE VIEW: SVG scales proportionally to width, height hugs viewBox without clipping */
+  .mermaid-viewport .mermaid-canvas :global(svg) {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: 325px !important;
+    display: block !important;
+    margin: 0 auto !important;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
+  }
+
+  .mermaid-canvas :global(pre.mermaid),
+  .mermaid-canvas :global(.mermaid) {
+    background: transparent !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* When zoomed in via + or wheel */
+  .mermaid-premium-container.is-zoomed .mermaid-canvas {
+    width: auto;
+    cursor: grab;
+  }
+
+  .mermaid-premium-container.is-zoomed .mermaid-viewport .mermaid-canvas :global(svg) {
+    max-width: none !important;
+    max-height: none !important;
+  }
+
+  .mermaid-premium-container.is-dragging .mermaid-canvas {
+    cursor: grabbing;
+  }
+
+  .mermaid-tip {
+    position: absolute;
+    bottom: 6px;
+    left: 10px;
+    font-size: 0.65rem;
+    color: var(--sl-color-gray-4, rgba(148, 163, 184, 0.65));
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(4px);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* ========================================================
+     TOP-LAYER POPUP MODAL (NATIVE HTML5 <dialog>)
+     90% WIDTH & 90% HEIGHT WITH OPAQUE BACKDROP
+     ======================================================== */
+  dialog.mermaid-modal {
+    position: fixed;
+    inset: 0;
+    width: 90vw;
+    height: 90vh;
+    max-width: 90vw;
+    max-height: 90vh;
+    margin: auto;
+    padding: 0;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 14px;
+    box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    background: #090d16;
+    color: #e2e8f0;
+    z-index: 2147483647; /* Maximum possible z-index in Top Layer */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  dialog.mermaid-modal:not([open]) {
+    display: none;
+  }
+
+  /* OPAQUE BACKDROP: 100% blocks background documentation content */
+  dialog.mermaid-modal::backdrop {
+    background: rgba(3, 7, 18, 0.98);
+    backdrop-filter: blur(20px);
+  }
+
+  /* MODAL HEADER */
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 18px;
+    background: #0f172a;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    z-index: 100;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .modal-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .modal-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #f8fafc;
+  }
+
+  .modal-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+  }
+
+  /* PROMINENT CLOSE BUTTON: ALWAYS ON TOP */
+  .btn-close-modal {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ef4444;
+    color: #ffffff;
+    border: none;
+    border-radius: 7px;
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  }
+
+  .btn-close-modal:hover {
+    background: #dc2626;
+    transform: scale(1.04);
+  }
+
+  .btn-close-modal:active {
+    transform: scale(0.96);
+  }
+
+  /* MODAL VIEWPORT */
+  .modal-viewport {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    height: calc(90vh - 54px);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #060911;
+    background-image: radial-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+    background-size: 24px 24px;
+    cursor: grab;
+    user-select: none;
+  }
+
+  .modal-viewport.is-dragging {
+    cursor: grabbing;
+  }
+
+  /* WHEN CANVAS MOVES INTO MODAL VIEWPORT */
+  .modal-viewport .mermaid-canvas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform-origin: center center;
+    transition: transform 0.05s linear;
+    will-change: transform;
+    width: auto !important;
+    height: auto !important;
+    padding: 30px;
+  }
+
+  .modal-viewport .mermaid-canvas :global(svg) {
+    max-width: none !important;
+    max-height: none !important;
+    display: block !important;
+    margin: 0 auto !important;
+    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5));
+  }
+
+  .modal-floating-tip {
+    position: absolute;
+    bottom: 14px;
+    left: 18px;
+    font-size: 0.72rem;
+    color: rgba(148, 163, 184, 0.8);
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(4px);
+    padding: 4px 10px;
+    border-radius: 5px;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .canvas-placeholder {
+    display: none;
+  }
+</style>
+
+<script>
+  function getSvgDimensions(svgEl: SVGSVGElement) {
+    if (svgEl.viewBox && svgEl.viewBox.baseVal && svgEl.viewBox.baseVal.width > 0) {
+      return {
+        width: svgEl.viewBox.baseVal.width,
+        height: svgEl.viewBox.baseVal.height
+      };
+    }
+    const vb = svgEl.getAttribute('viewBox');
+    if (vb) {
+      const parts = vb.trim().split(/[\s,]+/).map(Number);
+      if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+        return { width: parts[2], height: parts[3] };
+      }
+    }
+    const w = parseFloat(svgEl.getAttribute('width') || '0');
+    const h = parseFloat(svgEl.getAttribute('height') || '0');
+    if (w > 0 && h > 0) {
+      return { width: w, height: h };
+    }
+    const rect = svgEl.getBoundingClientRect();
+    return {
+      width: rect.width || 800,
+      height: rect.height || 600
+    };
+  }
+
+  function setupAllDiagrams() {
+    document.querySelectorAll('.mermaid-premium-container').forEach((container) => {
+      if ((container as any).__mermaidModalInitialized) return;
+      (container as any).__mermaidModalInitialized = true;
+
+      const inlineViewport = container.querySelector('.mermaid-viewport') as HTMLElement | null;
+      const inlineCanvas = container.querySelector('.mermaid-canvas') as HTMLElement | null;
+      const inlineIndicator = container.querySelector('.mermaid-zoom-indicator');
+      const btnIn = container.querySelector('.btn-zoom-in');
+      const btnOut = container.querySelector('.btn-zoom-out');
+      const btnReset = container.querySelector('.btn-reset');
+      const btnOpen = container.querySelector('.btn-expand-modal');
+
+      const modal = container.querySelector('dialog.mermaid-modal') as HTMLDialogElement | null;
+      if (!modal || !inlineViewport || !inlineCanvas) return;
+
+      const modalViewport = modal.querySelector('.modal-viewport') as HTMLElement | null;
+      const btnCloseModal = modal.querySelector('.btn-close-modal');
+      const modalIndicator = modal.querySelector('.modal-zoom-indicator');
+      const modalBtnIn = modal.querySelector('.modal-btn-zoom-in');
+      const modalBtnOut = modal.querySelector('.modal-btn-zoom-out');
+      const modalBtnReset = modal.querySelector('.modal-btn-reset');
+
+      let placeholder: HTMLElement | null = null;
+      let dims = { width: 800, height: 600 };
+
+      // --- INLINE ZOOM LOGIC ---
+      let inlineScale = 1.0;
+      let inlinePanX = 0;
+      let inlinePanY = 0;
+      let inlineDragging = false;
+      let inlineStartX = 0;
+      let inlineStartY = 0;
+
+      function renderInline() {
+        if (!inlineCanvas) return;
+        inlineCanvas.style.transform = `translate(${inlinePanX}px, ${inlinePanY}px) scale(${inlineScale})`;
+        if (inlineIndicator) inlineIndicator.textContent = `${Math.round(inlineScale * 100)}%`;
+
+        if (inlineScale > 1.05 || inlinePanX !== 0 || inlinePanY !== 0) {
+          container.classList.add('is-zoomed');
+        } else {
+          container.classList.remove('is-zoomed');
+        }
+      }
+
+      function zoomInline(delta: number) {
+        inlineScale = Math.min(Math.max(inlineScale + delta, 0.4), 3.0);
+        inlineScale = Number(inlineScale.toFixed(2));
+        renderInline();
+      }
+
+      function resetInline() {
+        inlineScale = 1.0;
+        inlinePanX = 0;
+        inlinePanY = 0;
+        renderInline();
+      }
+
+      btnIn?.addEventListener('click', () => zoomInline(0.2));
+      btnOut?.addEventListener('click', () => zoomInline(-0.2));
+      btnReset?.addEventListener('click', resetInline);
+      inlineIndicator?.addEventListener('click', resetInline);
+
+      inlineViewport.addEventListener('mousedown', (e) => {
+        if ((e.target as HTMLElement)?.closest('.mermaid-toolbar')) return;
+        inlineDragging = true;
+        container.classList.add('is-dragging');
+        inlineStartX = e.clientX - inlinePanX;
+        inlineStartY = e.clientY - inlinePanY;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!inlineDragging) return;
+        inlinePanX = e.clientX - inlineStartX;
+        inlinePanY = e.clientY - inlineStartY;
+        renderInline();
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (inlineDragging) {
+          inlineDragging = false;
+          container.classList.remove('is-dragging');
+        }
+      });
+
+      inlineViewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        zoomInline(e.deltaY > 0 ? -0.1 : 0.1);
+      }, { passive: false });
+
+      inlineViewport.addEventListener('dblclick', (e) => {
+        if ((e.target as HTMLElement)?.closest('.mermaid-toolbar')) return;
+        btnOpen?.click();
+      });
+
+      // --- TOP-LAYER MODAL ZOOM & PAN LOGIC ---
+      let modalScale = 1.0;
+      let modalPanX = 0;
+      let modalPanY = 0;
+      let modalDragging = false;
+      let modalStartX = 0;
+      let modalStartY = 0;
+
+      function renderModal() {
+        if (!inlineCanvas) return;
+        inlineCanvas.style.transform = `translate(${modalPanX}px, ${modalPanY}px) scale(${modalScale})`;
+        if (modalIndicator) modalIndicator.textContent = `${Math.round(modalScale * 100)}%`;
+      }
+
+      function zoomModal(delta: number) {
+        modalScale = Math.min(Math.max(modalScale + delta, 0.2), 4.0);
+        modalScale = Number(modalScale.toFixed(2));
+        renderModal();
+      }
+
+      function resetModal() {
+        const modalW = window.innerWidth * 0.90;
+        const modalH = window.innerHeight * 0.90;
+        const availW = modalW - 60;
+        const availH = modalH - 120;
+        const scaleW = availW / dims.width;
+        const scaleH = availH / dims.height;
+        const fitScale = Math.min(scaleW, scaleH);
+        modalScale = fitScale < 1 ? Number(fitScale.toFixed(2)) : 1.0;
+        modalPanX = 0;
+        modalPanY = 0;
+        renderModal();
+      }
+
+      // OPEN MODAL (NATIVE HTML5 .showModal() -> GUARANTEED TOP LAYER!)
+      btnOpen?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!modalViewport) return;
+
+        const svg = inlineCanvas.querySelector('svg') as SVGSVGElement | null;
+        if (svg) {
+          dims = getSvgDimensions(svg);
+          // Concrete dimensions guarantee SVG NEVER collapses to 0 in flexbox
+          svg.style.width = `${dims.width}px`;
+          svg.style.height = `${dims.height}px`;
+          svg.style.maxWidth = 'none';
+          svg.style.maxHeight = 'none';
+          svg.style.display = 'block';
+          svg.style.margin = '0 auto';
+        }
+
+        // Insert placeholder into inline container and move canvas into modal viewport
+        placeholder = document.createElement('div');
+        placeholder.className = 'canvas-placeholder';
+        inlineCanvas.parentNode?.insertBefore(placeholder, inlineCanvas);
+        modalViewport.appendChild(inlineCanvas);
+
+        modal.showModal();
+        resetModal();
+      });
+
+      // CLOSE MODAL: Restore canvas to inline container
+      function closeModal() {
+        if (!modal) return;
+        const svg = inlineCanvas.querySelector('svg') as SVGSVGElement | null;
+        if (svg) {
+          svg.style.width = '';
+          svg.style.height = '';
+          svg.style.maxWidth = '';
+          svg.style.maxHeight = '';
+          svg.style.display = '';
+          svg.style.margin = '';
+        }
+
+        if (placeholder && placeholder.parentNode) {
+          placeholder.parentNode.insertBefore(inlineCanvas, placeholder);
+          placeholder.remove();
+          placeholder = null;
+        }
+
+        if (modal.open) {
+          modal.close();
+        }
+        resetInline();
+      }
+
+      btnCloseModal?.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeModal();
+      });
+
+      modal.addEventListener('close', () => {
+        if (placeholder) closeModal();
+      });
+
+      // Click outside 90% dialog (on opaque backdrop) to close
+      modal.addEventListener('click', (e) => {
+        const rect = modal.getBoundingClientRect();
+        const isInDialog = (
+          rect.top <= e.clientY &&
+          e.clientY <= rect.top + rect.height &&
+          rect.left <= e.clientX &&
+          e.clientX <= rect.left + rect.width
+        );
+        if (!isInDialog) {
+          closeModal();
+        }
+      });
+
+      modalBtnIn?.addEventListener('click', () => zoomModal(0.2));
+      modalBtnOut?.addEventListener('click', () => zoomModal(-0.2));
+      modalBtnReset?.addEventListener('click', resetModal);
+      modalIndicator?.addEventListener('click', resetModal);
+
+      // Pan inside modal
+      if (modalViewport) {
+        modalViewport.addEventListener('mousedown', (e) => {
+          modalDragging = true;
+          modalViewport.classList.add('is-dragging');
+          modalStartX = e.clientX - modalPanX;
+          modalStartY = e.clientY - modalPanY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!modalDragging) return;
+          modalPanX = e.clientX - modalStartX;
+          modalPanY = e.clientY - modalStartY;
+          renderModal();
+        });
+
+        window.addEventListener('mouseup', () => {
+          if (modalDragging) {
+            modalDragging = false;
+            modalViewport.classList.remove('is-dragging');
+          }
+        });
+
+        modalViewport.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          zoomModal(e.deltaY > 0 ? -0.12 : 0.12);
+        }, { passive: false });
+      }
+    });
+  }
+
+  setupAllDiagrams();
+  document.addEventListener('astro:page-load', setupAllDiagrams);
+</script>
+
+
+
+
+
+
+
+---------------------------
+
+
+---
+import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
 
 interface Props {
   basePath?: string;
 }
 
-const { basePath = '/mobile-draft' } = Astro.props;
-const PORTAL_BASE = basePath; // When changing to '/mobile' tomorrow, simply change this constant or pass the prop
+const { basePath = '/mobile' } = Astro.props;
+const PORTAL_BASE = basePath;
 ---
 
-<CardGrid stagger>
-  <Card title="Build and Release Kit" icon="rocket">
-    <p>Complete mobile toolchain bootstrap, workstation provisioning for macOS &amp; Windows, and SDK dependencies.</p>
-    <ul>
-      <li><a href={`${PORTAL_BASE}/build-and-release-kit/`}>Build Kit Overview</a></li>
-      <li><a href={`${PORTAL_BASE}/build-and-release-kit/setup/`}>Workstation Setup</a></li>
-      <li><a href={`${PORTAL_BASE}/build-and-release-kit/dependencies/`}>SDK Dependencies</a></li>
-    </ul>
-  </Card>
+<Aside type="note" title="Platform Ecosystem Overview">
+Welcome to the central developer portal for enterprise mobile application development. Use the capability cards below to navigate verified architecture patterns, CI/CD pipelines, SDK catalogs, testing standards, and onboarding tracks.
+</Aside>
 
-  <Card title="Architecture Pattern" icon="puzzle">
-    <p>4-Layer Clean Architecture, boundary rules, Circuit Breaker network resilience, and offline caching.</p>
-    <ul>
-      <li><a href={`${PORTAL_BASE}/architecture-pattern/`}>Clean Architecture</a></li>
-      <li><a href={`${PORTAL_BASE}/architecture-pattern/circuit-breaker/`}>Circuit Breaker</a></li>
-      <li><a href={`${PORTAL_BASE}/architecture-pattern/offline-sync/`}>Offline Cache</a></li>
-    </ul>
-  </Card>
+<h2>Platform Capabilities</h2>
 
-  <Card title="Analytics & Monitoring" icon="information">
-    <p>Real User Monitoring (RUM), crash telemetry, synthetic monitoring, and the iOS Datadog wrapper library.</p>
-    <ul>
-      <li><a href={`${PORTAL_BASE}/analytics/`}>Analytics Overview</a></li>
-      <li><a href={`${PORTAL_BASE}/analytics/datadog/setup/`}>Datadog Setup</a></li>
-      <li><a href={`${PORTAL_BASE}/analytics/ios-datadog-wrapper/`}>iOS Wrapper Library</a></li>
-    </ul>
-  </Card>
+<div class="portal-grid-3col">
+  <CardGrid stagger>
+    <!-- 1. Get Started -->
+    <Card title="1. Get Started" icon="rocket">
+      <p>Platform ecosystem, workstation setup, fast-track checklists, and framework selection.</p>
+      <ul>
+        <li><a href={`${PORTAL_BASE}/onboarding/day-one-checklist/`}>Platform Overview</a></li>
+        <li><a href={`${PORTAL_BASE}/onboarding/welcome-quickstart/`}>Engineer Onboarding</a></li>
+        <li><a href={`${PORTAL_BASE}/onboarding/non-mobile-dev-guide/`}>Non-Mobile Guide</a></li>
+        <li><a href={`${PORTAL_BASE}/onboarding/tech-stack-matrix/`}>Tech Stack Selection</a></li>
+        <li><a href={`${PORTAL_BASE}/onboarding/machine-setup/`}>Workstation Setup</a></li>
+      </ul>
+      <div class="card-footer-end">
+        <a href={`${PORTAL_BASE}/onboarding/`} class="view-all-link">View All &rarr;</a>
+      </div>
+    </Card>
 
-  <Card title="App Store & Distribution" icon="laptop">
-    <p>Apple AppStore uploads, code signing certs, remote data wipe, Enterprise Store, and Google Play.</p>
-    <ul>
-      <li><a href={`${PORTAL_BASE}/app-store/apple-appstore-upload/`}>Apple Upload</a></li>
-      <li><a href={`${PORTAL_BASE}/app-store/code-signing/`}>Code Signing</a></li>
-      <li><a href={`${PORTAL_BASE}/app-store/data-wipe/`}>Remote Data Wipe</a></li>
-      <li><a href={`${PORTAL_BASE}/app-store/enterprise-app-store/`}>Enterprise Store</a></li>
-      <li><a href={`${PORTAL_BASE}/app-store/google-app-store-deployment/`}>Google Play</a></li>
-    </ul>
-  </Card>
+    <!-- 2. Architecture -->
+    <Card title="2. Architecture" icon="puzzle">
+      <p>Clean architecture layers, Circuit Breaker resilience, feature flags, and branching rules.</p>
+      <ul>
+        <li><a href={`${PORTAL_BASE}/architecture/clean-architecture-spec/`}>Architecture</a></li>
+        <li><a href={`${PORTAL_BASE}/architecture/resilience-circuit-breaker/`}>Resilience</a></li>
+        <li><a href={`${PORTAL_BASE}/architecture/feature-flagging/`}>Feature Flags</a></li>
+        <li><a href={`${PORTAL_BASE}/architecture/git-branching-strategy/`}>Git Rules</a></li>
+        <li><a href={`${PORTAL_BASE}/architecture/offline-sync/`}>Offline Cache</a></li>
+      </ul>
+      <div class="card-footer-end">
+        <a href={`${PORTAL_BASE}/architecture/`} class="view-all-link">View All &rarr;</a>
+      </div>
+    </Card>
 
-  <Card title="Bitrise MCP" icon="setting">
-    <p>Model Context Protocol gateway integration to inspect builds, trigger workflows, and debug CI/CD failures via AI.</p>
-    <ul>
-      <li><a href={`${PORTAL_BASE}/bitrise-mcp/`}>MCP Overview</a></li>
-      <li><a href={`${PORTAL_BASE}/bitrise-mcp/gateway-setup/`}>Gateway Auth</a></li>
-      <li><a href={`${PORTAL_BASE}/bitrise-mcp/cursor-copilot/`}>IDE Integration</a></li>
-    </ul>
-  </Card>
+    <!-- 3. Platforms & SDKs -->
+    <Card title="3. Platforms & SDKs" icon="laptop">
+      <p>Android, iOS, React Native catalogs, shared libraries, and app core foundations.</p>
+      <ul>
+        <li><a href={`${PORTAL_BASE}/platforms/android-standards/`}>Android Standards</a></li>
+        <li><a href={`${PORTAL_BASE}/platforms/ios-standards/`}>iOS Standards</a></li>
+        <li><a href={`${PORTAL_BASE}/platforms/react-native-standards/`}>RN Standards</a></li>
+        <li><a href={`${PORTAL_BASE}/platforms/master-sdk-catalog/`}>SDK's Catalog</a></li>
+      </ul>
+      <div class="card-footer-end">
+        <a href={`${PORTAL_BASE}/platforms/`} class="view-all-link">View All &rarr;</a>
+      </div>
+    </Card>
 
-  <Card title="CI/CD & Automation" icon="setting">
-    <p>Bitrise shared workflows, camp.yml build declarative specs, Danger PR review automation, and coverage gates.</p>
-    <ul>
-      <li><a href={`${PORTAL_BASE}/cicd/`}>Pipelines Overview</a></li>
-      <li><a href={`${PORTAL_BASE}/cicd/camp-spec/`}>camp.yml Spec</a></li>
-      <li><a href={`${PORTAL_BASE}/cicd/danger-bot/`}>Danger Inspection</a></li>
-    </ul>
-  </Card>
+    <!-- 4. Build(CI) & Ship(CD) -->
+    <Card title="4. Build(CI) & Ship(CD)" icon="setting">
+      <p>Bitrise pipelines, camp.yml spec reference, Danger PR inspection, and automated builds.</p>
+      <ul>
+        <li><a href={`${PORTAL_BASE}/cicd/build-kit-overview/`}>Build Kit</a></li>
+        <li><a href={`${PORTAL_BASE}/cicd/camp-spec-reference/`}>CAMP Spec</a></li>
+        <li><a href={`${PORTAL_BASE}/cicd/bitrise-pipelines/`}>Bitrise CI</a></li>
+        <li><a href={`${PORTAL_BASE}/cicd/danger-pr-bot/`}>Danger Bot</a></li>
+      </ul>
+      <div class="card-footer-end">
+        <a href={`${PORTAL_BASE}/cicd/`} class="view-all-link">View All &rarr;</a>
+      </div>
+    </Card>
 
-  <Card title="Development Platforms" icon="open-book">
-    <p>Native Android (Kotlin &amp; Compose), Native iOS (Swift &amp; SwiftUI), and Cross-Platform React Native standards.</p>
-    <ul>
-      <li><a href={`${PORTAL_BASE}/development-platforms/android/`}>Android (Kotlin)</a></li>
-      <li><a href={`${PORTAL_BASE}/development-platforms/ios/`}>iOS (Swift)</a></li>
-      <li><a href={`${PORTAL_BASE}/development-platforms/react-native/`}>React Native</a></li>
-    </ul>
-  </Card>
+    <!-- 5. Testing & Quality -->
+    <Card title="5. Testing & Quality" icon="approve-check">
+      <p>Unit test harnesses, MockWebServer stubs, Maestro automated E2E, and gate thresholds.</p>
+      <ul>
+        <li><a href={`${PORTAL_BASE}/testing/unit-testing-matrix/`}>Unit Testing</a></li>
+        <li><a href={`${PORTAL_BASE}/testing/maestro-e2e/`}>UI &amp; Maestro</a></li>
+        <li><a href={`${PORTAL_BASE}/testing/mock-web-server/`}>Mocking API</a></li>
+        <li><a href={`${PORTAL_BASE}/testing/quality-gates/`}>Coverage Gates</a></li>
+      </ul>
+      <div class="card-footer-end">
+        <a href={`${PORTAL_BASE}/testing/`} class="view-all-link">View All &rarr;</a>
+      </div>
+    </Card>
 
-  <Card title="Push Notifications Backend" icon="comment">
-    <p>Push architecture through Firebase Cloud Messaging (FCM), backend Java implementations, and PushJS library.</p>
-    <ul>
-      <li><a href={`${PORTAL_BASE}/push-notifications-backend/firebase-cloud-messaging/`}>Firebase FCM</a></li>
-      <li><a href={`${PORTAL_BASE}/push-notifications-backend/java/`}>Java Backend</a></li>
-      <li><a href={`${PORTAL_BASE}/push-notifications-backend/pushjs/`}>PushJS Library</a></li>
-    </ul>
-  </Card>
+    <!-- 6. Monitoring & Analytics -->
+    <Card title="6. Monitoring & Analytics" icon="information">
+      <p>Push notifications, Datadog RUM telemetry, security checklist, and data wipe protocol.</p>
+      <ul>
+        <li><a href={`${PORTAL_BASE}/monitoring/push-notifications/`}>Push Notify</a></li>
+        <li><a href={`${PORTAL_BASE}/monitoring/datadog-rum/`}>Datadog RUM</a></li>
+        <li><a href={`${PORTAL_BASE}/monitoring/security-checklist/`}>Security</a></li>
+        <li><a href={`${PORTAL_BASE}/monitoring/remote-data-wipe/`}>Data Wipe</a></li>
+      </ul>
+      <div class="card-footer-end">
+        <a href={`${PORTAL_BASE}/monitoring/`} class="view-all-link">View All &rarr;</a>
+      </div>
+    </Card>
 
-  <Card title="Guidelines & Governance" icon="document">
-    <p>Enterprise security baselines, OWASP MASVS compliance, Git branching policies, PR rules, and quality standards.</p>
-    <ul>
-      <li><a href={`${PORTAL_BASE}/guidelines/`}>Engineering Guidelines</a></li>
-      <li><a href={`${PORTAL_BASE}/guidelines/security/`}>Security Policies</a></li>
-      <li><a href={`${PORTAL_BASE}/guidelines/branching/`}>Branching Strategy</a></li>
-    </ul>
-  </Card>
+    <!-- 7. App Distribution -->
+    <Card title="7. App Distribution" icon="external">
+      <p>Enterprise App Store, Google Play deployment, Apple App Store publishing, and signing.</p>
+      <ul>
+        <li><a href={`${PORTAL_BASE}/distribution/enterprise-store/`}>Ent Store</a></li>
+        <li><a href={`${PORTAL_BASE}/distribution/google-play/`}>Play Store</a></li>
+        <li><a href={`${PORTAL_BASE}/distribution/apple-store/`}>App Store</a></li>
+        <li><a href={`${PORTAL_BASE}/distribution/signing/`}>Certs &amp; Signing</a></li>
+      </ul>
+      <div class="card-footer-end">
+        <a href={`${PORTAL_BASE}/distribution/`} class="view-all-link">View All &rarr;</a>
+      </div>
+    </Card>
 
-  <Card title="Engineering FAQs & Self-Service" icon="magnifier">
-    <p>Keyword searchable runbooks and verified answers across workstation setups, SSL certs, CI/CD, and App Store releases.</p>
-    <ul>
-      <li><a href={`${PORTAL_BASE}/faqs/`}>Browse FAQs</a></li>
-      <li><a href={`${PORTAL_BASE}/faqs/troubleshooting/`}>Runbooks</a></li>
-      <li><a href={`${PORTAL_BASE}/support/`}>Live Support</a></li>
-    </ul>
-  </Card>
-</CardGrid>
+    <!-- 8. GenAI & Mobile AI -->
+    <Card title="8. GenAI & Mobile AI" icon="star">
+      <p>Copilot , Open AI chatGpt, Bitrise MCP integration, and engineering prompts.</p>
+      <ul>
+        <li><a href={`${PORTAL_BASE}/genai/bitrise-mcp/`}>Bitrise MCP</a></li>
+        <li><a href={`${PORTAL_BASE}/genai/copilot-chatgpt-rules/`}>Download Rules</a></li>
+        <li><a href={`${PORTAL_BASE}/genai/faqs/`}>Gen AI FAQ</a></li>
+        <li><a href={`${PORTAL_BASE}/genai/prompt-templates/`}>Prompt Template</a></li>
+      </ul>
+      <div class="card-footer-end">
+        <a href={`${PORTAL_BASE}/genai/`} class="view-all-link">View All &rarr;</a>
+      </div>
+    </Card>
 
-## Support & Assistance
+    <!-- 9. Help & Support -->
+    <Card title="9. Help & Support" icon="comment">
+      <p>Microsoft Teams Group, Engineering FAQs, and live platform assistance.</p>
+      <ul>
+        <li><a href="https://teams.enterprise.internal/l/channel/mobile-platform-support">Support Group</a></li>
+        <li><a href={`${PORTAL_BASE}/support/faqs/`}>FAQ</a></li>
+        <li><a href={`${PORTAL_BASE}/support/`}>Support Overview</a></li>
+      </ul>
+      <div class="card-footer-end">
+        <a href={`${PORTAL_BASE}/support/`} class="view-all-link">View All &rarr;</a>
+      </div>
+    </Card>
+  </CardGrid>
+</div>
+
+<h2>Support &amp; Assistance</h2>
 
 <CardGrid>
   <LinkCard
@@ -2567,7 +2936,7 @@ const PORTAL_BASE = basePath; // When changing to '/mobile' tomorrow, simply cha
   />
   <LinkCard
     title="Browse Engineering FAQs"
-    href={`${PORTAL_BASE}/faqs/`}
+    href={`${PORTAL_BASE}/support/faqs/`}
     description="Instant answers to common developer questions and environment setups."
   />
   <LinkCard
@@ -2577,22 +2946,50 @@ const PORTAL_BASE = basePath; // When changing to '/mobile' tomorrow, simply cha
   />
 </CardGrid>
 
+<style>
+  /* 3-COLUMN DESKTOP RESPONSIVE GRID */
+  @media (min-width: 68rem) {
+    .portal-grid-3col :global(.card-grid) {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+  }
 
+  /* RIGHT-ALIGNED 'VIEW ALL' BUTTON AT BOTTOM END OF CARD */
+  .portal-grid-3col :global(.card) {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+  }
 
+  .card-footer-end {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
+    width: 100%;
+  }
 
+  .view-all-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: var(--sl-color-text-accent, #22c55e);
+    text-decoration: none;
+    margin-left: auto;
+    transition: color 0.15s ease, transform 0.15s ease;
+  }
 
-
-
-
-
-
-
-
-
-
-
-
-
+  .view-all-link:hover {
+    color: var(--sl-color-white, #ffffff);
+    transform: translateX(3px);
+    text-decoration: underline;
+  }
+</style>
 
 
 
