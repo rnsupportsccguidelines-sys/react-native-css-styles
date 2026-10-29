@@ -9,7 +9,7 @@ sidebar:
 import { Tabs, TabItem, CardGrid, Card, LinkCard } from '@astrojs/starlight/components';
 import MermaidZoom from './MermaidZoom.astro';
 
-export const PORTAL_BASE = '/mobile-draft'; // Set to '/mobile' when promoting to production
+export const PORTAL_BASE = '/mobile';
 
 :::tip[Master Onboarding Guide]
 Welcome to the Enterprise Mobile Engineering Platform. This page is your master orientation guide and routing hub. It outlines the structured onboarding sequence, clarifies prerequisites, and routes you directly to your tailored track without redundant steps.
@@ -46,13 +46,24 @@ flowchart TD
     POverview --> PersonaCheck{"Developer Persona"}
     
     PersonaCheck -- "Web / Backend" --> NonMobile["Non-Mobile Track"]
-    PersonaCheck -- "Mobile Native" --> MobileTrack["Mobile Track"]
+    PersonaCheck -- "Mobile Native" --> MobileTrack["New Mobile Track"]
     
-    NonMobile --> TechStack["Tech Stack Selection"]
-    MobileTrack --> TechStack
+    NonMobile --> MobileTrack
+    MobileTrack --> TechStack["Tech Stack Selection"]
     
     TechStack --> MachineSetup["Machine Setup"]
     MachineSetup --> FirstPR["Submit First Pull Request"]
+
+    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+
+    class Start,FirstPR networkLayer;
+    class POverview,TechStack,MachineSetup domainLayer;
+    class PersonaCheck securityLayer;
+    class NonMobile,MobileTrack uiLayer;
 ```
 
 </MermaidZoom>
@@ -66,7 +77,7 @@ Select your developer background to see your tailored onboarding roadmap:
 <Tabs>
   <TabItem label="Track A: Web & Backend Engineers">
 
-Designed specifically for web, frontend, and backend developers transitioning into native mobile development:
+Designed specifically for web, frontend, and backend developers transitioning into enterprise mobile development. Follow the sequential progression: **Non-Mobile Guide &rarr; New Mobile Track &rarr; Tech Stack Selection &rarr; Machine Setup**:
 
 <CardGrid>
   <LinkCard
@@ -77,7 +88,12 @@ Designed specifically for web, frontend, and backend developers transitioning in
   <LinkCard
     title="Non-Mobile Engineer Track"
     href={`${PORTAL_BASE}/onboarding/non-mobile-dev-guide/`}
-    description="Designed specifically for web, frontend, and backend developers. Explains native view hierarchies, threading, and app lifecycles."
+    description="Bridge the gap from web/backend to mobile: understand UI thread budgeting, application lifecycle, and offline caching."
+  />
+  <LinkCard
+    title="New Mobile Engineer Track"
+    href={`${PORTAL_BASE}/onboarding/new-mobile-engineer-track/`}
+    description="Enterprise mobile foundations: 4-layer clean architecture, private registries, core SDK initialization, and Danger PR bots."
   />
   <LinkCard
     title="Tech Stack Selection"
@@ -149,7 +165,12 @@ Keep these non-negotiable principles in mind as you progress through each track:
 
 
 
--------------------------------
+
+-----------------------
+
+
+
+
 
 
 ---
@@ -163,7 +184,7 @@ sidebar:
 import { Tabs, TabItem, CardGrid, Card, LinkCard } from '@astrojs/starlight/components';
 import MermaidZoom from './MermaidZoom.astro';
 
-export const PORTAL_BASE = '/mobile-draft'; // Set to '/mobile' when promoting to production
+export const PORTAL_BASE = '/mobile';
 
 :::tip[Ecosystem Topology]
 The Enterprise Mobile Engineering Platform establishes a unified delivery framework across iOS, Android, and React Native. It standardizes common capabilities into shared infrastructure—including identity, networking resilience, automated gate inspections, and telemetry—enabling teams to focus on domain features.
@@ -228,6 +249,18 @@ flowchart TD
 
     PublicStore --> Users
     EnterpriseStore --> Users
+
+    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+
+    class Dev,Users uiLayer;
+    class PR domainLayer;
+    class Danger,NowSec securityLayer;
+    class Sauce,PublicStore,EnterpriseStore networkLayer;
+    class Datadog dataLayer;
 ```
 
 </MermaidZoom>
@@ -252,7 +285,7 @@ Optimized for feature velocity and high code reuse (80%+ default enterprise stan
 * **Module Architecture:** JSI & TurboModules (zero async bridge serialization)
 * **Default State Engine:** Zustand + TanStack Query
 
-<a href={`${PORTAL_BASE}/development-platforms/react-native/`}>View React Native Architecture Guide &rarr;</a>
+<a href={`${PORTAL_BASE}/platforms/react-native-standards/`}>View React Native Architecture Guide &rarr;</a>
 
   </TabItem>
   <TabItem label="Native Android (Kotlin / Compose)">
@@ -263,7 +296,7 @@ Engineered for hardware-intensive workflows, offline background sync daemons, Bl
 * **UI Toolkit:** Jetpack Compose (Declarative)
 * **Dependency Injection:** Hilt & Dagger 2
 
-<a href={`${PORTAL_BASE}/development-platforms/android/`}>View Native Android Architecture Guide &rarr;</a>
+<a href={`${PORTAL_BASE}/platforms/android-standards/`}>View Native Android Architecture Guide &rarr;</a>
 
   </TabItem>
   <TabItem label="Native iOS (Swift / SwiftUI)">
@@ -274,7 +307,7 @@ Tailored for flagship Apple ecosystem experiences requiring native Metal graphic
 * **UI Toolkit:** SwiftUI
 * **Security Enclave:** iOS Keychain Services & Biometric Gating
 
-<a href={`${PORTAL_BASE}/development-platforms/ios/`}>View Native iOS Architecture Guide &rarr;</a>
+<a href={`${PORTAL_BASE}/platforms/ios-standards/`}>View Native iOS Architecture Guide &rarr;</a>
 
   </TabItem>
 </Tabs>
@@ -322,6 +355,18 @@ flowchart TD
     Mob --> Found
     Mob --> Pipeline
     Mob --> Delivery
+
+    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+
+    class Mob domainLayer;
+    class D1,D2 uiLayer;
+    class D3,D6 dataLayer;
+    class D4 securityLayer;
+    class D5 networkLayer;
 ```
 
 </MermaidZoom>
@@ -364,7 +409,9 @@ Before proceeding to your developer track, confirm you can answer the following:
 
 
 
---------------------------------------
+
+-------------------------
+
 
 
 
@@ -377,10 +424,10 @@ sidebar:
 ---
 
 
-import { Tabs, TabItem, CardGrid, Card } from '@astrojs/starlight/components';
+import { Tabs, TabItem, CardGrid, Card, LinkCard } from '@astrojs/starlight/components';
 import MermaidZoom from './MermaidZoom.astro';
 
-export const PORTAL_BASE = '/mobile-draft'; // Set to '/mobile' when promoting to production
+export const PORTAL_BASE = '/mobile';
 
 :::tip[Engineering Transition]
 Designed specifically for web (React, Vue, Node.js), backend (Java, Go, Python, C#), and fullstack engineers transitioning into mobile development. This guide demystifies native OS execution, the 60/120fps UI thread constraint, offline-first persistence, application sandboxing, and binary release lifecycles.
@@ -442,6 +489,16 @@ flowchart TD
         UI -->|"Non-blocking events"| Worker
         Worker -->|"Read / Write"| LocalCache
     end
+
+    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+
+    class Browser,UI uiLayer;
+    class Server,Worker domainLayer;
+    class DB,LocalCache dataLayer;
 ```
 
 </MermaidZoom>
@@ -618,6 +675,16 @@ flowchart TD
         HalfOpen -->|"Probe succeeds"| Closed
         HalfOpen -->|"Probe fails"| Open
     end
+
+    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+
+    class Closed dataLayer;
+    class Open securityLayer;
+    class HalfOpen networkLayer;
 ```
 
 </MermaidZoom>
@@ -689,6 +756,17 @@ flowchart TD
         Susp -->|"Low memory condition"| Dead
         Dead -->|"User taps icon"| FG
     end
+
+    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+
+    class FG uiLayer;
+    class BG domainLayer;
+    class Susp networkLayer;
+    class Dead securityLayer;
 ```
 
 </MermaidZoom>
@@ -737,7 +815,7 @@ Select your starting platform path based on your existing engineering skill set:
 
     Ideal for React, web, TypeScript, and fullstack developers. Reuses your component lifecycle knowledge, JSX, state patterns, and npm ecosystem to deliver unified iOS and Android apps.
 
-    <a href={`${PORTAL_BASE}/development-platforms/react-native/`}>Start React Native Guide &rarr;</a>
+    <a href={`${PORTAL_BASE}/platforms/react-native-standards/`}>Start React Native Guide &rarr;</a>
   </Card>
 
   <Card title="Native Android (Kotlin / Compose)" icon="open-book">
@@ -745,7 +823,7 @@ Select your starting platform path based on your existing engineering skill set:
 
     Ideal for Java, Kotlin, and backend JVM engineers. Leverages familiar Gradle builds, strong typing, declarative Jetpack Compose UI, and direct access to Android hardware APIs.
 
-    <a href={`${PORTAL_BASE}/development-platforms/android/`}>Start Android Native Guide &rarr;</a>
+    <a href={`${PORTAL_BASE}/platforms/android-standards/`}>Start Android Native Guide &rarr;</a>
   </Card>
 
   <Card title="Native iOS (Swift / SwiftUI)" icon="star">
@@ -753,7 +831,7 @@ Select your starting platform path based on your existing engineering skill set:
 
     Ideal for engineers comfortable with strong typing, memory ownership, and macOS development. Builds flagship Apple ecosystem applications using SwiftUI, async/await, and CoreML.
 
-    <a href={`${PORTAL_BASE}/development-platforms/ios/`}>Start iOS Native Guide &rarr;</a>
+    <a href={`${PORTAL_BASE}/platforms/ios-standards/`}>Start iOS Native Guide &rarr;</a>
   </Card>
 </CardGrid>
 
@@ -847,17 +925,30 @@ Confirm you understand the following principles before building your first featu
 * **Framework Direction:** Whether your team is adopting React Native or native Android/iOS for your domain application.
 :::
 
+---
+
+## Next Steps
+
+Now that you have mastered mobile client fundamentals, proceed to the next milestone in your onboarding path:
+
+<CardGrid>
+  <LinkCard
+    title="New Mobile Engineer Track"
+    href={`${PORTAL_BASE}/onboarding/new-mobile-engineer-track/`}
+    description="Proceed to enterprise repository topologies, internal artifact registries, 4-layer clean architecture, and Danger PR bot rules."
+  />
+  <LinkCard
+    title="Tech Stack Selection Matrix"
+    href={`${PORTAL_BASE}/onboarding/tech-stack-matrix/`}
+    description="Compare technical trade-offs across React Native, Jetpack Compose, and SwiftUI for your application."
+  />
+</CardGrid>
 
 
 
------------------------------------
 
 
-
-
-
-
-
+------------------------
 
 ---
 title: New Mobile Engineer Track
@@ -868,8 +959,10 @@ sidebar:
 ---
 
 
-import { Tabs, TabItem, CardGrid, Card } from '@astrojs/starlight/components';
+import { Tabs, TabItem, CardGrid, Card, LinkCard } from '@astrojs/starlight/components';
 import MermaidZoom from './MermaidZoom.astro';
+
+export const PORTAL_BASE = '/mobile';
 
 :::tip[Accelerated Track]
 An accelerated onboarding path for experienced native iOS, native Android, and React Native engineers. Skip the generic mobile fundamentals and focus directly on enterprise repository topologies, internal private artifact registries, architectural conventions, Danger PR automated inspections, and Bitrise CI/CD release trains.
@@ -919,6 +1012,17 @@ flowchart TD
         P5["Release Train & Sync\n(Internal Distribution & Teams Support)"]
         P4 --> P5
     end
+
+    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+
+    class P1,P2 networkLayer;
+    class P3 domainLayer;
+    class P4 securityLayer;
+    class P5 dataLayer;
 ```
 
 </MermaidZoom>
@@ -1044,6 +1148,17 @@ flowchart TD
         Domain --> Data
         Data --> Core
     end
+
+    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+
+    class UI uiLayer;
+    class Domain domainLayer;
+    class Data dataLayer;
+    class Core networkLayer;
 ```
 
 </MermaidZoom>
@@ -1196,6 +1311,17 @@ flowchart TD
         MergeGate["6. Merge Approved\n(2 Peer Reviews Required)"]
         NowSec --> MergeGate
     end
+
+    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+
+    class Commit uiLayer;
+    class DangerBot,NowSec securityLayer;
+    class UnitTests,SauceCloud dataLayer;
+    class MergeGate domainLayer;
 ```
 
 </MermaidZoom>
@@ -1265,11 +1391,26 @@ Confirm you have achieved the following milestones before taking your first Jira
 * **PR Quality Gate Ready:** Understand Conventional Commit requirements and Danger PR Bot rules.
 :::
 
+---
+
+## Next Steps
+
+<CardGrid>
+  <LinkCard
+    title="Tech Stack Selection Matrix"
+    href={`${PORTAL_BASE}/onboarding/tech-stack-matrix/`}
+    description="Evaluate whether React Native, Jetpack Compose, or SwiftUI is recommended for your project."
+  />
+  <LinkCard
+    title="Machine Setup & Workstation"
+    href={`${PORTAL_BASE}/onboarding/machine-setup/`}
+    description="Configure your MacBook workstation with OpenJDK 17, Android Studio, Xcode 16, and Doctor CLI validation."
+  />
+</CardGrid>
 
 
 
-
-----------------------------------
+------------------------
 
 
 ---
@@ -1281,10 +1422,10 @@ sidebar:
 ---
 
 
-import { Tabs, TabItem, CardGrid, Card } from '@astrojs/starlight/components';
+import { Tabs, TabItem, CardGrid, Card, LinkCard } from '@astrojs/starlight/components';
 import MermaidZoom from './MermaidZoom.astro';
 
-export const PORTAL_BASE = '/mobile-draft'; // Set to '/mobile' when promoting to production
+export const PORTAL_BASE = '/mobile';
 
 :::tip[Platform Governance]
 Official architectural evaluation matrix for enterprise mobile engineering. Defines objective criteria for selecting between React Native (New Architecture), Native Android (Kotlin & Jetpack Compose), and Native iOS (Swift & SwiftUI). React Native is the standard enterprise recommendation for 80%+ of business applications to maximize velocity and code reuse.
@@ -1327,6 +1468,18 @@ flowchart TD
 
     Q2 -->|"Yes"| SinglePlatform["Platform-Specific Native\n(SwiftUI or Jetpack Compose)"]
     Q2 -->|"No"| ReactDefault["ENTERPRISE DEFAULT RECOMMENDED:\nReact Native (New Architecture)\n90%+ Shared TypeScript Codebase"]
+
+    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
+    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
+    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
+    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
+
+    class Start domainLayer;
+    class Q1,Q2 securityLayer;
+    class Hardware,SinglePlatform networkLayer;
+    class AndroidNative,IOSNative uiLayer;
+    class ReactDefault dataLayer;
 ```
 
 </MermaidZoom>
@@ -1359,7 +1512,7 @@ Compare the technical trade-offs across all three tier-1 supported stacks:
 
     The default enterprise choice for field operations, logistics workflows, customer portals, and internal employee tools. Delivers native 60fps performance through Fabric and C++ TurboModules with 90%+ code reuse.
 
-    <a href={`${PORTAL_BASE}/development-platforms/react-native/`}>View React Native Guide &rarr;</a>
+    <a href={`${PORTAL_BASE}/platforms/react-native-standards/`}>View React Native Guide &rarr;</a>
   </Card>
 
   <Card title="Native Android (Kotlin / Compose)" icon="open-book">
@@ -1367,7 +1520,7 @@ Compare the technical trade-offs across all three tier-1 supported stacks:
 
     Selected when applications interface directly with specialized warehouse hardware (Zebra, Honeywell rugged scanners), custom serial Bluetooth devices, continuous GPS background workers, or Android OS services.
 
-    <a href={`${PORTAL_BASE}/development-platforms/android/`}>View Android Guide &rarr;</a>
+    <a href={`${PORTAL_BASE}/platforms/android-standards/`}>View Android Guide &rarr;</a>
   </Card>
 
   <Card title="Native iOS (Swift / SwiftUI)" icon="star">
@@ -1375,7 +1528,7 @@ Compare the technical trade-offs across all three tier-1 supported stacks:
 
     Selected for flagship Apple-exclusive enterprise deployments (iPad executive dashboards, retail kiosk systems) requiring custom Metal GPU rendering, on-device CoreML neural inference, or hardware-bound Apple Secure Enclave operations.
 
-    <a href={`${PORTAL_BASE}/development-platforms/ios/`}>View iOS Guide &rarr;</a>
+    <a href={`${PORTAL_BASE}/platforms/ios-standards/`}>View iOS Guide &rarr;</a>
   </Card>
 </CardGrid>
 
@@ -1585,11 +1738,27 @@ Verify that your proposed stack selection satisfies all enterprise governance cr
 * **Security Sign-Off:** Does the data model comply with the enterprise encryption-at-rest and Remote Data Wipe protocols?
 :::
 
+---
+
+## Next Steps
+
+<CardGrid>
+  <LinkCard
+    title="Machine Setup & Workstation Guide"
+    href={`${PORTAL_BASE}/onboarding/machine-setup/`}
+    description="Configure your MacBook workstation with the certified toolchain, compilers, and Doctor CLI validation."
+  />
+  <LinkCard
+    title="Platform Architecture"
+    href={`${PORTAL_BASE}/architecture/clean-architecture-spec/`}
+    description="Explore the standardized 4-layer clean architecture, repository patterns, and unidirectional data flow."
+  />
+</CardGrid>
 
 
 
+----------------------
 
---------------------------------------
 
 
 ---
@@ -1628,7 +1797,7 @@ Step-by-step workstation configuration for engineers on corporate MacBooks (Appl
 
 Before installing platform-specific SDKs, execute these three foundational configuration steps on your MacBook:
 
-### 1. Install Homebrew (Package Manager)
+### Install Homebrew Package Manager
 
 Homebrew is required to manage command-line developer utilities on macOS:
 
@@ -1644,7 +1813,7 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 brew --version
 ```
 
-### 2. Install Enterprise Proxy Certificates
+### Install Enterprise Proxy Certificates
 
 Corporate MacBooks route network traffic through internal SSL proxies. Install the enterprise root certificate into your macOS System Keychain so package managers (curl, git, npm, Gradle) trust internal endpoints:
 
@@ -1658,7 +1827,7 @@ sudo security add-trusted-cert -d -r trustRoot \
 security find-certificate -c "Enterprise Root CA" /Library/Keychains/System.keychain
 ```
 
-### 3. Generate SSH Key for Enterprise GitHub
+### Generate SSH Key for Enterprise GitHub
 
 ```bash
 # Generate a modern ed25519 SSH key
@@ -1995,8 +2164,8 @@ Confirm your MacBook workstation meets the baseline development standard:
 
 
 
+------------------------
 
--------------------------------
 
 
 ---
@@ -2049,6 +2218,8 @@ const uniqueId = id || `diagram-${Math.random().toString(36).slice(2, 9)}`;
         </svg>
       </button>
 
+      <div class="mermaid-divider"></div>
+
       <!-- Expand Button into Top-Layer Popup -->
       <button type="button" class="mermaid-btn btn-expand-modal" title="Expand Fullscreen Popup" aria-label="Expand Fullscreen Popup">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2092,6 +2263,7 @@ const uniqueId = id || `diagram-${Math.random().toString(36).slice(2, 9)}`;
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
           </button>
+          <div class="mermaid-divider"></div>
           <button type="button" class="mermaid-btn modal-btn-reset" title="Reset View" aria-label="Reset View">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
@@ -2183,22 +2355,25 @@ const uniqueId = id || `diagram-${Math.random().toString(36).slice(2, 9)}`;
   }
 
   .mermaid-toolbar {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    background: rgba(30, 41, 59, 0.85);
-    border: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.25));
     border-radius: 6px;
     padding: 2px 4px;
-    gap: 2px;
+    gap: 3px;
     margin-left: auto;
+    box-sizing: border-box;
+    height: 32px;
   }
 
   .mermaid-btn {
+    box-sizing: border-box !important;
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     color: var(--sl-color-gray-3, #94a3b8);
     height: 26px;
-    padding: 0 6px;
+    padding: 0 6px !important;
     border-radius: 4px;
     display: inline-flex;
     align-items: center;
@@ -2206,40 +2381,69 @@ const uniqueId = id || `diagram-${Math.random().toString(36).slice(2, 9)}`;
     cursor: pointer;
     font-size: 0.74rem;
     font-weight: 600;
+    line-height: 1 !important;
+    margin: 0 !important;
+    vertical-align: middle;
     transition: all 0.15s ease;
-    gap: 4px;
+    gap: 5px;
+    flex-shrink: 0;
   }
 
   .mermaid-btn:hover {
     background: rgba(255, 255, 255, 0.12);
     color: var(--sl-color-white, #ffffff);
+    border-color: rgba(255, 255, 255, 0.15);
   }
 
   .mermaid-btn:active {
-    transform: scale(0.94);
+    transform: scale(0.95);
+  }
+
+  .mermaid-btn svg {
+    display: block;
+    flex-shrink: 0;
+    margin: 0;
+  }
+
+  .mermaid-btn span {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    font-size: 0.74rem;
+    font-weight: 600;
+    margin: 0;
+    padding: 0;
   }
 
   .btn-expand-modal {
-    background: rgba(56, 189, 248, 0.12);
+    background: rgba(56, 189, 248, 0.14);
     color: var(--sl-color-text-accent, #38bdf8);
-    border: 1px solid rgba(56, 189, 248, 0.25);
+    border: 1px solid rgba(56, 189, 248, 0.35) !important;
+    padding: 0 8px !important;
   }
 
   .btn-expand-modal:hover {
-    background: rgba(56, 189, 248, 0.22);
+    background: rgba(56, 189, 248, 0.25);
     color: #ffffff;
+    border-color: rgba(56, 189, 248, 0.55) !important;
   }
 
   .mermaid-zoom-indicator {
+    box-sizing: border-box;
     font-size: 0.72rem;
     font-weight: 600;
     color: var(--sl-color-gray-3, #94a3b8);
     padding: 0 4px;
-    min-width: 38px;
+    min-width: 40px;
     text-align: center;
     cursor: pointer;
     font-variant-numeric: tabular-nums;
     user-select: none;
+    line-height: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .mermaid-zoom-indicator:hover {
@@ -2248,9 +2452,10 @@ const uniqueId = id || `diagram-${Math.random().toString(36).slice(2, 9)}`;
 
   .mermaid-divider {
     width: 1px;
-    height: 12px;
-    background: var(--sl-color-gray-5, rgba(148, 163, 184, 0.2));
+    height: 14px;
+    background: var(--sl-color-gray-5, rgba(148, 163, 184, 0.25));
     margin: 0 2px;
+    flex-shrink: 0;
   }
 
   /* RESPONSIVE COMFORTABLE VIEWPORT: High-visibility height with zero clipping */
@@ -2768,313 +2973,6 @@ const uniqueId = id || `diagram-${Math.random().toString(36).slice(2, 9)}`;
   setupAllDiagrams();
   document.addEventListener('astro:page-load', setupAllDiagrams);
 </script>
-
-
-
-
-
-
-
----------------------------
-
-
----
-import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
-
-interface Props {
-  basePath?: string;
-}
-
-const { basePath = '/mobile' } = Astro.props;
-const PORTAL_BASE = basePath;
----
-
-<Aside type="note" title="Platform Ecosystem Overview">
-Welcome to the central developer portal for enterprise mobile application development. Use the capability cards below to navigate verified architecture patterns, CI/CD pipelines, SDK catalogs, testing standards, and onboarding tracks.
-</Aside>
-
-<h2>Platform Capabilities</h2>
-
-<div class="portal-grid-3col">
-  <!-- CardGrid WITHOUT stagger so all 3 columns align evenly at the exact same top baseline -->
-  <CardGrid>
-    <!-- 1. Get Started -->
-    <Card title="1. Get Started" icon="rocket">
-      <p>Platform ecosystem, workstation setup, fast-track checklists, and framework selection.</p>
-      <ul>
-        <li><a href={`${PORTAL_BASE}/onboarding/day-one-checklist/`}>Platform Overview</a></li>
-        <li><a href={`${PORTAL_BASE}/onboarding/welcome-quickstart/`}>Engineer Onboarding</a></li>
-        <li><a href={`${PORTAL_BASE}/onboarding/non-mobile-dev-guide/`}>Non-Mobile Guide</a></li>
-        <li><a href={`${PORTAL_BASE}/onboarding/tech-stack-matrix/`}>Tech Stack Selection</a></li>
-      </ul>
-      <div class="card-footer-end">
-        <a href={`${PORTAL_BASE}/onboarding/`} class="view-all-link">View All &rarr;</a>
-      </div>
-    </Card>
-
-    <!-- 2. Architecture -->
-    <Card title="2. Architecture" icon="puzzle">
-      <p>Clean architecture layers, Circuit Breaker resilience, feature flags, and branching rules.</p>
-      <ul>
-        <li><a href={`${PORTAL_BASE}/architecture/clean-architecture-spec/`}>Architecture</a></li>
-        <li><a href={`${PORTAL_BASE}/architecture/resilience-circuit-breaker/`}>Resilience</a></li>
-        <li><a href={`${PORTAL_BASE}/architecture/feature-flagging/`}>Feature Flags</a></li>
-        <li><a href={`${PORTAL_BASE}/architecture/git-branching-strategy/`}>Git Rules</a></li>
-      </ul>
-      <div class="card-footer-end">
-        <a href={`${PORTAL_BASE}/architecture/`} class="view-all-link">View All &rarr;</a>
-      </div>
-    </Card>
-
-    <!-- 3. Platforms & SDKs -->
-    <Card title="3. Platforms & SDKs" icon="laptop">
-      <p>Android, iOS, React Native catalogs, shared libraries, and app core foundations.</p>
-      <ul>
-        <li><a href={`${PORTAL_BASE}/platforms/android-standards/`}>Android Standards</a></li>
-        <li><a href={`${PORTAL_BASE}/platforms/ios-standards/`}>iOS Standards</a></li>
-        <li><a href={`${PORTAL_BASE}/platforms/react-native-standards/`}>RN Standards</a></li>
-        <li><a href={`${PORTAL_BASE}/platforms/master-sdk-catalog/`}>SDK's Catalog</a></li>
-      </ul>
-      <div class="card-footer-end">
-        <a href={`${PORTAL_BASE}/platforms/`} class="view-all-link">View All &rarr;</a>
-      </div>
-    </Card>
-
-    <!-- 4. Build(CI) & Ship(CD) -->
-    <Card title="4. Build(CI) & Ship(CD)" icon="setting">
-      <p>Bitrise pipelines, camp.yml spec reference, Danger PR inspection, and automated builds.</p>
-      <ul>
-        <li><a href={`${PORTAL_BASE}/cicd/build-kit-overview/`}>Build Kit</a></li>
-        <li><a href={`${PORTAL_BASE}/cicd/camp-spec-reference/`}>CAMP Spec</a></li>
-        <li><a href={`${PORTAL_BASE}/cicd/bitrise-pipelines/`}>Bitrise CI</a></li>
-        <li><a href={`${PORTAL_BASE}/cicd/danger-pr-bot/`}>Danger Bot</a></li>
-      </ul>
-      <div class="card-footer-end">
-        <a href={`${PORTAL_BASE}/cicd/`} class="view-all-link">View All &rarr;</a>
-      </div>
-    </Card>
-
-    <!-- 5. Testing & Quality -->
-    <Card title="5. Testing & Quality" icon="approve-check">
-      <p>Unit test harnesses, MockWebServer stubs, Maestro automated E2E, and gate thresholds.</p>
-      <ul>
-        <li><a href={`${PORTAL_BASE}/testing/unit-testing-matrix/`}>Unit Testing</a></li>
-        <li><a href={`${PORTAL_BASE}/testing/maestro-e2e/`}>UI &amp; Maestro</a></li>
-        <li><a href={`${PORTAL_BASE}/testing/mock-web-server/`}>Mocking API</a></li>
-        <li><a href={`${PORTAL_BASE}/testing/quality-gates/`}>Coverage Gates</a></li>
-      </ul>
-      <div class="card-footer-end">
-        <a href={`${PORTAL_BASE}/testing/`} class="view-all-link">View All &rarr;</a>
-      </div>
-    </Card>
-
-    <!-- 6. Monitoring & Analytics -->
-    <Card title="6. Monitoring & Analytics" icon="information">
-      <p>Push notifications, Datadog RUM telemetry, security checklist, and data wipe protocol.</p>
-      <ul>
-        <li><a href={`${PORTAL_BASE}/monitoring/push-notifications/`}>Push Notify</a></li>
-        <li><a href={`${PORTAL_BASE}/monitoring/datadog-rum/`}>Datadog RUM</a></li>
-        <li><a href={`${PORTAL_BASE}/monitoring/security-checklist/`}>Security</a></li>
-        <li><a href={`${PORTAL_BASE}/monitoring/remote-data-wipe/`}>Data Wipe</a></li>
-      </ul>
-      <div class="card-footer-end">
-        <a href={`${PORTAL_BASE}/monitoring/`} class="view-all-link">View All &rarr;</a>
-      </div>
-    </Card>
-
-    <!-- 7. App Distribution -->
-    <Card title="7. App Distribution" icon="external">
-      <p>Enterprise App Store, Google Play deployment, Apple App Store publishing, and signing.</p>
-      <ul>
-        <li><a href={`${PORTAL_BASE}/distribution/enterprise-store/`}>Ent Store</a></li>
-        <li><a href={`${PORTAL_BASE}/distribution/google-play/`}>Play Store</a></li>
-        <li><a href={`${PORTAL_BASE}/distribution/apple-store/`}>App Store</a></li>
-        <li><a href={`${PORTAL_BASE}/distribution/signing/`}>Certs &amp; Signing</a></li>
-      </ul>
-      <div class="card-footer-end">
-        <a href={`${PORTAL_BASE}/distribution/`} class="view-all-link">View All &rarr;</a>
-      </div>
-    </Card>
-
-    <!-- 8. GenAI & Mobile AI -->
-    <Card title="8. GenAI & Mobile AI" icon="star">
-      <p>Copilot , Open AI chatGpt, Bitrise MCP integration, and engineering prompts.</p>
-      <ul>
-        <li><a href={`${PORTAL_BASE}/genai/bitrise-mcp/`}>Bitrise MCP</a></li>
-        <li><a href={`${PORTAL_BASE}/genai/copilot-chatgpt-rules/`}>Download Rules</a></li>
-        <li><a href={`${PORTAL_BASE}/genai/faqs/`}>Gen AI FAQ</a></li>
-        <li><a href={`${PORTAL_BASE}/genai/prompt-templates/`}>Prompt Template</a></li>
-      </ul>
-      <div class="card-footer-end">
-        <a href={`${PORTAL_BASE}/genai/`} class="view-all-link">View All &rarr;</a>
-      </div>
-    </Card>
-
-    <!-- 9. Help & Support -->
-    <Card title="9. Help & Support" icon="comment">
-      <p>Microsoft Teams Group, Engineering FAQs, and live platform assistance.</p>
-      <ul>
-        <li><a href="https://teams.enterprise.internal/l/channel/mobile-platform-support">Support Group</a></li>
-        <li><a href={`${PORTAL_BASE}/support/faqs/`}>FAQ</a></li>
-      </ul>
-      <div class="card-footer-end">
-        <a href={`${PORTAL_BASE}/support/`} class="view-all-link">View All &rarr;</a>
-      </div>
-    </Card>
-  </CardGrid>
-</div>
-
-<h2>Support &amp; Assistance</h2>
-
-<CardGrid>
-  <LinkCard
-    title="Ask in #mobile-platform-support"
-    href="https://teams.enterprise.internal/l/channel/mobile-platform-support"
-    description="Connect with on-call platform engineers for immediate live assistance."
-  />
-  <LinkCard
-    title="Browse Engineering FAQs"
-    href={`${PORTAL_BASE}/support/faqs/`}
-    description="Instant answers to common developer questions and environment setups."
-  />
-  <LinkCard
-    title="View Support Channels & SLAs"
-    href={`${PORTAL_BASE}/support/`}
-    description="Escalation paths, response SLAs, and team contacts."
-  />
-</CardGrid>
-
-<style>
-  /* 3-COLUMN DESKTOP RESPONSIVE GRID (NO STAGGER OFFSET) */
-  .portal-grid-3col :global(.card-grid) {
-    display: grid !important;
-    gap: 1.25rem !important;
-    grid-template-columns: 1fr;
-    margin-top: 1rem;
-  }
-
-  @media (min-width: 48rem) {
-    .portal-grid-3col :global(.card-grid) {
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    }
-  }
-
-  @media (min-width: 68rem) {
-    .portal-grid-3col :global(.card-grid) {
-      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    }
-  }
-
-  /* EQUAL HEIGHT CARDS & FLEX COLUMN */
-  .portal-grid-3col :global(.card) {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important;
-    height: 100% !important;
-    margin: 0 !important;
-    transform: none !important; /* Cancel any stagger translation */
-    background: var(--sl-color-bg-nav, rgba(15, 23, 42, 0.7)) !important;
-    border: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.2)) !important;
-    border-radius: 10px !important;
-    padding: 1.25rem !important;
-    box-sizing: border-box !important;
-  }
-
-  .portal-grid-3col :global(.card p) {
-    font-size: 0.88rem !important;
-    color: var(--sl-color-gray-3, #94a3b8) !important;
-    line-height: 1.45 !important;
-    margin-bottom: 1rem !important;
-  }
-
-  /* 2x2 PILL BUTTONS (MATCHING DESIRED COMPACT LOOK) */
-  .portal-grid-3col :global(.card ul) {
-    list-style: none !important;
-    padding: 0 !important;
-    margin: 0 0 1rem 0 !important;
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px 10px !important;
-    width: 100% !important;
-  }
-
-  .portal-grid-3col :global(.card ul li) {
-    margin: 0 !important;
-    padding: 0 !important;
-    display: flex !important;
-  }
-
-  .portal-grid-3col :global(.card ul li a) {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 100% !important;
-    min-height: 38px !important;
-    padding: 6px 10px !important;
-    background: rgba(30, 41, 59, 0.6) !important;
-    border: 1px solid rgba(148, 163, 184, 0.2) !important;
-    border-radius: 6px !important;
-    font-size: 0.78rem !important;
-    font-weight: 600 !important;
-    color: #f1f5f9 !important;
-    text-decoration: none !important;
-    text-align: center !important;
-    transition: all 0.15s ease !important;
-    line-height: 1.25 !important;
-    box-sizing: border-box !important;
-  }
-
-  .portal-grid-3col :global(.card ul li a:hover) {
-    background: rgba(34, 197, 94, 0.15) !important;
-    border-color: #22c55e !important;
-    color: #22c55e !important;
-    transform: translateY(-1px) !important;
-  }
-
-  /* PINNED BOTTOM FOOTER WITH RIGHT-ALIGNED 'VIEW ALL' */
-  .card-footer-end {
-    display: flex !important;
-    justify-content: flex-end !important;
-    align-items: center !important;
-    margin-top: auto !important;
-    padding-top: 10px !important;
-    border-top: 1px solid var(--sl-color-gray-5, rgba(148, 163, 184, 0.15)) !important;
-    width: 100% !important;
-  }
-
-  .view-all-link {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 4px !important;
-    font-size: 0.82rem !important;
-    font-weight: 700 !important;
-    color: #22c55e !important;
-    text-decoration: none !important;
-    margin-left: auto !important;
-    transition: transform 0.15s ease, color 0.15s ease !important;
-  }
-
-  .view-all-link:hover {
-    color: #4ade80 !important;
-    transform: translateX(3px) !important;
-    text-decoration: underline !important;
-  }
-</style>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
