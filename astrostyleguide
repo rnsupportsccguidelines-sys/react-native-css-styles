@@ -28,7 +28,20 @@ Use the approved foundation SDKs and generated resources. Product features consu
 | Branding | Approved brand registry, asset/token selection, platform icon adapters | An authorized brand selection and safe fallback |
 | Account Data Cleanup | Access gating, stopped writers, scoped deletion, verification, recovery | A complete inventory of account-owned state and storage |
 
-**Scope:** Examples illustrate foundation contracts and integration patterns. They are not a replacement for the SDK catalog's versioned installation instructions. Native setup, generated resources, application configuration, Redux registration, and service adapters must be supplied by the host application. Code here has not been compiled in your project.
+**Scope:** Examples illustrate foundation contracts and integration patterns. They are not a replacement for the SDK catalog's versioned installation instructions. Native setup, generated resources, application configuration, Redux registration, and service adapters must be supplied by the host application. Examples include executable adapter/coordinator logic as well as required host contracts. Code here has not been compiled in your project; native resources, service bindings, and library-version compatibility still need project validation.
+
+## Platform code coverage
+
+Every foundation tab includes Android, iOS, and React Native code. Platform APIs, generated-resource examples, and integration contracts are labeled so developers can distinguish what to implement from what to configure.
+
+| Foundation | Android | iOS | React Native |
+| :--- | :--- | :--- | :--- |
+| Design & Theming | Compose color scheme and theme | Adaptive asset theme modifier | Generated palettes, Redux preferences, theme provider |
+| Security & Credentials | Keystore/AES-GCM credential adapter | Scoped Keychain read/update/delete | Native-backed credential adapter |
+| Localization | Per-app locale application | Observable preference and locale boundary | Engine initialization, serialized changes, Redux listener |
+| Push Notifications | DTO validation, FCM service, open handler | Codable validation and notification delegate | Firebase adapter, listeners, background entry point |
+| Branding | Manifest aliases and icon manager | Validated alternate-icon adapter | Registry, serialized coordinator, Redux publication |
+| Account Data Cleanup | Mutex-owned staged coordinator | Actor coordinator with reentrancy guard | Staged coordinator and application serialization contract |
 
 ## Foundation ownership and lifecycle
 
@@ -231,8 +244,11 @@ export interface FoundationPreferences {
   brand: ApprovedBrandId;
 }
 
-const initialState: FoundationPreferences = {
-  theme: 'system', language: 'system', brand: 'core',
+export interface FoundationState extends FoundationPreferences {
+  localeStatus: 'idle' | 'loading' | 'ready' | 'error';
+}
+const initialState: FoundationState = {
+  theme: 'system', language: 'system', brand: 'core', localeStatus: 'idle',
 };
 
 const foundationSlice = createSlice({
@@ -244,6 +260,10 @@ const foundationSlice = createSlice({
     },
     languageChanged(state, action: PayloadAction<FoundationPreferences['language']>) {
       state.language = action.payload;
+      state.localeStatus = 'loading';
+    },
+    localeStatusChanged(state, action: PayloadAction<FoundationState['localeStatus']>) {
+      state.localeStatus = action.payload;
     },
     brandChanged(state, action: PayloadAction<ApprovedBrandId>) {
       state.brand = action.payload;
@@ -254,7 +274,9 @@ const foundationSlice = createSlice({
   },
 });
 
-export const { themeChanged, languageChanged, brandChanged, accountBrandReset } = foundationSlice.actions;
+export const {
+  themeChanged, languageChanged, localeStatusChanged, brandChanged, accountBrandReset,
+} = foundationSlice.actions;
 export const foundationReducer = foundationSlice.reducer;
 ```
 
@@ -306,6 +328,30 @@ Theme mode and selected brand are application preferences in Redux Toolkit. The 
 </Aside>
 
 **Review:** No raw visual values in feature components; generated token files may contain literals. Every published token needs the supported variants and meaningful fallbacks. Confirm which rules are actually enforced in CI; code review remains necessary for visual and accessibility behavior.
+
+
+### React Native · generated light/dark token values
+
+`src/core/foundations/theme/coreThemeTokens.ts`
+
+```typescript
+import type { ThemeTokens } from './ThemeProvider';
+
+// Representative generated output for the core brand; never edit in a feature.
+export const coreThemeTokens = Object.freeze({
+  light: Object.freeze({
+    primary: '#007a3d', onPrimary: '#ffffff', background: '#f4f8f5',
+    surface: '#ffffff', border: '#d4e2d8', textPrimary: '#0f172a', textMuted: '#475569',
+  }),
+  dark: Object.freeze({
+    primary: '#22c55e', onPrimary: '#09130e', background: '#09130e',
+    surface: '#0d1912', border: '#193828', textPrimary: '#f1f5f9', textMuted: '#94a3b8',
+  }),
+}) satisfies ThemeTokens;
+```
+
+Pass this value to `ThemeProvider` for the core brand. Generate and validate the complete partner token set before enabling that brand. Feature components call `useAppTheme()` and consume semantic roles instead of defining their own color constants.
+
 
   </TabItem>
   <TabItem label="Security & Credentials">
@@ -393,6 +439,279 @@ Android's `security-crypto` APIs, including `EncryptedSharedPreferences` and `Ma
 - Keep server credentials and private backend secrets out of mobile binaries. Store only the client credentials the approved flow actually requires.
 
 **Review:** Missing item, device locked, user cancellation, key invalidation, write failure, account isolation, backup/restore, and deletion failure all have explicit behavior.
+
+
+### Android · Keystore-backed credential adapter
+
+`core/security/AndroidCredentialStore.kt`
+
+This API 23+ reference uses an account-specific Keystore AES key and authenticated encryption. Ciphertext files live in the app's no-backup directory. It is a single-process, process-scoped adapter; share one instance so its mutex covers all access. The approved SDK may implement these responsibilities differently.
+
+```kotlin
+package com.enterprise.mobile.core.security
+
+import android.content.Context
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import android.util.AtomicFile
+import java.io.File
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.security.KeyStore
+import java.security.MessageDigest
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+
+class AndroidCredentialStore(
+    context: Context,
+    private val ioDispatcher: CoroutineDispatcher,
+) : SecureCredentialStore {
+    private val root = File(context.applicationContext.noBackupFilesDir, "credentials")
+    private val mutex = Mutex()
+
+    private fun accountHash(scope: CredentialScope): String {
+        require(scope.accountRef.isNotBlank())
+        return MessageDigest.getInstance("SHA-256")
+            .digest(scope.accountRef.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    }
+    private fun alias(hash: String) = "enterprise.credentials.$hash"
+    private fun keyStore() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+    private fun existingKey(hash: String): SecretKey? =
+        keyStore().getKey(alias(hash), null) as? SecretKey
+
+    private fun writeKey(hash: String): SecretKey = existingKey(hash) ?: run {
+        val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
+        generator.init(KeyGenParameterSpec.Builder(
+            alias(hash), KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+        ).setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setRandomizedEncryptionRequired(true).setKeySize(256).build())
+        generator.generateKey()
+    }
+
+    override suspend fun write(scope: CredentialScope, name: CredentialName, value: ByteArray) =
+        withContext(ioDispatcher) {
+            mutex.withLock {
+                require(value.size <= 16_384) { "Credential exceeds supported size." }
+                val hash = accountHash(scope)
+                val directory = File(root, hash)
+                if (!directory.isDirectory && !directory.mkdirs()) throw IOException("Credential directory unavailable.")
+                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                cipher.init(Cipher.ENCRYPT_MODE, writeKey(hash))
+                check(cipher.iv.size == 12) { "Unsupported GCM nonce size." }
+                cipher.updateAAD("$hash:${name.name}".toByteArray(Charsets.UTF_8))
+                val encrypted = cipher.doFinal(value)
+                val record = ByteBuffer.allocate(2 + cipher.iv.size + encrypted.size)
+                    .put(1.toByte()).put(cipher.iv.size.toByte()).put(cipher.iv).put(encrypted).array()
+                val file = AtomicFile(File(directory, name.name))
+                val stream = file.startWrite()
+                try {
+                    stream.write(record)
+                    file.finishWrite(stream)
+                } catch (error: Exception) {
+                    file.failWrite(stream)
+                    throw error
+                }
+            }
+        }
+
+    override suspend fun read(scope: CredentialScope, name: CredentialName): ByteArray? =
+        withContext(ioDispatcher) {
+            mutex.withLock {
+                val hash = accountHash(scope)
+                val file = AtomicFile(File(File(root, hash), name.name))
+                // openRead also recovers an interrupted AtomicFile write when applicable.
+                val bytes = try {
+                    file.openRead().use { input ->
+                        val buffer = ByteArray(16_513)
+                        var count = 0
+                        while (count < buffer.size) {
+                            val next = input.read(buffer, count, buffer.size - count)
+                            if (next < 0) break
+                            count += next
+                        }
+                        if (count == buffer.size) throw IOException("Credential record exceeds limit.")
+                        buffer.copyOf(count)
+                    }
+                } catch (missing: java.io.FileNotFoundException) {
+                    if (file.baseFile.exists() || File(file.baseFile.path + ".bak").exists()) throw missing
+                    return@withLock null
+                }
+                val record = ByteBuffer.wrap(bytes)
+                if (record.remaining() < 2 || record.get().toInt() != 1) throw IOException("Unsupported credential record.")
+                val ivSize = record.get().toInt() and 0xff
+                if (ivSize != 12 || record.remaining() < ivSize + 16) throw IOException("Invalid credential record.")
+                val iv = ByteArray(ivSize).also { record.get(it) }
+                val encrypted = ByteArray(record.remaining()).also { record.get(it) }
+                val key = existingKey(hash) ?: throw IOException("Credential key unavailable.")
+                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
+                cipher.updateAAD("$hash:${name.name}".toByteArray(Charsets.UTF_8))
+                cipher.doFinal(encrypted)
+            }
+        }
+
+    override suspend fun removeAccountCredentials(scope: CredentialScope) = withContext(ioDispatcher) {
+        mutex.withLock {
+            val hash = accountHash(scope)
+            val directory = File(root, hash)
+            var removed = false
+            try {
+                removed = !directory.exists() || directory.deleteRecursively()
+            } finally {
+                keyStore().deleteEntry(alias(hash))
+            }
+            if (!removed) throw IOException("Credential files could not be removed.")
+        }
+    }
+}
+```
+
+**Hint:** Never create a replacement key while reading an existing ciphertext record. Missing/invalidated keys and authentication failures must reach recovery. The reference does not request StrongBox or biometric-bound keys and therefore makes no universal hardware/biometric guarantee. Add those policies in the approved adapter, including unavailable-hardware behavior. Do not copy this as a second vault when an enterprise SDK already owns credentials. `AtomicFile` requires callers to serialize access; it is not a multi-process lock. See the [AtomicFile contract](https://developer.android.com/reference/android/util/AtomicFile).
+
+### iOS · scoped Keychain implementation
+
+`Core/Security/KeychainCredentialStore.swift`
+
+```swift
+import Foundation
+import Security
+
+enum CredentialStoreError: Error {
+    case status(OSStatus)
+    case malformedValue
+    case invalidScope
+}
+
+actor KeychainCredentialStore: SecureCredentialStore {
+    private let servicePrefix: String
+
+    init(servicePrefix: String) {
+        self.servicePrefix = servicePrefix
+    }
+
+    private func service(_ scope: CredentialScope) throws -> String {
+        guard !scope.accountRef.isEmpty else { throw CredentialStoreError.invalidScope }
+        return "\(servicePrefix).\(scope.accountRef.utf8.count):\(scope.accountRef)"
+    }
+    private func query(_ scope: CredentialScope, _ name: CredentialName) throws -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: try service(scope),
+         kSecAttrAccount as String: name.rawValue,
+         kSecAttrSynchronizable as String: false]
+    }
+
+    func read(scope: CredentialScope, name: CredentialName) async throws -> Data? {
+        try Task.checkCancellation()
+        var request = try query(scope, name)
+        request[kSecReturnData as String] = true
+        request[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(request as CFDictionary, &result)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess else { throw CredentialStoreError.status(status) }
+        guard let data = result as? Data else { throw CredentialStoreError.malformedValue }
+        return data
+    }
+
+    func write(scope: CredentialScope, name: CredentialName, value: Data) async throws {
+        try Task.checkCancellation()
+        let search = try query(scope, name)
+        let attributes: [String: Any] = [
+            kSecValueData as String: value,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        ]
+        var status = SecItemUpdate(search as CFDictionary, attributes as CFDictionary)
+        if status == errSecItemNotFound {
+            var item = search
+            attributes.forEach { item[$0.key] = $0.value }
+            status = SecItemAdd(item as CFDictionary, nil)
+            // Handles another cooperating writer adding the item between update and add.
+            if status == errSecDuplicateItem {
+                status = SecItemUpdate(search as CFDictionary, attributes as CFDictionary)
+            }
+        }
+        guard status == errSecSuccess else { throw CredentialStoreError.status(status) }
+    }
+
+    func removeAccountCredentials(scope: CredentialScope) async throws {
+        try Task.checkCancellation()
+        let request: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: try service(scope),
+            kSecAttrSynchronizable as String: false,
+        ]
+        let status = SecItemDelete(request as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw CredentialStoreError.status(status)
+        }
+    }
+}
+```
+
+**Hint:** This policy allows access only while unlocked and prevents migration of these items to another device. Background token access may need a different reviewed policy. Add an explicit access-group restriction when using shared Keychain groups. The actor serializes this adapter's access; Keychain APIs remain synchronous system calls. Do not invoke them in a tight UI loop or assume an actor alone guarantees a particular background thread. See [Keychain update/delete behavior](https://developer.apple.com/documentation/security/updating-and-deleting-keychain-items).
+
+### React Native · native Keychain adapter
+
+`src/core/security/nativeCredentialStore.ts`
+
+This implementation uses the documented `react-native-keychain` 9.x-style API contract, including its `false` results; adapt the calls to the version approved in the application. See the [package API documentation](https://oblador.github.io/react-native-keychain/docs/9.2.x/api/functions/getGenericPassword/). If the enterprise auth SDK already owns credential access, bind the same contract to that SDK instead.
+
+```typescript
+import * as Keychain from 'react-native-keychain';
+import type { CredentialName, CredentialScope, SecureCredentialStore } from './secureCredentialStore';
+
+const credentialNames: readonly CredentialName[] = ['refreshToken'];
+
+export class NativeCredentialStore implements SecureCredentialStore {
+  constructor(private readonly servicePrefix: string) {}
+
+  private service(scope: CredentialScope, name: CredentialName): string {
+    if (!scope.accountRef.trim()) throw new Error('Credential scope is required.');
+    return `${this.servicePrefix}:${encodeURIComponent(scope.accountRef)}:${name}`;
+  }
+
+  async read(scope: CredentialScope, name: CredentialName): Promise<string | null> {
+    const item = await Keychain.getGenericPassword({ service: this.service(scope, name) });
+    if (item === false) return null;
+    if (item.username !== name) throw new Error('Unexpected credential record.');
+    return item.password;
+  }
+
+  async write(scope: CredentialScope, name: CredentialName, value: string): Promise<void> {
+    const result = await Keychain.setGenericPassword(name, value, {
+      service: this.service(scope, name),
+      accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+    if (result === false) throw new Error('Credential write did not complete.');
+  }
+
+  async removeAccountCredentials(scope: CredentialScope): Promise<void> {
+    let failed = false;
+    for (const name of credentialNames) {
+      const service = this.service(scope, name);
+      try {
+        if (await Keychain.getGenericPassword({ service }) !== false) {
+          if (!await Keychain.resetGenericPassword({ service })) failed = true;
+        }
+      } catch {
+        failed = true; // Attempt all registered names; report overall failure to caller.
+      }
+    }
+    if (failed) throw new Error('Credential cleanup is incomplete.');
+  }
+}
+```
+
+**Hint:** Keep one registered credential inventory and update cleanup when adding a credential name. Serialize writes with session cleanup through the application coordinator. Do not place a token returned by this adapter in Redux or diagnostic output. Confirm native setup and the package's supported version/platform options; an iOS accessibility setting is not proof of equivalent Android hardware properties.
+
 
   </TabItem>
   <TabItem label="Localization">
@@ -500,6 +819,116 @@ Changing i18next language can update subscribed text without restarting the app.
 - Test zero/one/many and language-specific plural categories, long translations, non-Latin digits, and large text.
 - Use logical start/end layout. Mirror directional navigation where appropriate, not logos, media, or every icon indiscriminately.
 - Keep identifiers, URLs, and mixed-direction text readable; test their bidirectional rendering deliberately.
+
+
+### iOS · observable preference and persistence
+
+`Core/Localization/LanguagePreference.swift`
+
+```swift
+import Foundation
+import Observation
+
+enum AppLanguageChoice: String, CaseIterable, Sendable {
+    case system, en, ar
+    var languageTag: String? { self == .system ? nil : rawValue }
+}
+
+@Observable
+@MainActor
+final class LanguagePreference {
+    private(set) var choice: AppLanguageChoice
+    @ObservationIgnored private let defaults: UserDefaults
+    private static let storageKey = "foundation.language"
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        let stored = defaults.string(forKey: Self.storageKey)
+        choice = stored.flatMap(AppLanguageChoice.init(rawValue:)) ?? .system
+    }
+
+    func select(_ choice: AppLanguageChoice) {
+        self.choice = choice
+        defaults.set(choice.rawValue, forKey: Self.storageKey)
+    }
+}
+```
+
+Pass `preference.choice.languageTag` into `AppLocaleBoundary` at the app/scene root. The String Catalog must contain the referenced translations. Selecting an unsupported stored value falls back to “system”; no private system preference is changed. Test any non-SwiftUI screens separately.
+
+### React Native · initialized engine and Redux listener
+
+`src/core/localization/languageCoordinator.ts`
+
+```typescript
+import { createInstance, type i18n } from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import { resolveLanguage, type LanguagePreference } from './resolveLanguage';
+
+export async function createLanguageEngine() {
+  const engine = createInstance();
+  await engine.use(initReactI18next).init({
+    lng: 'en', fallbackLng: 'en', supportedLngs: ['en', 'ar'],
+    interpolation: { escapeValue: false },
+    resources: {
+      en: { translation: { welcome: 'Welcome back, {{name}}' } },
+      ar: { translation: { welcome: 'مرحبًا بك، {{name}}' } },
+    },
+  });
+  return engine;
+}
+
+export class LanguageCoordinator {
+  private queue: Promise<void> = Promise.resolve();
+  constructor(readonly engine: i18n) {}
+
+  apply(preference: LanguagePreference, systemTags: readonly string[]): Promise<void> {
+    const language = resolveLanguage(preference, systemTags);
+    const operation = this.queue.then(async () => { await this.engine.changeLanguage(language); });
+    // Recover the internal queue, while the returned operation still rejects for callers.
+    this.queue = operation.catch(() => undefined);
+    return operation;
+  }
+}
+```
+
+Place the existing `resolveLanguage` function and its exported types in `src/core/localization/resolveLanguage.ts`.
+
+`src/core/localization/localizationListener.ts`
+
+```typescript
+import { createListenerMiddleware } from '@reduxjs/toolkit';
+import { languageChanged, localeStatusChanged, type FoundationState } from '../foundations/foundationSlice';
+import type { LanguageCoordinator } from './languageCoordinator';
+
+export function createLocalizationListener(
+  coordinator: LanguageCoordinator,
+  systemTags: () => readonly string[],
+  reportFailure: (category: 'language-change') => void,
+) {
+  const listener = createListenerMiddleware<{ foundation: FoundationState }>();
+  let generation = 0;
+  listener.startListening({
+    actionCreator: languageChanged,
+    effect: async (action, api) => {
+      const request = ++generation;
+      try {
+        await coordinator.apply(action.payload, systemTags());
+        if (request === generation) api.dispatch(localeStatusChanged('ready'));
+      } catch {
+        if (request === generation) {
+          api.dispatch(localeStatusChanged('error'));
+          reportFailure('language-change');
+        }
+      }
+    },
+  });
+  return listener;
+}
+```
+
+**Hint:** Initialize the engine before mounting translated content, use `I18nextProvider` with that engine, and prepend the returned listener middleware to the existing Redux middleware chain. Dispatch `languageChanged` with the validated stored preference after startup; redispatch “system” when relevant OS-language settings change. Serialize engine changes, and use a generation guard for readiness so a late completion does not publish a stale status. `localeStatus` is transient and must not be persisted as a user preference. Native layout-direction changes still follow the documented platform restart/recreation policy.
+
 
   </TabItem>
   <TabItem label="Push Notifications">
@@ -610,17 +1039,23 @@ export interface PushAdapter {
 
 export function attachPushListeners(
   adapter: PushAdapter,
+  receiveForeground: (intent: PushIntent) => Promise<void>,
   routeIntent: (intent: PushIntent) => Promise<void>,
-  reportFailure: (category: 'initial-notification' | 'routing') => void,
+  reportFailure: (category: 'foreground' | 'initial-notification' | 'routing') => void,
 ): Unsubscribe {
   let active = true;
   const deliver = (intent: PushIntent): void => {
     if (!active) return;
-    void routeIntent(intent).catch(() => {
+    void Promise.resolve().then(() => active ? routeIntent(intent) : undefined).catch(() => {
       if (active) reportFailure('routing');
     });
   };
-  const removeForeground = adapter.onForeground(deliver);
+  const removeForeground = adapter.onForeground((intent) => {
+    if (!active) return;
+    void Promise.resolve().then(() => active ? receiveForeground(intent) : undefined).catch(() => {
+      if (active) reportFailure('foreground');
+    });
+  });
   let removeOpened: Unsubscribe;
   try {
     removeOpened = adapter.onOpened(deliver);
@@ -645,12 +1080,275 @@ export function attachPushListeners(
 The adapter emits validated intents; map the SDK's actual payload shape before this boundary. Diagnostics must be non-throwing and contain no payload/token data. Subscription removal is synchronous, non-throwing, and must be safe when cleanup repeats. The initial-notification call is wrapped in a promise chain so a synchronous adapter failure is also reported.
 
 <Aside type="tip" title="Hint · one router handles every entry point">
-Cold-start notification, background tap, foreground interaction, and ordinary deep links must converge on the same application router. That router serializes routing, deduplicates event IDs, checks the current session and backend authorization, and constructs a valid back stack. Listener cleanup prevents new delivery; it does not cancel a navigation already in progress. The router must recheck session identity before committing navigation.
+Cold-start notification, background tap, explicit foreground-banner interaction, and ordinary deep links must converge on the same application router. That router serializes routing, deduplicates event IDs, checks the current session and backend authorization, and constructs a valid back stack. Foreground receipt updates/presents content but does not auto-navigate. Listener cleanup prevents new delivery; it does not cancel a navigation already in progress. The router must recheck session identity before committing navigation.
 </Aside>
 
 For URL-based deep links, validate scheme, host, path, parameters, and supported destinations; prefer verified app/universal links where applicable. Do not pass arbitrary incoming URLs directly to the OS. A regex-valid resource ID is not proof that the current account may view it.
 
 Never log registration tokens or complete notification payloads. Synchronize token registration/rotation to the backend, handle account association changes, and distinguish provider acceptance, device delivery, display, and user-open metrics.
+
+
+### Android · payload validation and FCM ingestion
+
+`core/push/PushIntent.kt`
+
+```kotlin
+package com.enterprise.mobile.core.push
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+@Serializable
+sealed interface PushDestination {
+    @Serializable @SerialName("home")
+    data object Home : PushDestination
+    @Serializable @SerialName("order")
+    data class Order(val orderId: String) : PushDestination
+}
+
+@Serializable
+data class PushIntent(
+    val version: Int,
+    val eventId: String,
+    val expiresAtMillis: Long,
+    val destination: PushDestination,
+)
+
+object PushIntentDecoder {
+    private val json = Json { classDiscriminator = "kind"; ignoreUnknownKeys = true }
+    private val idPattern = Regex("[A-Za-z0-9_-]{1,128}")
+
+    fun parse(raw: String?, nowMillis: Long): PushIntent? {
+        if (raw == null || raw.length > 2048) return null
+        val intent = try { json.decodeFromString<PushIntent>(raw) }
+        catch (_: kotlinx.serialization.SerializationException) { return null }
+        catch (_: IllegalArgumentException) { return null }
+        if (intent.version != 1 || !idPattern.matches(intent.eventId) ||
+            intent.expiresAtMillis <= nowMillis) return null
+        val destination = intent.destination
+        if (destination is PushDestination.Order && !idPattern.matches(destination.orderId)) return null
+        return intent
+    }
+}
+```
+
+`core/push/EnterprisePushService.kt`
+
+```kotlin
+package com.enterprise.mobile.core.push
+
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+
+interface PushIngress {
+    // Bounded, non-blocking handoff. Receipt may update/present; it must not auto-navigate.
+    fun received(intent: PushIntent)
+    // Called only for a user-open action; application router performs auth/deduplication.
+    fun opened(intent: PushIntent)
+}
+interface PushTokenRegistry {
+    // Queue approved registration work; never log the registration token.
+    fun scheduleTokenSync(token: String)
+}
+
+@AndroidEntryPoint
+class EnterprisePushService : FirebaseMessagingService() {
+    @Inject lateinit var ingress: PushIngress
+    @Inject lateinit var tokens: PushTokenRegistry
+
+    override fun onNewToken(token: String) {
+        tokens.scheduleTokenSync(token)
+    }
+    override fun onMessageReceived(message: RemoteMessage) {
+        val intent = PushIntentDecoder.parse(message.data["intent"], System.currentTimeMillis()) ?: return
+        ingress.received(intent)
+    }
+}
+
+// Call from the explicit notification-open path in Activity onCreate/onNewIntent.
+fun handleNotificationOpen(raw: String?, ingress: PushIngress) {
+    PushIntentDecoder.parse(raw, System.currentTimeMillis())?.let(ingress::opened)
+}
+```
+
+Register the service and supply its Hilt bindings:
+
+```xml
+<service
+    android:name=".core.push.EnterprisePushService"
+    android:exported="false">
+    <intent-filter>
+        <action android:name="com.google.firebase.MESSAGING_EVENT" />
+    </intent-filter>
+</service>
+```
+
+**Hint:** `PushIngress.received` owns any application-rendered notification through the approved presentation adapter, including channels, permission checks, a real small icon, and an explicit immutable navigation PendingIntent. Handle OS-rendered background notification extras through the Activity open path too. Do not show a second banner for a message already displayed by the OS, and do not navigate merely because `onMessageReceived` ran. Bind these contracts at application scope and make background work durable when needed.
+
+### iOS · APNs intent validation and notification delegate
+
+`Core/Push/PushIntent.swift`
+
+```swift
+import Foundation
+
+struct PushIntent: Decodable, Sendable {
+    struct Destination: Decodable, Sendable {
+        enum Kind: String, Decodable, Sendable { case home, order }
+        let kind: Kind
+        let orderId: String?
+    }
+    let version: Int
+    let eventId: String
+    let expiresAtMillis: Int64
+    let destination: Destination
+}
+
+func decodePushIntent(_ raw: Any?, now: Date = .now) -> PushIntent? {
+    guard let text = raw as? String, text.utf8.count <= 8192,
+          text.utf16.count <= 2048,
+          let data = text.data(using: .utf8),
+          let intent = try? JSONDecoder().decode(PushIntent.self, from: data),
+          intent.version == 1,
+          Double(intent.expiresAtMillis) > now.timeIntervalSince1970 * 1000 else { return nil }
+    func validID(_ value: String) -> Bool {
+        let bytes = value.utf8
+        return (1...128).contains(bytes.count) && bytes.allSatisfy {
+            (65...90).contains($0) || (97...122).contains($0) ||
+            (48...57).contains($0) || $0 == 95 || $0 == 45
+        }
+    }
+    guard validID(intent.eventId) else { return nil }
+    if intent.destination.kind == .order {
+        guard let id = intent.destination.orderId, validID(id) else { return nil }
+    }
+    return intent
+}
+```
+
+`Core/Push/PushNotificationCoordinator.swift`
+
+The async delegate methods below require the corresponding supported OS baseline (iOS 15+). This suite's iOS feature baseline is iOS 17+. As in the iOS standards page, value types/decoders assume nonisolated default actor isolation; the UI coordinator explicitly uses `@MainActor`.
+
+```swift
+import Foundation
+import UIKit
+import UserNotifications
+
+@MainActor
+protocol PushRouting: AnyObject {
+    func received(_ intent: PushIntent)
+    func opened(_ intent: PushIntent) async throws
+    func reportFailure(_ category: String)
+}
+
+@MainActor
+final class PushNotificationCoordinator: NSObject, UNUserNotificationCenterDelegate {
+    private let router: any PushRouting
+    init(router: any PushRouting) { self.router = router }
+
+    func installDelegate() {
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    // Invoke from the product's contextual permission flow, not on every appearance.
+    func requestAlertPermission() async throws -> Bool {
+        let granted = try await UNUserNotificationCenter.current()
+            .requestAuthorization(options: [.alert, .badge, .sound])
+        if granted { UIApplication.shared.registerForRemoteNotifications() }
+        return granted
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        guard let intent = decodePushIntent(notification.request.content.userInfo["intent"]) else { return [] }
+        await received(intent)
+        return [.banner, .sound]
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        guard let intent = decodePushIntent(response.notification.request.content.userInfo["intent"]) else { return }
+        if response.actionIdentifier == UNNotificationDismissActionIdentifier { return }
+        // Add a separate allowlisted mapping if the product defines custom actions.
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else { return }
+        await opened(intent)
+    }
+
+    private func received(_ intent: PushIntent) {
+        router.received(intent)
+    }
+    private func opened(_ intent: PushIntent) async {
+        do { try await router.opened(intent) }
+        catch is CancellationError { return }
+        catch { router.reportFailure("notification-routing") }
+    }
+}
+```
+
+**Hint:** Retain the coordinator at app lifetime, install its delegate before notifications need handling, and forward APNs registration success/failure from the app delegate to the approved token-registration adapter. Initial launch, scene readiness, background updates, and rich-media extensions require their own supported app/scene callbacks; they converge on the same validated router. Permission denial is a supported state, not an exception to loop-prompt. This sample chooses banners for valid foreground notifications; apply your actual privacy and foreground presentation policy.
+
+
+### React Native · Firebase modular adapter and background entry point
+
+`src/core/push/firebasePushAdapter.ts`
+
+Use the modular API when supported by the installed React Native Firebase version. If another library owns notification interaction events, route its documented callbacks through this same adapter boundary rather than assuming both libraries emit the same tap events.
+
+```typescript
+import {
+  getMessaging, getInitialNotification, onMessage,
+  onNotificationOpenedApp, onTokenRefresh, setBackgroundMessageHandler,
+} from '@react-native-firebase/messaging';
+import type { PushAdapter } from './attachPushListeners';
+import { parsePushIntent, type PushIntent } from './pushIntent';
+
+export class FirebasePushAdapter implements PushAdapter {
+  onForeground(handler: (intent: PushIntent) => void): () => void {
+    return onMessage(getMessaging(), (message) => {
+      const intent = parsePushIntent(message.data?.intent, Date.now());
+      if (intent) handler(intent);
+    });
+  }
+  onOpened(handler: (intent: PushIntent) => void): () => void {
+    return onNotificationOpenedApp(getMessaging(), (message) => {
+      const intent = parsePushIntent(message.data?.intent, Date.now());
+      if (intent) handler(intent);
+    });
+  }
+  async initialIntent(): Promise<PushIntent | null> {
+    const message = await getInitialNotification(getMessaging());
+    return parsePushIntent(message?.data?.intent, Date.now());
+  }
+}
+
+export function attachTokenRotation(queueSync: (token: string) => void): () => void {
+  return onTokenRefresh(getMessaging(), queueSync);
+}
+
+// Call from the JS entry point before AppRegistry.registerComponent.
+export function registerBackgroundPushReceiver(
+  receive: (intent: PushIntent) => Promise<void>,
+  reportFailure: (category: 'background-push') => void,
+): void {
+  setBackgroundMessageHandler(getMessaging(), async (message) => {
+    const intent = parsePushIntent(message.data?.intent, Date.now());
+    if (!intent) return;
+    try { await receive(intent); }
+    catch { reportFailure('background-push'); }
+  });
+}
+```
+
+**Hint:** Complete native capabilities/configuration and permission handling before expecting delivery. Register the initial device token with the backend as well as subscribing to rotation; the rotation callback is not an initial-registration API. `queueSync` must be non-blocking and non-throwing. Background receipt may reconcile approved data; it must not navigate or depend on a mounted React screen. Create subscriptions once at the appropriate app/session root and retain their cleanup functions. See [React Native Firebase messaging](https://rnfirebase.io/messaging/usage).
+
 
   </TabItem>
   <TabItem label="Branding">
@@ -719,6 +1417,163 @@ These are example registry identifiers. Bundle and validate the corresponding to
 A logo, theme, or app icon must never determine tenant permissions, account membership, or entitlements. Clear account-scoped brand selection during session replacement while preserving only the preferences the product explicitly owns across accounts.
 </Aside>
 
+
+### Android · controlled launcher-alias switching
+
+`core/branding/DynamicIconManager.kt`
+
+```kotlin
+package com.enterprise.mobile.core.branding
+
+import android.content.ComponentName
+import android.content.Context
+import android.content.pm.PackageManager
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+
+enum class AppBrand(val aliasClass: String) {
+    CORE("com.enterprise.mobile.LauncherCore"),
+    PARTNER("com.enterprise.mobile.LauncherPartner"),
+}
+
+class DynamicIconManager(
+    context: Context,
+    private val ioDispatcher: CoroutineDispatcher,
+) {
+    private val appContext = context.applicationContext
+    private val mutex = Mutex()
+
+    suspend fun apply(brand: AppBrand) = withContext(ioDispatcher) {
+        mutex.withLock {
+            val manager = appContext.packageManager
+            // Enable the target first. A later failure must not remove every entry point.
+            manager.setComponentEnabledSetting(
+                ComponentName(appContext.packageName, brand.aliasClass),
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                PackageManager.DONT_KILL_APP,
+            )
+            AppBrand.values().filter { it != brand }.forEach { other ->
+                manager.setComponentEnabledSetting(
+                    ComponentName(appContext.packageName, other.aliasClass),
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    PackageManager.DONT_KILL_APP,
+                )
+            }
+        }
+    }
+}
+```
+
+Declare the alias names exactly as used in code, adjust the namespace to the app, and ensure the target Activity has no competing launcher intent filter:
+
+```xml
+<activity-alias
+    android:name="com.enterprise.mobile.LauncherCore"
+    android:targetActivity=".MainActivity"
+    android:enabled="true"
+    android:exported="true"
+    android:icon="@mipmap/ic_launcher_core"
+    android:label="@string/app_name">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent-filter>
+</activity-alias>
+<activity-alias
+    android:name="com.enterprise.mobile.LauncherPartner"
+    android:targetActivity=".MainActivity"
+    android:enabled="false"
+    android:exported="true"
+    android:icon="@mipmap/ic_launcher_partner"
+    android:label="@string/app_name">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent-filter>
+</activity-alias>
+```
+
+**Hint:** The target Activity must be declared before its aliases, and both icon resources must exist. Inject one manager instance so operations share its mutex. The portable sequence can briefly leave two enabled aliases and is not an atomic launcher transaction; reconcile partial failure and test launcher caching, upgrade, and process behavior. Use a supported batch API when your OS baseline and policy allow it. In-app token changes remain a separate published state, not an inference from launcher state.
+
+### iOS · validated alternate-icon adapter
+
+`Core/Branding/AppIconSwitcher.swift`
+
+```swift
+import UIKit
+
+enum AppBrand: String, Sendable {
+    case core, partner
+    var alternateIconName: String? { self == .core ? nil : "partner" }
+}
+enum AppIconError: Error { case unsupported }
+
+@MainActor
+final class AppIconSwitcher {
+    func apply(_ brand: AppBrand) async throws {
+        let app = UIApplication.shared
+        let name = brand.alternateIconName
+        if app.alternateIconName == name { return }
+        guard app.supportsAlternateIcons else { throw AppIconError.unsupported }
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            app.setAlternateIconName(name) { error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume() }
+            }
+        }
+    }
+}
+```
+
+**Hint:** Configure `partner` in the platform's alternate-icon assets/build settings; `nil` restores the primary icon. Serialize brand/icon requests in the owning coordinator, await this result, and publish icon status separately from the selected in-app theme. The code never accepts an arbitrary icon name from a server. Display a supported fallback when alternate icons are unavailable.
+
+### React Native · publish a prepared brand through Redux Toolkit
+
+`src/core/branding/applyBrand.ts`
+
+```typescript
+import type { AppDispatch } from '../../app/store';
+import type { ApprovedBrandId } from '../foundations/foundationSlice';
+import { brandChanged } from '../foundations/foundationSlice';
+import { approvedBrandId } from './brandRegistry';
+
+export interface BrandRuntime {
+  // Prepare tokens/assets without changing the currently visible UI.
+  prepare(id: ApprovedBrandId): Promise<void>;
+  // Publish the prepared token/asset set synchronously, then invoke publishPreference.
+  // Must either commit a coherent set or leave the previous set intact.
+  commit(id: ApprovedBrandId, publishPreference: () => void): void;
+  applyNativeIcon(id: ApprovedBrandId): Promise<void>;
+}
+
+export class BrandCoordinator {
+  private queue: Promise<void> = Promise.resolve();
+  constructor(
+    private readonly runtime: BrandRuntime,
+    private readonly dispatch: AppDispatch,
+    private readonly reportFailure: (stage: 'brand-icon') => void,
+  ) {}
+
+  apply(candidate: unknown): Promise<void> {
+    const id = approvedBrandId(candidate);
+    if (!id) return Promise.reject(new Error('Unsupported brand.'));
+    const operation = this.queue.then(async () => {
+      await this.runtime.prepare(id);
+      this.runtime.commit(id, () => this.dispatch(brandChanged(id)));
+      try { await this.runtime.applyNativeIcon(id); }
+      catch { this.reportFailure('brand-icon'); }
+    });
+    this.queue = operation.catch(() => undefined);
+    return operation;
+  }
+}
+```
+
+**Hint:** The application must authorize `candidate` for the current tenant before calling the coordinator and serialize this work with account changes. The runtime is the approved generated-asset/native bridge adapter, not a second brand preference store. `commit` has an explicit coherent-publication contract; implement it with the app's resolved-theme boundary. Preparation/commit failures reject to the caller; icon failure is reported separately because the already-committed in-app brand remains valid. Reporting must not throw. No native module name is invented here—bind the actual approved icon adapter to `applyNativeIcon`.
+
+
   </TabItem>
   <TabItem label="Data Cleanup">
 
@@ -782,9 +1637,9 @@ The session coordinator serializes cleanup with login/account switching. It owns
 
 Use an explicit inventory instead of deleting every database, preference file, or application-support directory. Keep shared non-account resources and the cleanup journal outside the target scope. Record failures without including personal data.
 
-### Reference coordinator contract · React Native
+### React Native · staged cleanup coordinator
 
-The same staged behavior applies to Kotlin and Swift. This TypeScript example expresses orchestration over app-provided adapters; it is not a filesystem deletion utility.
+All three implementations use the same staged behavior and app-provided resource adapters. The TypeScript coordinator below must be called through a serialized session owner; the Android/iOS versions below show platform-specific serialization. These coordinators are not general-purpose filesystem deletion utilities.
 
 `src/core/wipe/cleanupCoordinator.ts`
 
@@ -866,6 +1721,180 @@ This plan is serialized by the application coordinator; it does not itself lock 
 - **React Native:** Reset account Redux slices and API caches, dispose native subscriptions, and close/delete the registered MMKV instances through the installed adapter. Recreating one instance and calling `clearAll()` does not inventory every account store or in-memory cache.
 
 Local cleanup and server revocation are related but distinct. Request server-side session/device revocation under the authentication policy without making loss of connectivity a reason to retain local access. Retain only the minimum approved retry/audit metadata needed for recovery, outside the removed account data.
+
+
+### Android · serialized cleanup coordinator
+
+`core/wipe/AccountCleanupCoordinator.kt`
+
+```kotlin
+package com.enterprise.mobile.core.wipe
+
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+data class CleanupScope(val accountRef: String)
+enum class CleanupStage {
+    CHECKPOINT, STOP_WRITERS, CREDENTIALS, DATA, CACHES, KEYS, MEMORY, VERIFY, COMPLETE,
+}
+data class CleanupResult(val complete: Boolean, val failedStages: List<CleanupStage>)
+
+interface CleanupPorts {
+    // Atomic access gate; non-blocking and non-throwing.
+    fun blockProtectedAccess(scope: CleanupScope)
+    suspend fun recordPending(scope: CleanupScope)
+    suspend fun stopWriters(scope: CleanupScope)
+    suspend fun removeCredentials(scope: CleanupScope)
+    suspend fun removeData(scope: CleanupScope)
+    suspend fun removeCaches(scope: CleanupScope)
+    suspend fun destroyKeys(scope: CleanupScope)
+    suspend fun resetMemoryAndNavigation(scope: CleanupScope)
+    suspend fun verify(scope: CleanupScope)
+    suspend fun markComplete(scope: CleanupScope)
+    fun reportFailure(stage: CleanupStage)
+}
+
+class AccountCleanupCoordinator(private val ports: CleanupPorts) {
+    private val mutex = Mutex()
+
+    suspend fun execute(scope: CleanupScope): CleanupResult = mutex.withLock {
+        require(scope.accountRef.isNotBlank())
+        val failed = mutableListOf<CleanupStage>()
+        suspend fun step(stage: CleanupStage, action: suspend () -> Unit): Boolean {
+            return try {
+                currentCoroutineContext().ensureActive()
+                action()
+                true
+            } catch (cancelled: CancellationException) {
+                throw cancelled // Preserve the pending journal for durable recovery.
+            } catch (_: Exception) {
+                currentCoroutineContext().ensureActive()
+                failed += stage
+                ports.reportFailure(stage)
+                false
+            }
+        }
+        fun incomplete() = CleanupResult(false, failed.toList())
+
+        ports.blockProtectedAccess(scope)
+        if (!step(CleanupStage.CHECKPOINT) { ports.recordPending(scope) }) return@withLock incomplete()
+        if (!step(CleanupStage.STOP_WRITERS) { ports.stopWriters(scope) }) return@withLock incomplete()
+
+        step(CleanupStage.CREDENTIALS) { ports.removeCredentials(scope) }
+        step(CleanupStage.DATA) { ports.removeData(scope) }
+        step(CleanupStage.CACHES) { ports.removeCaches(scope) }
+        step(CleanupStage.KEYS) { ports.destroyKeys(scope) }
+        step(CleanupStage.MEMORY) { ports.resetMemoryAndNavigation(scope) }
+        step(CleanupStage.VERIFY) { ports.verify(scope) }
+        if (failed.isNotEmpty()) return@withLock incomplete()
+        if (!step(CleanupStage.COMPLETE) { ports.markComplete(scope) }) return@withLock incomplete()
+        CleanupResult(true, emptyList())
+    }
+}
+```
+
+**Hint:** Keep one coordinator in the session/application owner, not a screen ViewModel. Its mutex serializes this instance's cleanup calls, not every login or external database writer. All ports must be main-safe, idempotent, and scoped to the registered account resources; use the owning SDK's close/delete APIs. The session owner must also serialize account replacement with this coordinator. A durable pending record must be checked during startup before reopening protected stores. `reportFailure` must not throw or contain account identifiers.
+
+### iOS · reentrancy-safe cleanup coordinator
+
+`Core/Wipe/AccountCleanupCoordinator.swift`
+
+```swift
+import Foundation
+
+struct CleanupScope: Sendable { let accountRef: String }
+enum CleanupStage: String, Sendable {
+    case checkpoint, stopWriters, credentials, data, caches, keys, memory, verify, complete
+}
+struct CleanupResult: Sendable {
+    let complete: Bool
+    let failedStages: [CleanupStage]
+}
+enum CleanupError: Error { case invalidScope, alreadyRunning }
+
+protocol CleanupPorts: Sendable {
+    func blockProtectedAccess(_ scope: CleanupScope) async
+    func recordPending(_ scope: CleanupScope) async throws
+    func stopWriters(_ scope: CleanupScope) async throws
+    func removeCredentials(_ scope: CleanupScope) async throws
+    func removeData(_ scope: CleanupScope) async throws
+    func removeCaches(_ scope: CleanupScope) async throws
+    func destroyKeys(_ scope: CleanupScope) async throws
+    func resetMemoryAndNavigation(_ scope: CleanupScope) async throws
+    func verify(_ scope: CleanupScope) async throws
+    func markComplete(_ scope: CleanupScope) async throws
+    func reportFailure(_ stage: CleanupStage) async
+}
+
+actor AccountCleanupCoordinator {
+    private let ports: any CleanupPorts
+    private var isRunning = false
+    init(ports: any CleanupPorts) { self.ports = ports }
+
+    // Actor methods can interleave at await: reject overlapping executions explicitly.
+    func execute(_ scope: CleanupScope) async throws -> CleanupResult {
+        guard !scope.accountRef.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw CleanupError.invalidScope
+        }
+        guard !isRunning else { throw CleanupError.alreadyRunning }
+        isRunning = true
+        defer { isRunning = false }
+        let ports = self.ports
+        await ports.blockProtectedAccess(scope)
+
+        if let failure = try await Self.attempt(.checkpoint, ports: ports, operation: {
+            try await ports.recordPending(scope)
+        }) { return CleanupResult(complete: false, failedStages: [failure]) }
+        if let failure = try await Self.attempt(.stopWriters, ports: ports, operation: {
+            try await ports.stopWriters(scope)
+        }) { return CleanupResult(complete: false, failedStages: [failure]) }
+
+        let operations: [(CleanupStage, @Sendable () async throws -> Void)] = [
+            (.credentials, { try await ports.removeCredentials(scope) }),
+            (.data, { try await ports.removeData(scope) }),
+            (.caches, { try await ports.removeCaches(scope) }),
+            (.keys, { try await ports.destroyKeys(scope) }),
+            (.memory, { try await ports.resetMemoryAndNavigation(scope) }),
+            (.verify, { try await ports.verify(scope) }),
+        ]
+        var failed: [CleanupStage] = []
+        for (stage, operation) in operations {
+            if let failure = try await Self.attempt(stage, ports: ports, operation: operation) {
+                failed.append(failure)
+            }
+        }
+        if !failed.isEmpty { return CleanupResult(complete: false, failedStages: failed) }
+        if let failure = try await Self.attempt(.complete, ports: ports, operation: {
+            try await ports.markComplete(scope)
+        }) { return CleanupResult(complete: false, failedStages: [failure]) }
+        return CleanupResult(complete: true, failedStages: [])
+    }
+
+    private nonisolated static func attempt(
+        _ stage: CleanupStage,
+        ports: any CleanupPorts,
+        operation: @Sendable () async throws -> Void
+    ) async throws -> CleanupStage? {
+        do {
+            try Task.checkCancellation()
+            try await operation()
+            return nil
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            await ports.reportFailure(stage)
+            return stage
+        }
+    }
+}
+```
+
+**Hint:** The actor guards overlapping cleanup but does not control external logins; the session owner provides that wider gate. Implement UI/navigation ports on the main actor and persistence ports with their correct storage isolation. Ports pass Sendable values, not a SwiftData `ModelContext`. Preserve cancellation and journal state; never turn a cancelled operation into reported completion. Implement scoped Keychain deletion through the credential adapter and inspect file/database deletion outcomes instead of using `try?` on required cleanup.
+
 
   </TabItem>
 </Tabs>
