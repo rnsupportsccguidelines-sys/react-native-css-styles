@@ -1,288 +1,740 @@
 ---
-title: Development Platforms & Internal SDKs
-description: Choose an approved mobile stack, understand shared SDK responsibilities, and initialize platform services reliably across Android, iOS, and React Native.
+title: Native Android Standards & MVVM Clean Architecture
+description: Android architecture standards and a worked user-profile example using Compose, StateFlow, Room, Retrofit, and Hilt.
 sidebar:
-  order: 1
-  label: Platforms Overview
+  order: 2
+  label: 3.1 Android Standards
 ---
 
-import { Tabs, TabItem, CardGrid, Card, LinkCard, Aside } from '@astrojs/starlight/components';
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 import MermaidZoom from '../components/mermaid-zoom.astro';
 
-export const PORTAL_BASE = '/mobile';
-
-Build on an approved stack. Reuse shared platform capabilities. Keep application code focused on product behavior.
-
-This page explains **which platforms to use**, **where shared SDKs fit**, and **how to start an application reliably**. Use the platform-specific standards for implementation details and the SDK catalog for package names, supported versions, and installation instructions.
-
 <Aside type="tip" title="Platform standard">
-Enterprise mobile applications use native Android, native iOS, or React Native. Each application follows its platform's architecture standards and integrates approved shared SDKs for common infrastructure capabilities.
+Enterprise Android applications use feature-oriented Clean Architecture and unidirectional data flow. Compose renders state, ViewModels coordinate user actions, use cases expose domain operations, and repositories coordinate persistence and network access. For persisted profile data, Room is the source observed by the UI.
 </Aside>
 
-## Start with your task
+## How to use this guide
 
-| If you need to… | Start here |
-| :--- | :--- |
-| Choose a stack for a new application | [Choose a platform](#choose-a-platform) |
-| Understand application and SDK boundaries | [Shared SDK architecture](#shared-sdk-architecture) |
-| Wire platform services into app launch | [Application startup](#application-startup) |
-| Add or upgrade an internal dependency | [Integrate an SDK](#integrate-an-sdk) |
-| Review a platform-related change | [Review checklist](#review-checklist) |
+1. Review the layer boundaries and data flow.
+2. Follow the user-profile example across the domain, data, presentation, and DI tabs.
+3. Apply the review checklist before opening a pull request.
 
-## Approved platforms
+**Scope:** The examples assume an existing Android application with Compose, lifecycle integration, Kotlin serialization, Room, Retrofit, and Hilt configured. They illustrate a feature, not a standalone application. Application setup, Gradle configuration, Retrofit converters, Room database creation, API/DAO providers, navigation, string resources, and the enterprise theme must be supplied by the host project.
 
-<CardGrid>
-  <Card title="Native Android" icon="laptop">
-    Kotlin and Jetpack Compose, with ViewModel and StateFlow for screen state, Hilt for dependency injection, and Room for structured local persistence.
-  </Card>
-  <Card title="Native iOS" icon="apple">
-    Swift and SwiftUI, with observable presentation models, Swift Concurrency, and approved adapters for persistence and secure storage.
-  </Card>
-  <Card title="React Native" icon="setting">
-    TypeScript and React Native, with Hermes, typed component contracts, and hooks that coordinate state and application behavior.
-  </Card>
-</CardGrid>
+**Platform policy versus Android guidance:** This platform requires use cases between ViewModels and repositories. Android's general guidance makes the domain layer optional; the stricter rule here is an internal convention. See [Android architecture recommendations](https://developer.android.com/topic/architecture/recommendations).
 
-<Aside type="note" title="Use a validated toolchain, not an open-ended version range">
-Use the versions pinned in the approved project template and its lockfiles. Confirm compatibility with the SDK catalog and the Machine Setup guide before upgrading. A language, framework, compiler, build tool, and SDK must work together as a supported set.
-</Aside>
+---
 
-The source page listed Kotlin 1.9+, Swift 5.9+, React Native 0.73+, and TypeScript 5.0+. These ranges do not establish a current compatibility policy and should not be used as installation instructions. This overview intentionally defers version selection to the maintained project configuration.
+## Modular Directory & Package Layout
 
-### Platform conventions
+Organize code by **feature**, then separate each feature into data, domain, and presentation packages. Keep shared infrastructure in `core`.
 
-| Concern | Native Android | Native iOS | React Native |
-| :--- | :--- | :--- | :--- |
-| Application language | Kotlin | Swift | TypeScript, compiled to JavaScript |
-| UI | Jetpack Compose | SwiftUI | React Native components |
-| Presentation state | ViewModel exposes read-only `StateFlow` | Observable model with explicit ownership | Hooks and explicit state ownership |
-| Async work | Coroutines and Flow | Structured concurrency with `async`/`await` | Promises and `async`/`await`; native modules for platform work |
-| Dependency construction | Hilt | Initializer injection, protocols, and factories | Explicit dependencies, factories, and Context where appropriate |
-| Local data | Room for structured data | Approved persistence adapter | Approved storage adapter for the data and query requirements |
-| Sensitive credentials | Approved secure-storage SDK | Approved Keychain abstraction | Approved SDK backed by native secure storage |
+The tree below shows a package layout within one Gradle module. Packages provide organization; separate Gradle modules and dependency rules are needed to enforce build-time boundaries. When splitting modules, presentation and data depend on domain, and the application composition root wires the implementations.
 
-**Runtime details matter:** Android applications execute on Android Runtime; a project's Java/JDK toolchain setting is a separate build concern. React Native executes JavaScript on its configured engine; Hermes does not execute TypeScript directly. SwiftUI's Observation integration requires supported OS versions—starting with iOS 17—so confirm the deployment target before prescribing `@Observable` throughout an app. See [Apple's model-data guidance](https://developer.apple.com/documentation/swiftui/managing-model-data-in-your-app) and [React Native's Hermes guide](https://reactnative.dev/docs/hermes).
-
-## Choose a platform
-
-For an existing application, follow its established stack. For a new application, evaluate the required user experience, supported devices, native integrations, operational constraints, and the team's ability to maintain the result.
-
-| Requirement | Native Android | Native iOS | React Native |
-| :--- | :--- | :--- | :--- |
-| Android-only product or extensive Android APIs | Direct platform access; a strong starting point | Does not target Android | Assess the required native modules and maintenance cost |
-| iOS-only product or extensive Apple APIs | Does not target iOS | Direct platform access; a strong starting point | Assess the required native modules and maintenance cost |
-| Shared Android and iOS business workflows | Separate platform implementation | Separate platform implementation | A strong candidate when meaningful UI and logic can be shared |
-| Specialized hardware, background work, or platform extensions | Assess Android API and device support | Assess Apple API and entitlement support | Validate native-module support and lifecycle behavior early |
-| Strict performance requirements | Measure against the target workload | Measure against the target workload | Prototype critical interactions on representative devices |
-| Existing product and team expertise | Include integration and ownership cost | Include integration and ownership cost | Include native engineering capacity as well as React expertise |
-
-**Before committing:** Validate the highest-risk integration in a small prototype, record the trade-offs, and agree the choice with the responsible architecture and product owners. Shared code alone does not guarantee lower delivery or maintenance cost.
-
-## Shared SDK architecture
-
-Shared SDKs give each stack a consistent enterprise integration boundary. They provide equivalent capabilities through platform-appropriate APIs; they are not necessarily one binary or one implementation shared by every platform.
-
-<MermaidZoom title="Platform ecosystem · application boundaries">
-
-```mermaid
-flowchart TB
-    subgraph APPS["01 · APPLICATIONS"]
-        direction LR
-        ANDROID["Android<br/>Kotlin · Compose"]
-        IOS["iOS<br/>Swift · SwiftUI"]
-        RN["React Native<br/>TypeScript · Hermes"]
-    end
-
-    BOUNDARY["Approved platform adapters<br/>Typed contracts · lifecycle ownership"]
-
-    subgraph FOUNDATION["02 · SHARED CAPABILITIES"]
-        direction LR
-        AUTH["Identity<br/>Session and credentials"]
-        FLAGS["Configuration<br/>Flags and defaults"]
-        OBS["Observability<br/>RUM and diagnostics"]
-        NET["Network resilience<br/>Requests and recovery"]
-        DESIGN["Design system<br/>Tokens and themes"]
-    end
-
-    subgraph SERVICES["03 · ENTERPRISE SERVICES"]
-        direction LR
-        IDP["Identity provider"]
-        EDGE["Feature flag edge"]
-        INTAKE["Telemetry intake"]
-        API["API gateway"]
-    end
-
-    ANDROID --> BOUNDARY
-    IOS --> BOUNDARY
-    RN --> BOUNDARY
-    BOUNDARY --> AUTH
-    BOUNDARY --> FLAGS
-    BOUNDARY --> OBS
-    BOUNDARY --> NET
-    BOUNDARY --> DESIGN
-    AUTH -.->|"Sign-in and renewal"| IDP
-    FLAGS -.->|"Configuration refresh"| EDGE
-    OBS -.->|"Permitted telemetry"| INTAKE
-    NET -.->|"API requests"| API
-
-    classDef app fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
-    classDef boundary fill:#0f172a,stroke:#475569,color:#ffffff,stroke-width:2px;
-    classDef sdk fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
-    classDef service fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:1.5px;
-    class ANDROID,IOS,RN app;
-    class BOUNDARY boundary;
-    class AUTH,FLAGS,OBS,NET,DESIGN sdk;
-    class IDP,EDGE,INTAKE,API service;
-    style APPS fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
-    style FOUNDATION fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
-    style SERVICES fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
+```text
+app/src/main/java/com/enterprise/mobile/
+├── core/                                   # Shared enterprise infrastructure
+│   ├── database/                           # Room database configuration & migrations
+│   ├── network/                            # Retrofit, OkHttp clients & auth interceptors
+│   ├── security/                           # Approved credential storage & Keystore integration
+│   └── ui/theme/                           # Enterprise design tokens (Color, Type, Shape)
+│
+├── di/                                     # Global singleton dependency injection
+│   ├── AppModule.kt                        # Application-scoped providers
+│   ├── NetworkModule.kt                    # Authenticated OkHttp & Retrofit providers
+│   └── DatabaseModule.kt                   # Room DB & DAO providers
+│
+└── feature/user/                           # USER FEATURE PACKAGES
+    ├── data/                               # Data Layer: Single Source of Truth
+    │   ├── remote/
+    │   │   ├── dto/UserNetworkDto.kt       # API serialization model
+    │   │   └── UserApiService.kt           # Retrofit endpoint definition
+    │   ├── local/
+    │   │   ├── entity/UserEntity.kt        # Room database entity
+    │   │   └── dao/UserDao.kt              # Room DAO with SQLite queries
+    │   ├── mapper/UserMappers.kt           # DTO -> Entity -> Domain mappings
+    │   └── repository/UserRepositoryImpl.kt # Repository implementation (Observe + Refresh)
+    │
+    ├── domain/                             # Pure Domain Layer: Zero Android Framework APIs
+    │   ├── model/UserDomainModel.kt        # Immutable Kotlin business model
+    │   ├── repository/UserRepository.kt    # Repository interface (boundary contract)
+    │   └── usecase/GetUserProfileUseCase.kt # Single-purpose business use case
+    │
+    ├── di/                                 # Feature bindings installed in application scope
+    │   └── UserFeatureModule.kt            # Binds repository interfaces to implementations
+    │
+    └── presentation/                       # UI Layer: Jetpack Compose + ViewModels
+        ├── state/
+        │   ├── UserProfileUiState.kt       # Immutable screen state
+        │   └── UserProfileUiEvent.kt       # Screen actions
+        ├── UserProfileViewModel.kt         # Hilt-injected ViewModel (StateFlow producer)
+        └── ui/
+            ├── UserProfileScreen.kt        # Stateless Composable screen with Scaffold
+            └── components/                 # Extract shared components when needed
 ```
 
-</MermaidZoom>
+---
 
-**Read the diagram:** Solid arrows represent application integration through approved adapters. Dashed arrows represent service communication. The adapter node groups platform-specific contracts; it does not prescribe a new shared runtime service. Design tokens are consumed locally and do not require a cloud connection.
+## Clean Architecture & Data Flow
 
-### Responsibility boundaries
+### Layer boundaries
 
-| Capability | Shared SDK responsibility | Application responsibility |
+| Layer | Owns | Must not depend on |
 | :--- | :--- | :--- |
-| Identity and SSO | Approved OAuth/OIDC integration, session handling, and secure credential access | Trigger sign-in when required, react to session changes, and clear user-scoped state |
-| Feature configuration | Retrieve and cache flags; expose defined fallback behavior | Provide safe feature defaults and render consistently while configuration changes |
-| Observability | Approved event transport, diagnostics, and supported crash integration | Supply meaningful events, apply data-handling policy, and avoid credentials or sensitive payloads |
-| Network resilience | Supported timeout, retry, circuit breaker, and outbox mechanisms | Define business-safe retry behavior, idempotency needs, and user-visible recovery |
-| Design system | Brand tokens, supported themes, and shared UI primitives | Build accessible screens and use the approved components consistently |
+| Presentation | Compose UI, screen state, user actions, ViewModels | Retrofit, Room, repository implementations |
+| Domain | Business models, use cases, repository contracts | Android framework, Compose, data implementations |
+| Data | Repository implementations, DTOs, entities, persistence and API mapping | Presentation |
+| Composition root / DI | Object construction and interface bindings | Business decisions |
 
-The source architecture identifies Unleash Edge for flags and Datadog RUM for observability. Confirm the approved provider and available capabilities in the SDK catalog. Support for a circuit breaker, an outbox, or native crash capture must be checked per SDK and platform; the diagram does not guarantee that every adapter implements every capability.
+The domain examples use `javax.inject` constructor annotations and coroutines. “Pure Kotlin” here means no Android framework dependency, rather than no library dependencies.
 
-<Aside type="caution" title="Secure storage is a platform capability">
-Android Keystore manages cryptographic keys; it is not a general-purpose token database. Use the approved credential-storage abstraction, which can use Keystore-protected encryption where appropriate. On iOS, use the approved Keychain abstraction. React Native applications must use the native-backed secure-storage adapter rather than general-purpose storage for credentials. Hardware-backed protection depends on the device, key configuration, and platform capabilities; it must not be assumed universally.
-</Aside>
+### Observe locally; refresh remotely
 
-See the [Android Keystore documentation](https://developer.android.com/privacy-and-security/keystore) for key-management behavior.
-
-## Application startup
-
-**Configure services early; keep remote work off the critical path unless the application actually requires it.** SDK construction, telemetry consent, session restoration, and remote configuration are separate concerns. Initializing an SDK does not mean initiating an interactive sign-in or waiting for every network request.
-
-<MermaidZoom title="Startup lifecycle · reliable first render">
+<MermaidZoom title="User profile data flow">
 
 ```mermaid
 flowchart TD
-    LAUNCH(["Application launch"]) --> CONFIG["Load validated environment configuration"]
-    CONFIG --> VALID{"Required local<br/>configuration valid?"}
-    VALID -->|"No"| BLOCK["Show controlled startup error<br/>Record safe diagnostics"]
-    VALID -->|"Yes"| BUILD["Construct approved SDK dependencies<br/>Once per owning lifecycle"]
-    BUILD --> LOCAL["Apply consent policy<br/>Load local session and flag state"]
-    LOCAL --> SHELL["Render application shell<br/>Resolve access before protected content"]
-    SHELL --> REMOTE["Refresh session and remote flags<br/>Asynchronously where supported"]
-    REMOTE --> RESULT{"Refresh outcome"}
-    RESULT -->|"Success"| READY["Publish updated application state"]
-    RESULT -->|"Transient failure"| DEGRADED["Use permitted cached state or safe defaults<br/>Expose retry when needed"]
-    RESULT -->|"Session invalid"| SIGNIN["Clear protected user state<br/>Request sign-in when required"]
-
-    classDef entry fill:#0f172a,stroke:#475569,color:#ffffff,stroke-width:2px;
-    classDef step fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
-    classDef choice fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-width:1.5px;
-    classDef success fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
-    classDef failure fill:#fff1f2,stroke:#e11d48,color:#881337,stroke-width:1.5px;
-    class LAUNCH entry;
-    class CONFIG,BUILD,LOCAL,SHELL,REMOTE step;
-    class VALID,RESULT choice;
-    class READY success;
-    class BLOCK,DEGRADED,SIGNIN failure;
+    UI[Compose screen] -->|Actions| VM[ViewModel]
+    VM --> UC[Domain use case]
+    UC --> Contract[Repository contract]
+    Impl[Repository implementation] -.->|Implements| Contract
+    Impl -->|Fetch on refresh| API[Retrofit API]
+    API -->|Validated response| Impl
+    Impl -->|Persist| DB[Room database]
+    DB -->|Observed records| Impl
+    Impl -->|Domain flow through contract| UC
+    UC -->|Profile updates| VM
+    VM -->|Immutable UI state| UI
 ```
 
 </MermaidZoom>
 
-This is a startup orchestration model, not an SDK API contract. Follow each SDK's documented ordering, threading, consent, and readiness requirements. A feature flag is not an authorization control; the backend must enforce access.
+1. The ViewModel starts observing the requested profile through the use case.
+2. Room emits the cached profile, or `null` when no profile is stored.
+3. A refresh requests the API and persists a valid response in Room.
+4. Room emits the updated record; the ViewModel updates screen state.
+5. If refresh fails, cached content remains visible with a retry message. Failure is not reported as a successful refresh.
 
-### Platform integration points
+This follows the local-source observation model in [Android's offline-first guidance](https://developer.android.com/topic/architecture/data-layer/offline-first). The device database is the source of truth for reads in this example; the server still owns the remote profile.
+
+**Failure policy:** Transport failures and server errors preserve cached content. Authentication failures and missing profiles remain explicit failures; the host application's access and cache-invalidation policy must decide whether cached data may remain visible. Partition cached profiles by account and clear protected data on logout or access revocation. This example does not implement those account lifecycle policies, background synchronization, retry backoff, or circuit breaking.
+
+---
+
+## Modular File-by-File MVVM Implementation
+
+Keep public types in focused files. Closely related private UI helpers and mapping extensions may share a file. Paths below are relative to `app/src/main/java/com/enterprise/mobile/`.
+
+The example separates **observation** from **refresh** so cached content stays visible while a network request is in progress.
 
 <Tabs>
-  <TabItem label="Android">
+  <TabItem label="Domain Layer (Pure Kotlin)">
 
-**Owner:** The application composition root and application-scoped dependencies.
+### DOMAIN MODEL: `feature/user/domain/model/UserDomainModel.kt`
 
-1. Register the project's Hilt application and providers as required by the approved template.
-2. Load environment configuration and construct SDK dependencies at application scope. Keep `Application.onCreate()` lightweight.
-3. Perform local SDK initialization on the thread required by its documented contract. Dispatch remote refresh work through an explicitly owned coroutine scope or approved scheduler.
-4. Expose readiness, session, and configuration changes as observable state. Screen ViewModels consume the appropriate application abstractions.
-5. Collect UI state with lifecycle-aware APIs. Do not recreate application SDK instances during Compose recomposition.
+```kotlin
+package com.enterprise.mobile.feature.user.domain.model
 
-**Check:** Application startup can occur for components other than the main activity. Account for process ownership and avoid initializing the same service unnecessarily in secondary processes.
+/**
+ * Pure, immutable business model.
+ * Zero Android SDK dependencies (no Parcelable, no Context, no Compose).
+ */
+data class UserDomainModel(
+    val id: String,
+    val name: String,
+    val email: String,
+    val isVip: Boolean,
+    val lastSyncTimestamp: Long
+)
+```
+
+### REPOSITORY INTERFACE: `feature/user/domain/repository/UserRepository.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.domain.repository
+
+import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * Boundary contract defining user data operations.
+ * The domain layer owns this interface; the data layer implements it.
+ */
+interface UserRepository {
+    suspend fun refreshUserProfile(userId: String): Result<Unit>
+    fun observeUserProfile(userId: String): Flow<UserDomainModel?>
+}
+```
+
+### BUSINESS USE CASE: `feature/user/domain/usecase/GetUserProfileUseCase.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.domain.usecase
+
+import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+import com.enterprise.mobile.feature.user.domain.repository.UserRepository
+import javax.inject.Inject
+
+/**
+ * Profile use case exposing observation and refresh with identifier validation.
+ * Isolated from Android framework and presentation dependencies.
+ */
+class GetUserProfileUseCase @Inject constructor(
+    private val userRepository: UserRepository
+) {
+    fun observe(userId: String): kotlinx.coroutines.flow.Flow<UserDomainModel?> {
+        require(userId.isNotBlank()) { "User ID must not be blank." }
+        return userRepository.observeUserProfile(userId.trim())
+    }
+
+    suspend fun refresh(userId: String): Result<Unit> {
+        if (userId.isBlank()) {
+            return Result.failure(IllegalArgumentException("User ID must not be blank."))
+        }
+        return userRepository.refreshUserProfile(userId.trim())
+    }
+}
+```
 
   </TabItem>
-  <TabItem label="iOS">
+  <TabItem label="Data Layer (Room + Retrofit)">
 
-**Owner:** The app composition root and explicitly owned service instances.
+### DTO MODEL: `feature/user/data/remote/dto/UserNetworkDto.kt`
 
-1. Construct long-lived services at the app level and inject them into the scene hierarchy.
-2. Keep app initialization lightweight. Respect the SDK's main-thread and actor-isolation requirements.
-3. Start asynchronous refresh through a coordinator whose lifetime matches the work. Track readiness explicitly.
-4. Publish state changes on the appropriate actor, and use a presentation model compatible with the deployment target.
-5. Make startup operations idempotent. A SwiftUI `.task` may restart as view identity or lifetime changes, and multiple scenes may request the same work.
+```kotlin
+package com.enterprise.mobile.feature.user.data.remote.dto
 
-**Check:** View appearance is not proof of application-wide, exactly-once initialization. Decide which work belongs to the app, scene, or authenticated session.
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/**
+ * Network transfer object matching API schema.
+ * Defaults are appropriate only for fields the API contract defines as optional.
+ * Required identity and display fields intentionally have no defaults.
+ */
+@Serializable
+data class UserNetworkDto(
+    @SerialName("id") val id: String,
+    @SerialName("full_name") val fullName: String,
+    @SerialName("email") val email: String,
+    @SerialName("is_vip") val isVip: Boolean = false
+)
+```
+
+### RETROFIT API: `feature/user/data/remote/UserApiService.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.data.remote
+
+import com.enterprise.mobile.feature.user.data.remote.dto.UserNetworkDto
+import retrofit2.Response
+import retrofit2.http.GET
+import retrofit2.http.Path
+
+interface UserApiService {
+    @GET("v1/users/{userId}")
+    suspend fun fetchUserProfile(
+        @Path("userId") userId: String
+    ): Response<UserNetworkDto>
+}
+```
+
+### ROOM ENTITY: `feature/user/data/local/entity/UserEntity.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.data.local.entity
+
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+/**
+ * SQLite table definition. Explicit column names decouple the schema
+ * from Kotlin property names; schema changes still require migrations.
+ */
+@Entity(tableName = "users")
+data class UserEntity(
+    @PrimaryKey
+    @ColumnInfo(name = "id")
+    val id: String,
+
+    @ColumnInfo(name = "full_name")
+    val fullName: String,
+
+    @ColumnInfo(name = "email")
+    val email: String,
+
+    @ColumnInfo(name = "is_vip")
+    val isVip: Boolean,
+
+    @ColumnInfo(name = "cached_at")
+    val cachedAt: Long
+)
+```
+
+### ROOM DAO: `feature/user/data/local/dao/UserDao.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.data.local.dao
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import com.enterprise.mobile.feature.user.data.local.entity.UserEntity
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface UserDao {
+    @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
+    suspend fun getUserById(userId: String): UserEntity?
+
+    @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
+    fun observeUserById(userId: String): Flow<UserEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUser(user: UserEntity)
+
+    @Query("DELETE FROM users WHERE id = :userId")
+    suspend fun deleteUserById(userId: String)
+}
+```
+
+### OBJECT MAPPERS: `feature/user/data/mapper/UserMappers.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.data.mapper
+
+import com.enterprise.mobile.feature.user.data.local.entity.UserEntity
+import com.enterprise.mobile.feature.user.data.remote.dto.UserNetworkDto
+import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+
+fun UserNetworkDto.toEntity(cachedAtMillis: Long): UserEntity = UserEntity(
+    id = id,
+    fullName = fullName,
+    email = email,
+    isVip = isVip,
+    cachedAt = cachedAtMillis
+)
+
+fun UserEntity.toDomain(): UserDomainModel = UserDomainModel(
+    id = id,
+    name = fullName,
+    email = email,
+    isVip = isVip,
+    lastSyncTimestamp = cachedAt
+)
+
+
+```
+
+### REPOSITORY IMPLEMENTATION: `feature/user/data/repository/UserRepositoryImpl.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.data.repository
+
+import com.enterprise.mobile.feature.user.data.local.dao.UserDao
+import com.enterprise.mobile.feature.user.data.mapper.toDomain
+import com.enterprise.mobile.feature.user.data.mapper.toEntity
+import com.enterprise.mobile.feature.user.data.remote.UserApiService
+import com.enterprise.mobile.feature.user.di.IoDispatcher
+import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+import com.enterprise.mobile.feature.user.domain.repository.UserRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import retrofit2.HttpException
+import java.io.IOException
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class UserRepositoryImpl @Inject constructor(
+    private val apiService: UserApiService,
+    private val userDao: UserDao,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+) : UserRepository {
+
+    override suspend fun refreshUserProfile(userId: String): Result<Unit> =
+        withContext(ioDispatcher) {
+            try {
+                val response = apiService.fetchUserProfile(userId)
+                if (!response.isSuccessful) throw HttpException(response)
+                val dto = response.body()
+                    ?: throw IOException("Profile response has no body.")
+                if (dto.id != userId) {
+                    throw IOException("Profile response identifier does not match request.")
+                }
+                userDao.insertUser(dto.toEntity(System.currentTimeMillis()))
+                Result.success(Unit)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                // Surface refresh failure; observation keeps existing Room data visible.
+                // Report unexpected failures through approved, redacted telemetry.
+                Result.failure(error)
+            }
+        }
+
+    override fun observeUserProfile(userId: String): Flow<UserDomainModel?> =
+        userDao.observeUserById(userId).map { it?.toDomain() }
+}
+```
 
   </TabItem>
-  <TabItem label="React Native">
+  <TabItem label="Presentation Layer (Compose + ViewModel)">
 
-**Owner:** The native host for native setup, plus the application bootstrap layer for JavaScript services.
+### UI STATE: `feature/user/presentation/state/UserProfileUiState.kt`
 
-1. Complete required Android and iOS SDK setup before relying on the JavaScript adapter.
-2. Create an application-level initialization coordinator with explicit readiness and failure state.
-3. Make initialization idempotent. A component effect alone is not an exactly-once guarantee; remounts and development behavior can rerun it.
-4. Handle rejected initialization promises and cancellation or disposal according to the SDK contract.
-5. Gate only the routes that require a service to be ready. Keep native and JavaScript configuration aligned for the same environment.
+```kotlin
+package com.enterprise.mobile.feature.user.presentation.state
 
-**Check:** React Context distributes dependencies and state; it does not provide native secure storage or guarantee initialization order.
+import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+
+/** Loading and errors can coexist with previously loaded content. */
+data class UserProfileUiState(
+    val user: UserDomainModel? = null,
+    val isRefreshing: Boolean = false,
+    val errorMessage: String? = null
+)
+```
+
+### UI EVENT INTENT: `feature/user/presentation/state/UserProfileUiEvent.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.presentation.state
+
+/**
+ * User interactions and screen intent actions dispatched via UDF.
+ */
+sealed interface UserProfileUiEvent {
+    data object RefreshProfile : UserProfileUiEvent
+}
+```
+
+### HILT VIEWMODEL: `feature/user/presentation/UserProfileViewModel.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.presentation
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.enterprise.mobile.feature.user.domain.usecase.GetUserProfileUseCase
+import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiEvent
+import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class UserProfileViewModel @Inject constructor(
+    private val profiles: GetUserProfileUseCase
+) : ViewModel() {
+    private val _uiState = MutableStateFlow(UserProfileUiState())
+    val uiState = _uiState.asStateFlow()
+
+    private var currentUserId: String? = null
+    private var observationJob: Job? = null
+    private var refreshJob: Job? = null
+
+    fun load(userId: String) {
+        val normalizedId = userId.trim()
+        if (normalizedId == currentUserId) return
+        observationJob?.cancel()
+        refreshJob?.cancel()
+        currentUserId = normalizedId
+        _uiState.value = UserProfileUiState()
+        if (normalizedId.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "A user ID is required.") }
+            return
+        }
+        observationJob = viewModelScope.launch {
+            profiles.observe(normalizedId)
+                .catch {
+                    _uiState.update { it.copy(errorMessage = "Unable to read saved profile.") }
+                }
+                .collect { user -> _uiState.update { it.copy(user = user) } }
+        }
+        refresh()
+    }
+
+    fun onEvent(event: UserProfileUiEvent) {
+        when (event) {
+            UserProfileUiEvent.RefreshProfile -> {
+                // Restart observation as well, so retry recovers from read failures.
+                val id = currentUserId?.takeIf { it.isNotBlank() } ?: return
+                observationJob?.cancel()
+                observationJob = viewModelScope.launch {
+                    profiles.observe(id)
+                        .catch {
+                            _uiState.update { it.copy(errorMessage = "Unable to read saved profile.") }
+                        }
+                        .collect { user -> _uiState.update { it.copy(user = user) } }
+                }
+                refreshJob?.cancel()
+                refresh()
+            }
+        }
+    }
+
+    private fun refresh() {
+        val id = currentUserId?.takeIf { it.isNotBlank() } ?: return
+        refreshJob = viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
+            val result = profiles.refresh(id)
+            _uiState.update {
+                it.copy(
+                    isRefreshing = false,
+                    errorMessage = if (result.isFailure) {
+                        "Unable to refresh profile. Please try again."
+                    } else it.errorMessage
+                )
+            }
+        }
+    }
+}
+```
+
+### COMPOSE SCREEN: `feature/user/presentation/ui/UserProfileScreen.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.presentation.ui
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+import com.enterprise.mobile.feature.user.presentation.UserProfileViewModel
+import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiEvent
+import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiState
+
+/**
+ * Stateful Route Composable: Coordinates ViewModel, lifecycle-aware state collection,
+ * and high-level navigation callbacks.
+ */
+@Composable
+fun UserProfileRoute(
+    userId: String,
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: UserProfileViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(userId) {
+        viewModel.load(userId)
+    }
+
+    UserProfileScreen(
+        uiState = uiState,
+        onEvent = viewModel::onEvent,
+        onNavigateBack = onNavigateBack,
+        modifier = modifier
+    )
+}
+
+/**
+ * Stateless Screen Composable: Pure UI renderer receiving immutable state and emitting
+ * event callbacks. Enables isolated unit testing and Compose Previews.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserProfileScreen(
+    uiState: UserProfileUiState,
+    onEvent: (UserProfileUiEvent) -> Unit,
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { Text("User Profile") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Navigate Back"
+                        )
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (uiState.isRefreshing) LinearProgressIndicator(Modifier.fillMaxWidth())
+                uiState.user?.let { user ->
+                    Text(user.name, style = MaterialTheme.typography.headlineMedium)
+                    Text(user.email, style = MaterialTheme.typography.bodyLarge)
+                    if (user.isVip) Badge { Text("VIP account") }
+                }
+                uiState.errorMessage?.let { message ->
+                    Text(message, color = MaterialTheme.colorScheme.error)
+                }
+                if (uiState.user == null && !uiState.isRefreshing && uiState.errorMessage == null) {
+                    Text("No saved profile available.")
+                }
+                Button(
+                    onClick = { onEvent(UserProfileUiEvent.RefreshProfile) },
+                    enabled = !uiState.isRefreshing
+                ) {
+                    Text(if (uiState.errorMessage != null) "Retry" else "Refresh profile")
+                }
+            }
+        }
+    }
+}
+
+@Preview(name = "User Profile - Success State", showBackground = true)
+@Composable
+private fun UserProfileScreenPreview() {
+    MaterialTheme {
+        UserProfileScreen(
+            uiState = UserProfileUiState(
+                user = UserDomainModel(
+                    id = "USR-101",
+                    name = "Alex Mercer",
+                    email = "alex.mercer@enterprise.internal",
+                    isVip = true,
+                    lastSyncTimestamp = 0L
+                )
+            ),
+            onEvent = {},
+            onNavigateBack = {}
+        )
+    }
+}
+```
+
+  </TabItem>
+  <TabItem label="Dependency Injection (Hilt)">
+
+### HILT MODULE: `feature/user/di/UserFeatureModule.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.di
+
+import com.enterprise.mobile.feature.user.data.repository.UserRepositoryImpl
+import com.enterprise.mobile.feature.user.domain.repository.UserRepository
+import dagger.Binds
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import javax.inject.Qualifier
+import javax.inject.Singleton
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class IoDispatcher
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class UserFeatureModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindUserRepository(
+        impl: UserRepositoryImpl
+    ): UserRepository
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+object CoroutinesModule {
+
+    @Provides
+    @IoDispatcher
+    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+}
+```
 
   </TabItem>
 </Tabs>
 
-<Aside type="note" title="Use verified SDK APIs for implementation">
-The source snippets referenced internal symbols such as `ObservabilitySDK`, `AppConfigProvider`, and `FeatureFlagManager` without package contracts or versioned API documentation. They also initialized different capabilities on each platform. This page uses a consistent integration procedure instead of presenting those unverified calls as copy-ready code. Use the catalog's platform-specific quick start for executable examples.
-</Aside>
+---
 
-## Integrate an SDK
+## Integration requirements
 
-<LinkCard
-  title="Master SDK Catalog"
-  href={`${PORTAL_BASE}/platforms/master-sdk-catalog/`}
-  description="Find approved artifacts, supported platforms, compatibility requirements, and SDK-specific integration guidance."
-/>
+Before adopting the sample:
 
-1. **Confirm suitability.** Check supported platforms, required OS versions, provider capabilities, and ownership.
-2. **Select a compatible release.** Use the project-managed version policy and commit the resulting dependency metadata and lockfiles.
-3. **Configure the environment.** Use the documented endpoints and permitted client configuration. Do not embed server credentials or private keys in a mobile application.
-4. **Wire lifecycle ownership.** Define initialization, readiness, refresh, cancellation, account switching, and cleanup behavior.
-5. **Verify failure behavior.** Test startup without connectivity, expired sessions, unavailable flag services, and repeated initialization.
-6. **Validate a representative build.** Test relevant release configurations and supported platforms before merging an upgrade.
+- Configure `@HiltAndroidApp`, an `@AndroidEntryPoint` host, and providers for `UserApiService` and `UserDao`.
+- Register `UserEntity` in your Room database and supply tested migrations.
+- Configure Retrofit's serialization converter, base URL, authentication, and error handling through the approved shared SDKs.
+- Install `UserFeatureModule` in `SingletonComponent`. This binding has application scope, despite being declared in the feature package.
+- Move `IoDispatcher` and `CoroutinesModule` into separate files, preferably in shared DI infrastructure. Do not declare duplicate qualifiers or dispatcher bindings across features.
+- Use project-managed dependency versions; the snippets intentionally do not prescribe version numbers.
+- Replace example UI strings with string resources, apply the enterprise theme, and add accessibility and localization checks.
+- Inject a clock if refresh timestamps are asserted in tests. `cachedAt` records persistence time, not server-side modification time.
 
-## Platform rules
+The screen keeps profile content visible during refresh. Retry uses the ViewModel's current user ID rather than constructing an empty identifier. Repeated initial loads for the same ID are ignored; switching profiles cancels the previous observation and refresh.
 
-These are internal platform requirements, rather than universal restrictions imposed by Android, Apple, or React Native.
+The refresh boundary returns failures as `Result` and rethrows coroutine cancellation. Production error mapping should distinguish authentication, authorization, missing records, transport failures, and persistence failures without exposing raw exception messages to users. Avoid unlimited retries or treating every HTTP failure as an offline success.
 
-| Rule | Required behavior |
+## Enterprise SDKs
+
+Use the centralized [Master SDK Catalog](/mobile/platforms/master-sdk-catalog/) for approved `com.enterprise.mobile:*` artifacts, installation instructions, and supported versions. Confirm that this route matches the documentation deployment base before publishing. No release numbers are repeated here because they were not supplied in the source document.
+
+## Patterns to avoid
+
+| Avoid | Use instead |
 | :--- | :--- |
-| Approved stacks | Use native Android, native iOS, or React Native. Flutter, Xamarin, Cordova, and Ionic are outside the approved stack set in the supplied policy. |
-| Declarative UI for new features | Use Compose, SwiftUI, or React Native components. Record any required interop with existing XML, UIKit, or platform views and follow the project's review process. |
-| Typed boundaries | Define explicit API, persistence, and SDK contracts. Avoid broad `Any`, `AnyObject`, or TypeScript `any` escapes that bypass validation. TypeScript types alone do not validate remote payloads at runtime. |
-| Shared infrastructure | Use approved authentication, secure-storage, network-resilience, and observability SDKs. Keep product-specific decisions in application code. |
+| Holding Activity, View, or lifecycle-bound Context references in a ViewModel | Inject a focused abstraction backed by application-scoped infrastructure when needed. |
+| Exposing `MutableStateFlow` to the UI | Expose `StateFlow` with `asStateFlow()` and handle actions in the ViewModel. |
+| Collecting Android UI flows without lifecycle awareness | Use `collectAsStateWithLifecycle()` in Compose routes. Ordinary `collectAsState()` does not automatically stop collection when the Android lifecycle becomes inactive; this is not inherently a memory leak. |
+| Calling Retrofit or Room from composables | Route actions through the ViewModel, use case, and repository boundaries. |
+| Importing Compose rendering APIs into ViewModels | Keep presentation rendering in composables and expose immutable state. |
+| Replacing cached content with a full-screen spinner on every refresh | Represent content, progress, and refresh errors independently. |
+| Swallowing `CancellationException` | Rethrow it so structured cancellation can complete. |
+| Adding `@Immutable` to hide unstable or mutable models | Honor the annotation's contract; optimize only after measurement. |
+| Defaulting required API fields to empty values | Match the API contract and fail explicitly when required fields are missing. |
 
-The source states that violations are rejected automatically by CI. Confirm the actual checks in the repository: policy is a review requirement even when a rule is not machine-enforced. Do not assume CI can detect every architectural violation.
+## Verification and merge checklist
 
-## Review checklist
+The source specified both 80% and 90% coverage thresholds. Use the repository's configured CI threshold as the authoritative requirement until the platform owner resolves that conflict; this guide does not introduce a new percentage.
 
-- [ ] The application uses an approved platform and its established architecture conventions.
-- [ ] Toolchain and SDK versions match the project-managed compatibility policy.
-- [ ] New UI follows the approved declarative framework; necessary interop is documented.
-- [ ] SDK instances have explicit lifecycle owners and initialization is idempotent.
-- [ ] Startup handles invalid local configuration and remote service failures deliberately.
-- [ ] Authentication readiness is resolved before protected content becomes available.
-- [ ] Credentials use the approved native-backed storage abstraction; telemetry excludes secrets.
-- [ ] Telemetry initialization and collection follow the applicable consent and data-handling policy.
-- [ ] Flags have safe defaults and are not used as an authorization boundary.
-- [ ] Data contracts are typed, and external inputs receive appropriate runtime validation.
-- [ ] Offline launch, session expiry, account switching, and repeated initialization have been exercised.
-- [ ] Release-build integration and the repository's required CI checks pass.
+- [ ] Feature code follows the documented layer boundaries; Gradle modules enforce dependencies where applicable.
+- [ ] Domain code has no Android framework, Compose, Room, or Retrofit dependencies.
+- [ ] Room observation is the only profile data path to the UI; successful refreshes persist before data is displayed.
+- [ ] Refresh preserves cached content and surfaces failure without reporting a successful sync.
+- [ ] Retry preserves the current user ID, including after initial load failure.
+- [ ] Switching users cancels previous work and does not display another user's profile.
+- [ ] Cancellation propagates through the repository and use case.
+- [ ] Repository tests cover success, empty response, mismatched ID, HTTP errors, transport errors, and persistence failures.
+- [ ] ViewModel tests cover cached data, refresh progress, retry, observation failure, blank IDs, and profile switching.
+- [ ] Coroutine tests replace `Dispatchers.Main`, inject a test dispatcher, and use a shared test scheduler.
+- [ ] Compose tests cover loading, content, error with and without cached content, and refresh/retry actions.
+- [ ] Room schema changes have migration tests; credentials and cached personal data follow account lifecycle policies.
+- [ ] Approved SDKs are used for shared network, authentication, and telemetry capabilities.
+- [ ] Required CI checks and the configured coverage gate pass.
+
+## References
+
+- [Android architecture recommendations](https://developer.android.com/topic/architecture/recommendations)
+- [Android domain layer guidance](https://developer.android.com/topic/architecture/domain-layer)
+- [Build an offline-first app](https://developer.android.com/topic/architecture/data-layer/offline-first)
