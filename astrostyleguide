@@ -1,952 +1,905 @@
 ---
-title: Native Android Standards & MVVM Clean Architecture
-description: Android engineering standards with Compose, Hilt, immutable StateFlow state, account-scoped Room caching, explicit refresh failures, and lifecycle-owned coroutine cancellation.
+title: Enterprise App Foundations Suite
+description: Shared mobile foundations for semantic design tokens, credential security, localization, push routing, controlled branding, and recoverable account-data cleanup across Android, iOS, and React Native.
 sidebar:
-  order: 2
-  label: 3.1 Android Standards
+  order: 1
+  label: App Foundations Suite
 ---
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 import MermaidZoom from '../components/mermaid-zoom.astro';
 
-Build screens from explicit state. Keep business rules independent of Android UI APIs. Give every asynchronous operation a clear owner, and keep persistence and networking behind repository contracts.
+Build product features on shared foundations with clear ownership, predictable lifecycle behavior, and platform-appropriate implementations.
 
-This guide defines the Android reference architecture and demonstrates a user profile: **read cached content, refresh remotely, persist a valid response, and publish the saved result**.
+This guide covers six capabilities: **Design & Theming, Security & Credential Storage, Localization, Push Notifications, Branding, and Account Data Cleanup**. Each foundation defines its responsibilities, integration boundary, failure behavior, and implementation hints.
 
 <Aside type="tip" title="Platform standard">
-Use feature-oriented Clean Architecture and unidirectional data flow. Compose renders state and emits actions. A ViewModel coordinates use cases and exposes read-only StateFlow. Repositories implement domain contracts and own data access. The UI never calls Retrofit or Room directly.
+Use the approved foundation SDKs and generated resources. Product features consume semantic tokens and typed service contracts; they do not create their own credential stores, notification routers, or account-wipe routines. Android, iOS, and React Native share behavioral requirements while using their own platform APIs.
 </Aside>
 
-## Start here
+## Find the foundation you need
 
-| Your task | Read |
-| :--- | :--- |
-| Understand the stack and state ownership | [Platform baseline](#platform-baseline) |
-| Decide where a class belongs | [Architecture boundaries](#architecture-boundaries) |
-| Trace loading, refresh, and cancellation | [Architecture and data flow](#architecture-and-data-flow) |
-| Implement the feature | [Reference implementation](#reference-implementation) |
-| Connect authentication, navigation, and Hilt | [Application integration](#application-integration) |
-| Review failure behavior and quality requirements | [Expected behavior](#expected-behavior) and [Review checklist](#review-checklist) |
-
-## Platform baseline
-
-| Technology | Responsibility | Engineering implication |
+| Foundation | What it owns | What a feature provides |
 | :--- | :--- | :--- |
-| Kotlin | Application language and explicit data contracts | Prefer immutable values; model nullability and failures deliberately. |
-| Jetpack Compose | Declarative UI | Render state, emit callbacks, and keep composition free of uncontrolled side effects. |
-| ViewModel + StateFlow | Screen state and coordination | Expose read-only state; keep writable flows private. |
-| Coroutines | Structured asynchronous work | Choose an owner, propagate cancellation, and make data operations safe to call from the main thread. |
-| Room | Structured local persistence | Use account-scoped keys, suspend DAO operations, and tested schema migrations. |
-| Retrofit / approved HTTP SDK | Remote API integration | Inject authenticated networking, validate responses, and map HTTP failures explicitly. |
-| Hilt | Dependency construction and scope | Scope objects according to ownership; dependency injection does not manage authentication automatically. |
+| Design & Theming | Semantic tokens, theme resolution, shared UI primitives | Accessible composition and product-specific layout |
+| Security & Credential Storage | Credential access, key lifecycle, approved network security | Data classification and required access behavior |
+| Localization | Translation resources, locale selection, formatting, layout direction | Translation keys, plural cases, and localizable content |
+| Push Notifications | Registration, delivery adapters, validated routing | Supported destinations and authorization requirements |
+| Branding | Approved brand registry, asset/token selection, platform icon adapters | An authorized brand selection and safe fallback |
+| Account Data Cleanup | Access gating, stopped writers, scoped deletion, verification, recovery | A complete inventory of account-owned state and storage |
 
-Use the versions pinned in the approved project template and version catalog. Kotlin, the Compose compiler/plugin, Android Gradle Plugin, Gradle, JDK, Android SDK, and libraries must form a compatible set. A JDK build setting is separate from Android Runtime, which executes the application on devices.
+**Scope:** Examples illustrate foundation contracts and integration patterns. They are not a replacement for the SDK catalog's versioned installation instructions. Native setup, generated resources, application configuration, Redux registration, and service adapters must be supplied by the host application. Code here has not been compiled in your project.
 
-**Example API requirements:** Room with `@Upsert` support, lifecycle-aware Compose collection, Kotlin serialization configured as Retrofit's converter, Material 3, and Hilt integration for navigation-scoped ViewModels. Resolve the Hilt Compose import against the version approved in your application; it has changed between library generations.
+## Foundation ownership and lifecycle
 
-**Internal policy versus Android guidance:** This platform uses use cases between ViewModels and repositories. Android's general guidance treats the domain layer as optional depending on complexity. The stricter separation here is a platform convention, not a universal Android requirement. See [Android architecture recommendations](https://developer.android.com/topic/architecture/recommendations).
-
-### State ownership
-
-| State or operation | Owner |
-| :--- | :--- |
-| Temporary component interaction, such as an expanded section | Local Compose state |
-| Saveable UI-only values, such as an input draft | Appropriate `rememberSaveable` or saved-state integration |
-| Rendered profile, progress, and safe error category | ViewModel StateFlow |
-| Cached profile retained across process restarts | Room repository boundary |
-| Screen-visible loading in this example | The route's lifecycle-controlled coroutine |
-| Work that must survive navigation | A deliberately longer-lived owner; use WorkManager for suitable persistent background work |
-| Credentials and token lifecycle | Approved authentication/secure-storage SDK |
-
-Loading and content can coexist: retain a cached profile while refreshing it. A transient network failure should not replace useful content with an empty error screen.
-
-## Architecture boundaries
-
-| Layer | Owns | Must not depend on |
-| :--- | :--- | :--- |
-| Presentation | Compose views, screen state, ViewModel | Retrofit endpoints, Room DAOs, data implementations |
-| Domain | Profile values, validation, repository protocol | Compose, Android Context, Room, Retrofit |
-| Data | DTOs, entities, mappers, repository implementation | Presentation code |
-| Application infrastructure / DI | Authenticated clients, session guard, dispatchers, clock, object scopes | Product rendering decisions |
-
-The domain example uses Kotlin coroutines and constructor-injection annotations. “Independent of Android” means no Android framework dependency; it does not mean no library dependencies.
-
-```text
-com.enterprise.mobile/
-├── core/profile/
-│   └── ProfileInfrastructure.kt          # Session, clock, dispatchers, diagnostics contracts
-├── di/
-│   └── ProfileInfrastructureModule.kt    # Shared dispatcher and clock providers
-└── feature/user/
-    ├── domain/
-    │   └── UserProfile.kt                # Model, key, errors, repository, use case
-    ├── data/
-    │   ├── remote/UserApiService.kt      # DTO and Retrofit endpoint
-    │   ├── local/UserEntity.kt           # Account-scoped schema
-    │   ├── local/UserDao.kt              # Suspend queries and upsert
-    │   ├── mapper/UserMappers.kt         # DTO → entity → domain
-    │   └── UserRepositoryImpl.kt         # Access checks, refresh, persistence
-    ├── di/
-    │   └── UserFeatureModule.kt          # ViewModel-scoped repository binding
-    └── presentation/
-        ├── UserProfileUiState.kt         # Content, progress, failure category
-        ├── UserProfileViewModel.kt       # Observable state and load coordination
-        └── UserProfileScreen.kt          # Lifecycle route, content view, preview
-```
-
-Keep files focused on one concern. Related small declarations may share a file; split them as the feature grows. Packages organize code, while separate Gradle modules and dependency rules enforce build-time boundaries. For a modular build, presentation and data depend on domain; the application composition root wires implementations.
-
-## Architecture and data flow
-
-<MermaidZoom title="Android architecture · ownership and data boundaries">
+<MermaidZoom title="Foundation suite · shared behavior, native implementation">
 
 ```mermaid
 flowchart TB
-    subgraph UI["01 · PRESENTATION · MAIN DISPATCHER"]
-        ROUTE["Compose route<br/>Lifecycle · actions · cancellation"]
-        VM["ViewModel<br/>Read-only StateFlow"]
+    subgraph PRODUCTS["01 · PRODUCT FEATURES"]
+        A["Android<br/>Compose and ViewModels"]
+        I["iOS<br/>SwiftUI and observable models"]
+        R["React Native<br/>Typed hooks and Redux Toolkit"]
     end
-    subgraph DOMAIN["02 · DOMAIN"]
-        UC["Profile use case<br/>Validate account and user key"]
-        CONTRACT["Repository contract<br/>Cached read · explicit refresh"]
+    ROOT["Application composition root<br/>Configuration · dependency lifetime · session ownership"]
+    subgraph FOUNDATION["02 · FOUNDATION CONTRACTS"]
+        D["Design and theme"]
+        S["Credential security"]
+        L["Localization"]
+        P["Push and routing"]
+        B["Approved branding"]
+        W["Account cleanup"]
     end
-    subgraph DATA["03 · DATA · MAIN-SAFE OPERATIONS"]
-        REPO["Repository implementation<br/>Access check · map · persist"]
-        API["Authenticated API adapter<br/>Validated response"]
-        DB["Room DAO<br/>Account-scoped profile records"]
-    end
-    ROUTE -->|"Await load"| VM
-    VM --> UC
-    UC --> CONTRACT
-    REPO -.->|"Implements"| CONTRACT
-    REPO --> API
-    REPO --> DB
-    CONTRACT -->|"Domain result"| VM
-    VM -->|"Collected UI state"| ROUTE
-    classDef ui fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
-    classDef domain fill:#f0f9ff,stroke:#0284c7,color:#0c4a6e,stroke-width:1.5px;
-    classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
-    class ROUTE,VM ui;
-    class UC,CONTRACT domain;
-    class REPO,API,DB data;
-    style UI fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
-    style DOMAIN fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
-    style DATA fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
+    PLATFORM["Platform adapters and owned resources<br/>Native APIs · approved SDKs · generated assets"]
+    A --> ROOT
+    I --> ROOT
+    R --> ROOT
+    ROOT --> D
+    ROOT --> S
+    ROOT --> L
+    ROOT --> P
+    ROOT --> B
+    ROOT --> W
+    D --> PLATFORM
+    S --> PLATFORM
+    L --> PLATFORM
+    P --> PLATFORM
+    B --> PLATFORM
+    W --> PLATFORM
+    classDef app fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
+    classDef boundary fill:#0f172a,stroke:#475569,color:#ffffff,stroke-width:2px;
+    classDef foundation fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
+    class A,I,R app;
+    class ROOT,PLATFORM boundary;
+    class D,S,L,P,B,W foundation;
+    style PRODUCTS fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
+    style FOUNDATION fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
 ```
 
 </MermaidZoom>
 
-**Read the diagram:** Solid arrows show calls and state delivery. The dashed arrow shows the implementation relationship. Results return through awaited repository/use-case calls; the ViewModel publishes immutable snapshots for Compose to render.
+The diagram shows ownership and dependency grouping, not a single runtime service through which every call must pass. Construct long-lived adapters at the application root, scope account resources deliberately, and inject the appropriate foundation interfaces into features.
 
-### Cached content, then refresh
+### Startup and session rules
 
-<MermaidZoom title="Profile lifecycle · cache, refresh, and cancellation">
+1. Load validated local configuration and bundled theme/localization defaults.
+2. Check for incomplete account cleanup before making protected data available.
+3. Construct approved adapters with explicit process, scene, account, and screen lifetimes.
+4. Resolve session readiness before rendering protected content or routing protected links.
+5. Refresh remote configuration asynchronously where supported; retain safe local defaults.
+6. Dispose subscriptions and cancel account work before replacing session-owned resources.
+
+In React Native, use Redux Toolkit for shared preference and lifecycle state. Keep credentials, native SDK objects, functions, and subscription handles outside Redux state. RTK Query caches, when present, require their own account-reset handling.
+
+<Tabs>
+  <TabItem label="Design & Theming">
+
+## Design & Theming
+
+**Responsibility:** Give every platform the same semantic design vocabulary, with generated light/dark values and consistent component behavior.
+
+### Token delivery pipeline
+
+<MermaidZoom title="Design tokens · reviewed source to platform resources">
+
+```mermaid
+flowchart LR
+    DESIGN["Design authoring<br/>Tokens Studio / approved source"]
+    REVIEW["Versioned token repository<br/>Schema validation and review"]
+    BUILD["Token build pipeline<br/>Resolve aliases · generate resources"]
+    ANDROID["Android<br/>Compose color roles"]
+    IOS["iOS<br/>Adaptive asset colors"]
+    RN["React Native<br/>Typed token objects"]
+    DESIGN --> REVIEW --> BUILD
+    BUILD --> ANDROID
+    BUILD --> IOS
+    BUILD --> RN
+    classDef source fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
+    classDef build fill:#0f172a,stroke:#475569,color:#ffffff,stroke-width:2px;
+    classDef target fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
+    class DESIGN,REVIEW source;
+    class BUILD build;
+    class ANDROID,IOS,RN target;
+```
+
+</MermaidZoom>
+
+Design authoring feeds a reviewed, versioned source. Applications consume generated artifacts from a known release rather than reading live Figma data at runtime. Include token schema checks, unresolved-alias detection, light/dark completeness, and visual/accessibility review in the publishing workflow.
+
+### Semantic palette
+
+These values preserve the palette supplied for this page. They are an example foundation release, not a claim that every possible foreground/background pairing has passed contrast review.
+
+| Semantic role | Token | Light | Dark |
+| :--- | :--- | :--- | :--- |
+| Primary action | `color.primary.base` | `#007a3d` | `#22c55e` |
+| Text on primary | `color.primary.content` | `#ffffff` | `#09130e` |
+| App background | `color.surface.background` | `#f4f8f5` | `#09130e` |
+| Card surface | `color.surface.card` | `#ffffff` | `#0d1912` |
+| Subtle border | `color.border.subtle` | `#d4e2d8` | `#193828` |
+| Primary text | `color.text.primary` | `#0f172a` | `#f1f5f9` |
+| Secondary text | `color.text.muted` | `#475569` | `#94a3b8` |
+
+Use a semantic role such as “text on primary,” not the action color itself, for a button label. Validate the actual pairing, component size, disabled state, focus state, and selected brand. Color must not be the only signal of status.
+
+### Android · generated color roles
+
+`core/design/theme/EnterpriseTheme.kt`
+
+```kotlin
+package com.enterprise.mobile.core.design.theme
+
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+
+// Representative generated output. Edit the source tokens, not these values.
+private val LightColors = lightColorScheme(
+    primary = Color(0xFF007A3D), onPrimary = Color(0xFFFFFFFF),
+    background = Color(0xFFF4F8F5), onBackground = Color(0xFF0F172A),
+    surface = Color(0xFFFFFFFF), onSurface = Color(0xFF0F172A),
+    onSurfaceVariant = Color(0xFF475569), outline = Color(0xFFD4E2D8),
+)
+private val DarkColors = darkColorScheme(
+    primary = Color(0xFF22C55E), onPrimary = Color(0xFF09130E),
+    background = Color(0xFF09130E), onBackground = Color(0xFFF1F5F9),
+    surface = Color(0xFF0D1912), onSurface = Color(0xFFF1F5F9),
+    onSurfaceVariant = Color(0xFF94A3B8), outline = Color(0xFF193828),
+)
+
+@Composable
+fun EnterpriseTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit,
+) {
+    MaterialTheme(
+        colorScheme = if (darkTheme) DarkColors else LightColors,
+        content = content,
+    )
+}
+```
+
+This color-role example leaves other Material roles at their defaults. A published enterprise theme must also define the roles it uses for errors, containers, typography, shapes, and component states. Product code reads `MaterialTheme` roles or approved semantic extensions instead of copying these literals.
+
+### iOS · adaptive named assets
+
+Generate the named color assets below with light/dark variants in the owning asset catalog. Supply that catalog's bundle explicitly when it is outside the application bundle.
+
+`Core/Design/EnterpriseTheme.swift`
+
+```swift
+import Foundation
+import SwiftUI
+
+struct EnterpriseTheme: ViewModifier {
+    let resourceBundle: Bundle
+
+    func body(content: Content) -> some View {
+        content
+            .tint(Color("foundation.primary", bundle: resourceBundle))
+            .foregroundStyle(Color("foundation.textPrimary", bundle: resourceBundle))
+            .background(Color("foundation.background", bundle: resourceBundle))
+    }
+}
+
+extension View {
+    func enterpriseTheme(resourceBundle: Bundle = .main) -> some View {
+        modifier(EnterpriseTheme(resourceBundle: resourceBundle))
+    }
+}
+```
+
+The named assets adapt to the environment's appearance. Create the exact asset names referenced by the code; a missing asset is an integration error. For Swift Package resources, pass the package's resource bundle from inside the owning package. The app shell separately owns full-screen backgrounds and safe-area behavior.
+
+### React Native · Redux-backed preferences
+
+`src/core/foundations/foundationSlice.ts`
+
+```typescript
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+
+export type ThemePreference = 'system' | 'light' | 'dark';
+export type SupportedLanguage = 'en' | 'ar';
+export type ApprovedBrandId = 'core' | 'partner';
+
+export interface FoundationPreferences {
+  theme: ThemePreference;
+  language: SupportedLanguage | 'system';
+  brand: ApprovedBrandId;
+}
+
+const initialState: FoundationPreferences = {
+  theme: 'system', language: 'system', brand: 'core',
+};
+
+const foundationSlice = createSlice({
+  name: 'foundation',
+  initialState,
+  reducers: {
+    themeChanged(state, action: PayloadAction<ThemePreference>) {
+      state.theme = action.payload;
+    },
+    languageChanged(state, action: PayloadAction<FoundationPreferences['language']>) {
+      state.language = action.payload;
+    },
+    brandChanged(state, action: PayloadAction<ApprovedBrandId>) {
+      state.brand = action.payload;
+    },
+    accountBrandReset(state) {
+      state.brand = initialState.brand;
+    },
+  },
+});
+
+export const { themeChanged, languageChanged, brandChanged, accountBrandReset } = foundationSlice.actions;
+export const foundationReducer = foundationSlice.reducer;
+```
+
+Register `foundationReducer` under `foundation` in the existing root store and update the application's inferred state types. Draft assignments inside `createSlice` are valid Immer updates. Persist only preferences that the product intends to retain; an account brand must not accidentally carry into another account.
+
+`src/core/foundations/theme/ThemeProvider.tsx`
+
+```tsx
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { useColorScheme } from 'react-native';
+import { useAppSelector } from '../../../app/hooks';
+
+type Mode = 'light' | 'dark';
+export interface ThemePalette {
+  readonly primary: string;
+  readonly onPrimary: string;
+  readonly background: string;
+  readonly surface: string;
+  readonly border: string;
+  readonly textPrimary: string;
+  readonly textMuted: string;
+}
+export type ThemeTokens = Readonly<Record<Mode, ThemePalette>>;
+
+const ThemeContext = createContext<ThemePalette | null>(null);
+
+// tokens is the complete, generated token set for the currently resolved brand.
+export function ThemeProvider({ tokens, children }: Readonly<{
+  tokens: ThemeTokens;
+  children: ReactNode;
+}>) {
+  const preference = useAppSelector((state) => state.foundation.theme);
+  const system = useColorScheme();
+  const mode: Mode = preference === 'system'
+    ? (system === 'dark' ? 'dark' : 'light') : preference;
+  const palette = useMemo(() => tokens[mode], [tokens, mode]);
+  return <ThemeContext.Provider value={palette}>{children}</ThemeContext.Provider>;
+}
+
+export function useAppTheme(): ThemePalette {
+  const palette = useContext(ThemeContext);
+  if (!palette) throw new Error('ThemeProvider is required.');
+  return palette;
+}
+```
+
+<Aside type="tip" title="Hint · Context distributes derived values; Redux owns preferences">
+Theme mode and selected brand are application preferences in Redux Toolkit. The theme provider distributes the resolved palette; it does not maintain a second theme preference. Missing providers fail explicitly instead of silently rendering a default brand. Validate persisted/remote preference values before dispatch—TypeScript types do not validate runtime input.
+</Aside>
+
+**Review:** No raw visual values in feature components; generated token files may contain literals. Every published token needs the supported variants and meaningful fallbacks. Confirm which rules are actually enforced in CI; code review remains necessary for visual and accessibility behavior.
+
+  </TabItem>
+  <TabItem label="Security & Credentials">
+
+## Security & Credential Storage
+
+**Responsibility:** Protect credentials through approved native storage, controlled access, explicit error behavior, and a managed key lifecycle.
+
+| Concern | Android | iOS | React Native |
+| :--- | :--- | :--- | :--- |
+| Credential storage | Approved storage adapter with Android Keystore integration | Scoped Keychain items with reviewed accessibility/access controls | Approved native-backed auth adapter |
+| Cryptographic keys | Keystore; hardware backing depends on device/key configuration | Keychain and supported Secure Enclave key operations | Delegates to native platform; JSI is not key protection |
+| Biometric access | Policy-backed authentication with supported authenticators | LocalAuthentication / Keychain access controls as appropriate | Native adapter exposes the chosen policy |
+| Cached personal data | Reviewed database/file protection and key lifecycle | Data protection, storage policy, and scoped cleanup | Approved cache encryption and key management |
+| Network security | Approved TLS client and centrally maintained policy | Approved TLS client and platform trust evaluation | Native networking adapter follows the same policy |
+
+Keystore manages keys; it is not an arbitrary token database. Keychain can store small credential values, while Secure Enclave supports particular key operations—it does not mean every generic-password item is an enclave-held key. A native interface or JSI call does not itself supply hardware-backed encryption. See [Apple's Keychain storage guidance](https://developer.apple.com/documentation/cryptokit/storing-cryptokit-keys-in-the-keychain).
+
+### Credential contract
+
+Use equivalent behavior across platforms: return “absent” only when an item is absent; propagate storage, access-control, corruption, and authentication failures distinctly. Writes must not erase the previous credential before a replacement is safely stored. Deletion is restricted to the application's account namespace.
+
+**Android — `core/security/SecureCredentialStore.kt`**
+
+```kotlin
+package com.enterprise.mobile.core.security
+
+data class CredentialScope(val accountRef: String)
+enum class CredentialName { REFRESH_TOKEN }
+
+interface SecureCredentialStore {
+    suspend fun read(scope: CredentialScope, name: CredentialName): ByteArray?
+    suspend fun write(scope: CredentialScope, name: CredentialName, value: ByteArray)
+    suspend fun removeAccountCredentials(scope: CredentialScope)
+}
+```
+
+Implementations must be main-safe and cancellation-aware. Treat the returned byte array as sensitive mutable data: avoid unnecessary copies, do not log it, and do not claim that clearing one array guarantees all runtime copies are erased.
+
+**iOS — `Core/Security/SecureCredentialStore.swift`**
+
+```swift
+import Foundation
+
+struct CredentialScope: Sendable {
+    let accountRef: String
+}
+enum CredentialName: String, Sendable {
+    case refreshToken
+}
+protocol SecureCredentialStore: Sendable {
+    func read(scope: CredentialScope, name: CredentialName) async throws -> Data?
+    func write(scope: CredentialScope, name: CredentialName, value: Data) async throws
+    func removeAccountCredentials(scope: CredentialScope) async throws
+}
+```
+
+A native Keychain adapter scopes queries by service, account, class, and access group where applicable. Treat `errSecItemNotFound` as absence; other statuses require handling. Prefer a scoped update/add strategy over unconditional delete-then-add. Select accessibility deliberately: background access, device lock, migration, backup, and biometric enrollment requirements differ.
+
+**React Native — `src/core/security/secureCredentialStore.ts`**
+
+```typescript
+export type CredentialName = 'refreshToken';
+export interface CredentialScope {
+  readonly accountRef: string;
+}
+export interface SecureCredentialStore {
+  read(scope: CredentialScope, name: CredentialName): Promise<string | null>;
+  write(scope: CredentialScope, name: CredentialName, value: string): Promise<void>;
+  removeAccountCredentials(scope: CredentialScope): Promise<void>;
+}
+```
+
+Bind this contract to the approved native-backed SDK. Do not implement it with a hardcoded MMKV encryption key or store credentials in Redux, AsyncStorage, or a general profile cache. Encrypted MMKV may be used for approved cache data with a managed key; it is not automatically the credential-storage implementation.
+
+<Aside type="caution" title="Choose supported implementations and explicit policy">
+Android's `security-crypto` APIs, including `EncryptedSharedPreferences` and `MasterKey`, are deprecated. Do not copy them as a new universal foundation. Follow the approved supported adapter and migration plan; plain SharedPreferences does not become secure credential storage because an older wrapper is deprecated. See the [Android Security library release notes](https://developer.android.com/jetpack/androidx/releases/security).
+</Aside>
+
+### TLS and biometric policy
+
+- Apply TLS trust evaluation centrally. Never ship sample pins, disable hostname verification, or install a trust-all manager.
+- If enterprise policy requires pinning, maintain reviewed production/backup pins, rotation ownership, expiry behavior, and a recovery plan. Pinning is an additional operational commitment, not a substitute for TLS trust evaluation. See [Apple's identity-pinning guidance](https://developer.apple.com/news/?id=g9ejcf8y).
+- Distinguish a biometric prompt from a cryptographic operation protected by biometric authentication. Define lockout, cancellation, unavailable hardware, enrollment changes, and any permitted device-credential fallback.
+- Keep server credentials and private backend secrets out of mobile binaries. Store only the client credentials the approved flow actually requires.
+
+**Review:** Missing item, device locked, user cancellation, key invalidation, write failure, account isolation, backup/restore, and deletion failure all have explicit behavior.
+
+  </TabItem>
+  <TabItem label="Localization">
+
+## Localization & Internationalization
+
+**Responsibility:** Resolve a supported language, load native translation resources, format values correctly, and apply the appropriate layout direction.
+
+Resolve language in this order: **supported explicit user preference → supported system-language match → documented fallback**. Persist a language tag or the choice “system,” not translated strings or formatted amounts.
+
+| Concern | Android | iOS | React Native |
+| :--- | :--- | :--- | :--- |
+| Resources | `strings.xml`, plurals, localized resources | String Catalogs / localized resources | Versioned i18next resources or approved localization SDK |
+| Per-app language | Platform/AppCompat integration for supported versions | System app-language settings or app-owned locale environment where supported | Foundation coordinates Redux preference and i18n engine |
+| Number/date formatting | Locale-aware platform formatters | Foundation `FormatStyle` / locale-aware formatters | Supported `Intl` or approved formatter integration |
+| Layout direction | Resolved resource/layout configuration | SwiftUI layout direction and localized content | Native RTL configuration and component behavior |
+
+Plural resources and message syntax differ across systems. Do not assume native resource formats and i18next all accept the same ICU syntax without an installed, configured adapter. Never concatenate translated fragments to form a sentence.
+
+### Android · supported per-app language
+
+```kotlin
+package com.enterprise.mobile.core.localization
+
+import androidx.annotation.MainThread
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+
+object AppLanguage {
+    private val supported = setOf("en", "ar")
+
+    @MainThread
+    fun apply(languageTag: String?) {
+        require(languageTag == null || languageTag in supported)
+        val locales = if (languageTag == null) {
+            LocaleListCompat.getEmptyLocaleList() // Follow system language.
+        } else {
+            LocaleListCompat.forLanguageTags(languageTag)
+        }
+        AppCompatDelegate.setApplicationLocales(locales)
+    }
+}
+```
+
+Configure the language manifest/resources and persistence integration for your supported Android versions. Backward-compatible AppCompat behavior depends on the host/context setup, particularly on Android 12 and earlier. Language changes may recreate UI; preserve appropriate state rather than promising no recreation. Read direction from the actual resource/layout environment, not the first character of a locale's display name. See [Android per-app language guidance](https://developer.android.com/guide/topics/resources/app-languages).
+
+### iOS · app-owned SwiftUI locale boundary
+
+```swift
+import Foundation
+import SwiftUI
+
+struct AppLocaleBoundary<Content: View>: View {
+    let languageTag: String? // nil means follow system; validate supported tags upstream.
+    @Environment(\.locale) private var inheritedLocale
+    private let content: Content
+
+    init(languageTag: String?, @ViewBuilder content: () -> Content) {
+        self.languageTag = languageTag
+        self.content = content()
+    }
+
+    var body: some View {
+        content.environment(
+            \.locale,
+            languageTag.map { Locale(identifier: $0) } ?? inheritedLocale
+        )
+    }
+}
+```
+
+This sets locale for descendant environment-aware SwiftUI content. It does not change every framework, server response, precomputed string, or native surface. Implement and test layout direction explicitly where the application's language-switching design requires it. Do not mutate `AppleLanguages` with `UserDefaults.synchronize()` as a substitute for a supported localization strategy.
+
+### React Native · Redux preference, one i18n owner
+
+Use `foundation.language` from the Redux slice as the serialized preference. A single application-level coordinator resolves it, awaits the i18n engine's language change, publishes readiness, and handles failures. Do not create a separate independent language preference in a Context provider.
+
+```typescript
+export type LanguageTag = 'en' | 'ar';
+export type LanguagePreference = LanguageTag | 'system';
+
+export function resolveLanguage(
+  preference: LanguagePreference,
+  systemTags: readonly string[],
+): LanguageTag {
+  if (preference !== 'system') return preference;
+  for (const tag of systemTags) {
+    const base = tag.toLowerCase().split('-')[0];
+    if (base === 'en' || base === 'ar') return base;
+  }
+  return 'en';
+}
+```
+
+This demonstrates language-only fallback. Apps supporting regional variants need a richer supported-tag negotiation policy. Validate stored preferences and device-language inputs before use. Serialize or version asynchronous language-change requests so an older completion cannot override a newer selection.
+
+<Aside type="tip" title="Hint · text language and native RTL direction are different concerns">
+Changing i18next language can update subscribed text without restarting the app. React Native `I18nManager` direction changes are native configuration changes; they take effect on a later application start, and `forceRTL` is primarily a testing mechanism. Do not promise immediate global RTL switching. Define and communicate the supported restart/recreation behavior. See the [I18nManager reference](https://reactnative.dev/docs/i18nmanager).
+</Aside>
+
+### Formatting and layout rules
+
+- Keep money as a decimal value or appropriate minor-unit representation according to the domain contract. Do not make binary floating-point the universal financial model.
+- Carry a currency code explicitly; language alone does not identify the currency. Format amounts and dates at the presentation boundary.
+- Test zero/one/many and language-specific plural categories, long translations, non-Latin digits, and large text.
+- Use logical start/end layout. Mirror directional navigation where appropriate, not logos, media, or every icon indiscriminately.
+- Keep identifiers, URLs, and mixed-direction text readable; test their bidirectional rendering deliberately.
+
+  </TabItem>
+  <TabItem label="Push Notifications">
+
+## Push Notifications & Validated Routing
+
+**Responsibility:** Manage registration and token changes, adapt OS callbacks, and convert untrusted notification data into authorized in-app navigation.
+
+Push delivery is not a reliable transaction or an authorization signal. The app must recover authoritative state when it starts, resumes, or reconnects even when no push arrived.
+
+<MermaidZoom title="Push routing · validate first, authorize before navigation">
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant UI as Compose lifecycle coroutine
-    participant VM as ViewModel
-    participant R as Use case / Repository
-    participant DB as Room
-    participant API as Authenticated API
+    participant G as Enterprise gateway
+    participant OS as APNs / FCM and device OS
+    participant A as Platform push adapter
+    participant R as Application router
+    participant S as Session and API
+    participant UI as Feature screen
 
-    UI->>VM: Await load(accountId, userId)
-    VM->>VM: Validate key; start request generation
-    VM->>R: Read cached profile
-    R->>R: Verify active account
-    R->>DB: Read by account ID and user ID
-    DB-->>VM: Domain snapshot through repository
-    Note over VM: Render cached content if present
-    VM->>R: Refresh profile
-    R->>API: Request profile
-    alt Valid response and successful write
-        API-->>R: DTO with matching user ID
-        R->>R: Check cancellation and active account
-        R->>DB: Upsert account-scoped entity
-        DB-->>R: Write completed
-        R-->>VM: Saved domain snapshot
-        VM-->>UI: Updated StateFlow
-    else Recoverable refresh failure
-        R-->>VM: Throw failure
-        VM-->>UI: Keep cached content; show retry message
-    else Expired session, denied access, or missing profile
-        R->>DB: Delete this cached profile
-        R-->>VM: Throw access or cleanup failure
-        VM-->>UI: Clear displayed content; show safe message
+    G->>OS: Notification or background update
+    alt OS permits delivery
+        OS->>A: Supported callback / initial launch payload
+        A->>A: Extract bounded payload; validate schema
+        A->>R: Typed intent with event identity
+        R->>R: Deduplicate and wait for app readiness
+        R->>S: Resolve session and resource authorization
+        alt Access allowed
+            S-->>R: Authorized destination
+            R->>UI: Navigate with validated arguments
+        else Access unavailable
+            S-->>R: Sign-in required / access denied / missing resource
+            R->>UI: Show supported recovery route
+        end
+    else Delivery delayed, dropped, or unavailable
+        Note over S,UI: Reconcile state through normal startup/resume flows
     end
-    Note over UI,VM: Stop, navigation, or changed effect keys cancel the load coroutine
-    Note over VM,R: Cancellation checks and generation guards reject obsolete updates
 ```
 
 </MermaidZoom>
 
-**This is a snapshot-based reference, matching the iOS and React Native examples.** Successful refresh returns a value only after its Room write succeeds. It does not continuously observe database changes from other writers. If live updates are required, add a repository `Flow`, collect it with explicit ownership, and keep refresh status separate. Room supports both one-shot suspend reads and observable queries; do not describe one as the other. See [Room asynchronous queries](https://developer.android.com/training/data-storage/room/async-queries).
+The OS may present a notification without invoking the application's foreground callback. iOS notification service extensions are a separate, conditional path for eligible notification modification, not a universal Android/iOS delivery stage. They have time limits and need a fallback that preserves completion behavior.
 
-## Reference implementation
+### Platform integration checklist
 
-Paths below are relative to `app/src/main/java/com/enterprise/mobile/`. The host project supplies authenticated network configuration, Room database registration, session integration, and the providers explicitly identified in the DI section.
+| Android | iOS | React Native |
+| :--- | :--- | :--- |
+| Configure channels and notification runtime permission where required. | Configure capabilities, APNs registration, notification authorization, and delegates. | Complete both native setups and use the installed SDK's supported API style. |
+| Separate notification/data payload behavior and foreground/background handling. | Treat foreground presentation, notification taps, cold launch, and background updates separately. | Handle foreground events, opened-from-background events, initial notification, and token refresh. |
+| Use explicit app navigation intents; make pending intents immutable where supported and give destinations correct identity. | Route through the app coordinator; do not send arbitrary payload URLs to `UIApplication.open`. | Register background handlers at the SDK-required entry point; ordinary component effects are insufficient for that path. |
+| Keep callback work bounded; delegate suitable longer work to an approved scheduler. | Call completion handlers on every path and respect background execution limits. | Retain unsubscribe functions and remove subscriptions with their owner. |
 
-<Tabs>
-  <TabItem label="1. Domain">
+Android 13+ notification permission affects posting notifications; account for target/OS behavior in the actual app. FCM notification messages can be displayed by the OS while backgrounded. Apple's background notification delivery is not guaranteed. See [Android permissions](https://developer.android.com/develop/ui/compose/notifications/notification-permission), [FCM Android delivery](https://firebase.google.com/docs/cloud-messaging/android/receive-messages), and [Apple background updates](https://developer.apple.com/documentation/usernotifications/pushing-background-updates-to-your-app).
 
-### `feature/user/domain/UserProfile.kt`
+### Typed payload boundary · React Native example
 
-```kotlin
-package com.enterprise.mobile.feature.user.domain
+This sample uses a structured intent instead of opening a supplied URI. The payload is a navigation hint; the server remains authoritative about resource access.
 
-import javax.inject.Inject
+`src/core/push/pushIntent.ts`
 
-data class UserDomainModel(
-    val id: String,
-    val name: String,
-    val email: String,
-    val isVip: Boolean,
-    val cachedAtMillis: Long,
-)
+```typescript
+import { z } from 'zod';
 
-data class ProfileKey(val accountId: String, val userId: String)
+const destinationSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('home') }),
+  z.object({
+    kind: z.literal('order'),
+    orderId: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+  }),
+]);
 
-enum class ProfileFailure {
-    INVALID_KEY, SESSION_EXPIRED, ACCESS_DENIED, NOT_FOUND,
-    INVALID_PAYLOAD, HTTP_ERROR, CACHE_ERROR, CACHE_INVALIDATION, UNEXPECTED,
-}
+const pushIntentSchema = z.object({
+  version: z.literal(1),
+  eventId: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
+  expiresAtMillis: z.number().int().nonnegative(),
+  destination: destinationSchema,
+});
+export type PushIntent = z.infer<typeof pushIntentSchema>;
 
-class ProfileException(val failure: ProfileFailure) : Exception(failure.name)
-
-interface UserRepository {
-    suspend fun cachedProfile(key: ProfileKey): UserDomainModel?
-    suspend fun refreshProfile(key: ProfileKey): UserDomainModel
-}
-
-class GetUserProfileUseCase @Inject constructor(
-    private val repository: UserRepository,
-) {
-    fun validatedKey(accountId: String, rawUserId: String): ProfileKey {
-        val userId = rawUserId.trim()
-        // Example API contract; update this rule if the real API uses other IDs.
-        if (accountId.isBlank() || !USER_ID.matches(userId)) {
-            throw ProfileException(ProfileFailure.INVALID_KEY)
-        }
-        return ProfileKey(accountId, userId)
-    }
-
-    suspend fun cachedProfile(key: ProfileKey): UserDomainModel? =
-        repository.cachedProfile(validatedKey(key.accountId, key.userId))
-
-    suspend fun refreshProfile(key: ProfileKey): UserDomainModel =
-        repository.refreshProfile(validatedKey(key.accountId, key.userId))
-
-    private companion object {
-        val USER_ID = Regex("[A-Za-z0-9_-]{1,128}")
-    }
+export function parsePushIntent(raw: unknown, nowMillis: number): PushIntent | null {
+  if (typeof raw !== 'string' || raw.length > 2048) return null;
+  let decoded: unknown;
+  try { decoded = JSON.parse(raw); }
+  catch { return null; } // Invalid external input is an expected rejection path.
+  const parsed = pushIntentSchema.safeParse(decoded);
+  if (!parsed.success || parsed.data.expiresAtMillis <= nowMillis) return null;
+  return parsed.data;
 }
 ```
 
-<Aside type="tip" title="Hint · validate before side effects">
-The account ID comes from the trusted authenticated session, not an arbitrary deep-link parameter. Preserve its canonical value. Normalize only the user ID according to the API contract. Kotlin `val` prevents property reassignment; it does not make arbitrary nested mutable objects immutable. This model contains value fields only.
+The application limit above is a string-length bound, not the provider's byte-size limit. Set actual payload limits in the gateway/adapter as well. Expiry checks are client freshness checks and depend on the clock; they do not authenticate a command. Rooted/compromised clients and server authorization require separate controls.
+
+### Subscription ownership · adapter contract
+
+`src/core/push/attachPushListeners.ts`
+
+```typescript
+import type { PushIntent } from './pushIntent';
+
+type Unsubscribe = () => void;
+export interface PushAdapter {
+  onForeground(handler: (intent: PushIntent) => void): Unsubscribe;
+  onOpened(handler: (intent: PushIntent) => void): Unsubscribe;
+  initialIntent(): Promise<PushIntent | null>;
+}
+
+export function attachPushListeners(
+  adapter: PushAdapter,
+  routeIntent: (intent: PushIntent) => Promise<void>,
+  reportFailure: (category: 'initial-notification' | 'routing') => void,
+): Unsubscribe {
+  let active = true;
+  const deliver = (intent: PushIntent): void => {
+    if (!active) return;
+    void routeIntent(intent).catch(() => {
+      if (active) reportFailure('routing');
+    });
+  };
+  const removeForeground = adapter.onForeground(deliver);
+  let removeOpened: Unsubscribe;
+  try {
+    removeOpened = adapter.onOpened(deliver);
+  } catch (error: unknown) {
+    active = false;
+    removeForeground();
+    throw error;
+  }
+  void Promise.resolve().then(() => adapter.initialIntent()).then((intent) => {
+    if (intent) deliver(intent);
+  }).catch(() => {
+    if (active) reportFailure('initial-notification');
+  });
+  return () => {
+    active = false;
+    try { removeForeground(); }
+    finally { removeOpened(); }
+  };
+}
+```
+
+The adapter emits validated intents; map the SDK's actual payload shape before this boundary. Diagnostics must be non-throwing and contain no payload/token data. Subscription removal is synchronous, non-throwing, and must be safe when cleanup repeats. The initial-notification call is wrapped in a promise chain so a synchronous adapter failure is also reported.
+
+<Aside type="tip" title="Hint · one router handles every entry point">
+Cold-start notification, background tap, foreground interaction, and ordinary deep links must converge on the same application router. That router serializes routing, deduplicates event IDs, checks the current session and backend authorization, and constructs a valid back stack. Listener cleanup prevents new delivery; it does not cancel a navigation already in progress. The router must recheck session identity before committing navigation.
 </Aside>
 
-`cachedAtMillis` records client cache time, not server modification time. Define business freshness, expiry, and retention separately.
+For URL-based deep links, validate scheme, host, path, parameters, and supported destinations; prefer verified app/universal links where applicable. Do not pass arbitrary incoming URLs directly to the OS. A regex-valid resource ID is not proof that the current account may view it.
+
+Never log registration tokens or complete notification payloads. Synchronize token registration/rotation to the backend, handle account association changes, and distinguish provider acceptance, device delivery, display, and user-open metrics.
 
   </TabItem>
-  <TabItem label="2. Infrastructure contracts">
+  <TabItem label="Branding">
 
-### `core/profile/ProfileInfrastructure.kt`
+## Branding & Controlled Identity
 
-These interfaces describe the integration the host application must provide; they do not assume an undocumented enterprise SDK API.
+**Responsibility:** Resolve an approved brand and publish a coherent set of design tokens, in-app assets, and supported platform identity choices.
 
-```kotlin
-package com.enterprise.mobile.core.profile
+Treat brand ID as configuration. Do not accept arbitrary remote colors, file paths, asset URLs, executable content, or icon names as a replacement for an approved registry.
 
-import com.enterprise.mobile.feature.user.domain.ProfileFailure
-import javax.inject.Qualifier
+| Surface | What can change | Constraint |
+| :--- | :--- | :--- |
+| In-app colors, logos, typography | A complete validated brand asset/token set | Maintain supported light/dark variants, accessibility, fallback, and version compatibility. |
+| Android launcher icon | Supported predeclared activity aliases | Manifest configuration and launcher behavior matter; test device/launcher differences. |
+| iOS launcher icon | Supported alternate icons bundled/configured in the app | Check support, use approved icon names, and handle asynchronous failure. |
+| Launch screen / native splash | Build-time or platform-supported configuration | Do not promise arbitrary remotely replaced startup assets. |
+| App name, package/bundle identity, store listing | Build/distribution configuration | A runtime theme switch does not change application identity. |
 
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class IoDispatcher
+### Approved registry boundary
 
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class MainDispatcher
+`src/core/branding/brandRegistry.ts`
 
-fun interface EpochClock {
-    fun nowMillis(): Long
+```typescript
+import type { ApprovedBrandId } from '../foundations/foundationSlice';
+
+export interface BrandDescriptor {
+  readonly id: ApprovedBrandId;
+  readonly tokenSet: string;
+  readonly logoAsset: string;
+  readonly alternateIcon: string | null;
 }
 
-interface ProfileSessionGuard {
-    // Thread-safe, non-blocking; throw SESSION_EXPIRED or ACCESS_DENIED when invalid.
-    fun requireActiveAccount(accountId: String)
-}
+// Identifiers resolve through generated, bundled registries—not arbitrary file paths.
+export const brands: Readonly<Record<ApprovedBrandId, BrandDescriptor>> = Object.freeze({
+  core: Object.freeze({
+    id: 'core', tokenSet: 'core-v1', logoAsset: 'brand.core.logo', alternateIcon: null,
+  }),
+  partner: Object.freeze({
+    id: 'partner', tokenSet: 'partner-v1', logoAsset: 'brand.partner.logo', alternateIcon: 'partner',
+  }),
+});
 
-interface ProfileDiagnostics {
-    // Non-blocking and non-throwing. No credentials, IDs, payloads, or raw exceptions.
-    fun report(stage: String, failure: ProfileFailure)
+export function approvedBrandId(candidate: unknown): ApprovedBrandId | null {
+  return candidate === 'core' || candidate === 'partner' ? candidate : null;
 }
 ```
 
-In a multi-module project, place reusable contracts in a dependency direction that does not make generic core infrastructure depend on a feature. Here, `core/profile` is a profile integration contract within the same target; it is not a proposed independent core Gradle module.
+These are example registry identifiers. Bundle and validate the corresponding token sets, assets, and platform icon definitions before enabling either entry. Runtime type checking establishes membership only; the tenant/session policy must separately authorize the selected brand.
 
-<Aside type="tip" title="Hint · access checks complement session ownership">
-The authenticated HTTP adapter must bind each request to the intended session. A guard around a mutable global client does not atomically capture credentials. The app must prevent an old account request from being executed with a new account's credentials, cancel old-session work, and replace protected navigation state. The guard is an additional check, not the authentication implementation.
+### Apply a brand as one configuration change
+
+1. Resolve the permitted brand from trusted tenant/session configuration.
+2. Validate registry membership, resource availability, token-set compatibility, and required variants.
+3. Prepare the complete token/asset set before publishing the brand change.
+4. Dispatch the validated brand ID through Redux Toolkit on React Native; pass the resolved palette into the existing theme provider.
+5. Apply any requested launcher-icon change through the native adapter. Track its result separately from the in-app theme.
+6. On failure, retain the previous coherent brand or use the documented default. Do not leave half the UI on a new palette.
+
+### Native icon implementation hints
+
+- **Android:** Declare aliases and icons in the manifest. Keep an available launcher entry during a switch; coordinate enabling the target and disabling previous aliases. Use platform-supported batching where applicable and test installation, restart, upgrade, and launcher caching. Do not blindly disable every alias before the target is available.
+- **iOS:** Check `supportsAlternateIcons`, use a configured alternate name, and pass `nil` for the primary icon. Run UI-facing coordination on the main actor, await the result, and surface a safe failure. An icon request is not a guarantee that every launcher surface updates immediately.
+- **React Native:** Call the approved native branding adapter. Do not store an independent mutable brand preference in Context alongside Redux. Asset identifiers in the registry resolve through the bundler/platform asset system, not an assumed `asset:/` URL convention.
+
+<Aside type="tip" title="Hint · brand identity is not access control">
+A logo, theme, or app icon must never determine tenant permissions, account membership, or entitlements. Clear account-scoped brand selection during session replacement while preserving only the preferences the product explicitly owns across accounts.
 </Aside>
 
   </TabItem>
-  <TabItem label="3. Remote and local data">
+  <TabItem label="Data Cleanup">
 
-### `feature/user/data/remote/UserApiService.kt`
+## Account Data Cleanup & Wipe Recovery
 
-```kotlin
-package com.enterprise.mobile.feature.user.data.remote
+**Responsibility:** Make protected account data unavailable immediately, stop new writes, remove the resources the app owns, verify the result, and recover safely after interruption.
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import retrofit2.Response
-import retrofit2.http.GET
-import retrofit2.http.Path
+Use this foundation for logout, account removal, authorized offboarding, and validated device-policy actions. An incoming push or a local root/jailbreak signal is not automatically an authenticated wipe command; validate authority, target scope, replay protection, and policy before invoking destructive cleanup.
 
-@Serializable
-data class UserNetworkDto(
-    @SerialName("id") val id: String,
-    @SerialName("full_name") val fullName: String,
-    @SerialName("email") val email: String,
-    @SerialName("is_vip") val isVip: Boolean,
-)
-
-interface UserApiService {
-    @GET("v1/users/{userId}")
-    suspend fun fetchProfile(@Path("userId") userId: String): Response<UserNetworkDto>
-}
-```
-
-Required fields have no invented empty/default values. Kotlin serialization checks payload structure; additional identity/business validation happens before persistence. The example endpoint expects HTTP 200 with a profile body. The approved network layer owns base URL, authentication, timeouts, redirects, response limits, retry policy, and serialization configuration.
-
-### `feature/user/data/local/UserEntity.kt`
-
-```kotlin
-package com.enterprise.mobile.feature.user.data.local
-
-import androidx.room.ColumnInfo
-import androidx.room.Entity
-
-@Entity(tableName = "user_profiles", primaryKeys = ["account_id", "user_id"])
-data class UserEntity(
-    @ColumnInfo(name = "account_id") val accountId: String,
-    @ColumnInfo(name = "user_id") val userId: String,
-    @ColumnInfo(name = "full_name") val fullName: String,
-    @ColumnInfo(name = "email") val email: String,
-    @ColumnInfo(name = "is_vip") val isVip: Boolean,
-    @ColumnInfo(name = "cached_at_millis") val cachedAtMillis: Long,
-)
-```
-
-### `feature/user/data/local/UserDao.kt`
-
-```kotlin
-package com.enterprise.mobile.feature.user.data.local
-
-import androidx.room.Dao
-import androidx.room.Query
-import androidx.room.Upsert
-
-@Dao
-interface UserDao {
-    @Query("""
-        SELECT * FROM user_profiles
-        WHERE account_id = :accountId AND user_id = :userId
-        LIMIT 1
-    """)
-    suspend fun find(accountId: String, userId: String): UserEntity?
-
-    @Upsert
-    suspend fun upsert(entity: UserEntity)
-
-    @Query("""
-        DELETE FROM user_profiles
-        WHERE account_id = :accountId AND user_id = :userId
-    """)
-    suspend fun delete(accountId: String, userId: String)
-}
-```
-
-<Aside type="tip" title="Hint · namespace records at the schema boundary">
-The composite primary key prevents two accounts from accidentally sharing a profile with the same user ID. Always include both fields in reads and deletion. A single upsert is one database operation; use a Room transaction when a business update spans multiple dependent operations. Do not use destructive migration as the default upgrade strategy for retained user data.
+<Aside type="caution" title="Define an achievable guarantee">
+App-level cleanup is not one atomic transaction across Keychain/Keystore, databases, files, caches, and Redux. File deletion does not guarantee physical overwriting on flash storage or removal from backups, shared services, server systems, or previously captured telemetry. Report a verified scoped cleanup outcome rather than promising “zero residual” or “100% shredding.”
 </Aside>
 
-Room suspend queries perform database work through Room's execution infrastructure; `suspend` on an arbitrary function does not itself move blocking work away from the main thread. See [Room DAO guidance](https://developer.android.com/training/data-storage/room/accessing-data).
+### Recoverable cleanup lifecycle
 
-### `feature/user/data/mapper/UserMappers.kt`
+<MermaidZoom title="Account cleanup · gate access, stop writers, verify, recover">
 
-```kotlin
-package com.enterprise.mobile.feature.user.data.mapper
-
-import com.enterprise.mobile.feature.user.data.local.UserEntity
-import com.enterprise.mobile.feature.user.data.remote.UserNetworkDto
-import com.enterprise.mobile.feature.user.domain.ProfileKey
-import com.enterprise.mobile.feature.user.domain.UserDomainModel
-
-fun UserNetworkDto.toEntity(key: ProfileKey, cachedAtMillis: Long) = UserEntity(
-    accountId = key.accountId,
-    userId = id,
-    fullName = fullName,
-    email = email,
-    isVip = isVip,
-    cachedAtMillis = cachedAtMillis,
-)
-
-fun UserEntity.toDomain() = UserDomainModel(
-    id = userId,
-    name = fullName,
-    email = email,
-    isVip = isVip,
-    cachedAtMillis = cachedAtMillis,
-)
+```mermaid
+flowchart TD
+    START["Validated cleanup request<br/>Explicit account scope"]
+    GATE["Block protected access<br/>Prevent new session work"]
+    JOURNAL["Persist pending-cleanup checkpoint<br/>Outside the namespace being deleted"]
+    STOP["Stop and await writers<br/>Requests · sync · subscriptions · database owners"]
+    BARRIER{"Writers stopped?"}
+    CLEAN["Run idempotent scoped cleanup<br/>Credentials · data · caches · keys · memory state"]
+    VERIFY{"All required steps<br/>and verification passed?"}
+    DONE["Mark local cleanup complete<br/>Present unauthenticated shell"]
+    RETRY["Keep protected access blocked<br/>Retain checkpoint and retry safely"]
+    START --> GATE --> JOURNAL --> STOP --> BARRIER
+    BARRIER -->|"Yes"| CLEAN --> VERIFY
+    BARRIER -->|"No"| RETRY
+    VERIFY -->|"Yes"| DONE
+    VERIFY -->|"No"| RETRY
+    RETRY -.->|"Resume after restart / recovery"| JOURNAL
+    classDef stage fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
+    classDef decision fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-width:1.5px;
+    classDef done fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
+    classDef blocked fill:#fff1f2,stroke:#e11d48,color:#881337,stroke-width:1.5px;
+    class START,GATE,JOURNAL,STOP,CLEAN stage;
+    class BARRIER,VERIFY decision;
+    class DONE done;
+    class RETRY blocked;
 ```
 
-The mapper receives time as a value instead of calling the system clock. It performs no I/O and is straightforward to test.
+</MermaidZoom>
 
-  </TabItem>
-  <TabItem label="4. Repository">
+The session coordinator serializes cleanup with login/account switching. It owns the operation independently of a disappearing logout screen. On startup, inspect the checkpoint before opening protected storage or rendering protected routes. A missing or unreadable checkpoint store must not silently bypass the application's cleanup/access policy.
 
-### `feature/user/data/UserRepositoryImpl.kt`
+### Scoped resource inventory
 
-```kotlin
-package com.enterprise.mobile.feature.user.data
+| Resource | Required cleanup behavior |
+| :--- | :--- |
+| Credentials | Remove only the account/service namespace owned by this app; verify statuses. |
+| Encryption keys | Destroy the intended account keys under the reviewed recovery policy; do not recreate them during cleanup. |
+| Room / SwiftData / MMKV data | Stop owners, close/release resources as required, and remove only registered account stores/records and applicable sidecar files. |
+| HTTP, image, web, and file caches | Purge account-owned data through each owning SDK/API, including app-extension or shared-container data where owned. |
+| Background work | Cancel and await writers; prevent queued work from restoring removed data. |
+| Redux / in-memory repositories / navigation | Reset account slices, RTK Query caches where used, memoized user data, and protected routes. |
+| Push association | Update/remove the backend account-to-device association under the registration policy. |
+| Backups / server retention | Handle through the relevant backup/server policy; local cleanup alone cannot prove their deletion. |
 
-import com.enterprise.mobile.core.profile.EpochClock
-import com.enterprise.mobile.core.profile.IoDispatcher
-import com.enterprise.mobile.core.profile.ProfileSessionGuard
-import com.enterprise.mobile.feature.user.data.local.UserDao
-import com.enterprise.mobile.feature.user.data.mapper.toDomain
-import com.enterprise.mobile.feature.user.data.mapper.toEntity
-import com.enterprise.mobile.feature.user.data.remote.UserApiService
-import com.enterprise.mobile.feature.user.domain.ProfileException
-import com.enterprise.mobile.feature.user.domain.ProfileFailure
-import com.enterprise.mobile.feature.user.domain.ProfileKey
-import com.enterprise.mobile.feature.user.domain.UserDomainModel
-import com.enterprise.mobile.feature.user.domain.UserRepository
-import javax.inject.Inject
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.withContext
+Use an explicit inventory instead of deleting every database, preference file, or application-support directory. Keep shared non-account resources and the cleanup journal outside the target scope. Record failures without including personal data.
 
-class UserRepositoryImpl @Inject constructor(
-    private val api: UserApiService,
-    private val dao: UserDao,
-    private val session: ProfileSessionGuard,
-    private val clock: EpochClock,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-) : UserRepository {
-    override suspend fun cachedProfile(key: ProfileKey): UserDomainModel? =
-        withContext(ioDispatcher) {
-            session.requireActiveAccount(key.accountId)
-            val cached = try {
-                dao.find(key.accountId, key.userId)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                throw ProfileException(ProfileFailure.CACHE_ERROR)
-            }
-            currentCoroutineContext().ensureActive()
-            session.requireActiveAccount(key.accountId)
-            cached?.toDomain()
-        }
+### Reference coordinator contract · React Native
 
-    override suspend fun refreshProfile(key: ProfileKey): UserDomainModel =
-        withContext(ioDispatcher) {
-            try {
-                currentCoroutineContext().ensureActive()
-                session.requireActiveAccount(key.accountId)
-                val response = api.fetchProfile(key.userId)
-                currentCoroutineContext().ensureActive()
-                when (response.code()) {
-                    200 -> Unit
-                    401 -> throw ProfileException(ProfileFailure.SESSION_EXPIRED)
-                    403 -> throw ProfileException(ProfileFailure.ACCESS_DENIED)
-                    404 -> throw ProfileException(ProfileFailure.NOT_FOUND)
-                    else -> throw ProfileException(ProfileFailure.HTTP_ERROR)
-                }
-                val dto = response.body()
-                    ?: throw ProfileException(ProfileFailure.INVALID_PAYLOAD)
-                if (dto.id != key.userId || dto.fullName.isBlank()) {
-                    throw ProfileException(ProfileFailure.INVALID_PAYLOAD)
-                }
-                session.requireActiveAccount(key.accountId)
-                currentCoroutineContext().ensureActive()
-                val entity = dto.toEntity(key, clock.nowMillis())
-                try {
-                    dao.upsert(entity)
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (_: Exception) {
-                    throw ProfileException(ProfileFailure.CACHE_ERROR)
-                }
-                currentCoroutineContext().ensureActive()
-                session.requireActiveAccount(key.accountId)
-                entity.toDomain()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (failure: ProfileException) {
-                if (failure.failure in ACCESS_FAILURES) {
-                    try {
-                        dao.delete(key.accountId, key.userId)
-                    } catch (cancelled: CancellationException) {
-                        throw cancelled
-                    } catch (_: Exception) {
-                        throw ProfileException(ProfileFailure.CACHE_INVALIDATION)
-                    }
-                }
-                throw failure
-            }
-        }
+The same staged behavior applies to Kotlin and Swift. This TypeScript example expresses orchestration over app-provided adapters; it is not a filesystem deletion utility.
 
-    private companion object {
-        val ACCESS_FAILURES = setOf(
-            ProfileFailure.SESSION_EXPIRED,
-            ProfileFailure.ACCESS_DENIED,
-            ProfileFailure.NOT_FOUND,
-        )
+`src/core/wipe/cleanupCoordinator.ts`
+
+```typescript
+export interface CleanupScope {
+  readonly accountRef: string;
+}
+export type CleanupStage =
+  | 'checkpoint' | 'stop-writers' | 'credentials' | 'data'
+  | 'caches' | 'keys' | 'memory' | 'verify' | 'complete';
+export interface CleanupResult {
+  readonly status: 'complete' | 'incomplete';
+  readonly failedStages: readonly CleanupStage[];
+}
+
+export interface CleanupPorts {
+  // Immediately close access and refuse new work for this scope. Must not throw.
+  blockProtectedAccess(scope: CleanupScope): void;
+  // Durable, idempotent journal in app-owned storage outside the target namespace.
+  recordPending(scope: CleanupScope): Promise<void>;
+  // Resolves only after writers have stopped; rejects if that barrier is not met.
+  stopWriters(scope: CleanupScope): Promise<void>;
+  removeCredentials(scope: CleanupScope): Promise<void>;
+  removeData(scope: CleanupScope): Promise<void>;
+  removeCaches(scope: CleanupScope): Promise<void>;
+  destroyKeys(scope: CleanupScope): Promise<void>;
+  resetMemoryAndRedux(scope: CleanupScope): Promise<void>;
+  // Throw unless every required registered resource is absent/inaccessible as specified.
+  verify(scope: CleanupScope): Promise<void>;
+  markComplete(scope: CleanupScope): Promise<void>;
+  // Non-throwing: report categories only, never the account reference or raw errors.
+  reportFailure(stage: CleanupStage): void;
+}
+
+export async function cleanAccount(
+  scope: CleanupScope,
+  ports: CleanupPorts,
+): Promise<CleanupResult> {
+  const failed: CleanupStage[] = [];
+  const step = async (stage: CleanupStage, action: () => Promise<void>): Promise<boolean> => {
+    try { await action(); return true; }
+    catch {
+      failed.push(stage);
+      ports.reportFailure(stage);
+      return false;
     }
+  };
+  const incomplete = (): CleanupResult => ({ status: 'incomplete', failedStages: [...failed] });
+
+  ports.blockProtectedAccess(scope);
+  if (!await step('checkpoint', () => ports.recordPending(scope))) return incomplete();
+  if (!await step('stop-writers', () => ports.stopWriters(scope))) return incomplete();
+
+  // Every operation is idempotent and independent after the writers barrier.
+  await step('credentials', () => ports.removeCredentials(scope));
+  await step('data', () => ports.removeData(scope));
+  await step('caches', () => ports.removeCaches(scope));
+  await step('keys', () => ports.destroyKeys(scope));
+  await step('memory', () => ports.resetMemoryAndRedux(scope));
+  await step('verify', () => ports.verify(scope));
+  if (failed.length > 0) return incomplete();
+  if (!await step('complete', () => ports.markComplete(scope))) return incomplete();
+  return { status: 'complete', failedStages: [] };
 }
 ```
 
-<Aside type="tip" title="Hint · a failed refresh is still a failure">
-Transport, serialization, and database failures propagate to presentation. The ViewModel can retain previously read content without claiming the refresh succeeded. HTTP 401, 403, and 404 are not automatically treated as network outages. Cancellation is rethrown; it never becomes a fallback success or error banner.
+<Aside type="tip" title="Hint · completion is a verified outcome">
+Continue independent cleanup steps after one fails, but never claim completion while a required step is unresolved. Operations above must be safe after earlier credentials/data/keys have already been removed. If your adapters require a different dependency order, encode those dependencies in the plan rather than using this sequence unchanged. Only verification and successful journal completion establish the reported local outcome.
 </Aside>
 
-Successful refresh requires the upsert to complete. The returned value reflects the entity written by this operation; the example assumes no database trigger rewrites those fields. If database-derived values are required, read them back within an appropriate transaction.
+This plan is serialized by the application coordinator; it does not itself lock concurrent invocations. The host must validate the scope and reject conflicting login/cleanup operations. Platform cancellation is not an ordinary recoverable error to swallow in a Kotlin/Swift translation: preserve cancellation, leave the checkpoint pending, and resume through the durable recovery owner. The TypeScript contract exposes no cancellation signal; its owner must keep running or resume it after process interruption.
 
-The coroutine context is checked around suspension and persistence boundaries. Cancellation is cooperative: it does not undo a committed write. Account checks and account-scoped keys reduce cross-session mistakes, while the host remains responsible for session teardown and cache cleanup.
+`markComplete` must update the journal consistently. If checkpoint creation fails, access stays blocked and the application must use its documented fail-closed startup/recovery policy; an unrecorded operation cannot be assumed resumable. `verify` checks the local app-owned scope, not remote retention or forensic erasure.
 
-Concurrent callers can still write the same account/profile. Screen generation guards protect rendered state, not global freshness ordering. Use a server version, synchronization policy, or shared repository coordination if multiple writers must agree which response wins.
+### Platform-specific deletion hints
 
-  </TabItem>
-  <TabItem label="5. State and ViewModel">
+- **Android:** Use owning database/file APIs after work has stopped. Check deletion results. Remove the correct Keystore aliases separately from encrypted preference values; clearing preferences does not prove key destruction. Avoid deleting preference files behind active singleton instances.
+- **iOS:** Scope Keychain queries by the owned service/account/access group and inspect `OSStatus`. Close/release SwiftData or other database owners before deleting registered stores. Do not broadly delete every Keychain class or silently ignore filesystem errors.
+- **React Native:** Reset account Redux slices and API caches, dispose native subscriptions, and close/delete the registered MMKV instances through the installed adapter. Recreating one instance and calling `clearAll()` does not inventory every account store or in-memory cache.
 
-### `feature/user/presentation/UserProfileUiState.kt`
-
-```kotlin
-package com.enterprise.mobile.feature.user.presentation
-
-import com.enterprise.mobile.feature.user.domain.ProfileFailure
-import com.enterprise.mobile.feature.user.domain.ProfileKey
-import com.enterprise.mobile.feature.user.domain.UserDomainModel
-
-data class UserProfileUiState(
-    val key: ProfileKey? = null,
-    val user: UserDomainModel? = null,
-    val isRefreshing: Boolean = false,
-    val failure: ProfileFailure? = null,
-)
-```
-
-Errors are categories, not raw exception strings. Compose maps them to localized resources. Keeping content and refresh progress separate preserves useful cached data during a transient failure.
-
-### `feature/user/presentation/UserProfileViewModel.kt`
-
-```kotlin
-package com.enterprise.mobile.feature.user.presentation
-
-import androidx.lifecycle.ViewModel
-import com.enterprise.mobile.core.profile.MainDispatcher
-import com.enterprise.mobile.core.profile.ProfileDiagnostics
-import com.enterprise.mobile.feature.user.domain.GetUserProfileUseCase
-import com.enterprise.mobile.feature.user.domain.ProfileException
-import com.enterprise.mobile.feature.user.domain.ProfileFailure
-import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.withContext
-
-@HiltViewModel
-class UserProfileViewModel @Inject constructor(
-    private val profiles: GetUserProfileUseCase,
-    private val diagnostics: ProfileDiagnostics,
-    @MainDispatcher private val mainDispatcher: CoroutineDispatcher,
-) : ViewModel() {
-    private val mutableState = MutableStateFlow(UserProfileUiState())
-    val state = mutableState.asStateFlow()
-    private var generation = 0L
-
-    // The route awaits this call. No nested unstructured coroutine is created.
-    suspend fun load(accountId: String, userId: String) = withContext(mainDispatcher) {
-        val request = ++generation
-        val key = try {
-            profiles.validatedKey(accountId, userId)
-        } catch (_: ProfileException) {
-            mutableState.value = UserProfileUiState(failure = ProfileFailure.INVALID_KEY)
-            return@withContext
-        }
-        val previous = mutableState.value.takeIf { it.key == key } ?: UserProfileUiState(key = key)
-        mutableState.value = previous.copy(isRefreshing = true, failure = null)
-        try {
-            try {
-                val cached = profiles.cachedProfile(key)
-                currentCoroutineContext().ensureActive()
-                if (generation != request) return@withContext
-                mutableState.value = mutableState.value.copy(user = cached)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                currentCoroutineContext().ensureActive()
-                if (generation != request) return@withContext
-                val failure = category(error)
-                if (failure in ACCESS_FAILURES) throw error
-                diagnostics.report("cache-read", failure)
-                // A recoverable cache-read failure must not block remote refresh.
-            }
-            val fresh = profiles.refreshProfile(key)
-            currentCoroutineContext().ensureActive()
-            if (generation != request) return@withContext
-            mutableState.value = UserProfileUiState(key = key, user = fresh)
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: Exception) {
-            currentCoroutineContext().ensureActive()
-            if (generation != request) return@withContext
-            val failure = category(error)
-            diagnostics.report("load", failure)
-            mutableState.value = mutableState.value.copy(
-                user = if (failure in ACCESS_FAILURES) null else mutableState.value.user,
-                failure = failure,
-            )
-        } finally {
-            if (generation == request) {
-                mutableState.value = mutableState.value.copy(isRefreshing = false)
-            }
-        }
-    }
-
-    private fun category(error: Exception): ProfileFailure =
-        (error as? ProfileException)?.failure ?: ProfileFailure.UNEXPECTED
-
-    private companion object {
-        val ACCESS_FAILURES = setOf(
-            ProfileFailure.SESSION_EXPIRED,
-            ProfileFailure.ACCESS_DENIED,
-            ProfileFailure.NOT_FOUND,
-            ProfileFailure.CACHE_INVALIDATION,
-        )
-    }
-}
-```
-
-<Aside type="tip" title="Hint · choose one owner for screen loading">
-This reference intentionally lets the route own a visibility-bound load while the ViewModel retains state. The load is awaited and cancellation propagates down the same coroutine chain. Use `viewModelScope` instead when work should survive the screen becoming inactive, and document that different lifetime. Do not launch a ViewModel job from a route effect and assume cancelling the effect cancels that independent job.
-</Aside>
-
-All state coordination runs on the injected main dispatcher. Each request gets a generation number. After suspension, a cancelled or superseded request cannot publish content, an error, or a loading reset over a newer request. Keep diagnostic reporting non-throwing and lightweight.
-
-  </TabItem>
-  <TabItem label="6. Compose route and screen">
-
-### `feature/user/presentation/UserProfileScreen.kt`
-
-The route owns lifecycle integration. The content screen accepts state and a callback and can be previewed without a ViewModel, database, or network.
-
-```kotlin
-package com.enterprise.mobile.feature.user.presentation
-
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.repeatOnLifecycle
-import com.enterprise.mobile.R
-import com.enterprise.mobile.feature.user.domain.ProfileFailure
-import com.enterprise.mobile.feature.user.domain.UserDomainModel
-
-@Composable
-fun UserProfileRoute(
-    accountId: String,
-    userId: String,
-    viewModel: UserProfileViewModel,
-    modifier: Modifier = Modifier,
-) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    val lifecycleOwner = LocalLifecycleOwner.current
-    var revision by remember(accountId, userId) { mutableIntStateOf(0) }
-
-    LaunchedEffect(accountId, userId, revision, lifecycleOwner) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            viewModel.load(accountId, userId)
-        }
-    }
-
-    // Hide another account/profile immediately, before the effect starts loading.
-    val sameProfile = state.key?.accountId == accountId && state.key?.userId == userId.trim()
-    val visibleState = if (sameProfile) state else state.copy(user = null)
-    UserProfileScreen(
-        state = visibleState,
-        onRefresh = { revision += 1 },
-        modifier = modifier,
-    )
-}
-
-@Composable
-fun UserProfileScreen(
-    state: UserProfileUiState,
-    onRefresh: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.fillMaxSize()
-            .verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(stringResource(R.string.profile_title), style = MaterialTheme.typography.headlineMedium)
-        if (state.isRefreshing) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        }
-        state.user?.let { user ->
-            Text(user.name, style = MaterialTheme.typography.titleLarge)
-            Text(user.email, style = MaterialTheme.typography.bodyLarge)
-            if (user.isVip) Text(stringResource(R.string.profile_vip))
-        }
-        state.failure?.let { failure ->
-            Text(profileFailureMessage(failure), color = MaterialTheme.colorScheme.error)
-        }
-        if (state.user == null && !state.isRefreshing && state.failure == null) {
-            Text(stringResource(R.string.profile_empty))
-        }
-        Button(onClick = onRefresh, enabled = !state.isRefreshing) {
-            Text(stringResource(
-                if (state.failure == null) R.string.profile_refresh else R.string.profile_retry
-            ))
-        }
-    }
-}
-
-@Composable
-private fun profileFailureMessage(failure: ProfileFailure): String = stringResource(
-    when (failure) {
-        ProfileFailure.INVALID_KEY -> R.string.profile_invalid_key
-        ProfileFailure.SESSION_EXPIRED -> R.string.profile_session_expired
-        ProfileFailure.ACCESS_DENIED -> R.string.profile_access_denied
-        ProfileFailure.NOT_FOUND -> R.string.profile_not_found
-        ProfileFailure.CACHE_INVALIDATION -> R.string.profile_access_unverified
-        else -> R.string.profile_load_failed
-    }
-)
-
-@Preview(showBackground = true)
-@Composable
-private fun UserProfileSuccessPreview() {
-    MaterialTheme {
-        UserProfileScreen(
-            state = UserProfileUiState(user = UserDomainModel(
-                id = "USR-101", name = "Alex Morgan", email = "alex@example.com",
-                isVip = true, cachedAtMillis = 0L,
-            )),
-            onRefresh = {},
-        )
-    }
-}
-```
-
-<Aside type="tip" title="Hint · state collection and work lifetime are separate">
-`collectAsStateWithLifecycle()` controls UI-state collection. It does not automatically cancel arbitrary ViewModel work. Here, `repeatOnLifecycle(STARTED)` separately cancels the awaited load when the route becomes inactive and restarts it on re-entry. Changing profile, account, or refresh revision cancels the old effect. Choose a different lifecycle threshold only when product/navigation behavior requires it.
-</Aside>
-
-Obtain the Hilt ViewModel at the navigation destination, using the Hilt/Compose API approved for the installed version, then pass it to this route. Scope it to the intended back-stack entry. When the authenticated session changes, remove the protected navigation subtree and its ViewModels; changing only a composable parameter is not full session teardown.
-
-The host owns `Scaffold`, app bars, navigation, and safe-area/inset policy. Pass its content padding through `modifier` and avoid duplicating system-bar padding. Keep the enterprise theme around the destination. Add loading announcements, headings, error semantics, and accessibility checks appropriate to the actual design-system components.
-
-### `app/src/main/res/values/strings.xml`
-
-```xml
-<resources>
-    <string name="profile_title">User profile</string>
-    <string name="profile_vip">VIP account</string>
-    <string name="profile_empty">No saved profile is available.</string>
-    <string name="profile_refresh">Refresh profile</string>
-    <string name="profile_retry">Retry</string>
-    <string name="profile_invalid_key">A valid account and user ID are required.</string>
-    <string name="profile_session_expired">Your session has expired. Please sign in again.</string>
-    <string name="profile_access_denied">You do not have access to this profile.</string>
-    <string name="profile_not_found">This profile is no longer available.</string>
-    <string name="profile_access_unverified">Profile access could not be verified. Please sign in again.</string>
-    <string name="profile_load_failed">Unable to refresh the profile. Please try again.</string>
-</resources>
-```
-
-The error messages describe recovery, but the host still needs a real sign-in/access-recovery action. A generic Retry button alone is not a complete session-expiry flow.
-
-  </TabItem>
-  <TabItem label="7. Hilt composition">
-
-### `feature/user/di/UserFeatureModule.kt`
-
-```kotlin
-package com.enterprise.mobile.feature.user.di
-
-import com.enterprise.mobile.feature.user.data.UserRepositoryImpl
-import com.enterprise.mobile.feature.user.domain.UserRepository
-import dagger.Binds
-import dagger.Module
-import dagger.hilt.InstallIn
-import dagger.hilt.android.components.ViewModelComponent
-import dagger.hilt.android.scopes.ViewModelScoped
-
-@Module
-@InstallIn(ViewModelComponent::class)
-abstract class UserFeatureModule {
-    @Binds
-    @ViewModelScoped
-    abstract fun bindUserRepository(implementation: UserRepositoryImpl): UserRepository
-}
-```
-
-### `di/ProfileInfrastructureModule.kt`
-
-```kotlin
-package com.enterprise.mobile.di
-
-import com.enterprise.mobile.core.profile.EpochClock
-import com.enterprise.mobile.core.profile.IoDispatcher
-import com.enterprise.mobile.core.profile.MainDispatcher
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-
-@Module
-@InstallIn(SingletonComponent::class)
-object ProfileInfrastructureModule {
-    @Provides
-    @IoDispatcher
-    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
-
-    @Provides
-    @MainDispatcher
-    fun provideMainDispatcher(): CoroutineDispatcher = Dispatchers.Main.immediate
-
-    @Provides
-    @Singleton
-    fun provideEpochClock(): EpochClock = EpochClock { System.currentTimeMillis() }
-}
-```
-
-<Aside type="tip" title="Hint · reuse existing infrastructure bindings">
-Use the application's existing dispatcher qualifiers, clock, database, and network providers where available. Do not register duplicate bindings. The repository lives in the ViewModel component; that scope is not automatically an authenticated-account scope. Session ownership and replacement still belong to the application.
-</Aside>
-
-**Required host bindings:** `UserApiService`, `UserDao`, `ProfileSessionGuard`, and `ProfileDiagnostics`. Register `UserEntity` in the real Room database, enable schema export, and add migrations. Configure the application and host with the required Hilt annotations. No fallback unauthenticated client, silent diagnostics implementation, or unrestricted session guard is supplied here.
-
-Dispatchers and clock are injected so tests can control execution and time. Avoid embedding real network or database construction in previews or composables.
+Local cleanup and server revocation are related but distinct. Request server-side session/device revocation under the authentication policy without making loss of connectivity a reason to retain local access. Retain only the minimum approved retry/audit metadata needed for recovery, outside the removed account data.
 
   </TabItem>
 </Tabs>
 
-## Application integration
+## Integration and review checklist
 
-1. **Confirm the supported toolchain.** Use project-managed Kotlin, Compose, lifecycle, Room, Hilt, Retrofit, and serialization versions. Configure their compiler/code-generation requirements in the application.
-2. **Register the schema safely.** Add the account-scoped entity and DAO to the real Room database. Migrate old single-user-key records deliberately; do not accidentally expose them under a different account.
-3. **Bind approved infrastructure.** Supply authenticated networking, the active-account guard, diagnostics, and existing dispatcher/clock abstractions. Ensure every HTTP request captures the intended session.
-4. **Scope navigation correctly.** Supply the trusted account identity and validated route ID. Own the ViewModel at the appropriate navigation destination and remove protected back-stack entries on account/session changes.
-5. **Define cache policy.** Decide which personal data may be stored, how long it remains valid, and which protection/backup settings apply. Room does not encrypt a database automatically.
-6. **Implement session recovery.** Block protected access, cancel old work, clear protected records and credentials, and replace session-owned dependencies. Deleting one profile is not full logout or revocation handling.
-7. **Apply product UX.** Use enterprise theme tokens, localized strings, accessible progress/error states, and real sign-in or permission-recovery actions.
-8. **Verify in the application.** Build the actual target, run migrations and coroutine tests, and exercise supported devices and Android versions.
+- [ ] Each foundation has an owner, typed contract, documented lifetime, and approved implementation.
+- [ ] Design tokens are versioned/generated; semantic light/dark pairs and actual color combinations are reviewed.
+- [ ] React Native shared preferences use Redux Toolkit; providers distribute derived values rather than owning duplicate preference state.
+- [ ] Credentials use the approved native-backed adapter; no secrets or fixed encryption keys appear in source or Redux.
+- [ ] Locked storage, key invalidation, biometric cancellation, and missing credentials are distinguished.
+- [ ] Network trust/pinning configuration follows reviewed policy and a maintained rotation/recovery process.
+- [ ] Localization uses supported tags, fallbacks, native resources, correct plurals, and explicit RTL/restart behavior.
+- [ ] Push adapters cover registration changes, foreground/background/cold-start paths, permission denial, and subscription cleanup.
+- [ ] Notification intents are validated, deduplicated, session-aware, and authorized before navigation.
+- [ ] Branding publishes a coherent approved token/asset set and handles icon/platform failure without corrupting the in-app theme.
+- [ ] Cleanup has a scoped resource inventory, writer barrier, durable checkpoint, failure reporting, and restart recovery.
+- [ ] Account cleanup resets protected in-memory/Redux/navigation state and verifies the registered persistent resources.
+- [ ] No guarantee depends on timely push delivery, a universal hardware vault, or atomic cross-storage deletion.
+- [ ] Actual Android/iOS builds, platform resources, native SDK setup, accessibility, and required CI gates are verified.
 
-Use the approved secure-storage abstraction for credentials. Android Keystore manages cryptographic keys; it is not a general-purpose token database. Hardware-backed protection depends on device and key configuration. Keep credentials out of source, UI state, logs, and profile entities.
+### Essential scenarios to exercise
 
-This read/refresh example does not implement a durable outbox, background sync, circuit breaking, or automatic retry loops. Add those through approved shared capabilities when the feature requires them. Choose retry rules according to idempotency and error category, not simply “retry every failure.”
-
-## Expected behavior
-
-| Scenario | Expected result |
+| Area | Scenarios |
 | :--- | :--- |
-| Empty cache; successful refresh | Initial progress followed by the saved profile. |
-| Cached profile; refresh running | Existing content stays visible with progress. |
-| Cached profile; transient refresh failure | Retain content and display a safe retry message. |
-| Cache read fails; refresh succeeds | Attempt remote recovery; show the successfully persisted profile. |
-| Valid response; Room write fails | Refresh fails; do not display network-only data as a persisted success. |
-| Missing body, malformed payload, or mismatched ID | Reject the response before persistence. |
-| Session expired, access denied, or profile missing | Clear displayed content and invalidate this profile when handled by refresh; host completes access/session recovery. |
-| Cache invalidation fails | Clear displayed content and surface an access-recovery category; host continues cleanup. |
-| Account or profile changes | Clear other-profile content immediately and cancel the old effect. |
-| Route becomes inactive | Cancel the screen-owned load; retain ViewModel state while its owner lives. |
-| Route becomes active again | Start a new cache/read-refresh cycle under the lifecycle policy. |
-| A dependency returns after cancellation | Cancellation/generation checks prevent stale UI updates. |
-| Another writer changes Room | No automatic screen update in this snapshot example; add a real repository Flow if required. |
+| Design | System/light/dark changes, all brands, missing assets, large text, reduced contrast states |
+| Security | Missing item, device lock, auth cancellation, enrollment/key changes, write/deletion errors, account switch |
+| Localization | System fallback, unsupported/stale preference, Arabic/RTL, mixed-direction content, plural categories, long translations |
+| Push | Permission denied, token rotation, duplicate/expired payload, malformed destination, signed-out startup, account change during routing |
+| Branding | Unknown/unauthorized brand, incomplete asset set, unsupported icon change, failed switch, session replacement |
+| Cleanup | Offline logout, stopped-writer failure, partial deletion, key-removal failure, process termination between stages, retry after restart |
 
-## Patterns to avoid
+**Validation boundary:** This page defines documentation contracts and reference patterns. Code compilation, generated assets, native APIs, internal routes, and Mermaid rendering must be checked in the actual project/site. Tests should validate the promised behavior rather than assuming every policy is automatically enforced by CI.
 
-| Avoid | Use instead |
-| :--- | :--- |
-| Network or DAO calls inside composable bodies | Route effects through the ViewModel and use case. |
-| Activity, View, or lifecycle-bound Context in a ViewModel | Inject focused application abstractions with appropriate ownership. |
-| Public `MutableStateFlow` | Private writable state and a read-only `StateFlow` view. |
-| Catching cancellation inside broad fallback logic | Rethrow `CancellationException` before handling other failures. |
-| Raw exception messages in UI or logs | Typed failure categories, localized copy, and redacted diagnostics. |
-| A full-screen spinner replacing cached content on every refresh | Independent content, progress, and failure properties. |
-| Using `@Immutable` to silence stability concerns | Honor its contract and optimize based on measured rendering behavior. |
-| Hardcoding dispatchers inside business/data operations | Inject dispatchers; configure their real implementations at the root. |
-| Assuming a singleton is an account/session scope | Model session ownership and replacement explicitly. |
-| Treating a cache or client-side flag as authorization | Enforce access on the backend and through the session coordinator. |
+## Internal SDKs
 
-## Review checklist
-
-- [ ] Feature boundaries match the domain/data/presentation structure; build rules enforce them where applicable.
-- [ ] Domain code contains no Android framework, Compose, Room, or Retrofit imports.
-- [ ] API contracts define required fields and expected statuses; identity is checked before persistence.
-- [ ] Room reads, writes, and deletion use the account/profile composite key.
-- [ ] Session guard and authenticated HTTP adapter agree on the intended account.
-- [ ] Successful refresh requires a completed local write; failure remains explicit.
-- [ ] Retry uses the current profile identity and keeps valid cached content visible.
-- [ ] Coroutine cancellation propagates through route, ViewModel, use case, and data layer.
-- [ ] Older requests cannot publish state or reset progress over a newer request.
-- [ ] Error categories are mapped to localized resources, with appropriate recovery actions.
-- [ ] Credentials and sensitive telemetry payloads are absent from UI state and profile storage.
-- [ ] Hilt scopes and providers match the actual lifecycle; no duplicate infrastructure bindings exist.
-- [ ] Database migration, backup, retention, and logout cleanup policies are covered.
-- [ ] Accessibility, large text, offline launch, backgrounding, navigation, and account switching are exercised.
-- [ ] Required CI gates and the repository's configured coverage threshold pass.
-
-### Essential test scenarios
-
-Use controlled coroutine dispatchers and deterministic clocks. Cover key validation, empty/cached reads, successful refresh, 401/403/404/5xx responses, missing or malformed payloads, response-ID mismatch, Room write failure, deletion failure, cache-read recovery, cancellation before persistence, late responses, account switching, and lifecycle stop/start.
-
-For coroutine tests, share one test scheduler across injected test dispatchers and configure `Dispatchers.Main` when the Android lifecycle/test setup requires it. Test Room with its real in-memory database and verify migrations against exported schemas. Test stateless Compose content separately from the route's lifecycle behavior. Avoid timing-sensitive sleeps as synchronization.
-
-**Validation boundary:** This page is a documentation reference. Its code has not been compiled or executed in your Android project. Validate imports against the pinned library versions, Hilt bindings, Room code generation, resources, and lifecycle behavior before adoption. Internal links and Mermaid rendering also require checking in the documentation site.
-
-## Internal SDKs and further reading
-
-Use the [Master SDK Catalog](/mobile/platforms/master-sdk-catalog/) for approved packages, supported versions, and platform setup. Keep the route aligned with the documentation deployment base. Use the actual CI coverage policy rather than copying conflicting percentages from older documentation.
-
-- [Android architecture recommendations](https://developer.android.com/topic/architecture/recommendations)
-- [Android coroutine best practices](https://developer.android.com/kotlin/coroutines/coroutines-best-practices)
-- [Room asynchronous reads and observable queries](https://developer.android.com/training/data-storage/room/async-queries)
-- [Room DAO operations](https://developer.android.com/training/data-storage/room/accessing-data)
+Use the [Master SDK Catalog](/mobile/platforms/master-sdk-catalog/) for package names, supported versions, installation, and platform-specific quick starts. Keep that route aligned with the documentation deployment base. Do not infer an internal SDK method or release number from an illustrative contract on this page.
