@@ -1,740 +1,828 @@
 ---
-title: Native Android Standards & MVVM Clean Architecture
-description: Android architecture standards and a worked user-profile example using Compose, StateFlow, Room, Retrofit, and Hilt.
+title: Native iOS Standards & MVVM Clean Architecture
+description: A practical iOS architecture reference with SwiftUI, Observation, actor-isolated SwiftData, account-scoped caching, structured cancellation, and a complete user-profile example.
 sidebar:
-  order: 2
-  label: 3.1 Android Standards
+  order: 3
+  label: 3.2 iOS Standards
 ---
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 import MermaidZoom from '../components/mermaid-zoom.astro';
 
+Build screens from explicit state. Keep business rules independent of the UI. Isolate persistence behind an actor, and give asynchronous work a clear owner.
+
+This guide defines the platform's iOS architecture and demonstrates it with a user profile: **show cached content, refresh remotely, persist a valid response, and publish the saved result**.
+
 <Aside type="tip" title="Platform standard">
-Enterprise Android applications use feature-oriented Clean Architecture and unidirectional data flow. Compose renders state, ViewModels coordinate user actions, use cases expose domain operations, and repositories coordinate persistence and network access. For persisted profile data, Room is the source observed by the UI.
+Use feature-oriented Clean Architecture with unidirectional data flow. SwiftUI renders state and emits actions. A main-actor ViewModel coordinates use cases. Repository contracts belong to the domain; data implementations own transport and persistence. Only immutable, Sendable values cross actor boundaries.
 </Aside>
 
-## How to use this guide
+## Before you use the example
 
-1. Review the layer boundaries and data flow.
-2. Follow the user-profile example across the domain, data, presentation, and DI tabs.
-3. Apply the review checklist before opening a pull request.
+| Requirement | Reference configuration |
+| :--- | :--- |
+| Deployment target | iOS 17 or later for SwiftData and SwiftUI Observation integration |
+| Language mode | Swift 6 with complete concurrency checking |
+| Default actor isolation | Nonisolated for the feature target; UI types explicitly use `@MainActor` |
+| Persistence | Local SwiftData store; CloudKit synchronization is outside this example |
+| Dependencies | Foundation, Observation, SwiftUI, and SwiftData |
+| Access control | Internal types in one target for a readable example; expose deliberate APIs when splitting packages |
 
-**Scope:** The examples assume an existing Android application with Compose, lifecycle integration, Kotlin serialization, Room, Retrofit, and Hilt configured. They illustrate a feature, not a standalone application. Application setup, Gradle configuration, Retrofit converters, Room database creation, API/DAO providers, navigation, string resources, and the enterprise theme must be supplied by the host project.
+Use your project's approved compiler and SDK versions. Compiler version, language mode, and default actor isolation are separate settings. If the host application uses main-actor default isolation, keep domain/data code in an appropriately configured target or adapt the declarations with the project's supported isolation syntax. Do not remove concurrency checking to silence errors.
 
-**Platform policy versus Android guidance:** This platform requires use cases between ViewModels and repositories. Android's general guidance makes the domain layer optional; the stricter rule here is an internal convention. See [Android architecture recommendations](https://developer.android.com/topic/architecture/recommendations).
+**Scope:** The code includes the feature's domain, reference transport, persistence adapter, repository, presentation, and factories. The host app supplies navigation, environment configuration, authenticated networking, session coordination, migrations, and design tokens. These are explicit integration points, not implied SDK APIs.
 
----
+**Reading path:** Review the boundaries and diagrams, follow the implementation tabs in order, then use the integration and test checklists.
 
-## Modular Directory & Package Layout
+## Architecture boundaries
 
-Organize code by **feature**, then separate each feature into data, domain, and presentation packages. Keep shared infrastructure in `core`.
+| Layer | Owns | Boundary rule |
+| :--- | :--- | :--- |
+| Presentation | SwiftUI views, screen state, main-actor ViewModel | Calls use cases; never fetches SwiftData models or builds HTTP requests |
+| Domain | Immutable business values, validation, repository protocol | No SwiftUI, UIKit, SwiftData, or transport implementations |
+| Data | DTOs, HTTP adapter, repository implementation, model actor | Returns domain snapshots; persistence models stay inside the store actor |
+| Composition root | Infrastructure lifetime, factories, configuration | Constructs dependencies and handles startup failures |
 
-The tree below shows a package layout within one Gradle module. Packages provide organization; separate Gradle modules and dependency rules are needed to enforce build-time boundaries. When splitting modules, presentation and data depend on domain, and the application composition root wires the implementations.
+Directories organize code. Separate Swift Package targets and target dependencies enforce build-time isolation. Swift Package Manager manages packages and dependencies; it is not a dependency injection framework.
 
 ```text
-app/src/main/java/com/enterprise/mobile/
-├── core/                                   # Shared enterprise infrastructure
-│   ├── database/                           # Room database configuration & migrations
-│   ├── network/                            # Retrofit, OkHttp clients & auth interceptors
-│   ├── security/                           # Approved credential storage & Keystore integration
-│   └── ui/theme/                           # Enterprise design tokens (Color, Type, Shape)
-│
-├── di/                                     # Global singleton dependency injection
-│   ├── AppModule.kt                        # Application-scoped providers
-│   ├── NetworkModule.kt                    # Authenticated OkHttp & Retrofit providers
-│   └── DatabaseModule.kt                   # Room DB & DAO providers
-│
-└── feature/user/                           # USER FEATURE PACKAGES
-    ├── data/                               # Data Layer: Single Source of Truth
-    │   ├── remote/
-    │   │   ├── dto/UserNetworkDto.kt       # API serialization model
-    │   │   └── UserApiService.kt           # Retrofit endpoint definition
-    │   ├── local/
-    │   │   ├── entity/UserEntity.kt        # Room database entity
-    │   │   └── dao/UserDao.kt              # Room DAO with SQLite queries
-    │   ├── mapper/UserMappers.kt           # DTO -> Entity -> Domain mappings
-    │   └── repository/UserRepositoryImpl.kt # Repository implementation (Observe + Refresh)
-    │
-    ├── domain/                             # Pure Domain Layer: Zero Android Framework APIs
-    │   ├── model/UserDomainModel.kt        # Immutable Kotlin business model
-    │   ├── repository/UserRepository.kt    # Repository interface (boundary contract)
-    │   └── usecase/GetUserProfileUseCase.kt # Single-purpose business use case
-    │
-    ├── di/                                 # Feature bindings installed in application scope
-    │   └── UserFeatureModule.kt            # Binds repository interfaces to implementations
-    │
-    └── presentation/                       # UI Layer: Jetpack Compose + ViewModels
-        ├── state/
-        │   ├── UserProfileUiState.kt       # Immutable screen state
-        │   └── UserProfileUiEvent.kt       # Screen actions
-        ├── UserProfileViewModel.kt         # Hilt-injected ViewModel (StateFlow producer)
-        └── ui/
-            ├── UserProfileScreen.kt        # Stateless Composable screen with Scaffold
-            └── components/                 # Extract shared components when needed
+Features/User/
+├── Domain.swift          # Domain value, errors, repository boundary, use case
+├── Remote.swift          # DTO, remote contract, reference URLSession adapter
+├── Storage.swift         # SwiftData model, local contract, model actor
+├── Repository.swift      # Account-scoped coordination and persistence-first result
+├── Presentation.swift    # Screen state and @MainActor @Observable ViewModel
+├── Views.swift           # Lifecycle-owning route and state-rendering content view
+└── Composition.swift     # Factories and shared store construction
+Tests/
+└── ReferenceChecks.swift # Executable behavior checks; separate from app target
 ```
 
----
+Keep files focused on one concern. Split the grouped declarations into smaller files as the feature grows; naming and dependencies matter more than a blanket one-type-per-file rule.
 
-## Clean Architecture & Data Flow
+## How data moves
 
-### Layer boundaries
-
-| Layer | Owns | Must not depend on |
-| :--- | :--- | :--- |
-| Presentation | Compose UI, screen state, user actions, ViewModels | Retrofit, Room, repository implementations |
-| Domain | Business models, use cases, repository contracts | Android framework, Compose, data implementations |
-| Data | Repository implementations, DTOs, entities, persistence and API mapping | Presentation |
-| Composition root / DI | Object construction and interface bindings | Business decisions |
-
-The domain examples use `javax.inject` constructor annotations and coroutines. “Pure Kotlin” here means no Android framework dependency, rather than no library dependencies.
-
-### Observe locally; refresh remotely
-
-<MermaidZoom title="User profile data flow">
+<MermaidZoom title="iOS architecture · ownership and isolation">
 
 ```mermaid
-flowchart TD
-    UI[Compose screen] -->|Actions| VM[ViewModel]
-    VM --> UC[Domain use case]
-    UC --> Contract[Repository contract]
-    Impl[Repository implementation] -.->|Implements| Contract
-    Impl -->|Fetch on refresh| API[Retrofit API]
-    API -->|Validated response| Impl
-    Impl -->|Persist| DB[Room database]
-    DB -->|Observed records| Impl
-    Impl -->|Domain flow through contract| UC
-    UC -->|Profile updates| VM
-    VM -->|Immutable UI state| UI
+flowchart TB
+    subgraph UI["01 · PRESENTATION · MAIN ACTOR"]
+        VIEW["SwiftUI route and content<br/>Lifecycle and user actions"]
+        VM["Observable ViewModel<br/>Read-only screen state"]
+    end
+    subgraph DOMAIN["02 · DOMAIN · SENDABLE VALUES"]
+        UC["Profile use case<br/>Identifier validation"]
+        CONTRACT["Repository protocol<br/>Cached read · explicit refresh"]
+    end
+    subgraph DATA["03 · DATA · ISOLATED ADAPTERS"]
+        REPO["Account-scoped repository<br/>Map · validate · persist"]
+        REMOTE["Remote source actor<br/>Authenticated adapter in production"]
+        STORE["SwiftData model actor<br/>Context and models stay here"]
+    end
+    VIEW -->|"Await load"| VM
+    VM --> UC
+    UC --> CONTRACT
+    REPO -.->|"Implements"| CONTRACT
+    REPO -->|"Fetch"| REMOTE
+    REPO -->|"Read or save"| STORE
+    STORE -->|"Sendable snapshot"| REPO
+    CONTRACT -->|"Domain result"| VM
+    VM -->|"Observable state"| VIEW
+    classDef ui fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
+    classDef domain fill:#f0f9ff,stroke:#0284c7,color:#0c4a6e,stroke-width:1.5px;
+    classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
+    class VIEW,VM ui;
+    class UC,CONTRACT domain;
+    class REPO,REMOTE,STORE data;
+    style UI fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
+    style DOMAIN fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
+    style DATA fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
 ```
 
 </MermaidZoom>
 
-1. The ViewModel starts observing the requested profile through the use case.
-2. Room emits the cached profile, or `null` when no profile is stored.
-3. A refresh requests the API and persists a valid response in Room.
-4. Room emits the updated record; the ViewModel updates screen state.
-5. If refresh fails, cached content remains visible with a retry message. Failure is not reported as a successful refresh.
+**Read the diagram:** Calls flow through the use case and repository contract. The data implementation satisfies that contract. SwiftData reference objects never leave their model actor; the UI receives immutable domain values through the ViewModel.
 
-This follows the local-source observation model in [Android's offline-first guidance](https://developer.android.com/topic/architecture/data-layer/offline-first). The device database is the source of truth for reads in this example; the server still owns the remote profile.
+### Cached content, then refresh
 
-**Failure policy:** Transport failures and server errors preserve cached content. Authentication failures and missing profiles remain explicit failures; the host application's access and cache-invalidation policy must decide whether cached data may remain visible. Partition cached profiles by account and clear protected data on logout or access revocation. This example does not implement those account lifecycle policies, background synchronization, retry backoff, or circuit breaking.
+<MermaidZoom title="Profile loading · success, failure, and cancellation">
 
----
+```mermaid
+sequenceDiagram
+    autonumber
+    participant V as SwiftUI task
+    participant VM as Main-actor ViewModel
+    participant R as Use case / Repository
+    participant DB as SwiftData actor
+    participant API as Remote source
 
-## Modular File-by-File MVVM Implementation
+    V->>VM: await load(userID)
+    VM->>VM: Validate ID; start request generation
+    VM->>R: Read account-scoped cache
+    R->>DB: Read persistent record
+    DB-->>VM: Domain snapshot through repository
+    Note over VM: Display cached content if available
+    VM->>R: Refresh profile
+    R->>API: Fetch profile
+    alt Valid response and successful save
+        API-->>R: Validated DTO
+        R->>DB: Update or insert; save
+        DB-->>R: Saved domain snapshot
+        R-->>VM: Refreshed profile
+        VM-->>V: Updated observable state
+    else Recoverable refresh failure
+        R-->>VM: Throw failure
+        VM-->>V: Retain cached content; show retry message
+    else Access denied, expired session, or missing profile
+        R->>DB: Invalidate this cached profile
+        R-->>VM: Throw access or cleanup failure
+        VM-->>V: Clear displayed profile; show safe message
+    end
+    Note over V,VM: View disappearance or task-ID change cancels the view task
+    Note over VM,R: Cancellation checks and generation guard reject cancelled or obsolete results
+```
 
-Keep public types in focused files. Closely related private UI helpers and mapping extensions may share a file. Paths below are relative to `app/src/main/java/com/enterprise/mobile/`.
+</MermaidZoom>
 
-The example separates **observation** from **refresh** so cached content stays visible while a network request is in progress.
+**This is a snapshot-based read/refresh example, not a live database subscription.** Successful refresh returns the persisted snapshot. Changes made elsewhere do not automatically appear on this screen. If the product needs live updates, implement a real repository observation mechanism with defined ordering, buffering, cancellation, and subscriber cleanup. Do not return a one-value `AsyncStream` and call it continuous observation.
+
+## Reference implementation
 
 <Tabs>
-  <TabItem label="Domain Layer (Pure Kotlin)">
+  <TabItem label="1. Domain">
 
-### DOMAIN MODEL: `feature/user/domain/model/UserDomainModel.kt`
+### Domain.swift
 
-```kotlin
-package com.enterprise.mobile.feature.user.domain.model
+The repository instance belongs to one account. Observation is deliberately absent from the contract because this feature uses explicit reads and refreshes.
 
-/**
- * Pure, immutable business model.
- * Zero Android SDK dependencies (no Parcelable, no Context, no Compose).
- */
-data class UserDomainModel(
-    val id: String,
-    val name: String,
-    val email: String,
-    val isVip: Boolean,
-    val lastSyncTimestamp: Long
-)
-```
+```swift
+import Foundation
 
-### REPOSITORY INTERFACE: `feature/user/domain/repository/UserRepository.kt`
-
-```kotlin
-package com.enterprise.mobile.feature.user.domain.repository
-
-import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
-import kotlinx.coroutines.flow.Flow
-
-/**
- * Boundary contract defining user data operations.
- * The domain layer owns this interface; the data layer implements it.
- */
-interface UserRepository {
-    suspend fun refreshUserProfile(userId: String): Result<Unit>
-    fun observeUserProfile(userId: String): Flow<UserDomainModel?>
+struct UserDomainModel: Sendable, Equatable, Identifiable {
+    let id: String
+    let name: String
+    let email: String
+    let isVIP: Bool
+    let cachedAt: Date
 }
-```
 
-### BUSINESS USE CASE: `feature/user/domain/usecase/GetUserProfileUseCase.kt`
+enum UserProfileError: Error, Sendable, Equatable {
+    case invalidUserID
+    case invalidConfiguration
+    case sessionExpired
+    case accessDenied
+    case notFound
+    case cacheInvalidationFailed
+    case invalidResponse
+    case invalidPayload
+    case httpStatus(Int)
+}
 
-```kotlin
-package com.enterprise.mobile.feature.user.domain.usecase
+/// An instance belongs to one authenticated account.
+protocol UserRepository: Sendable {
+    func cachedProfile(userID: String) async throws -> UserDomainModel?
+    func refreshProfile(userID: String) async throws -> UserDomainModel
+}
 
-import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
-import com.enterprise.mobile.feature.user.domain.repository.UserRepository
-import javax.inject.Inject
+struct GetUserProfileUseCase: Sendable {
+    let repository: any UserRepository
 
-/**
- * Profile use case exposing observation and refresh with identifier validation.
- * Isolated from Android framework and presentation dependencies.
- */
-class GetUserProfileUseCase @Inject constructor(
-    private val userRepository: UserRepository
-) {
-    fun observe(userId: String): kotlinx.coroutines.flow.Flow<UserDomainModel?> {
-        require(userId.isNotBlank()) { "User ID must not be blank." }
-        return userRepository.observeUserProfile(userId.trim())
-    }
-
-    suspend fun refresh(userId: String): Result<Unit> {
-        if (userId.isBlank()) {
-            return Result.failure(IllegalArgumentException("User ID must not be blank."))
+    // Example API contract: 1–128 ASCII letters, digits, underscores or hyphens.
+    // Replace this rule if the real API uses a different identifier format.
+    func normalizedID(_ rawID: String) throws -> String {
+        let id = rawID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let allowed = CharacterSet(charactersIn:
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
+        )
+        guard !id.isEmpty, id.utf8.count <= 128,
+              id.unicodeScalars.allSatisfy({ allowed.contains($0) }) else {
+            throw UserProfileError.invalidUserID
         }
-        return userRepository.refreshUserProfile(userId.trim())
+        return id
+    }
+
+    func cachedProfile(userID: String) async throws -> UserDomainModel? {
+        try await repository.cachedProfile(userID: normalizedID(userID))
+    }
+
+    func refreshProfile(userID: String) async throws -> UserDomainModel {
+        try await repository.refreshProfile(userID: normalizedID(userID))
     }
 }
 ```
+
+<Aside type="tip" title="Hint · validate before side effects">
+Normalize and validate identifiers before cache or network operations. The ASCII identifier rule is an explicit example API contract, not a universal restriction on user identifiers. Change it together with the endpoint builder and tests if your API uses another format.
+</Aside>
 
   </TabItem>
-  <TabItem label="Data Layer (Room + Retrofit)">
+  <TabItem label="2. Remote source">
 
-### DTO MODEL: `feature/user/data/remote/dto/UserNetworkDto.kt`
+### Remote.swift
 
-```kotlin
-package com.enterprise.mobile.feature.user.data.remote.dto
+The DTO matches the API payload. Required fields are decoded strictly: missing or mistyped data is a contract failure, not an empty valid profile. The example endpoint expects HTTP 200 with a JSON body.
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+```swift
+import Foundation
 
-/**
- * Network transfer object matching API schema.
- * Defaults are appropriate only for fields the API contract defines as optional.
- * Required identity and display fields intentionally have no defaults.
- */
-@Serializable
-data class UserNetworkDto(
-    @SerialName("id") val id: String,
-    @SerialName("full_name") val fullName: String,
-    @SerialName("email") val email: String,
-    @SerialName("is_vip") val isVip: Boolean = false
-)
-```
+struct UserNetworkDTO: Decodable, Sendable {
+    let id: String
+    let fullName: String
+    let email: String
+    let isVIP: Bool
 
-### RETROFIT API: `feature/user/data/remote/UserApiService.kt`
-
-```kotlin
-package com.enterprise.mobile.feature.user.data.remote
-
-import com.enterprise.mobile.feature.user.data.remote.dto.UserNetworkDto
-import retrofit2.Response
-import retrofit2.http.GET
-import retrofit2.http.Path
-
-interface UserApiService {
-    @GET("v1/users/{userId}")
-    suspend fun fetchUserProfile(
-        @Path("userId") userId: String
-    ): Response<UserNetworkDto>
+    enum CodingKeys: String, CodingKey {
+        case id, email
+        case fullName = "full_name"
+        case isVIP = "is_vip"
+    }
 }
-```
 
-### ROOM ENTITY: `feature/user/data/local/entity/UserEntity.kt`
-
-```kotlin
-package com.enterprise.mobile.feature.user.data.local.entity
-
-import androidx.room.ColumnInfo
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-
-/**
- * SQLite table definition. Explicit column names decouple the schema
- * from Kotlin property names; schema changes still require migrations.
- */
-@Entity(tableName = "users")
-data class UserEntity(
-    @PrimaryKey
-    @ColumnInfo(name = "id")
-    val id: String,
-
-    @ColumnInfo(name = "full_name")
-    val fullName: String,
-
-    @ColumnInfo(name = "email")
-    val email: String,
-
-    @ColumnInfo(name = "is_vip")
-    val isVip: Boolean,
-
-    @ColumnInfo(name = "cached_at")
-    val cachedAt: Long
-)
-```
-
-### ROOM DAO: `feature/user/data/local/dao/UserDao.kt`
-
-```kotlin
-package com.enterprise.mobile.feature.user.data.local.dao
-
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
-import com.enterprise.mobile.feature.user.data.local.entity.UserEntity
-import kotlinx.coroutines.flow.Flow
-
-@Dao
-interface UserDao {
-    @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
-    suspend fun getUserById(userId: String): UserEntity?
-
-    @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
-    fun observeUserById(userId: String): Flow<UserEntity?>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertUser(user: UserEntity)
-
-    @Query("DELETE FROM users WHERE id = :userId")
-    suspend fun deleteUserById(userId: String)
+protocol UserRemoteSource: Sendable {
+    func fetchProfile(userID: String) async throws -> UserNetworkDTO
 }
-```
 
-### OBJECT MAPPERS: `feature/user/data/mapper/UserMappers.kt`
+/// Reference transport. Production injects the approved authenticated SDK adapter.
+actor URLSessionUserRemoteSource: UserRemoteSource {
+    private let session: URLSession
+    private let baseURL: URL
 
-```kotlin
-package com.enterprise.mobile.feature.user.data.mapper
-
-import com.enterprise.mobile.feature.user.data.local.entity.UserEntity
-import com.enterprise.mobile.feature.user.data.remote.dto.UserNetworkDto
-import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
-
-fun UserNetworkDto.toEntity(cachedAtMillis: Long): UserEntity = UserEntity(
-    id = id,
-    fullName = fullName,
-    email = email,
-    isVip = isVip,
-    cachedAt = cachedAtMillis
-)
-
-fun UserEntity.toDomain(): UserDomainModel = UserDomainModel(
-    id = id,
-    name = fullName,
-    email = email,
-    isVip = isVip,
-    lastSyncTimestamp = cachedAt
-)
-
-
-```
-
-### REPOSITORY IMPLEMENTATION: `feature/user/data/repository/UserRepositoryImpl.kt`
-
-```kotlin
-package com.enterprise.mobile.feature.user.data.repository
-
-import com.enterprise.mobile.feature.user.data.local.dao.UserDao
-import com.enterprise.mobile.feature.user.data.mapper.toDomain
-import com.enterprise.mobile.feature.user.data.mapper.toEntity
-import com.enterprise.mobile.feature.user.data.remote.UserApiService
-import com.enterprise.mobile.feature.user.di.IoDispatcher
-import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
-import com.enterprise.mobile.feature.user.domain.repository.UserRepository
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
-import retrofit2.HttpException
-import java.io.IOException
-import javax.inject.Inject
-import javax.inject.Singleton
-
-@Singleton
-class UserRepositoryImpl @Inject constructor(
-    private val apiService: UserApiService,
-    private val userDao: UserDao,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
-) : UserRepository {
-
-    override suspend fun refreshUserProfile(userId: String): Result<Unit> =
-        withContext(ioDispatcher) {
-            try {
-                val response = apiService.fetchUserProfile(userId)
-                if (!response.isSuccessful) throw HttpException(response)
-                val dto = response.body()
-                    ?: throw IOException("Profile response has no body.")
-                if (dto.id != userId) {
-                    throw IOException("Profile response identifier does not match request.")
-                }
-                userDao.insertUser(dto.toEntity(System.currentTimeMillis()))
-                Result.success(Unit)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                // Surface refresh failure; observation keeps existing Room data visible.
-                // Report unexpected failures through approved, redacted telemetry.
-                Result.failure(error)
-            }
+    init(session: URLSession, baseURL: URL) throws {
+        guard baseURL.scheme == "https", baseURL.host != nil,
+              baseURL.user == nil, baseURL.password == nil,
+              baseURL.query == nil, baseURL.fragment == nil else {
+            throw UserProfileError.invalidConfiguration
         }
+        self.session = session
+        self.baseURL = baseURL
+    }
 
-    override fun observeUserProfile(userId: String): Flow<UserDomainModel?> =
-        userDao.observeUserById(userId).map { it?.toDomain() }
+    func fetchProfile(userID: String) async throws -> UserNetworkDTO {
+        try Task.checkCancellation()
+        // Validation is repeated at the transport boundary for direct callers.
+        let allowed = CharacterSet(charactersIn:
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
+        )
+        guard !userID.isEmpty, userID.utf8.count <= 128,
+              userID.unicodeScalars.allSatisfy({ allowed.contains($0) }) else {
+            throw UserProfileError.invalidUserID
+        }
+        let url = baseURL.appendingPathComponent("v1")
+            .appendingPathComponent("users")
+            .appendingPathComponent(userID)
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            if Task.isCancelled || (error as? URLError)?.code == .cancelled {
+                throw CancellationError()
+            }
+            throw error
+        }
+        try Task.checkCancellation()
+        guard let http = response as? HTTPURLResponse else {
+            throw UserProfileError.invalidResponse
+        }
+        switch http.statusCode {
+        case 200: break // This endpoint contract requires a profile body.
+        case 401: throw UserProfileError.sessionExpired
+        case 403: throw UserProfileError.accessDenied
+        case 404: throw UserProfileError.notFound
+        default: throw UserProfileError.httpStatus(http.statusCode)
+        }
+        let dto: UserNetworkDTO
+        do {
+            dto = try JSONDecoder().decode(UserNetworkDTO.self, from: data)
+        } catch {
+            throw UserProfileError.invalidPayload
+        }
+        guard dto.id == userID else { throw UserProfileError.invalidPayload }
+        return dto
+    }
 }
 ```
+
+<Aside type="tip" title="Hint · adapt the approved network SDK">
+`URLSessionUserRemoteSource` demonstrates the remote contract. In production, inject the approved authenticated SDK adapter, including its redirect, timeout, response-size, retry, and environment policies. Do not copy this transport as a second authentication or networking stack. No credentials are hardcoded, and invalid status codes are not silently treated as offline success.
+</Aside>
+
+The source actor isolates decoding and request construction from the main-actor ViewModel. `async` alone does not guarantee background execution. Network cancellation can arrive as `URLError.cancelled`; normalize it to `CancellationError` rather than showing a failed-request banner.
 
   </TabItem>
-  <TabItem label="Presentation Layer (Compose + ViewModel)">
+  <TabItem label="3. Persistence">
 
-### UI STATE: `feature/user/presentation/state/UserProfileUiState.kt`
+### Storage.swift
 
-```kotlin
-package com.enterprise.mobile.feature.user.presentation.state
+The local store owns its context and all persistent models. Its interface accepts and returns Sendable value snapshots, including on writes.
 
-import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
+```swift
+import Foundation
+import SwiftData
 
-/** Loading and errors can coexist with previously loaded content. */
-data class UserProfileUiState(
-    val user: UserDomainModel? = null,
-    val isRefreshing: Boolean = false,
-    val errorMessage: String? = null
-)
-```
+@Model
+final class UserPersistentModel {
+    @Attribute(.unique) var cacheKey: String
+    var accountID: String
+    var userID: String
+    var name: String
+    var email: String
+    var isVIP: Bool
+    var cachedAt: Date
 
-### UI EVENT INTENT: `feature/user/presentation/state/UserProfileUiEvent.kt`
-
-```kotlin
-package com.enterprise.mobile.feature.user.presentation.state
-
-/**
- * User interactions and screen intent actions dispatched via UDF.
- */
-sealed interface UserProfileUiEvent {
-    data object RefreshProfile : UserProfileUiEvent
+    init(accountID: String, user: UserDomainModel) {
+        // Length prefix avoids ambiguous composite-key concatenation.
+        cacheKey = "\(accountID.utf8.count):\(accountID):\(user.id)"
+        self.accountID = accountID
+        userID = user.id
+        name = user.name
+        email = user.email
+        isVIP = user.isVIP
+        cachedAt = user.cachedAt
+    }
 }
-```
 
-### HILT VIEWMODEL: `feature/user/presentation/UserProfileViewModel.kt`
+protocol UserLocalStore: Sendable {
+    func read(accountID: String, userID: String) async throws -> UserDomainModel?
+    func save(accountID: String, user: UserDomainModel) async throws -> UserDomainModel
+    func remove(accountID: String, userID: String) async throws
+}
 
-```kotlin
-package com.enterprise.mobile.feature.user.presentation
-
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.enterprise.mobile.feature.user.domain.usecase.GetUserProfileUseCase
-import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiEvent
-import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiState
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-
-@HiltViewModel
-class UserProfileViewModel @Inject constructor(
-    private val profiles: GetUserProfileUseCase
-) : ViewModel() {
-    private val _uiState = MutableStateFlow(UserProfileUiState())
-    val uiState = _uiState.asStateFlow()
-
-    private var currentUserId: String? = null
-    private var observationJob: Job? = null
-    private var refreshJob: Job? = null
-
-    fun load(userId: String) {
-        val normalizedId = userId.trim()
-        if (normalizedId == currentUserId) return
-        observationJob?.cancel()
-        refreshJob?.cancel()
-        currentUserId = normalizedId
-        _uiState.value = UserProfileUiState()
-        if (normalizedId.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "A user ID is required.") }
-            return
-        }
-        observationJob = viewModelScope.launch {
-            profiles.observe(normalizedId)
-                .catch {
-                    _uiState.update { it.copy(errorMessage = "Unable to read saved profile.") }
-                }
-                .collect { user -> _uiState.update { it.copy(user = user) } }
-        }
-        refresh()
+@ModelActor
+actor SwiftDataUserLocalStore: UserLocalStore {
+    func read(accountID: String, userID: String) throws -> UserDomainModel? {
+        try Task.checkCancellation()
+        return try find(accountID: accountID, userID: userID).map(snapshot)
     }
 
-    fun onEvent(event: UserProfileUiEvent) {
-        when (event) {
-            UserProfileUiEvent.RefreshProfile -> {
-                // Restart observation as well, so retry recovers from read failures.
-                val id = currentUserId?.takeIf { it.isNotBlank() } ?: return
-                observationJob?.cancel()
-                observationJob = viewModelScope.launch {
-                    profiles.observe(id)
-                        .catch {
-                            _uiState.update { it.copy(errorMessage = "Unable to read saved profile.") }
-                        }
-                        .collect { user -> _uiState.update { it.copy(user = user) } }
-                }
-                refreshJob?.cancel()
-                refresh()
+    func save(accountID: String, user: UserDomainModel) throws -> UserDomainModel {
+        try Task.checkCancellation()
+        do {
+            let record: UserPersistentModel
+            if let existing = try find(accountID: accountID, userID: user.id) {
+                record = existing
+                record.name = user.name
+                record.email = user.email
+                record.isVIP = user.isVIP
+                record.cachedAt = user.cachedAt
+            } else {
+                record = UserPersistentModel(accountID: accountID, user: user)
+                modelContext.insert(record)
             }
+            // No suspension between mutation and save: actor work stays serialized.
+            try Task.checkCancellation()
+            try modelContext.save()
+            return snapshot(record)
+        } catch {
+            modelContext.rollback()
+            throw error
         }
     }
 
-    private fun refresh() {
-        val id = currentUserId?.takeIf { it.isNotBlank() } ?: return
-        refreshJob = viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
-            val result = profiles.refresh(id)
-            _uiState.update {
-                it.copy(
-                    isRefreshing = false,
-                    errorMessage = if (result.isFailure) {
-                        "Unable to refresh profile. Please try again."
-                    } else it.errorMessage
-                )
+    func remove(accountID: String, userID: String) throws {
+        try Task.checkCancellation()
+        do {
+            if let record = try find(accountID: accountID, userID: userID) {
+                modelContext.delete(record)
+                try modelContext.save()
             }
+        } catch {
+            modelContext.rollback()
+            throw error
         }
     }
-}
-```
 
-### COMPOSE SCREEN: `feature/user/presentation/ui/UserProfileScreen.kt`
-
-```kotlin
-package com.enterprise.mobile.feature.user.presentation.ui
-
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.enterprise.mobile.feature.user.domain.model.UserDomainModel
-import com.enterprise.mobile.feature.user.presentation.UserProfileViewModel
-import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiEvent
-import com.enterprise.mobile.feature.user.presentation.state.UserProfileUiState
-
-/**
- * Stateful Route Composable: Coordinates ViewModel, lifecycle-aware state collection,
- * and high-level navigation callbacks.
- */
-@Composable
-fun UserProfileRoute(
-    userId: String,
-    onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier,
-    viewModel: UserProfileViewModel = hiltViewModel()
-) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    LaunchedEffect(userId) {
-        viewModel.load(userId)
+    private func find(accountID: String, userID: String) throws -> UserPersistentModel? {
+        var descriptor = FetchDescriptor<UserPersistentModel>(
+            predicate: #Predicate { $0.accountID == accountID && $0.userID == userID }
+        )
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first
     }
 
-    UserProfileScreen(
-        uiState = uiState,
-        onEvent = viewModel::onEvent,
-        onNavigateBack = onNavigateBack,
-        modifier = modifier
-    )
-}
-
-/**
- * Stateless Screen Composable: Pure UI renderer receiving immutable state and emitting
- * event callbacks. Enables isolated unit testing and Compose Previews.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun UserProfileScreen(
-    uiState: UserProfileUiState,
-    onEvent: (UserProfileUiEvent) -> Unit,
-    onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = { Text("User Profile") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Navigate Back"
-                        )
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                if (uiState.isRefreshing) LinearProgressIndicator(Modifier.fillMaxWidth())
-                uiState.user?.let { user ->
-                    Text(user.name, style = MaterialTheme.typography.headlineMedium)
-                    Text(user.email, style = MaterialTheme.typography.bodyLarge)
-                    if (user.isVip) Badge { Text("VIP account") }
-                }
-                uiState.errorMessage?.let { message ->
-                    Text(message, color = MaterialTheme.colorScheme.error)
-                }
-                if (uiState.user == null && !uiState.isRefreshing && uiState.errorMessage == null) {
-                    Text("No saved profile available.")
-                }
-                Button(
-                    onClick = { onEvent(UserProfileUiEvent.RefreshProfile) },
-                    enabled = !uiState.isRefreshing
-                ) {
-                    Text(if (uiState.errorMessage != null) "Retry" else "Refresh profile")
-                }
-            }
-        }
-    }
-}
-
-@Preview(name = "User Profile - Success State", showBackground = true)
-@Composable
-private fun UserProfileScreenPreview() {
-    MaterialTheme {
-        UserProfileScreen(
-            uiState = UserProfileUiState(
-                user = UserDomainModel(
-                    id = "USR-101",
-                    name = "Alex Mercer",
-                    email = "alex.mercer@enterprise.internal",
-                    isVip = true,
-                    lastSyncTimestamp = 0L
-                )
-            ),
-            onEvent = {},
-            onNavigateBack = {}
+    private func snapshot(_ record: UserPersistentModel) -> UserDomainModel {
+        UserDomainModel(
+            id: record.userID, name: record.name, email: record.email,
+            isVIP: record.isVIP, cachedAt: record.cachedAt
         )
     }
 }
 ```
 
+<Aside type="tip" title="Hint · serialize mutation and save">
+No suspension occurs between changing a record and saving it. A failed save rolls back pending changes in this dedicated context. Keep this context private to the feature store; rollback must not undo unrelated work. Share one store instance rather than constructing a new context for every request.
+</Aside>
+
+The key is account-scoped so two accounts cannot accidentally share a cached profile with the same user ID. The explicit update-or-insert logic controls which fields change; a uniqueness constraint alone does not define a complete synchronization policy.
+
+`@ModelActor` provides isolation, not a blanket promise that storage work runs on a background thread. The executor depends on construction and configuration. Profile startup, database size, and query performance on devices. This schema uses a local unique attribute; review schema restrictions before adding CloudKit synchronization.
+
   </TabItem>
-  <TabItem label="Dependency Injection (Hilt)">
+  <TabItem label="4. Repository">
 
-### HILT MODULE: `feature/user/di/UserFeatureModule.kt`
+### Repository.swift
 
-```kotlin
-package com.enterprise.mobile.feature.user.di
+The repository validates response identity, maps DTOs into domain values, and requires a successful save before returning a refreshed profile. A refresh failure remains a failure even when a cached record exists.
 
-import com.enterprise.mobile.feature.user.data.repository.UserRepositoryImpl
-import com.enterprise.mobile.feature.user.domain.repository.UserRepository
-import dagger.Binds
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import javax.inject.Qualifier
-import javax.inject.Singleton
+```swift
+import Foundation
 
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class IoDispatcher
+struct UserRepositoryImpl: UserRepository {
+    private let accountID: String
+    private let remote: any UserRemoteSource
+    private let local: any UserLocalStore
+    private let now: @Sendable () -> Date
 
-@Module
-@InstallIn(SingletonComponent::class)
-abstract class UserFeatureModule {
+    init(
+        accountID: String,
+        remote: any UserRemoteSource,
+        local: any UserLocalStore,
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) throws {
+        guard !accountID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw UserProfileError.invalidConfiguration
+        }
+        self.accountID = accountID
+        self.remote = remote
+        self.local = local
+        self.now = now
+    }
 
-    @Binds
-    @Singleton
-    abstract fun bindUserRepository(
-        impl: UserRepositoryImpl
-    ): UserRepository
-}
+    func cachedProfile(userID: String) async throws -> UserDomainModel? {
+        try Task.checkCancellation()
+        return try await local.read(accountID: accountID, userID: userID)
+    }
 
-@Module
-@InstallIn(SingletonComponent::class)
-object CoroutinesModule {
-
-    @Provides
-    @IoDispatcher
-    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+    func refreshProfile(userID: String) async throws -> UserDomainModel {
+        try Task.checkCancellation()
+        let dto: UserNetworkDTO
+        do {
+            dto = try await remote.fetchProfile(userID: userID)
+        } catch {
+            if Task.isCancelled || error is CancellationError ||
+                (error as? URLError)?.code == .cancelled {
+                throw CancellationError()
+            }
+            if let failure = error as? UserProfileError,
+               failure == .sessionExpired || failure == .accessDenied || failure == .notFound {
+                // Invalidate this profile. Account-wide cleanup belongs to the session owner.
+                do { try await local.remove(accountID: accountID, userID: userID) }
+                catch {
+                    if Task.isCancelled || error is CancellationError {
+                        throw CancellationError()
+                    }
+                    throw UserProfileError.cacheInvalidationFailed
+                }
+            }
+            throw error
+        }
+        try Task.checkCancellation()
+        guard dto.id == userID else { throw UserProfileError.invalidPayload }
+        let user = UserDomainModel(
+            id: dto.id, name: dto.fullName, email: dto.email,
+            isVIP: dto.isVIP, cachedAt: now()
+        )
+        // Never return network-only content as a successful persisted refresh.
+        let saved = try await local.save(accountID: accountID, user: user)
+        try Task.checkCancellation()
+        return saved
+    }
 }
 ```
+
+<Aside type="tip" title="Hint · make time deterministic">
+Inject `now` in tests. `cachedAt` records when this client prepared the cache update; it is not the server's last-modified timestamp and does not establish business freshness by itself. Add an explicit TTL or version policy if the product needs one.
+</Aside>
+
+This repository is a Sendable struct with immutable Sendable dependencies. The storage and remote actors isolate their mutable resources. It does not require `@unchecked Sendable`.
+
+For access denial, session expiry, or a missing profile, this example invalidates the current cached record. A cleanup failure becomes a distinct error so the screen still clears its content. The session coordinator must independently block protected navigation and complete account-wide cleanup. A cache delete is not an authorization control.
+
+Concurrent callers can still issue overlapping refreshes. The ViewModel's generation guard protects its screen, not global cache ordering. If multiple screens or background jobs refresh the same record, add a repository-level synchronization/version policy appropriate to the server contract; do not assume actor reentrancy or cancellation establishes “latest data wins.”
+
+  </TabItem>
+  <TabItem label="5. Presentation">
+
+### Presentation.swift
+
+Content, progress, and errors are independent properties so a temporary network failure does not discard usable cached content.
+
+```swift
+import Foundation
+import Observation
+
+struct UserProfileUIState: Equatable {
+    var user: UserDomainModel?
+    var isLoading = false
+    var message: String?
+}
+
+@Observable
+@MainActor
+final class UserProfileViewModel {
+    private(set) var state = UserProfileUIState()
+    @ObservationIgnored private let useCase: GetUserProfileUseCase
+    @ObservationIgnored private var currentUserID: String?
+    @ObservationIgnored private var generation = UUID()
+
+    init(useCase: GetUserProfileUseCase) {
+        self.useCase = useCase
+    }
+
+    /// The caller owns and awaits this operation. No nested unstructured Task.
+    func load(userID rawID: String) async {
+        let request = UUID()
+        generation = request
+        let userID: String
+        do {
+            userID = try useCase.normalizedID(rawID)
+        } catch {
+            currentUserID = nil
+            state = UserProfileUIState(message: "A valid user ID is required.")
+            return
+        }
+        if currentUserID != userID {
+            state = UserProfileUIState() // Do not show a different profile.
+            currentUserID = userID
+        }
+        state.isLoading = true
+        state.message = nil
+        defer {
+            if generation == request { state.isLoading = false }
+        }
+
+        do {
+            do {
+                let cached = try await useCase.cachedProfile(userID: userID)
+                try Task.checkCancellation()
+                guard generation == request else { return }
+                state.user = cached
+            } catch {
+                if isCancellation(error) { throw CancellationError() }
+                guard generation == request else { return }
+                // Cache-read failure must not prevent a recoverable remote fetch.
+                state.message = "Saved profile is unavailable. Trying to refresh."
+            }
+            let fresh = try await useCase.refreshProfile(userID: userID)
+            try Task.checkCancellation()
+            guard generation == request else { return }
+            state.user = fresh
+            state.message = nil
+        } catch {
+            guard generation == request else { return }
+            if isCancellation(error) { return } // Cancellation is not a UI failure.
+            if let failure = error as? UserProfileError {
+                switch failure {
+                case .cacheInvalidationFailed:
+                    state.user = nil
+                    state.message = "Profile access could not be verified. Please sign in again."
+                case .sessionExpired:
+                    state.user = nil
+                    state.message = "Your session has expired. Please sign in again."
+                case .accessDenied:
+                    state.user = nil
+                    state.message = "You do not have access to this profile."
+                case .notFound:
+                    state.user = nil
+                    state.message = "This profile is no longer available."
+                default:
+                    state.message = "Unable to refresh the profile. Please try again."
+                }
+            } else {
+                state.message = "Unable to refresh the profile. Please try again."
+            }
+        }
+    }
+
+    private func isCancellation(_ error: any Error) -> Bool {
+        Task.isCancelled || error is CancellationError ||
+            (error as? URLError)?.code == .cancelled
+    }
+}
+```
+
+<Aside type="tip" title="Hint · await work instead of hiding a Task">
+`load` is asynchronous and is awaited by the SwiftUI task. It does not create an unstructured task inside the ViewModel. Cancellation can therefore propagate through the use case and repository. The generation token additionally prevents a late result from an older request from changing the current screen—even if a dependency ignores cancellation.
+</Aside>
+
+Each suspension is followed by a cancellation check or request-generation check before publishing data. The deferred loading reset also checks the generation, so an older request cannot stop a newer request's loading indicator. Cancellation does not become a user-visible error.
+
+Do not expose raw `localizedDescription` values from transport or persistence errors. The example uses safe messages; production should map error categories to localized UI copy and send redacted technical diagnostics through the approved observability layer.
+
+  </TabItem>
+  <TabItem label="6. SwiftUI">
+
+### Views.swift
+
+The route owns the ViewModel for its SwiftUI identity. The content view receives state and a callback and can be previewed without networking or persistence.
+
+```swift
+import SwiftUI
+
+@MainActor
+struct UserProfileRoute: View {
+    let userID: String
+    @State private var viewModel: UserProfileViewModel
+    @State private var revision = 0
+
+    init(userID: String, viewModel: UserProfileViewModel) {
+        self.userID = userID
+        _viewModel = State(initialValue: viewModel)
+    }
+
+    private struct RequestKey: Equatable {
+        let userID: String
+        let revision: Int
+    }
+
+    var body: some View {
+        let key = RequestKey(userID: userID, revision: revision)
+        UserProfileView(state: viewModel.state) { revision += 1 }
+            .navigationTitle("User profile")
+            .task(id: key) {
+                await viewModel.load(userID: key.userID)
+            }
+    }
+}
+
+@MainActor
+struct UserProfileView: View {
+    let state: UserProfileUIState
+    let onRefresh: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if state.isLoading {
+                    ProgressView(state.user == nil ? "Loading profile…" : "Refreshing…")
+                        .accessibilityLabel("Profile loading")
+                }
+                if let user = state.user {
+                    Text(user.name).font(.title2).fontWeight(.semibold)
+                    Text(user.email).foregroundStyle(.secondary)
+                    if user.isVIP {
+                        Label("VIP account", systemImage: "star.fill")
+                            .font(.callout)
+                    }
+                }
+                if let message = state.message {
+                    Text(message)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("profile.message")
+                }
+                if !state.isLoading && state.user == nil && state.message == nil {
+                    Text("No saved profile is available.")
+                }
+                Button(state.message == nil ? "Refresh profile" : "Retry",
+                       action: onRefresh)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(state.isLoading)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(24)
+        }
+    }
+}
+```
+
+<Aside type="tip" title="Hint · let SwiftUI own cancellation">
+Changing `userID` or the refresh revision changes `.task(id:)`, cancelling the previous view task and starting a new one. Await `viewModel.load` directly. The route's parent owns the `NavigationStack`; nesting a new stack inside every feature screen is unnecessary.
+</Aside>
+
+`@State` preserves its initial reference while the route keeps the same identity. When the authenticated account changes, recreate the account-scoped factory and route with a new identity. Do not expect a new initializer argument to replace the existing `@State` object automatically. Pass a stable ViewModel instance from the owning feature coordinator rather than rebuilding the entire dependency graph on each body evaluation.
+
+Replace the example strings with localized resources and use the enterprise theme. The scrollable layout supports larger text; test Dynamic Type, VoiceOver, contrast, and loading/error states on supported devices.
+
+  </TabItem>
+  <TabItem label="7. Composition">
+
+### Composition.swift
+
+Construct shared infrastructure once. Create screen-specific ViewModels through an injected factory. Initialization is throwing so the app can present a controlled recovery state instead of crashing.
+
+```swift
+import Foundation
+import SwiftData
+
+@MainActor
+struct UserFeatureFactory {
+    let repository: any UserRepository
+
+    init(
+        accountID: String,
+        remote: any UserRemoteSource,
+        local: any UserLocalStore
+    ) throws {
+        repository = try UserRepositoryImpl(
+            accountID: accountID, remote: remote, local: local
+        )
+    }
+
+    func makeViewModel() -> UserProfileViewModel {
+        UserProfileViewModel(useCase: GetUserProfileUseCase(repository: repository))
+    }
+}
+
+/// Call once from the app composition root; present a recovery UI if it throws.
+/// Retain the store and share it across this feature's repositories.
+@MainActor
+func makeUserLocalStore(inMemory: Bool = false) throws -> SwiftDataUserLocalStore {
+    let schema = Schema([UserPersistentModel.self])
+    let configuration = ModelConfiguration(
+        schema: schema, isStoredInMemoryOnly: inMemory
+    )
+    let container = try ModelContainer(for: schema, configurations: [configuration])
+    return SwiftDataUserLocalStore(modelContainer: container)
+}
+```
+
+<Aside type="tip" title="Hint · inject ownership, avoid a global singleton">
+The app owns the model container, store, authenticated remote adapter, and account-scoped factory. Each screen gets its own ViewModel. This keeps previews and tests independent and makes account teardown explicit. Swift Package Manager can organize these types into targets, but does not create or inject their instances.
+</Aside>
+
+This example deliberately does not hardcode an API environment or create an unauthenticated `.shared` session in a feature factory. Inject the approved remote adapter from application configuration.
 
   </TabItem>
 </Tabs>
 
----
-
 ## Integration requirements
 
-Before adopting the sample:
+Before adopting the feature in an application:
 
-- Configure `@HiltAndroidApp`, an `@AndroidEntryPoint` host, and providers for `UserApiService` and `UserDao`.
-- Register `UserEntity` in your Room database and supply tested migrations.
-- Configure Retrofit's serialization converter, base URL, authentication, and error handling through the approved shared SDKs.
-- Install `UserFeatureModule` in `SingletonComponent`. This binding has application scope, despite being declared in the feature package.
-- Move `IoDispatcher` and `CoroutinesModule` into separate files, preferably in shared DI infrastructure. Do not declare duplicate qualifiers or dispatcher bindings across features.
-- Use project-managed dependency versions; the snippets intentionally do not prescribe version numbers.
-- Replace example UI strings with string resources, apply the enterprise theme, and add accessibility and localization checks.
-- Inject a clock if refresh timestamps are asserted in tests. `cachedAt` records persistence time, not server-side modification time.
+1. **Set the supported configuration.** Confirm deployment target, language mode, actor isolation, and project-managed SDK versions. Resolve compiler diagnostics rather than suppressing Sendable checks.
+2. **Install the real remote adapter.** Implement `UserRemoteSource` using the approved authenticated SDK. Ensure its identity and HTTP-error mapping match the feature contract.
+3. **Create shared persistence.** Register the schema, define migrations, and retain one local-store instance. Handle container initialization failure in the application shell.
+4. **Scope the feature to the account.** Create an account-specific repository/factory. Cancel work, remove protected routes, invalidate session credentials, and clear protected local data when the account changes or access is revoked.
+5. **Apply cache policy.** Decide which profile fields may be stored, for how long, and under which data-protection settings. This sample partitions records; it does not implement full account deletion or encryption policy.
+6. **Own navigation and state.** Put the route inside the host navigation hierarchy. Use a new route identity for a new authenticated account.
+7. **Add observability and localization.** Record redacted error categories and operation outcomes. Replace example copy, theme values, and retry actions with product behavior. Session-expiry messaging also needs the host's sign-in flow.
+8. **Verify the real product.** Build the production target and test on the supported iOS versions, including release configuration and database migration paths.
 
-The screen keeps profile content visible during refresh. Retry uses the ViewModel's current user ID rather than constructing an empty identifier. Repeated initial loads for the same ID are ignored; switching profiles cancels the previous observation and refresh.
+Cancellation is cooperative. A save that has already completed is not undone by cancelling a task. Account namespacing, access gating, explicit cleanup, and server-side authorization remain necessary.
 
-The refresh boundary returns failures as `Result` and rethrows coroutine cancellation. Production error mapping should distinguish authentication, authorization, missing records, transport failures, and persistence failures without exposing raw exception messages to users. Avoid unlimited retries or treating every HTTP failure as an offline success.
+## Expected behavior
 
-## Enterprise SDKs
-
-Use the centralized [Master SDK Catalog](/mobile/platforms/master-sdk-catalog/) for approved `com.enterprise.mobile:*` artifacts, installation instructions, and supported versions. Confirm that this route matches the documentation deployment base before publishing. No release numbers are repeated here because they were not supplied in the source document.
-
-## Patterns to avoid
-
-| Avoid | Use instead |
+| Scenario | What the developer should observe |
 | :--- | :--- |
-| Holding Activity, View, or lifecycle-bound Context references in a ViewModel | Inject a focused abstraction backed by application-scoped infrastructure when needed. |
-| Exposing `MutableStateFlow` to the UI | Expose `StateFlow` with `asStateFlow()` and handle actions in the ViewModel. |
-| Collecting Android UI flows without lifecycle awareness | Use `collectAsStateWithLifecycle()` in Compose routes. Ordinary `collectAsState()` does not automatically stop collection when the Android lifecycle becomes inactive; this is not inherently a memory leak. |
-| Calling Retrofit or Room from composables | Route actions through the ViewModel, use case, and repository boundaries. |
-| Importing Compose rendering APIs into ViewModels | Keep presentation rendering in composables and expose immutable state. |
-| Replacing cached content with a full-screen spinner on every refresh | Represent content, progress, and refresh errors independently. |
-| Swallowing `CancellationException` | Rethrow it so structured cancellation can complete. |
-| Adding `@Immutable` to hide unstable or mutable models | Honor the annotation's contract; optimize only after measurement. |
-| Defaulting required API fields to empty values | Match the API contract and fail explicitly when required fields are missing. |
+| Empty cache; successful refresh | Initial progress, then a saved profile |
+| Cached profile; refresh in progress | Cached content remains visible with progress |
+| Cached profile; timeout or server failure | Cached content remains visible with a retry message |
+| No cache; refresh fails | Safe error message and Retry action |
+| Cache read fails; refresh succeeds | Remote fetch proceeds; successful persistence restores content |
+| Save fails after a valid response | Refresh fails; network-only data is not reported as a persisted success |
+| Response contains a different user ID | Reject the response; do not cache it under the requested profile |
+| Expired session, denied access, or missing profile | Clear screen content; invalidate this record; host coordinates session/access recovery |
+| Cache invalidation fails | Clear screen content and surface a safe recovery message; host must continue cleanup |
+| Route disappears or task ID changes | Cancel old work; suppress cancelled result/error publication |
+| Old request finishes after a new request | The old result cannot replace the current screen state |
+| Another writer changes SwiftData | No automatic update in this snapshot example; refresh or add a real observation mechanism |
 
-## Verification and merge checklist
+## Verification
 
-The source specified both 80% and 90% coverage thresholds. Use the repository's configured CI threshold as the authoritative requirement until the platform owner resolves that conflict; this guide does not introduce a new percentage.
+The companion source bundle includes `ReferenceChecks.swift`, an executable check runner intended for a separate test executable, not the app target. It covers ID validation, the persistence-before-success contract, account isolation, write failure, mismatched response IDs, offline state, access revocation, cleanup failure, cancellation, obsolete results, and blank-ID rendering state. Its controlled continuations avoid sleep-based ordering assumptions.
 
-- [ ] Feature code follows the documented layer boundaries; Gradle modules enforce dependencies where applicable.
-- [ ] Domain code has no Android framework, Compose, Room, or Retrofit dependencies.
-- [ ] Room observation is the only profile data path to the UI; successful refreshes persist before data is displayed.
-- [ ] Refresh preserves cached content and surfaces failure without reporting a successful sync.
-- [ ] Retry preserves the current user ID, including after initial load failure.
-- [ ] Switching users cancels previous work and does not display another user's profile.
-- [ ] Cancellation propagates through the repository and use case.
-- [ ] Repository tests cover success, empty response, mismatched ID, HTTP errors, transport errors, and persistence failures.
-- [ ] ViewModel tests cover cached data, refresh progress, retry, observation failure, blank IDs, and profile switching.
-- [ ] Coroutine tests replace `Dispatchers.Main`, inject a test dispatcher, and use a shared test scheduler.
-- [ ] Compose tests cover loading, content, error with and without cached content, and refresh/retry actions.
-- [ ] Room schema changes have migration tests; credentials and cached personal data follow account lifecycle policies.
-- [ ] Approved SDKs are used for shared network, authentication, and telemetry capabilities.
-- [ ] Required CI checks and the configured coverage gate pass.
+**Validation performed for this reference:** Domain, transport, repository, and the local-store protocol passed strict Swift 6 type checking. The checks also passed against the same ViewModel logic with Observation annotations removed in a dedicated verification harness. Macro plugins could not run inside the authoring sandbox, so the full SwiftData/Observation/SwiftUI composition has not been compiled here. In-memory test stores validate the repository contract, not SwiftData's actual persistence behavior. Full target compilation and platform integration tests are required before adoption.
 
-## References
+### Required project tests
 
-- [Android architecture recommendations](https://developer.android.com/topic/architecture/recommendations)
-- [Android domain layer guidance](https://developer.android.com/topic/architecture/domain-layer)
-- [Build an offline-first app](https://developer.android.com/topic/architecture/data-layer/offline-first)
+- [ ] Compile every reference file in the application's actual Swift configuration with concurrency checks enabled.
+- [ ] Run SwiftData tests with an in-memory `ModelContainer`: insert, update, read, remove, account isolation, and uniqueness.
+- [ ] Test migration and persistent-store initialization failures using the application's real schema.
+- [ ] Exercise the real transport adapter with HTTP 200, 401, 403, 404, 5xx, empty/malformed payloads, timeouts, and cancellation.
+- [ ] Verify refresh/retry uses the same current profile ID and handles cache-read failures.
+- [ ] Verify account changes cancel work, replace route identity, and remove protected data.
+- [ ] Verify no protected content appears after session revocation, including when cache cleanup fails.
+- [ ] Check success, empty, initial loading, refresh loading, cached error, and fatal error layouts with accessibility tools.
+- [ ] Test offline startup and foreground/background transitions on supported iOS versions.
+- [ ] Pass the repository's configured coverage threshold and required CI gates.
+
+## Common mistakes and corrections
+
+| Mistake | Correct approach |
+| :--- | :--- |
+| Writing `Boolean` in Swift | Use `Bool`. |
+| Marking a mutable repository `@unchecked Sendable` to silence diagnostics | Use compiler-checked immutable Sendable dependencies and isolate mutable resources. |
+| Passing `ModelContext` or `@Model` instances across actors | Keep them inside the store actor; return Sendable domain snapshots. |
+| Assuming an actor cannot interleave work across `await` | Account for reentrancy and define ordering for competing refreshes. |
+| Starting a nested `Task` inside a view's `.task` and returning immediately | Await the load directly so view lifecycle cancellation reaches the operation. |
+| Requiring `[weak self]` in every async closure | Analyze ownership and task lifetime. Weak capture alone does not cancel work or eliminate long-lived retention after `guard let self`. |
+| Calling `ObservableObject` or `@Published` universally deprecated | Use Observation for this platform baseline; retain compatible legacy patterns where the application requires them. |
+| Treating cached data as a successful refresh after any error | Preserve cached content and surface refresh failure separately. |
+| Reporting raw technical errors in the UI | Map to safe localized messages and use redacted diagnostics. |
+| Force-unwrapping configuration or crashing on store initialization | Validate configuration, propagate initialization errors, and provide recovery UI. |
+| Describing all Keychain items as Secure Enclave protected | Use the approved Keychain abstraction; protection depends on item accessibility, key type, device, and configuration. |
+
+## Internal SDKs and references
+
+Use the [Master SDK Catalog](/mobile/platforms/master-sdk-catalog/) for approved packages, supported versions, and SDK-specific setup. Keep the route aligned with the documentation deployment base.
+
+- [Apple: Migrating to Observation](https://developer.apple.com/documentation/swiftui/migrating-from-the-observable-object-protocol-to-the-observable-macro)
+- [Apple: SwiftData model actors](https://developer.apple.com/documentation/swiftdata/modelactor)
+- [Apple: ModelContext lifecycle and rollback](https://developer.apple.com/documentation/swiftdata/modelcontext)
+- [Swift: Concurrency and actor isolation](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency/)
+- [Swift: Migration to Swift 6](https://www.swift.org/migration/documentation/migrationguide/)
