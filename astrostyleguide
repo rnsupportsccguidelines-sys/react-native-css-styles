@@ -1,1989 +1,288 @@
 ---
-title: Architecture & Platform Standards Overview
-description: Master architectural overview and engineering framework for enterprise mobile applications across iOS, Android, and React Native.
+title: Development Platforms & Internal SDKs
+description: Choose an approved mobile stack, understand shared SDK responsibilities, and initialize platform services reliably across Android, iOS, and React Native.
 sidebar:
   order: 1
-  label: Architecture Overview
+  label: Platforms Overview
 ---
 
-import { CardGrid, Card, LinkCard, Aside } from '@astrojs/starlight/components';
-import DiagramExpand from './DiagramExpand.astro';
+import { Tabs, TabItem, CardGrid, Card, LinkCard, Aside } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
 
 export const PORTAL_BASE = '/mobile';
 
-<Aside type="tip" title="Master Architectural Blueprint">
-Governing all enterprise iOS, Android, and React Native applications. Enforces strict 4-layer clean architecture, unidirectional data flow (UDF), offline-first network resilience, runtime feature flag governance, and hardware-backed credential storage.
+Build on an approved stack. Reuse shared platform capabilities. Keep application code focused on product behavior.
+
+This page explains **which platforms to use**, **where shared SDKs fit**, and **how to start an application reliably**. Use the platform-specific standards for implementation details and the SDK catalog for package names, supported versions, and installation instructions.
+
+<Aside type="tip" title="Platform standard">
+Enterprise mobile applications use native Android, native iOS, or React Native. Each application follows its platform's architecture standards and integrates approved shared SDKs for common infrastructure capabilities.
 </Aside>
 
-## Macro Architecture Topology
+## Start with your task
 
-The enterprise mobile ecosystem is organized into four distinct operational tiers, from client devices to enterprise cloud backends:
+| If you need to… | Start here |
+| :--- | :--- |
+| Choose a stack for a new application | [Choose a platform](#choose-a-platform) |
+| Understand application and SDK boundaries | [Shared SDK architecture](#shared-sdk-architecture) |
+| Wire platform services into app launch | [Application startup](#application-startup) |
+| Add or upgrade an internal dependency | [Integrate an SDK](#integrate-an-sdk) |
+| Review a platform-related change | [Review checklist](#review-checklist) |
 
-<DiagramExpand title="ENTERPRISE MACRO TOPOLOGY">
-
-```mermaid
-flowchart TD
-    subgraph Clients["Tier 1: Client Application Tier"]
-        RN["React Native (Fabric & TypeScript)"]
-        Android["Native Android (Kotlin & Compose)"]
-        iOS["Native iOS (Swift & SwiftUI)"]
-    end
-
-    subgraph SDKs["Tier 2: Enterprise Shared Foundation Tier"]
-        Auth["Identity SSO (OAuth2 / OIDC)"]
-        Breaker["Resilience Client (Circuit Breaker)"]
-        RUM["Telemetry & Crash Analytics"]
-        Tokens["Design System Tokens"]
-    end
-
-    subgraph Gateway["Tier 3: Enterprise Edge Gateway"]
-        Edge["API Management Gateway (Rate Limiting)"]
-        WAF["Web Application Firewall & mTLS"]
-    end
-
-    subgraph Backend["Tier 4: Enterprise Core Services"]
-        APIs["Domain Microservices (Orders, Billing)"]
-        Kafka["Enterprise Event Hub (Kafka Streams)"]
-    end
-
-    Clients --> SDKs
-    SDKs --> Gateway
-    Gateway --> Backend
-
-    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef securityLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
-
-    class RN,Android,iOS uiLayer;
-    class Auth,Breaker,RUM,Tokens domainLayer;
-    class Edge,WAF securityLayer;
-    class APIs,Kafka networkLayer;
-```
-
-</DiagramExpand>
-
----
-
-## Core Architectural Pillars
-
-All mobile applications delivered across the enterprise must implement the four foundational architectural pillars:
-
-| Architectural Pillar | Standard Enforced | Engineering Purpose | Verification Method |
-| :--- | :--- | :--- | :--- |
-| **Clean Architecture** | Strict 4-layer model (Presentation, Domain, Data, Core). Domain layer has zero external dependencies. | Decouples pure business rules from volatile UI frameworks and databases. Guarantees 100% portable domain testing. | Danger PR code structure audit & unit tests. |
-| **Network Resilience** | Threshold-based Circuit Breaker wrapping all remote HTTP calls with local offline cache fallback. | Prevents cascading connection timeouts, stops battery drain, and maintains offline usability in dead zones. | Automated unit tests with simulated 500/timeout responses. |
-| **Remote Config & Flags** | Dynamic feature flags and emergency kill switches decoupled from store release cycles. | Enables staged percentage rollouts (5% &rarr; 25% &rarr; 100%) and instant kill-switching without waiting for store review. | Integration with enterprise feature flag client. |
-| **Hardware-Backed Security** | OAuth2/OIDC SSO tokens stored in hardware KeyStore (Android) or Keychain (iOS). Zero plain-text credentials. | Protects against binary reverse engineering, memory dumping, and stolen device credential exfiltration. | Automated SAST/DAST security scanning. |
-
----
-
-## Unidirectional Data Flow & State Architecture
-
-To prevent race conditions, stale views, and inconsistent screen states, all user actions follow a strict **Unidirectional Data Flow (UDF)** loop:
-
-<DiagramExpand title="UNIDIRECTIONAL DATA FLOW">
-
-```mermaid
-flowchart TD
-    subgraph Loop["Unidirectional Data Flow Cycle"]
-        UI["Declarative View (Renders current immutable state)"]
-        Action["User Intent or Action (Button tap, pull to refresh)"]
-        Reducer["ViewModel or Hook Controller (Processes intent via Domain Use Case)"]
-        NewState["New Immutable State Snapshot (Emitted to UI)"]
-
-        UI -->|"User interacts"| Action
-        Action -->|"Dispatched to"| Reducer
-        Reducer -->|"Calculates and emits"| NewState
-        NewState -->|"Re-renders view"| UI
-    end
-
-    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-
-    class UI,Action uiLayer;
-    class Reducer domainLayer;
-    class NewState dataLayer;
-```
-
-</DiagramExpand>
-
-### Implementing State Modeling (TypeScript Example)
-
-Every screen model must be expressed as an immutable, discriminated state union to eliminate undefined or conflicting intermediate UI states:
-
-```typescript
-// 1. Define explicit, exhaustive UI state variants
-export type ScreenState<T> =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'success'; data: T; isStaleFromCache: boolean }
-  | { status: 'error'; message: string; canRetry: boolean };
-
-// 2. Define user actions (Intents)
-export type OrderAction =
-  | { type: 'FETCH_ORDERS' }
-  | { type: 'REFRESH_ORDERS' }
-  | { type: 'CANCEL_ORDER'; orderId: string };
-
-// 3. State Reducer (Guarantees predictable state transitions)
-export function orderReducer<T>(state: ScreenState<T>, action: OrderAction): ScreenState<T> {
-  switch (action.type) {
-    case 'FETCH_ORDERS':
-      return { status: 'loading' };
-    case 'REFRESH_ORDERS':
-      // Preserve existing data while refreshing in background
-      return state.status === 'success' ? state : { status: 'loading' };
-    default:
-      return state;
-  }
-}
-```
-
----
-
-## Architecture Navigation Directory
-
-Explore the dedicated architecture specifications to implement specific technical standards:
+## Approved platforms
 
 <CardGrid>
-  <LinkCard
-    title="Clean Architecture Specification"
-    description="Deep dive into the 4-layer structure with complete code implementations across React Native, Kotlin Jetpack Compose, and Swift SwiftUI."
-    href={`${PORTAL_BASE}/mobile-architecture/`}
-  />
-  <LinkCard
-    title="Circuit Breaker & Resilience"
-    description="Threshold configuration, state machines (Closed, Open, Half-Open), and offline storage fallbacks to prevent cascading socket failures."
-    href={`${PORTAL_BASE}/circuit-breaker-resilience/`}
-  />
-  <LinkCard
-    title="Feature Flags & Remote Config"
-    description="Runtime feature toggling, dynamic rollouts by user segment, and emergency production kill switches decoupled from app store review queues."
-    href={`${PORTAL_BASE}/feature-flags/`}
-  />
-  <LinkCard
-    title="Offline Synchronization & Storage"
-    description="Local database standards (Room SQLite, SwiftData/CoreData, AsyncStorage), schema migrations, and sync conflict resolution protocols."
-    href={`${PORTAL_BASE}/offline-sync/`}
-  />
-  <LinkCard
-    title="Branching & PR Conventions"
-    description="Standardized GitFlow branch models, Conventional Commits formatting rules, and automated Danger PR verification checks."
-    href={`${PORTAL_BASE}/branching-prs/`}
-  />
+  <Card title="Native Android" icon="laptop">
+    Kotlin and Jetpack Compose, with ViewModel and StateFlow for screen state, Hilt for dependency injection, and Room for structured local persistence.
+  </Card>
+  <Card title="Native iOS" icon="apple">
+    Swift and SwiftUI, with observable presentation models, Swift Concurrency, and approved adapters for persistence and secure storage.
+  </Card>
+  <Card title="React Native" icon="setting">
+    TypeScript and React Native, with Hermes, typed component contracts, and hooks that coordinate state and application behavior.
+  </Card>
 </CardGrid>
 
----
-
-## Architectural Non-Negotiables
-
-<Aside type="caution" title="Mandatory Architectural Enforcement">
-The following five constraints are programmatically enforced via CI and trigger automated PR rejection if violated:
-
-1. **No Direct Network or Database Access from UI:** Views and ViewModels must never instantiate raw HTTP clients or execute direct SQL queries. All persistence and remote queries must be dispatched through Domain Use Cases.
-2. **Zero Framework Imports in the Domain Layer:** The Domain layer must remain pure business logic. It must never import UI or platform framework packages (`android.view`, `UIKit`, `SwiftUI`, `react-native`).
-3. **Mandatory Resilience Wrapping on Remote Calls:** All external API endpoints called from mobile clients must be encapsulated inside a resilience wrapper with offline cache fallback.
-4. **Hardware-Backed Credential Storage:** Auth tokens and cryptographic keys must be stored in Android KeyStore or iOS Keychain with biometric gating where required. Never store tokens in plain local storage or commit them in code.
-5. **Minimum 80% Unit Test Coverage on Domain Logic:** All Use Cases, validation logic, and business rules must have automated unit test coverage with mock repositories.
+<Aside type="note" title="Use a validated toolchain, not an open-ended version range">
+Use the versions pinned in the approved project template and its lockfiles. Confirm compatibility with the SDK catalog and the Machine Setup guide before upgrading. A language, framework, compiler, build tool, and SDK must work together as a supported set.
 </Aside>
 
----
+The source page listed Kotlin 1.9+, Swift 5.9+, React Native 0.73+, and TypeScript 5.0+. These ranges do not establish a current compatibility policy and should not be used as installation instructions. This overview intentionally defers version selection to the maintained project configuration.
 
-## Quality Gate PR Merge Checklist
+### Platform conventions
 
-Before submitting a pull request that introduces or refactors architectural components, verify every baseline item:
-
-- [ ] **Layer Separation Verified:** Repository package structure strictly mirrors Presentation, Domain, Data, and Core layers.
-- [ ] **Unidirectional Data Flow:** State is modeled as immutable discriminated unions; UI dispatches explicit user intents.
-- [ ] **Resilience Wrapper Active:** Remote HTTP calls handle offline scenarios and emit typed domain error states.
-- [ ] **Zero Hardcoded Secrets:** API endpoints, client credentials, and environment flags use runtime configuration providers.
-- [ ] **Hardware Enclave Storage:** SSO tokens and sensitive tokens reside in Android KeyStore or iOS Keychain.
-- [ ] **Unit Tests Passing:** Automated test suites verify domain use cases with at least 80% branch coverage.
-
-
-
-
----------------------
-
-
----
-title: Enterprise Standard Mobile Architecture
-description: Comprehensive specification of the 4-Layer Clean Architecture standard enforced across all enterprise iOS, Android, and React Native applications.
-sidebar:
-  order: 2
-  label: Clean Architecture
----
-
-import { Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
-import DiagramExpand from './DiagramExpand.astro';
-
-<Aside type="tip" title="ARCHITECTURE MANDATE">
-The 4-layer clean architecture pattern is mandatory across all enterprise iOS, Android, and React Native applications. By strictly decoupling Presentation, Domain, Data, and Core Infrastructure into distinct layers governed by Dependency Inversion, applications achieve 100% portable business logic, predictable unidirectional data flow, and isolated unit testability.
-</Aside>
-
-## Four-Layer Clean Architecture Model
-
-Every enterprise mobile codebase must strictly adhere to the four architectural layers defined below:
-
-| Architectural Layer | Primary Responsibilities | Allowed Inward Dependencies | Prohibited Elements |
+| Concern | Native Android | Native iOS | React Native |
 | :--- | :--- | :--- | :--- |
-| **Presentation Layer** | Renders reactive declarative UI views, captures user input, and manages screen lifecycle state. | Depends only on the **Domain Layer** (executes Use Cases and observes state). | Direct SQL queries, raw HTTP client calls, network DTO models. |
-| **Domain Layer** | Encapsulates pure enterprise business rules, entity models, and abstract repository contracts. | **Zero external dependencies.** Pure language code (zero Android, iOS, or React imports). | UI widgets, database drivers, third-party platform SDKs. |
-| **Data Layer** | Implements domain repository contracts. Coordinates remote APIs with offline local databases. | Depends on the **Domain Layer** (implements interfaces) and **Core Infrastructure**. | Direct UI rendering logic, lifecycle observation, business rule mutation. |
-| **Core Infrastructure** | Shared cross-cutting foundations: SSO Auth, Resilience Circuit Breaker, Datadog Telemetry, KeyStore. | Standalone shared modules consumed by Data and Presentation layers. | Feature-specific business domain logic. Must remain universally reusable. |
+| Application language | Kotlin | Swift | TypeScript, compiled to JavaScript |
+| UI | Jetpack Compose | SwiftUI | React Native components |
+| Presentation state | ViewModel exposes read-only `StateFlow` | Observable model with explicit ownership | Hooks and explicit state ownership |
+| Async work | Coroutines and Flow | Structured concurrency with `async`/`await` | Promises and `async`/`await`; native modules for platform work |
+| Dependency construction | Hilt | Initializer injection, protocols, and factories | Explicit dependencies, factories, and Context where appropriate |
+| Local data | Room for structured data | Approved persistence adapter | Approved storage adapter for the data and query requirements |
+| Sensitive credentials | Approved secure-storage SDK | Approved Keychain abstraction | Approved SDK backed by native secure storage |
 
----
+**Runtime details matter:** Android applications execute on Android Runtime; a project's Java/JDK toolchain setting is a separate build concern. React Native executes JavaScript on its configured engine; Hermes does not execute TypeScript directly. SwiftUI's Observation integration requires supported OS versions—starting with iOS 17—so confirm the deployment target before prescribing `@Observable` throughout an app. See [Apple's model-data guidance](https://developer.apple.com/documentation/swiftui/managing-model-data-in-your-app) and [React Native's Hermes guide](https://reactnative.dev/docs/hermes).
 
-## Dependency Inversion & Data Flow Diagram
+## Choose a platform
 
-The **Dependency Inversion Principle** dictates that source code dependencies must point strictly inward toward higher-level business logic. The Domain layer is the system center and maintains zero knowledge of databases, network protocols, or UI widgets:
+For an existing application, follow its established stack. For a new application, evaluate the required user experience, supported devices, native integrations, operational constraints, and the team's ability to maintain the result.
 
-<DiagramExpand title="CLEAN ARCHITECTURE DATA FLOW">
-
-```mermaid
-flowchart TD
-    subgraph Client["1. Presentation Layer"]
-        UI["UI Views (SwiftUI / Jetpack Compose / React Native)"]
-        VM["State Holders (ViewModels / React Hooks / Controllers)"]
-        UI -->|"User Event"| VM
-    end
-
-    subgraph CoreDomain["2. Domain Layer (Pure Business Core)"]
-        UC["Use Cases & Interactors (SubmitOrderUseCase)"]
-        Entities["Pure Business Entities (Order, LineItem, User)"]
-        RepoContract["Repository Interfaces (OrderRepository Contract)"]
-        VM -->|"Executes"| UC
-        UC -->|"Operates On"| Entities
-        UC -->|"Invokes Contract"| RepoContract
-    end
-
-    subgraph DataInfra["3. Data & Infrastructure Layer"]
-        RepoImpl["Repository Implementation (OrderRepositoryImpl)"]
-        LocalSource["Local Offline Cache (Room SQLite / CoreData / AsyncStorage)"]
-        RemoteSource["Remote API Client (Circuit Breaker + Auth Headers)"]
-        RepoImpl -.->|"Implements"| RepoContract
-        RepoImpl -->|"Read / Write"| LocalSource
-        RepoImpl -->|"HTTP Network"| RemoteSource
-    end
-
-    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-
-    class UI,VM uiLayer;
-    class UC,Entities,RepoContract domainLayer;
-    class RepoImpl,LocalSource dataLayer;
-    class RemoteSource networkLayer;
-```
-
-</DiagramExpand>
-
----
-
-## Cross-Platform Clean Architecture Implementation
-
-The complete 4-layer structure is demonstrated below across all tier-1 mobile platforms:
-
-<Tabs>
-<TabItem label="React Native (TypeScript)">
-
-### Domain Layer: Entities, Contract & Use Case
-```typescript
-// src/domain/entities/Order.ts
-export interface OrderItem {
-  id: string;
-  name: string;
-  quantity: number;
-  unitPrice: number;
-}
-
-export interface Order {
-  id: string;
-  items: OrderItem[];
-  totalAmount: number;
-}
-
-// src/domain/repositories/OrderRepository.ts
-export interface OrderRepository {
-  submitOrder(order: Order): Promise<{ confirmationId: string }>;
-}
-
-// src/domain/usecases/SubmitOrderUseCase.ts
-import { Order } from '../entities/Order';
-import { OrderRepository } from '../repositories/OrderRepository';
-
-export class SubmitOrderUseCase {
-  constructor(private orderRepository: OrderRepository) {}
-
-  async execute(order: Order): Promise<{ confirmationId: string }> {
-    if (order.items.length === 0) {
-      throw new Error('Cannot submit an order with zero items.');
-    }
-    return await this.orderRepository.submitOrder(order);
-  }
-}
-```
-
-### Data Layer: Repository Implementation with Resilience
-```typescript
-// src/data/repositories/OrderRepositoryImpl.ts
-import { OrderRepository } from '../../domain/repositories/OrderRepository';
-import { Order } from '../../domain/entities/Order';
-import { CircuitBreaker } from '../../core/resilience/CircuitBreaker';
-
-export class OrderRepositoryImpl implements OrderRepository {
-  private breaker = new CircuitBreaker({ failureThreshold: 3, resetTimeoutMs: 15000 });
-
-  async submitOrder(order: Order): Promise<{ confirmationId: string }> {
-    return await this.breaker.execute(async () => {
-      const response = await fetch('https://api.enterprise.com/v1/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(order),
-      });
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-      return await response.json();
-    });
-  }
-}
-```
-
-### Presentation Layer: Hook & View Component
-```typescript
-// src/presentation/hooks/useSubmitOrder.ts
-import { useState } from 'react';
-import { SubmitOrderUseCase } from '../../domain/usecases/SubmitOrderUseCase';
-import { Order } from '../../domain/entities/Order';
-
-export function useSubmitOrder(useCase: SubmitOrderUseCase) {
-  const [submitting, setSubmitting] = useState(false);
-  const [confirmationId, setConfirmationId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async (order: Order) => {
-    setSubmitting(true);
-    setError(null);
-    try {
-      const result = await useCase.execute(order);
-      setConfirmationId(result.confirmationId);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unknown submission error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return { submit, submitting, confirmationId, error };
-}
-```
-</TabItem>
-
-<TabItem label="Android (Kotlin)">
-
-### Domain Layer: Entities, Contract & Use Case
-```kotlin
-package com.enterprise.mobile.domain
-
-data class OrderItem(
-    val id: String,
-    val name: String,
-    val quantity: Int,
-    val unitPrice: Double
-)
-
-data class Order(
-    val id: String,
-    val totalAmount: Double,
-    val items: List<OrderItem>
-)
-
-interface OrderRepository {
-    suspend fun submitOrder(order: Order): Result<String>
-}
-
-class SubmitOrderUseCase(
-    private val repository: OrderRepository
-) {
-    suspend operator fun invoke(order: Order): Result<String> {
-        if (order.items.isEmpty()) {
-            return Result.failure(IllegalArgumentException("Order must contain at least one item."))
-        }
-        return repository.submitOrder(order)
-    }
-}
-```
-
-### Data Layer: Repository Implementation with Local Persistence
-```kotlin
-package com.enterprise.mobile.data
-
-import com.enterprise.mobile.domain.Order
-import com.enterprise.mobile.domain.OrderRepository
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-
-class OrderRepositoryImpl(
-    private val apiService: OrderApiService,
-    private val orderDao: OrderDao
-) : OrderRepository {
-
-    override suspend fun submitOrder(order: Order): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val response = apiService.postOrder(order.toDto())
-            orderDao.insertOrder(order.toEntity(response.confirmationId))
-            Result.success(response.confirmationId)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-}
-```
-
-### Presentation Layer: ViewModel & StateFlow
-```kotlin
-package com.enterprise.mobile.presentation
-
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.enterprise.mobile.domain.Order
-import com.enterprise.mobile.domain.SubmitOrderUseCase
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-
-sealed interface OrderState {
-    object Idle : OrderState
-    object Loading : OrderState
-    data class Success(val confirmationId: String) : OrderState
-    data class Error(val message: String) : OrderState
-}
-
-class OrderViewModel(
-    private val submitOrderUseCase: SubmitOrderUseCase
-) : ViewModel() {
-
-    private val _state = MutableStateFlow<OrderState>(OrderState.Idle)
-    val state: StateFlow<OrderState> = _state
-
-    fun submit(order: Order) {
-        viewModelScope.launch {
-            _state.value = OrderState.Loading
-            submitOrderUseCase(order).fold(
-                onSuccess = { _state.value = OrderState.Success(it) },
-                onFailure = { _state.value = OrderState.Error(it.localizedMessage ?: "Submission failed") }
-            )
-        }
-    }
-}
-```
-</TabItem>
-
-<TabItem label="iOS (Swift)">
-
-### Domain Layer: Entities, Protocol & Interactor
-```swift
-import Foundation
-
-struct OrderItem: Identifiable {
-    let id: String
-    let name: String
-    let quantity: Int
-    let unitPrice: Decimal
-}
-
-struct Order: Identifiable {
-    let id: String
-    let totalAmount: Decimal
-    let items: [OrderItem]
-}
-
-protocol OrderRepositoryProtocol {
-    func submitOrder(_ order: Order) async throws -> String
-}
-
-enum DomainError: Error {
-    case emptyOrder
-}
-
-final class SubmitOrderUseCase {
-    private let repository: OrderRepositoryProtocol
-
-    init(repository: OrderRepositoryProtocol) {
-        self.repository = repository
-    }
-
-    func execute(order: Order) async throws -> String {
-        guard !order.items.isEmpty else {
-            throw DomainError.emptyOrder
-        }
-        return try await repository.submitOrder(order)
-    }
-}
-```
-
-### Data Layer: Repository Implementation
-```swift
-import Foundation
-
-final class OrderRepositoryImpl: OrderRepositoryProtocol {
-    private let networkClient: NetworkClientProtocol
-    private let database: LocalDatabaseProtocol
-
-    init(networkClient: NetworkClientProtocol, database: LocalDatabaseProtocol) {
-        self.networkClient = networkClient
-        self.database = database
-    }
-
-    func submitOrder(_ order: Order) async throws -> String {
-        let dto = OrderRequestDTO(from: order)
-        let response: OrderResponseDTO = try await networkClient.post("/v1/orders", body: dto)
-        try await database.persistOrderConfirmation(response.confirmationId)
-        return response.confirmationId
-    }
-}
-```
-
-### Presentation Layer: ViewModel with `@MainActor`
-```swift
-import SwiftUI
-
-@MainActor
-final class OrderViewModel: ObservableObject {
-    @Published var state: ViewState<String> = .idle
-    private let useCase: SubmitOrderUseCase
-
-    init(useCase: SubmitOrderUseCase) {
-        self.useCase = useCase
-    }
-
-    func submit(order: Order) async {
-        state = .loading
-        do {
-            let confirmationId = try await useCase.execute(order: order)
-            self.state = .success(confirmationId)
-        } catch {
-            self.state = .error(error.localizedDescription)
-        }
-    }
-}
-```
-</TabItem>
-</Tabs>
-
----
-
-## Architectural Boundary Anti-Patterns
-
-<Aside type="danger" title="ARCHITECTURAL VIOLATIONS">
-The following anti-patterns trigger automatic PR review rejections:
-
-1. **Direct UI-to-DataSource Access:** Never execute database queries, direct network requests, or KeyStore lookups directly from a SwiftUI View, Jetpack Compose Composable, or React component. All access must be brokered through a Domain Use Case.
-2. **Platform Framework Imports in Domain:** The Domain layer must never import `android.*`, `UIKit`, `SwiftUI`, or `react-native`. Pure business logic must remain 100% portable and unit testable on pure host runtimes.
-3. **Leaking Network DTOs to the UI:** Raw API DTOs must be transformed into immutable Domain Entities before leaving the Data layer. This protects UI components from backend schema migrations.
-4. **Fat State Holders:** ViewModels and hooks must only coordinate UI state and invoke Use Cases. Business validation and caching rules belong strictly in Use Cases and Repositories.
-</Aside>
-
----
-
-## Quality Gate PR Merge Checklist
-
-Before opening a pull request containing architectural changes, verify all mandatory criteria:
-
-- [ ] **Clean Layer Separation:** Presentation, Domain, Data, and Core are organized into explicit packages or modules.
-- [ ] **Inward Dependency Direction:** All dependencies point inward toward the Domain layer; Domain has zero dependencies on Data or Presentation.
-- [ ] **Domain Unit Test Coverage:** All Use Cases and validation rules maintain at least 80% unit test coverage using mock repositories.
-- [ ] **Resilience Protection:** All remote HTTP requests in repository implementations incorporate failure recovery and local caching.
-- [ ] **State Immutability:** State models in ViewModels are exposed as read-only streams (`StateFlow` on Android, `@Published private(set)` on iOS, immutable React state).
-
-
-
-
-
-----------------------------------
-
-
----
-title: Circuit Breaker & Network Resilience Pattern
-description: Production-grade Circuit Breaker pattern implementation across iOS, Android, and React Native to eliminate cascading network timeouts and support offline continuity.
-sidebar:
-  order: 3
-  label: Circuit Breaker & Resilience
----
-
-import { Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
-import DiagramExpand from './DiagramExpand.astro';
-
-<Aside type="tip" title="RESILIENCE MANDATE">
-All mobile network requests executed in data repositories must be encapsulated inside a threshold-based Circuit Breaker with offline storage fallbacks. Applications must fail fast without holding cellular radio sockets open, draining battery, or freezing user interfaces.
-</Aside>
-
-## Mobile Network Reliability Challenges
-
-Mobile devices operate across fluctuating radio conditions where cellular connections experience packet loss, intermittent handoffs, and transient dead zones.
-
-When a backend microservice degrades or drops offline, standard mobile HTTP clients without a circuit breaker cause severe client-side instability:
-* **Modem Power State Locking:** Hanging TCP sockets force cellular modems into continuous high-power radio states (RRC Connected mode), draining battery life rapidly.
-* **Thread Exhaustion:** Thread pools become blocked waiting on timed-out sockets, delaying UI rendering and background workers.
-* **Cascading Retry Storms:** Unconstrained client retries bombard recovering backend clusters, prolonging backend outages.
-
----
-
-## Circuit Breaker State Machine
-
-The enterprise Circuit Breaker operates as a state machine with three strictly defined states: **Closed**, **Open**, and **Half-Open**:
-
-<DiagramExpand title="CIRCUIT BREAKER STATE MACHINE">
-
-```mermaid
-flowchart TD
-    subgraph States["Circuit Breaker State Machine"]
-        Closed["Closed (Normal Operation)\n• All HTTP requests pass to network\n• Successes reset failure count\n• 3 consecutive 5xx or timeouts trip breaker"]
-        Open["Open (Fault Tripped)\n• Requests fail fast immediately\n• Zero network calls dispatched\n• Serves local encrypted cache fallback\n• Starts 30-second cooldown timer"]
-        HalfOpen["Half-Open (Canary Probe)\n• Cooldown timer expires\n• Allows single trial request through\n• If successful: resets to Closed\n• If failed: returns to Open"]
-
-        Closed -->|"Failure threshold exceeded (3 errors)"| Open
-        Open -->|"Cooldown timer expires (30s)"| HalfOpen
-        HalfOpen -->|"Canary probe succeeds"| Closed
-        HalfOpen -->|"Canary probe fails"| Open
-    end
-
-    classDef closedState fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef openState fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
-    classDef halfOpenState fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-
-    class Closed closedState;
-    class Open openState;
-    class HalfOpen halfOpenState;
-```
-
-</DiagramExpand>
-
----
-
-## Standard Configuration Parameters
-
-Enterprise mobile applications must initialize circuit breakers using standardized parameters:
-
-| Configuration Parameter | Recommended Baseline | Operational Behavior |
-| :--- | :--- | :--- |
-| `failureThreshold` | `3 consecutive failures` | Number of 5xx errors or socket timeouts before transitioning from **Closed** to **Open**. |
-| `requestTimeoutMs` | `5,000 ms (5 seconds)` | Maximum duration for an individual network request before triggering a timeout error. |
-| `resetTimeoutMs` | `30,000 ms (30 seconds)` | Duration the breaker remains in **Open** before allowing a canary probe in **Half-Open**. |
-| `maxRetriesWithBackoff` | `2 retries` | Exponential backoff with jitter applied only while in **Closed** state before incrementing failures. |
-
----
-
-## Implementation Across Platforms
-
-The Circuit Breaker pattern is implemented below using standard platform concurrency primitives:
-
-<Tabs>
-<TabItem label="React Native (TypeScript)">
-
-### Self-Contained TypeScript Circuit Breaker & Repository
-
-```typescript
-// src/core/resilience/CircuitBreaker.ts
-export type BreakerState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
-
-export interface CircuitBreakerOptions {
-  failureThreshold?: number;
-  resetTimeoutMs?: number;
-}
-
-export class CircuitBreaker {
-  private state: BreakerState = 'CLOSED';
-  private failureCount = 0;
-  private lastFailureTime = 0;
-  private readonly failureThreshold: number;
-  private readonly resetTimeoutMs: number;
-
-  constructor(options: CircuitBreakerOptions = {}) {
-    this.failureThreshold = options.failureThreshold ?? 3;
-    this.resetTimeoutMs = options.resetTimeoutMs ?? 30000;
-  }
-
-  getState(): BreakerState {
-    if (this.state === 'OPEN' && Date.now() - this.lastFailureTime > this.resetTimeoutMs) {
-      this.state = 'HALF_OPEN';
-    }
-    return this.state;
-  }
-
-  async execute<T>(
-    primaryAction: () => Promise<T>,
-    fallbackAction: (error: Error) => Promise<T>
-  ): Promise<T> {
-    const currentState = this.getState();
-
-    if (currentState === 'OPEN') {
-      return fallbackAction(new Error('Circuit breaker is OPEN. Fast-failing network call.'));
-    }
-
-    try {
-      const result = await primaryAction();
-      if (currentState === 'HALF_OPEN') {
-        this.state = 'CLOSED';
-        this.failureCount = 0;
-      }
-      return result;
-    } catch (err: unknown) {
-      this.failureCount++;
-      this.lastFailureTime = Date.now();
-
-      if (this.failureCount >= this.failureThreshold) {
-        this.state = 'OPEN';
-      }
-
-      const error = err instanceof Error ? err : new Error(String(err));
-      return fallbackAction(error);
-    }
-  }
-}
-```
-
-### Data Repository Using Local Storage Fallback
-
-```typescript
-// src/data/repositories/OrderRepositoryImpl.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CircuitBreaker } from '../../core/resilience/CircuitBreaker';
-
-export interface OrderDashboard {
-  userId: string;
-  activeOrders: number;
-  totalSpent: number;
-}
-
-export class OrderRepositoryImpl {
-  private breaker = new CircuitBreaker({ failureThreshold: 3, resetTimeoutMs: 30000 });
-
-  async getOrderDashboard(userId: string): Promise<OrderDashboard> {
-    const cacheKey = `@dashboard_${userId}`;
-
-    return await this.breaker.execute(
-      // Primary Action: Remote Network Query
-      async () => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-        try {
-          const response = await fetch(`https://api.enterprise.com/v1/orders/dashboard/${userId}`, {
-            headers: { 'Accept': 'application/json' },
-            signal: controller.signal,
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP Error: ${response.status}`);
-          }
-
-          const freshData: OrderDashboard = await response.json();
-          await AsyncStorage.setItem(cacheKey, JSON.stringify(freshData));
-          return freshData;
-        } finally {
-          clearTimeout(timeoutId);
-        }
-      },
-      // Fallback Action: Local Cache on Breaker Trip or Network Failure
-      async (error: Error) => {
-        const cached = await AsyncStorage.getItem(cacheKey);
-        if (cached) {
-          return JSON.parse(cached) as OrderDashboard;
-        }
-        throw new Error(`Service unavailable and no local cache found: ${error.message}`);
-      }
-    );
-  }
-}
-```
-</TabItem>
-
-<TabItem label="Android (Kotlin)">
-
-### Self-Contained Kotlin Circuit Breaker
-
-```kotlin
-package com.enterprise.mobile.core.resilience
-
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-
-enum class BreakerState { CLOSED, OPEN, HALF_OPEN }
-
-class CircuitBreaker(
-    private val failureThreshold: Int = 3,
-    private val resetTimeoutMs: Long = 30000L
-) {
-    private val mutex = Mutex()
-    private var state = BreakerState.CLOSED
-    private var failureCount = 0
-    private var lastFailureTime = 0L
-
-    suspend fun <T> execute(
-        action: suspend () -> T,
-        fallback: suspend (Throwable) -> T
-    ): T {
-        val currentState = mutex.withLock {
-            if (state == BreakerState.OPEN && System.currentTimeMillis() - lastFailureTime > resetTimeoutMs) {
-                state = BreakerState.HALF_OPEN
-            }
-            state
-        }
-
-        if (currentState == BreakerState.OPEN) {
-            return fallback(IllegalStateException("Circuit Breaker is OPEN"))
-        }
-
-        return try {
-            val result = action()
-            mutex.withLock {
-                if (state == BreakerState.HALF_OPEN) {
-                    state = BreakerState.CLOSED
-                    failureCount = 0
-                }
-            }
-            result
-        } catch (t: Throwable) {
-            mutex.withLock {
-                failureCount++
-                lastFailureTime = System.currentTimeMillis()
-                if (failureCount >= failureThreshold) {
-                    state = BreakerState.OPEN
-                }
-            }
-            fallback(t)
-        }
-    }
-}
-```
-
-### Android Repository Integration
-
-```kotlin
-package com.enterprise.mobile.data.repository
-
-import com.enterprise.mobile.core.resilience.CircuitBreaker
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-
-class OrderRepositoryImpl(
-    private val api: OrderApiService,
-    private val dao: OrderDao
-) {
-    private val breaker = CircuitBreaker(failureThreshold = 3, resetTimeoutMs = 30000L)
-
-    suspend fun getOrders(): Result<List<Order>> = withContext(Dispatchers.IO) {
-        breaker.execute(
-            action = {
-                val remoteOrders = api.fetchOrders()
-                dao.insertAll(remoteOrders.map { it.toEntity() })
-                Result.success(remoteOrders.map { it.toDomain() })
-            },
-            fallback = { throwable ->
-                val cached = dao.getAllOrders()
-                if (cached.isNotEmpty()) {
-                    Result.success(cached.map { it.toDomain() })
-                } else {
-                    Result.failure(throwable)
-                }
-            }
-        )
-    }
-}
-```
-</TabItem>
-
-<TabItem label="iOS (Swift)">
-
-### Thread-Safe Swift Actor Circuit Breaker
-
-```swift
-import Foundation
-
-public actor CircuitBreaker {
-    public enum State {
-        case closed, open, halfOpen
-    }
-
-    private var state: State = .closed
-    private var failureCount = 0
-    private let failureThreshold: Int
-    private let resetTimeout: TimeInterval
-    private var lastFailureTime: Date?
-
-    public init(failureThreshold: Int = 3, resetTimeout: TimeInterval = 30) {
-        self.failureThreshold = failureThreshold
-        self.resetTimeout = resetTimeout
-    }
-
-    public func execute<T>(
-        action: () async throws -> T,
-        fallback: (Error) async throws -> T
-    ) async throws -> T {
-        if state == .open, let lastFail = lastFailureTime, Date().timeIntervalSince(lastFail) > resetTimeout {
-            state = .halfOpen
-        }
-
-        if state == .open {
-            return try await fallback(NSError(domain: "CircuitBreakerOpen", code: 503))
-        }
-
-        do {
-            let result = try await action()
-            if state == .halfOpen {
-                state = .closed
-                failureCount = 0
-            }
-            return result
-        } catch {
-            failureCount += 1
-            lastFailureTime = Date()
-            if failureCount >= failureThreshold {
-                state = .open
-            }
-            return try await fallback(error)
-        }
-    }
-}
-```
-</TabItem>
-</Tabs>
-
----
-
-## Telemetry & Operational Monitoring
-
-All circuit state transitions emit structured telemetry events to provide visibility into backend degradation:
-
-<DiagramExpand title="TELEMETRY EMISSION FLOW">
-
-```mermaid
-flowchart TD
-    subgraph Flow["Telemetry Emission Flow"]
-        App["Mobile Application (Breaker State Change)"]
-        Telemetry["Telemetry Client (Event Formatted)"]
-        Dashboard["Mobile Operations Dashboard (Alerts when > 1% users trip breaker)"]
-
-        App -->|"circuit_breaker.transition (from: closed, to: open)"| Telemetry
-        Telemetry -->|"Encrypted Telemetry Dispatch"| Dashboard
-    end
-
-    classDef clientNode fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef telemetryNode fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef monitorNode fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-
-    class App clientNode;
-    class Telemetry telemetryNode;
-    class Dashboard monitorNode;
-```
-
-</DiagramExpand>
-
----
-
-## Architectural Anti-Patterns
-
-<Aside type="danger" title="RESILIENCE VIOLATIONS">
-The following practices compromise application resilience and are rejected during PR review:
-
-1. **Unbounded Infinite Retries:** Never loop HTTP retries without exponential backoff, jitter, and a hard upper cap (maximum 2 retries).
-2. **Blocking the Main Thread on Fallback:** Local cache queries (SQLite, CoreData, AsyncStorage) must execute on background dispatchers, never blocking UI rendering.
-3. **Suppressing Errors Silently:** Never swallow network exceptions without updating UI error state or serving a valid local cache.
-4. **Omitting Socket Timeouts:** Raw HTTP requests without explicit 5-second connection/read timeouts allow modems to hang indefinitely.
-</Aside>
-
----
-
-## Quality Gate PR Merge Checklist
-
-Before submitting code incorporating remote API communication, verify every requirement:
-
-- [ ] **Circuit Breaker Active:** Remote HTTP calls in repositories are protected by a failure threshold and cooldown timer.
-- [ ] **Explicit Request Timeouts:** HTTP requests specify a timeout no greater than 5,000 ms.
-- [ ] **Encrypted Cache Fallback:** Failed requests return cached records or an explicit user-facing offline state.
-- [ ] **Thread Concurrency Verified:** Swift implementation uses `actor`; Kotlin implementation uses `Mutex` and `Dispatchers.IO`.
-- [ ] **Unit Tests for All States:** Tests verify transitions between Closed, Open, and Half-Open states with simulated HTTP 500 responses.
-
-
-
-
-
-----------------------------
-
-
----
-title: Feature Flags & Remote Configuration (Unleash)
-description: Enterprise mobile specification for runtime feature toggling, staged percentage rollouts, and instant kill switches using Unleash Proxy Client.
-sidebar:
-  order: 4
-  label: Feature Flags
----
-
-import { Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
-import DiagramExpand from './DiagramExpand.astro';
-
-<Aside type="tip" title="RELEASE GOVERNANCE MANDATE">
-All new features and user-facing capabilities must be shipped behind dynamic runtime feature flags evaluated via the Unleash Mobile Edge Proxy. Code is deployed continuously in dark mode and released progressively without waiting for app store binary review queues.
-</Aside>
-
-## Mobile Release Decoupling
-
-Coupling feature releases directly to compiled binary updates introduces operational challenges:
-* **Store Review Latency:** Emergency bug fixes can take 24 to 72 hours for store approval across Apple App Store and Google Play.
-* **Variable Client Adoption:** Users update apps asynchronously, leaving a fraction of users on legacy binaries.
-* **All-or-Nothing Blast Radius:** Releasing directly to 100% of devices risks service degradation if backend services experience unexpected load spikes.
-
-The enterprise mandates **Unleash Proxy Client** to decouple binary deployment from feature activation. Code is delivered dark in sprint builds and activated dynamically at runtime.
-
----
-
-## Unleash Mobile Edge Proxy Topology
-
-Mobile clients must never connect directly to the core Unleash database or management console. All mobile applications communicate exclusively with the **Unleash Edge Proxy**:
-
-<DiagramExpand title="UNLEASH EDGE PROXY TOPOLOGY">
-
-```mermaid
-flowchart TD
-    subgraph Clients["Mobile Client Tier"]
-        RN["React Native App (unleash-proxy-client)"]
-        Android["Android Native App (Unleash Proxy SDK)"]
-        iOS["iOS Native App (UnleashProxyClientSwift)"]
-    end
-
-    subgraph Edge["Enterprise Edge Layer"]
-        Proxy["Unleash Proxy Edge\n• Evaluates client context\n• Enforces read-only client tokens\n• Shields core systems\n• Sub-5ms cached evaluation"]
-    end
-
-    subgraph Core["Central Platform Core"]
-        AdminServer["Unleash Enterprise Server\n• Strategy configuration & targeting\n• Audit logging & RBAC permissions\n• Telemetry webhook triggers"]
-        Postgres[(Unleash PostgreSQL DB)]
-    end
-
-    RN -->|"Polls /proxy (15s)"| Proxy
-    Android -->|"Polls /proxy (15s)"| Proxy
-    iOS -->|"Polls /proxy (15s)"| Proxy
-    Proxy -->|"Syncs state / API"| AdminServer
-    AdminServer --> Postgres
-
-    classDef clientLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef edgeLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef coreLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef dbLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-
-    class RN,Android,iOS clientLayer;
-    class Proxy edgeLayer;
-    class AdminServer coreLayer;
-    class Postgres dbLayer;
-```
-
-</DiagramExpand>
-
-### Operational Edge Guarantees
-* **Credential Isolation:** Mobile clients receive a restricted client secret that can only query flag evaluation for registered contexts, preventing administration token exposure.
-* **Core Protection:** The proxy caches evaluated payloads in memory, shielding core databases from millions of polling mobile instances.
-* **Offline Fallback:** Local encrypted storage caches evaluate flags instantly on cold start before any network roundtrip completes.
-
----
-
-## Standard Configuration Parameters
-
-Enterprise mobile applications must initialize Unleash clients using standardized parameters:
-
-| Configuration Parameter | Standard Value | Operational Purpose |
-| :--- | :--- | :--- |
-| `refreshInterval` | `15 seconds` | Background polling cadence to detect remote toggle updates. |
-| `context.userId` | Authenticated SSO User ID | Enables sticky percentage rollouts and targeted user segmentation. |
-| `context.appName` | Application bundle identifier | Segregates configuration sets per mobile binary target. |
-| `context.environment` | `development` / `production` | Enforces environment segregation across test and live users. |
-
----
-
-## Multi-Platform Implementation with Unleash
-
-Every application repository must wrap the Unleash Proxy Client in a clean, type-safe architecture layer with synchronous local caching:
-
-<Tabs>
-<TabItem label="React Native (TypeScript)">
-
-### Unleash Service Implementation (`src/core/flags/UnleashService.ts`)
-
-```typescript
-import { UnleashClient } from 'unleash-proxy-client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, AppStateStatus } from 'react-native';
-
-export class UnleashService {
-  private static instance: UnleashClient | null = null;
-
-  static initialize(userId: string, appVersion: string): UnleashClient {
-    if (!this.instance) {
-      this.instance = new UnleashClient({
-        url: 'https://flags.enterprise.com/proxy',
-        clientKey: process.env.EXPO_PUBLIC_UNLEASH_CLIENT_KEY ?? '',
-        appName: 'enterprise-mobile-app',
-        refreshInterval: 15,
-        storageProvider: {
-          save: (name: string, data: any) => AsyncStorage.setItem(name, JSON.stringify(data)),
-          get: async (name: string) => {
-            const data = await AsyncStorage.getItem(name);
-            return data ? JSON.parse(data) : undefined;
-          },
-        },
-        context: {
-          userId,
-          appName: 'enterprise-mobile-app',
-          environment: __DEV__ ? 'development' : 'production',
-          properties: {
-            appVersion,
-            platform: 'react-native',
-          },
-        },
-      });
-
-      this.instance.start();
-
-      AppState.addEventListener('change', (nextState: AppStateStatus) => {
-        if (nextState === 'active' && this.instance) {
-          this.instance.updateContext({ userId });
-        }
-      });
-    }
-
-    return this.instance;
-  }
-
-  static isEnabled(flagName: string, fallback = false): boolean {
-    if (!this.instance) return fallback;
-    return this.instance.isEnabled(flagName);
-  }
-}
-```
-
-### React Hook for Screen Components (`src/presentation/hooks/useFeatureFlag.ts`)
-
-```typescript
-import { useEffect, useState } from 'react';
-import { UnleashService } from '../../core/flags/UnleashService';
-
-export function useFeatureFlag(flagName: string, fallback = false): boolean {
-  const [enabled, setEnabled] = useState<boolean>(() =>
-    UnleashService.isEnabled(flagName, fallback)
-  );
-
-  useEffect(() => {
-    const checkState = () => {
-      const currentState = UnleashService.isEnabled(flagName, fallback);
-      setEnabled(currentState);
-    };
-
-    checkState();
-  }, [flagName, fallback]);
-
-  return enabled;
-}
-```
-</TabItem>
-
-<TabItem label="Android (Kotlin)">
-
-### Android Unleash Manager (`UnleashManager.kt`)
-
-```kotlin
-package com.enterprise.mobile.core.flags
-
-import android.content.Context
-import io.getunleash.UnleashClient
-import io.getunleash.UnleashConfig
-import io.getunleash.UnleashContext
-
-object UnleashManager {
-    private var client: UnleashClient? = null
-
-    fun initialize(context: Context, userId: String, appVersion: String) {
-        if (client == null) {
-            val unleashContext = UnleashContext.newBuilder()
-                .userId(userId)
-                .appName("enterprise-android-app")
-                .environment("production")
-                .addProperty("appVersion", appVersion)
-                .build()
-
-            val config = UnleashConfig.newBuilder()
-                .proxyUrl("https://flags.enterprise.com/proxy")
-                .clientKey("android-client-key-placeholder")
-                .appName("enterprise-android-app")
-                .instanceId(userId)
-                .fetchTogglesInterval(15)
-                .build()
-
-            client = UnleashClient(config, context, unleashContext)
-        }
-    }
-
-    fun isEnabled(flagName: String, fallback: Boolean = false): Boolean {
-        return client?.isEnabled(flagName) ?: fallback
-    }
-}
-```
-</TabItem>
-
-<TabItem label="iOS (Swift)">
-
-### Swift Unleash Manager (`UnleashManager.swift`)
-
-```swift
-import Foundation
-import UnleashProxyClientSwift
-
-public final class UnleashManager {
-    public static let shared = UnleashManager()
-    private var client: UnleashClient?
-
-    private init() {}
-
-    public func initialize(userId: String, appVersion: String) {
-        client = UnleashClient(
-            unleashUrl: "https://flags.enterprise.com/proxy",
-            clientKey: "ios-client-key-placeholder",
-            refreshInterval: 15,
-            appName: "enterprise-ios-app",
-            environment: "production"
-        )
-
-        client?.context = [
-            "userId": userId,
-            "appVersion": appVersion,
-            "platform": "ios"
-        ]
-
-        client?.start { error in
-            if let error = error {
-                NSLog("[Unleash] Failed to connect: %@", error.localizedDescription)
-            }
-        }
-    }
-
-    public func isEnabled(_ flagName: String, fallback: Boolean = false) -> Bool {
-        return client?.isEnabled(name: flagName) ?? fallback
-    }
-}
-```
-</TabItem>
-</Tabs>
-
----
-
-## Staged Rollout Strategy
-
-Enterprise features roll out through four monitored stages using a **Gradual Rollout Strategy** with **User ID Stickiness**:
-
-<DiagramExpand title="STAGED ROLLOUT RINGS">
-
-```mermaid
-flowchart LR
-    Ring0["Stage 0: Internal\n• Internal testers\n• Verification in QA"] --> Ring1
-    Ring1["Stage 1: Canary\n• 5% User Population\n• Telemetry & crash watch"] --> Ring2
-    Ring2["Stage 2: Ramp\n• 25% User Population\n• API latency verification"] --> Ring3
-    Ring3["Stage 3: Broad\n• 50% Population\n• Geographic validation"] --> Ring4
-    Ring4["Stage 4: General Availability\n• 100% All Users\n• Retirement planned"]
-
-    classDef ring0 fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef ring1 fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef ring2 fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef ring3 fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef ring4 fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
-
-    class Ring0 ring0;
-    class Ring1 ring1;
-    class Ring2 ring2;
-    class Ring3 ring3;
-    class Ring4 ring4;
-```
-
-</DiagramExpand>
-
-* **Stickiness (`stickiness: userId`):** Guarantees that once a user is allocated to a feature variant, they remain on that variant across app restarts and network reconnections. Never use `random` stickiness on mobile apps.
-* **Progressive Verification:** Staged at `5%` &rarr; `25%` &rarr; `50%` &rarr; `100%`. Each stage requires metric stability verification in mobile observability before expanding.
-
----
-
-## Emergency Kill-Switch Protocol
-
-If an unexpected crash spike or backend latency surge occurs, a feature can be deactivated remotely in under 60 seconds without submitting a store binary update:
-
-<DiagramExpand title="EMERGENCY KILL SWITCH SEQUENCE">
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Ops as Mobile Operations
-    participant Unleash as Unleash Console
-    participant Proxy as Unleash Proxy Edge
-    participant App as Mobile Application
-
-    Ops->>Unleash: Toggle Flag to OFF
-    Unleash->>Proxy: Sync state update
-    App->>Proxy: Polling query /proxy (within 15s)
-    Proxy-->>App: Return updated toggle payload (flag: false)
-    App->>App: Fall back to stable legacy path immediately
-```
-
-</DiagramExpand>
-
----
-
-## Flag Hygiene & Retirement Policy
-
-Feature flags must not remain in the codebase indefinitely. Stale flags increase code complexity and inflate test matrices:
-
-| Flag Category | Recommended Lifecycle | Engineering Action |
-| :--- | :--- | :--- |
-| **Release Flags** | Deprecate post-100% stable rollout | Remove flag checks, purge legacy fallback code, archive flag. |
-| **Kill Switches** | Permanent (Audited periodically) | Retain for high-risk integrations; verify fallback path regularly. |
-| **Experiment Flags** | Remove upon experiment completion | Merge winning variant; delete alternative paths. |
-
----
-
-## Architectural Non-Negotiables
-
-<Aside type="danger" title="FEATURE FLAG ANTI-PATTERNS">
-The following practices are strictly prohibited:
-
-1. **Direct Core Unleash Connections:** Mobile applications must never connect directly to the core Unleash database or management server. All connections must route through the Unleash Proxy Edge.
-2. **Blocking App Launch:** Never block app cold start waiting for a network flag response. Always initialize synchronously from local storage cache.
-3. **Omitting Fallback Defaults:** Every `isEnabled()` evaluation must specify an explicit, safe fallback boolean to guarantee proper offline behavior.
-4. **Random Stickiness:** Never configure `random` stickiness in mobile rollouts, as user experience would fluctuate between app launches.
-5. **Non-Standard Flag Naming:** Flags must adhere to the naming schema: `mobile.[platform].[domain].[feature_name]` (e.g. `mobile.all.checkout.one_click_pay`).
-</Aside>
-
----
-
-## Quality Gate PR Merge Checklist
-
-Before submitting code introducing or modifying feature flags, verify every criterion:
-
-- [ ] **Unleash Proxy Target Verified:** Target endpoint points to the enterprise edge proxy URL.
-- [ ] **Local Storage Cache Configured:** Synchronous local storage provider registered to prevent cold-start UI flickering.
-- [ ] **Safe Fallback Specified:** All evaluation points specify a safe offline fallback value.
-- [ ] **Stickiness Configured to User ID:** Rollout strategy uses `userId` stickiness for stable cohort assignment.
-- [ ] **Unit Tests for Both Branches:** Tests verify application behavior with the flag enabled and disabled.
-
-
-
-
-
-
-
-
-----------------------------
-
----
-title: Offline Synchronization & Storage Standards
-description: Enterprise mobile specification for offline-first data architectures, local storage tiering, Outbox sync queues, and conflict resolution protocols.
-sidebar:
-  order: 5
-  label: Offline & Storage
----
-
-import { Tabs, TabItem, Card, CardGrid, Aside } from '@astrojs/starlight/components';
-import DiagramExpand from './DiagramExpand.astro';
-
-<Aside type="tip" title="OFFLINE-FIRST MANDATE">
-Mobile applications operate in an offline-first data lifecycle where network disconnections are treated as standard operational states. UI views render immediately from local storage, and mutations are guaranteed through an idempotent Outbox synchronization queue.
-</Aside>
-
-## Zero-Spinner Mobile Philosophy
-
-Traditional mobile architectures follow a network-first approach where opening a screen displays a loading spinner waiting on an HTTP response. In low-connectivity environments, users experience high latency and UI freezes.
-
-Enterprise applications enforce a **Zero-Spinner** architecture:
-1. **Instant Render from Local Storage:** Screens render immediately (&lt;16ms) using cached data from the local database upon cold start.
-2. **Background Network Reconciliation:** Remote queries execute asynchronously in the background. Reactive data streams (`StateFlow`, `@Published`, React hooks) update the UI seamlessly when new records arrive.
-3. **Optimistic Local Mutations:** User actions (such as order submissions or status updates) apply to local stores immediately and enqueue to a durable **Outbox Queue**.
-
----
-
-## Tiered Local Storage Architecture
-
-Enterprise applications must select local storage engines based on data structure and query patterns:
-
-| Storage Tier | Recommended Technology | Ideal Use Cases | Security Requirement |
+| Requirement | Native Android | Native iOS | React Native |
 | :--- | :--- | :--- | :--- |
-| **Secure Key-Value** | MMKV / SecureStore | User preferences, session flags, feature toggle cache | AES-128 encryption with hardware-backed keys |
-| **Relational Database** | Room (Android) / CoreData or SwiftData (iOS) | Complex entity graphs, offline sync outbox, indexed search | File-level hardware encryption (SQLCipher where required) |
-| **Hardware Enclave** | KeyStore (Android) / Keychain (iOS) | OAuth tokens, refresh tokens, cryptographic signing keys | Hardware enclave backing with biometric gating |
+| Android-only product or extensive Android APIs | Direct platform access; a strong starting point | Does not target Android | Assess the required native modules and maintenance cost |
+| iOS-only product or extensive Apple APIs | Does not target iOS | Direct platform access; a strong starting point | Assess the required native modules and maintenance cost |
+| Shared Android and iOS business workflows | Separate platform implementation | Separate platform implementation | A strong candidate when meaningful UI and logic can be shared |
+| Specialized hardware, background work, or platform extensions | Assess Android API and device support | Assess Apple API and entitlement support | Validate native-module support and lifecycle behavior early |
+| Strict performance requirements | Measure against the target workload | Measure against the target workload | Prototype critical interactions on representative devices |
+| Existing product and team expertise | Include integration and ownership cost | Include integration and ownership cost | Include native engineering capacity as well as React expertise |
 
----
+**Before committing:** Validate the highest-risk integration in a small prototype, record the trade-offs, and agree the choice with the responsible architecture and product owners. Shared code alone does not guarantee lower delivery or maintenance cost.
 
-## Outbox Synchronization Pattern
+## Shared SDK architecture
 
-To guarantee that user mutations are never lost during cellular dead zones, applications decouple user interactions from immediate network calls using the **Outbox Pattern**:
+Shared SDKs give each stack a consistent enterprise integration boundary. They provide equivalent capabilities through platform-appropriate APIs; they are not necessarily one binary or one implementation shared by every platform.
 
-<DiagramExpand title="OUTBOX SYNCHRONIZATION PATTERN">
+<MermaidZoom title="Platform ecosystem · application boundaries">
+
+```mermaid
+flowchart TB
+    subgraph APPS["01 · APPLICATIONS"]
+        direction LR
+        ANDROID["Android<br/>Kotlin · Compose"]
+        IOS["iOS<br/>Swift · SwiftUI"]
+        RN["React Native<br/>TypeScript · Hermes"]
+    end
+
+    BOUNDARY["Approved platform adapters<br/>Typed contracts · lifecycle ownership"]
+
+    subgraph FOUNDATION["02 · SHARED CAPABILITIES"]
+        direction LR
+        AUTH["Identity<br/>Session and credentials"]
+        FLAGS["Configuration<br/>Flags and defaults"]
+        OBS["Observability<br/>RUM and diagnostics"]
+        NET["Network resilience<br/>Requests and recovery"]
+        DESIGN["Design system<br/>Tokens and themes"]
+    end
+
+    subgraph SERVICES["03 · ENTERPRISE SERVICES"]
+        direction LR
+        IDP["Identity provider"]
+        EDGE["Feature flag edge"]
+        INTAKE["Telemetry intake"]
+        API["API gateway"]
+    end
+
+    ANDROID --> BOUNDARY
+    IOS --> BOUNDARY
+    RN --> BOUNDARY
+    BOUNDARY --> AUTH
+    BOUNDARY --> FLAGS
+    BOUNDARY --> OBS
+    BOUNDARY --> NET
+    BOUNDARY --> DESIGN
+    AUTH -.->|"Sign-in and renewal"| IDP
+    FLAGS -.->|"Configuration refresh"| EDGE
+    OBS -.->|"Permitted telemetry"| INTAKE
+    NET -.->|"API requests"| API
+
+    classDef app fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
+    classDef boundary fill:#0f172a,stroke:#475569,color:#ffffff,stroke-width:2px;
+    classDef sdk fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
+    classDef service fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:1.5px;
+    class ANDROID,IOS,RN app;
+    class BOUNDARY boundary;
+    class AUTH,FLAGS,OBS,NET,DESIGN sdk;
+    class IDP,EDGE,INTAKE,API service;
+    style APPS fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
+    style FOUNDATION fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
+    style SERVICES fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
+```
+
+</MermaidZoom>
+
+**Read the diagram:** Solid arrows represent application integration through approved adapters. Dashed arrows represent service communication. The adapter node groups platform-specific contracts; it does not prescribe a new shared runtime service. Design tokens are consumed locally and do not require a cloud connection.
+
+### Responsibility boundaries
+
+| Capability | Shared SDK responsibility | Application responsibility |
+| :--- | :--- | :--- |
+| Identity and SSO | Approved OAuth/OIDC integration, session handling, and secure credential access | Trigger sign-in when required, react to session changes, and clear user-scoped state |
+| Feature configuration | Retrieve and cache flags; expose defined fallback behavior | Provide safe feature defaults and render consistently while configuration changes |
+| Observability | Approved event transport, diagnostics, and supported crash integration | Supply meaningful events, apply data-handling policy, and avoid credentials or sensitive payloads |
+| Network resilience | Supported timeout, retry, circuit breaker, and outbox mechanisms | Define business-safe retry behavior, idempotency needs, and user-visible recovery |
+| Design system | Brand tokens, supported themes, and shared UI primitives | Build accessible screens and use the approved components consistently |
+
+The source architecture identifies Unleash Edge for flags and Datadog RUM for observability. Confirm the approved provider and available capabilities in the SDK catalog. Support for a circuit breaker, an outbox, or native crash capture must be checked per SDK and platform; the diagram does not guarantee that every adapter implements every capability.
+
+<Aside type="caution" title="Secure storage is a platform capability">
+Android Keystore manages cryptographic keys; it is not a general-purpose token database. Use the approved credential-storage abstraction, which can use Keystore-protected encryption where appropriate. On iOS, use the approved Keychain abstraction. React Native applications must use the native-backed secure-storage adapter rather than general-purpose storage for credentials. Hardware-backed protection depends on the device, key configuration, and platform capabilities; it must not be assumed universally.
+</Aside>
+
+See the [Android Keystore documentation](https://developer.android.com/privacy-and-security/keystore) for key-management behavior.
+
+## Application startup
+
+**Configure services early; keep remote work off the critical path unless the application actually requires it.** SDK construction, telemetry consent, session restoration, and remote configuration are separate concerns. Initializing an SDK does not mean initiating an interactive sign-in or waiting for every network request.
+
+<MermaidZoom title="Startup lifecycle · reliable first render">
 
 ```mermaid
 flowchart TD
-    subgraph Client["1. Mobile Client Execution"]
-        UI["User Action (Submit Order)"]
-        LocalDB["Local Entity Store (Room / CoreData / SQLite)"]
-        OutboxQueue["Durable Outbox Queue (Idempotency Key + Mutation)"]
+    LAUNCH(["Application launch"]) --> CONFIG["Load validated environment configuration"]
+    CONFIG --> VALID{"Required local<br/>configuration valid?"}
+    VALID -->|"No"| BLOCK["Show controlled startup error<br/>Record safe diagnostics"]
+    VALID -->|"Yes"| BUILD["Construct approved SDK dependencies<br/>Once per owning lifecycle"]
+    BUILD --> LOCAL["Apply consent policy<br/>Load local session and flag state"]
+    LOCAL --> SHELL["Render application shell<br/>Resolve access before protected content"]
+    SHELL --> REMOTE["Refresh session and remote flags<br/>Asynchronously where supported"]
+    REMOTE --> RESULT{"Refresh outcome"}
+    RESULT -->|"Success"| READY["Publish updated application state"]
+    RESULT -->|"Transient failure"| DEGRADED["Use permitted cached state or safe defaults<br/>Expose retry when needed"]
+    RESULT -->|"Session invalid"| SIGNIN["Clear protected user state<br/>Request sign-in when required"]
 
-        UI -->|"1. Optimistic write"| LocalDB
-        UI -->|"2. Enqueue mutation"| OutboxQueue
-        LocalDB -->|"3. Instant UI render"| UI
-    end
-
-    subgraph SyncWorker["2. Background Synchronization Engine"]
-        Scheduler["Background Task Scheduler (WorkManager / BGAppRefresh)"]
-        Batcher["Outbox Drainer (Reads PENDING records sequentially)"]
-        Scheduler -->|"Radio connected & active"| Batcher
-        OutboxQueue -.->|"Pulls pending records"| Batcher
-    end
-
-    subgraph Backend["3. Enterprise Cloud Core"]
-        Gateway["Enterprise API Gateway (Validates Idempotency Key)"]
-        Microservice["Backend Service & Database"]
-
-        Batcher -->|"HTTP POST /mutations (X-Idempotency-Key: UUID)"| Gateway
-        Gateway -->|"Idempotent transaction"| Microservice
-        Microservice -->>|"200 OK Authoritative Response"| Batcher
-        Batcher -->|"Mark SYNCED and prune"| OutboxQueue
-    end
-
-    classDef uiLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef domainLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef dataLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef networkLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-
-    class UI uiLayer;
-    class Scheduler,Batcher domainLayer;
-    class LocalDB,OutboxQueue dataLayer;
-    class Gateway,Microservice networkLayer;
+    classDef entry fill:#0f172a,stroke:#475569,color:#ffffff,stroke-width:2px;
+    classDef step fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
+    classDef choice fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-width:1.5px;
+    classDef success fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
+    classDef failure fill:#fff1f2,stroke:#e11d48,color:#881337,stroke-width:1.5px;
+    class LAUNCH entry;
+    class CONFIG,BUILD,LOCAL,SHELL,REMOTE step;
+    class VALID,RESULT choice;
+    class READY success;
+    class BLOCK,DEGRADED,SIGNIN failure;
 ```
 
-</DiagramExpand>
+</MermaidZoom>
 
-### Outbox Operational Lifecycle
-1. **Atomic Local Commit:** When the user triggers an action, the mutation updates the local relational database for immediate UI display and appends an entry to the outbox queue in a single local transaction.
-2. **Idempotency Guarantee:** Every mutation generates a client-side UUID sent in the `X-Idempotency-Key` HTTP header. This prevents duplicate transactions if the connection drops after the server processes the request but before the response reaches the device.
-3. **Sequential Queue Draining:** When network connectivity is restored, the background worker processes pending mutations in strict FIFO sequence.
+This is a startup orchestration model, not an SDK API contract. Follow each SDK's documented ordering, threading, consent, and readiness requirements. A feature flag is not an authorization control; the backend must enforce access.
 
----
-
-## Conflict Resolution Protocols
-
-When a client operates offline for extended periods, local mutations may conflict with updates made by other users:
-
-| Resolution Strategy | Enforcement Mechanism | Applicable Domain |
-| :--- | :--- | :--- |
-| **Server-Authoritative** | Server state overwrites local pending state; client refreshes with canonical backend payload. | Financial balances, inventory stock levels, order approval states. |
-| **Client Last-Write-Wins (LWW)** | Higher ISO-8601 UTC timestamp takes precedence. | Draft notes, user display preferences, form field inputs. |
-| **Manual User Resolution** | App presents side-by-side diff modal allowing the user to select conflicting versions. | Collaborative document edits, shared task assignments. |
-
----
-
-## Multi-Platform Implementation
+### Platform integration points
 
 <Tabs>
-<TabItem label="React Native (TypeScript)">
+  <TabItem label="Android">
 
-### Storage Service & Outbox Manager
+**Owner:** The application composition root and application-scoped dependencies.
 
-```typescript
-// src/core/storage/StorageService.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
+1. Register the project's Hilt application and providers as required by the approved template.
+2. Load environment configuration and construct SDK dependencies at application scope. Keep `Application.onCreate()` lightweight.
+3. Perform local SDK initialization on the thread required by its documented contract. Dispatch remote refresh work through an explicitly owned coroutine scope or approved scheduler.
+4. Expose readiness, session, and configuration changes as observable state. Screen ViewModels consume the appropriate application abstractions.
+5. Collect UI state with lifecycle-aware APIs. Do not recreate application SDK instances during Compose recomposition.
 
-export const StorageService = {
-  setString: async (key: string, value: string) => AsyncStorage.setItem(key, value),
-  getString: async (key: string): Promise<string | null> => AsyncStorage.getItem(key),
-  setObject: async <T>(key: string, value: T) => AsyncStorage.setItem(key, JSON.stringify(value)),
-  getObject: async <T>(key: string): Promise<T | null> => {
-    const raw = await AsyncStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  },
-  delete: async (key: string) => AsyncStorage.removeItem(key),
-};
-```
+**Check:** Application startup can occur for components other than the main activity. Account for process ownership and avoid initializing the same service unnecessarily in secondary processes.
 
-### Durable Outbox Sync Queue
+  </TabItem>
+  <TabItem label="iOS">
 
-```typescript
-// src/core/sync/OutboxManager.ts
-import NetInfo from '@react-native-community/netinfo';
-import { StorageService } from '../storage/StorageService';
+**Owner:** The app composition root and explicitly owned service instances.
 
-export interface OutboxMutation {
-  id: string; // Idempotency UUID
-  endpoint: string;
-  payload: Record<string, unknown>;
-  createdAt: number;
-  retryCount: number;
-}
+1. Construct long-lived services at the app level and inject them into the scene hierarchy.
+2. Keep app initialization lightweight. Respect the SDK's main-thread and actor-isolation requirements.
+3. Start asynchronous refresh through a coordinator whose lifetime matches the work. Track readiness explicitly.
+4. Publish state changes on the appropriate actor, and use a presentation model compatible with the deployment target.
+5. Make startup operations idempotent. A SwiftUI `.task` may restart as view identity or lifetime changes, and multiple scenes may request the same work.
 
-export class OutboxManager {
-  private static QUEUE_KEY = '@offline_outbox_queue';
-  private static isDraining = false;
+**Check:** View appearance is not proof of application-wide, exactly-once initialization. Decide which work belongs to the app, scene, or authenticated session.
 
-  static async enqueue(endpoint: string, payload: Record<string, unknown>): Promise<string> {
-    const queue = (await StorageService.getObject<OutboxMutation[]>(this.QUEUE_KEY)) ?? [];
-    const mutation: OutboxMutation = {
-      id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      endpoint,
-      payload,
-      createdAt: Date.now(),
-      retryCount: 0,
-    };
+  </TabItem>
+  <TabItem label="React Native">
 
-    queue.push(mutation);
-    await StorageService.setObject(this.QUEUE_KEY, queue);
-    this.drainQueue();
-    return mutation.id;
-  }
+**Owner:** The native host for native setup, plus the application bootstrap layer for JavaScript services.
 
-  static async drainQueue(): Promise<void> {
-    if (this.isDraining) return;
-    const netState = await NetInfo.fetch();
-    if (!netState.isConnected) return;
+1. Complete required Android and iOS SDK setup before relying on the JavaScript adapter.
+2. Create an application-level initialization coordinator with explicit readiness and failure state.
+3. Make initialization idempotent. A component effect alone is not an exactly-once guarantee; remounts and development behavior can rerun it.
+4. Handle rejected initialization promises and cancellation or disposal according to the SDK contract.
+5. Gate only the routes that require a service to be ready. Keep native and JavaScript configuration aligned for the same environment.
 
-    this.isDraining = true;
-    try {
-      const queue = (await StorageService.getObject<OutboxMutation[]>(this.QUEUE_KEY)) ?? [];
-      const remaining: OutboxMutation[] = [];
+**Check:** React Context distributes dependencies and state; it does not provide native secure storage or guarantee initialization order.
 
-      for (const item of queue) {
-        try {
-          const res = await fetch(item.endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Idempotency-Key': item.id,
-            },
-            body: JSON.stringify(item.payload),
-          });
-
-          if (!res.ok && res.status >= 500) {
-            item.retryCount++;
-            remaining.push(item);
-          }
-        } catch {
-          item.retryCount++;
-          remaining.push(item);
-        }
-      }
-
-      await StorageService.setObject(this.QUEUE_KEY, remaining);
-    } finally {
-      this.isDraining = false;
-    }
-  }
-}
-```
-</TabItem>
-
-<TabItem label="Android (Kotlin)">
-
-### Room Database & Outbox Entity
-
-```kotlin
-package com.enterprise.mobile.core.storage
-
-import androidx.room.*
-
-@Entity(tableName = "outbox_mutations")
-data class OutboxEntity(
-    @PrimaryKey val idempotencyKey: String,
-    val endpoint: String,
-    val payloadJson: String,
-    val createdAtTimestamp: Long = System.currentTimeMillis(),
-    val retryCount: Int = 0
-)
-
-@Dao
-interface OutboxDao {
-    @Query("SELECT * FROM outbox_mutations ORDER BY createdAtTimestamp ASC")
-    suspend fun getPendingMutations(): List<OutboxEntity>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun enqueue(mutation: OutboxEntity)
-
-    @Delete
-    suspend fun delete(mutation: OutboxEntity)
-}
-```
-
-### Android Sync Worker
-
-```kotlin
-package com.enterprise.mobile.core.sync
-
-import android.content.Context
-import androidx.work.CoroutineWorker
-import androidx.work.WorkerParameters
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-
-class OutboxSyncWorker(
-    appContext: Context,
-    workerParams: WorkerParameters,
-    private val outboxDao: OutboxDao,
-    private val httpClient: OkHttpClient
-) : CoroutineWorker(appContext, workerParams) {
-
-    override suspend fun doWork(): Result {
-        val pending = outboxDao.getPendingMutations()
-
-        for (mutation in pending) {
-            val request = Request.Builder()
-                .url(mutation.endpoint)
-                .header("X-Idempotency-Key", mutation.idempotencyKey)
-                .post(mutation.payloadJson.toRequestBody("application/json".toMediaType()))
-                .build()
-
-            try {
-                val response = httpClient.newCall(request).execute()
-                if (response.isSuccessful) {
-                    outboxDao.delete(mutation)
-                }
-            } catch (e: Exception) {
-                return Result.retry()
-            }
-        }
-
-        return Result.success()
-    }
-}
-```
-</TabItem>
-
-<TabItem label="iOS (Swift)">
-
-### Swift Outbox Record & Queue Manager
-
-```swift
-import Foundation
-
-public struct OutboxRecord: Codable {
-    public let id: UUID
-    public let endpoint: URL
-    public let payload: Data
-    public let timestamp: Date
-}
-
-public actor OutboxSyncManager {
-    public static let shared = OutboxSyncManager()
-    private let storageKey = "enterprise_outbox_queue"
-
-    public func enqueue(endpoint: URL, payload: Data) {
-        var current = fetchRecords()
-        let record = OutboxRecord(id: UUID(), endpoint: endpoint, payload: payload, timestamp: Date())
-        current.append(record)
-        saveRecords(current)
-    }
-
-    public func drainQueue() async {
-        var current = fetchRecords()
-        guard !current.isEmpty else { return }
-
-        var remaining: [OutboxRecord] = []
-
-        for record in current {
-            var request = URLRequest(url: record.endpoint)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue(record.id.uuidString, forHTTPHeaderField: "X-Idempotency-Key")
-            request.httpBody = record.payload
-
-            do {
-                let (_, response) = try await URLSession.shared.data(for: request)
-                if let httpRes = response as? HTTPURLResponse, httpRes.statusCode >= 500 {
-                    remaining.append(record)
-                }
-            } catch {
-                remaining.append(record)
-            }
-        }
-
-        saveRecords(remaining)
-    }
-
-    private func fetchRecords() -> [OutboxRecord] {
-        guard let data = UserDefaults.standard.data(forKey: storageKey),
-              let decoded = try? JSONDecoder().decode([OutboxRecord].self, from: data) else {
-            return []
-        }
-        return decoded
-    }
-
-    private func saveRecords(_ records: [OutboxRecord]) {
-        if let data = try? JSONEncoder().encode(records) {
-            UserDefaults.standard.set(data, forKey: storageKey)
-        }
-    }
-}
-```
-</TabItem>
+  </TabItem>
 </Tabs>
 
----
-
-## Database Schema Versioning & Migrations
-
-Mobile binary updates must never crash or wipe local user data due to unhandled database schema changes:
-
-<DiagramExpand title="DATABASE SCHEMA MIGRATION LIFECYCLE">
-
-```mermaid
-flowchart LR
-    V1["Schema Version 1\n(Shipped in App v1.0)"] -->|"Migration 1 to 2\n(Add nullable column)"| V2
-    V2["Schema Version 2\n(Shipped in App v1.1)"] -->|"Migration 2 to 3\n(Add table & index)"| V3
-    V3["Schema Version 3\n(Shipped in App v2.0)"]
-
-    classDef v1 fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef v2 fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef v3 fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-
-    class V1 v1;
-    class V2 v2;
-    class V3 v3;
-```
-
-</DiagramExpand>
-
-### Mandatory Migration Rules
-1. **Zero Destructive Fallbacks in Production:** Android's `.fallbackToDestructiveMigration()` or unversioned store replacement is strictly prohibited in release builds.
-2. **Nullable Columns for Schema Expansion:** All newly introduced columns must be `NULLABLE` or specify a safe default value.
-3. **Automated Migration Test Suites:** Every schema modification PR must include an automated migration unit test verifying that existing records upgrade cleanly from version $N-1$ to $N$.
-
----
-
-## Architectural Non-Negotiables
-
-<Aside type="danger" title="PERSISTENCE VIOLATIONS">
-The following anti-patterns trigger automatic PR review rejection:
-
-1. **Main Thread Database I/O:** Never execute SQLite queries, CoreData fetches, or disk writes on the UI main thread. All database calls must execute on background threads (`Dispatchers.IO` in Kotlin, background Swift actors, asynchronous JavaScript threads).
-2. **Plain-Text Credentials in Database:** User tokens, passwords, and private API keys must never be stored in plain database columns or unencrypted storage. Tokens belong exclusively in Android KeyStore or iOS Keychain.
-3. **Missing Idempotency Keys:** Every mutating outbox record must generate a unique client UUID sent via the `X-Idempotency-Key` header to prevent duplicate server actions during network reconnects.
-4. **Unconstrained Caching:** All cached entity stores must specify time-to-live (TTL) limits or eviction rules to prevent application binary bloat and operating system storage purges.
+<Aside type="note" title="Use verified SDK APIs for implementation">
+The source snippets referenced internal symbols such as `ObservabilitySDK`, `AppConfigProvider`, and `FeatureFlagManager` without package contracts or versioned API documentation. They also initialized different capabilities on each platform. This page uses a consistent integration procedure instead of presenting those unverified calls as copy-ready code. Use the catalog's platform-specific quick start for executable examples.
 </Aside>
 
----
+## Integrate an SDK
 
-## Quality Gate PR Merge Checklist
+<LinkCard
+  title="Master SDK Catalog"
+  href={`${PORTAL_BASE}/platforms/master-sdk-catalog/`}
+  description="Find approved artifacts, supported platforms, compatibility requirements, and SDK-specific integration guidance."
+/>
 
-Before submitting code introducing or modifying offline storage logic, verify every requirement:
+1. **Confirm suitability.** Check supported platforms, required OS versions, provider capabilities, and ownership.
+2. **Select a compatible release.** Use the project-managed version policy and commit the resulting dependency metadata and lockfiles.
+3. **Configure the environment.** Use the documented endpoints and permitted client configuration. Do not embed server credentials or private keys in a mobile application.
+4. **Wire lifecycle ownership.** Define initialization, readiness, refresh, cancellation, account switching, and cleanup behavior.
+5. **Verify failure behavior.** Test startup without connectivity, expired sessions, unavailable flag services, and repeated initialization.
+6. **Validate a representative build.** Test relevant release configurations and supported platforms before merging an upgrade.
 
-- [ ] **Offline Launch Tested:** Application launches, renders cached records, and accepts offline inputs with device radio disabled.
-- [ ] **Idempotency Header Included:** Outbox synchronization transmits a unique client UUID in `X-Idempotency-Key`.
-- [ ] **Background Thread Dispatching:** All SQLite, Room, or CoreData operations execute off the main UI thread.
-- [ ] **Migration Test Added:** Database schema increments include an automated unit test verifying data retention from prior versions.
-- [ ] **Encrypted Storage for Secrets:** Sensitive tokens reside strictly in hardware-backed storage (Keychain / KeyStore).
+## Platform rules
 
+These are internal platform requirements, rather than universal restrictions imposed by Android, Apple, or React Native.
 
-
-
------------------------
-
-
----
-title: Branching & Pull Request Guidelines
-description: Enterprise Git branching strategy, pull request protocols, release workflows, and code review standards for mobile engineering teams.
-sidebar:
-  order: 6
-  label: Branching & PR Guidelines
----
-
-import { Aside } from '@astrojs/starlight/components';
-import DiagramExpand from './DiagramExpand.astro';
-
-<Aside type="tip" title="SOURCE CONTROL MANDATE">
-All mobile repositories enforce strict GitFlow branch isolation, peer reviews, automated CI quality gates, and Conventional Commits. Direct pushes to integration and production branches are blocked by branch protection policies.
-</Aside>
-
-## Core Engineering Principles
-
-Every engineer contributing to enterprise mobile repositories adheres to these foundational principles:
-* **Maintain Branch Stability:** Production code in `master` must always represent deployable, audited software.
-* **Isolate Feature Development:** All work occurs in dedicated, short-lived feature or bugfix branches.
-* **Pull Request Enforcement:** Code enters shared branches exclusively through tracked Pull Requests.
-* **Peer Review Mandate:** Every PR requires approval from qualified peers before merging.
-* **Automated CI Gates:** Automated test suites, lint checks, and security scans must pass completely.
-* **Traceable Commits:** Commit messages and branch names reference corresponding Jira issue keys.
-
----
-
-## Standard Repository Branches
-
-Enterprise mobile repositories utilize a standardized branch hierarchy:
-
-| Branch Name | Operational Role | Protection Policy | Target Merge Policy |
-| :--- | :--- | :--- | :--- |
-| `master` / `prod` | Authoritative production release code. Every commit is tagged (`vYYYY.MM.build`). | Direct push blocked. Strict branch protection. | Squash and merge from release or hotfix branches. |
-| `develop` | Primary integration branch for active sprint development. | Direct push blocked. Requires CI pass + review approval. | Squash and merge from feature and bugfix branches. |
-| `release-*` | Release candidate staging branch (`release-2026.10`). Only bug fixes and version bumps. | Push restricted to release engineers. | Merges into `master` and back-merges into `develop`. |
-| `feature-*` | Temporary branch for new capabilities (`feature-checkout-flow`). | Open to assigned engineers. | Deleted upon merge into `develop`. |
-| `bugfix-*` | Temporary branch for non-urgent defect resolution (`bugfix-cart-recalculation`). | Open to assigned engineers. | Deleted upon merge into `develop`. |
-| `hotfix-*` | Emergency patch branched directly from `master` (`hotfix-session-crash`). | Restricted to hotfix squads. | Mandatory dual-merge into `master` and `develop`. |
-
----
-
-## Feature Branch Workflow
-
-### Creating a Feature Branch
-Always branch from the latest state of the `develop` branch:
-
-```bash
-# 1. Ensure develop is up to date
-git checkout develop
-git pull origin develop
-
-# 2. Cut a new feature branch
-git checkout -b feature-PROJ-1234-order-tracking
-```
-
-### Branch Naming Conventions
-Branch names must follow structured prefixes incorporating the issue tracking key:
-
-| Branch Type | Syntax Format | Example |
-| :--- | :--- | :--- |
-| **New Feature** | `feature-[JIRA_KEY]-[short-description]` | `feature-MOB-4120-biometric-login` |
-| **Bug Fix** | `bugfix-[JIRA_KEY]-[short-description]` | `bugfix-MOB-4155-cart-total-precision` |
-| **Emergency Hotfix** | `hotfix-[JIRA_KEY]-[short-description]` | `hotfix-MOB-4201-auth-token-refresh` |
-| **Technical Debt** | `chore-[JIRA_KEY]-[short-description]` | `chore-MOB-4089-upgrade-gradle-wrapper` |
-
----
-
-## Development Flows
-
-### Feature Development Flow
-Standard sprint tasks follow a sequential path from local development to `develop` integration:
-
-<DiagramExpand title="FEATURE DEVELOPMENT WORKFLOW">
-
-```mermaid
-flowchart TD
-    DevStart["develop (Latest integration state)"] -->|"git checkout -b feature-*"| Feat["feature-* Branch\n(Local commits & unit tests)"]
-    Feat -->|"git push --set-upstream"| PR["Pull Request (GitHub Enterprise)\n• CI test suites execute\n• Peer code review (1-2 approvals)"]
-    PR -->|"Squash and merge"| DevEnd["develop (Updated)\n(Triggers automated nightly build)"]
-
-    classDef devLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef featLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef prLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-
-    class DevStart,DevEnd devLayer;
-    class Feat featLayer;
-    class PR prLayer;
-```
-
-</DiagramExpand>
-
----
-
-### Release Candidate Flow
-When sprint scope freezes, code transitions through release staging for final stakeholder and user acceptance testing:
-
-<DiagramExpand title="RELEASE CANDIDATE WORKFLOW">
-
-```mermaid
-flowchart TD
-    Dev["develop (Feature Freeze)"] -->|"Branch release-YYYY.MM"| Rel["release-2026.10\n(Version bump & release notes)"]
-    Rel -->|"Deploy candidate"| UAT["User Acceptance Testing\n(Stakeholder QA & regression testing)"]
-    UAT -->|"Validation passes"| Master["master / prod\n(Tagged release v2026.10)\nDeploy to App Store & Google Play"]
-    Master -.->|"Back-merge release fixes"| Dev
-
-    classDef devLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-    classDef relLayer fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d;
-    classDef uatLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef prodLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
-
-    class Dev devLayer;
-    class Rel relLayer;
-    class UAT uatLayer;
-    class Master prodLayer;
-```
-
-</DiagramExpand>
-
-* Release branches contain exclusively bug fixes, localization updates, and release metadata.
-* No new feature development is permitted after a release branch is cut.
-
----
-
-### Emergency Hotfix Flow
-When a critical production defect requires an immediate patch:
-
-<DiagramExpand title="EMERGENCY HOTFIX WORKFLOW">
-
-```mermaid
-flowchart TD
-    Prod["master / prod (Critical defect detected)"] -->|"Branch hotfix-*"| Hotfix["hotfix-payment-timeout\n(Minimal surgical fix)"]
-    Hotfix -->|"Deploy patch"| QA["Testing Validation\n(Rapid smoke test)"]
-    QA -->|"Approved"| Split{"Dual-Merge Requirement"}
-    Split -->|"1. Merge to Production"| ProdFix["master / prod\n(Tagged patch release v2026.10.1)"]
-    Split -->|"2. Merge to Development"| DevFix["develop\n(Prevents regression in next release)"]
-
-    classDef prodLayer fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#881337;
-    classDef hotfixLayer fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95;
-    classDef testLayer fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f;
-    classDef devLayer fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
-
-    class Prod,ProdFix prodLayer;
-    class Hotfix,Split hotfixLayer;
-    class QA testLayer;
-    class DevFix devLayer;
-```
-
-</DiagramExpand>
-
-<Aside type="danger" title="MANDATORY DUAL-MERGE RULE">
-Hotfixes must be merged back into BOTH `master` and `develop`. This ensures the patch is incorporated into the active development trunk and prevents regressions during future release cycles.
-</Aside>
-
----
-
-## Pull Request Protocols
-
-### Creating a Pull Request
-1. Push your branch to the central remote: `git push --set-upstream origin feature-branch-name`.
-2. Open GitHub Enterprise and navigate to the repository.
-3. Open a **New Pull Request** targeting `develop` as the base branch.
-4. Fill out the pull request template completely, referencing the Jira ticket.
-5. Assign designated peer reviewers.
-
-### Code Review Standards
-Reviewers evaluate submissions against explicit criteria:
-* **Architectural Boundaries:** Strict separation between Presentation, Domain, Data, and Core layers.
-* **Thread Safety:** Asynchronous calls properly dispatched (`Dispatchers.IO`, `@MainActor`, async/await).
-* **Test Coverage:** Automated unit tests covering new business logic and edge cases.
-* **Error Resilience:** Network requests encapsulated with timeout and failure fallbacks.
-* **Clean Code:** Adherence to style guides, no dead code, and explicit typings.
-
----
-
-## Repository Health Practices
-
-| Best Practices (Recommended) | Prohibited Practices (Rejected) |
+| Rule | Required behavior |
 | :--- | :--- |
-| **Isolate work in feature branches:** Keep changes scoped to a single capability. | **Direct commits to develop or master:** All changes must route through peer-reviewed PRs. |
-| **Keep PRs focused:** Limit diffs to under 400 lines for thorough, high-quality review. | **Long-lived branches:** Branches left unmerged for extended periods accumulate painful conflicts. |
-| **Run tests locally before pushing:** Verify unit suites pass before opening PRs. | **Bypassing failing CI builds:** Never force-merge PRs with failing automated checks. |
-| **Follow Conventional Commits:** Use structured prefixes (`feat:`, `fix:`, `refactor:`). | **Leaving dead or commented code:** Delete unused code prior to PR submission. |
+| Approved stacks | Use native Android, native iOS, or React Native. Flutter, Xamarin, Cordova, and Ionic are outside the approved stack set in the supplied policy. |
+| Declarative UI for new features | Use Compose, SwiftUI, or React Native components. Record any required interop with existing XML, UIKit, or platform views and follow the project's review process. |
+| Typed boundaries | Define explicit API, persistence, and SDK contracts. Avoid broad `Any`, `AnyObject`, or TypeScript `any` escapes that bypass validation. TypeScript types alone do not validate remote payloads at runtime. |
+| Shared infrastructure | Use approved authentication, secure-storage, network-resilience, and observability SDKs. Keep product-specific decisions in application code. |
 
----
+The source states that violations are rejected automatically by CI. Confirm the actual checks in the repository: policy is a review requirement even when a rule is not machine-enforced. Do not assume CI can detect every architectural violation.
 
-## Quality Gate PR Merge Checklist
+## Review checklist
 
-Before merging any Pull Request, verify all criteria are satisfied:
-
-- [ ] **Target Branch Verified:** Pull request targets `develop` (or `master` for production hotfixes).
-- [ ] **Automated CI Passing:** Build, unit tests, lint checks, and security scanners pass with zero failures.
-- [ ] **Peer Approvals Acquired:** Required peer review approvals registered in GitHub Enterprise.
-- [ ] **Unit Tests Included:** New functionality and bug fixes include corresponding unit tests.
-- [ ] **Clean Git History:** Branch rebased on latest `develop` with linear, descriptive commit messages.
+- [ ] The application uses an approved platform and its established architecture conventions.
+- [ ] Toolchain and SDK versions match the project-managed compatibility policy.
+- [ ] New UI follows the approved declarative framework; necessary interop is documented.
+- [ ] SDK instances have explicit lifecycle owners and initialization is idempotent.
+- [ ] Startup handles invalid local configuration and remote service failures deliberately.
+- [ ] Authentication readiness is resolved before protected content becomes available.
+- [ ] Credentials use the approved native-backed storage abstraction; telemetry excludes secrets.
+- [ ] Telemetry initialization and collection follow the applicable consent and data-handling policy.
+- [ ] Flags have safe defaults and are not used as an authorization boundary.
+- [ ] Data contracts are typed, and external inputs receive appropriate runtime validation.
+- [ ] Offline launch, session expiry, account switching, and repeated initialization have been exercised.
+- [ ] Release-build integration and the repository's required CI checks pass.
