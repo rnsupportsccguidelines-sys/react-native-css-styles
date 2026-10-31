@@ -1,828 +1,1012 @@
 ---
-title: Native iOS Standards & MVVM Clean Architecture
-description: A practical iOS architecture reference with SwiftUI, Observation, actor-isolated SwiftData, account-scoped caching, structured cancellation, and a complete user-profile example.
+title: Cross-Platform React Native Standards & Architecture
+description: React Native engineering standards with Redux Toolkit, typed state and async workflows, validated API and MMKV boundaries, account-scoped caching, and lifecycle-aware cancellation.
 sidebar:
-  order: 3
-  label: 3.2 iOS Standards
+  order: 4
+  label: 3.3 React Native Standards
 ---
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 import MermaidZoom from '../components/mermaid-zoom.astro';
 
-Build screens from explicit state. Keep business rules independent of the UI. Isolate persistence behind an actor, and give asynchronous work a clear owner.
+Build features with clear boundaries: **views render state, Redux Toolkit coordinates updates, use cases apply domain rules, and repositories own data access**.
 
-This guide defines the platform's iOS architecture and demonstrates it with a user profile: **show cached content, refresh remotely, persist a valid response, and publish the saved result**.
+This page defines the React Native reference architecture and demonstrates a user-profile feature. The example displays validated cached content, requests fresh data, saves a valid response, and updates the screen without allowing cancelled or older requests to overwrite newer state.
 
-<Aside type="tip" title="Platform standard">
-Use feature-oriented Clean Architecture with unidirectional data flow. SwiftUI renders state and emits actions. A main-actor ViewModel coordinates use cases. Repository contracts belong to the domain; data implementations own transport and persistence. Only immutable, Sendable values cross actor boundaries.
+<Aside type="tip" title="Team standard · Redux Toolkit">
+Use Redux Toolkit for shared application state, React Redux for typed component subscriptions, and the application's established Redux data-fetching pattern. Keep transport and storage behind repository contracts. Components and reducers must not make HTTP calls or access MMKV directly.
 </Aside>
 
-## Before you use the example
+## Start here
 
-| Requirement | Reference configuration |
+| Your task | Read |
 | :--- | :--- |
-| Deployment target | iOS 17 or later for SwiftData and SwiftUI Observation integration |
-| Language mode | Swift 6 with complete concurrency checking |
-| Default actor isolation | Nonisolated for the feature target; UI types explicitly use `@MainActor` |
-| Persistence | Local SwiftData store; CloudKit synchronization is outside this example |
-| Dependencies | Foundation, Observation, SwiftUI, and SwiftData |
-| Access control | Internal types in one target for a readable example; expose deliberate APIs when splitting packages |
+| Understand framework responsibilities | [Runtime and platform baseline](#runtime-and-platform-baseline) |
+| Decide where state belongs | [State ownership](#state-ownership) |
+| Trace an action through the feature | [Architecture and data flow](#architecture-and-data-flow) |
+| Implement or review the feature | [Reference implementation](#reference-implementation) |
+| Connect navigation, authentication, and storage | [Application integration](#application-integration) |
+| Check failure behavior and code quality | [Expected behavior](#expected-behavior) and [Review checklist](#review-checklist) |
 
-Use your project's approved compiler and SDK versions. Compiler version, language mode, and default actor isolation are separate settings. If the host application uses main-actor default isolation, keep domain/data code in an appropriately configured target or adapt the declarations with the project's supported isolation syntax. Do not remove concurrency checking to silence errors.
+## Runtime and platform baseline
 
-**Scope:** The code includes the feature's domain, reference transport, persistence adapter, repository, presentation, and factories. The host app supplies navigation, environment configuration, authenticated networking, session coordination, migrations, and design tokens. These are explicit integration points, not implied SDK APIs.
-
-**Reading path:** Review the boundaries and diagrams, follow the implementation tabs in order, then use the integration and test checklists.
-
-## Architecture boundaries
-
-| Layer | Owns | Boundary rule |
+| Technology | Responsibility | Engineering implication |
 | :--- | :--- | :--- |
-| Presentation | SwiftUI views, screen state, main-actor ViewModel | Calls use cases; never fetches SwiftData models or builds HTTP requests |
-| Domain | Immutable business values, validation, repository protocol | No SwiftUI, UIKit, SwiftData, or transport implementations |
-| Data | DTOs, HTTP adapter, repository implementation, model actor | Returns domain snapshots; persistence models stay inside the store actor |
-| Composition root | Infrastructure lifetime, factories, configuration | Constructs dependencies and handles startup failures |
+| TypeScript | Static checking before execution | Enable strict checking; validate external values at runtime. |
+| Hermes | JavaScript execution engine | TypeScript is transformed to JavaScript; Hermes and JSI are different components. |
+| JSI | Interface between JavaScript and native code | Native access may be synchronous; large synchronous work can still block the calling JS thread. |
+| Fabric | React Native rendering infrastructure | Verify native component compatibility in the application's supported build configuration. |
+| TurboModules | Native module infrastructure | Check each native dependency's integration requirements; not every native package is implemented identically. |
+| Redux Toolkit | Typed reducers, store configuration, and asynchronous workflows | Keep state serializable and isolate effects from reducers. |
+| MMKV | Local key-value persistence | Validate serialized records; use approved encryption and account lifecycle policies. |
 
-Directories organize code. Separate Swift Package targets and target dependencies enforce build-time isolation. Swift Package Manager manages packages and dependencies; it is not a dependency injection framework.
+Use the versions pinned in the approved project template and lockfile. Native dependency compatibility includes React Native, React, the JS engine, Android/iOS toolchains, and any required native integration packages. A JavaScript type check does not replace native release builds.
+
+**Example API baseline:** Redux Toolkit 2.x, React Redux 9.1+ typed hooks, Zod 4 schemas, and an MMKV v4 adapter. MMKV v4 uses `createMMKV` and Nitro Modules; do not mix its setup with older `new MMKV` or `delete` examples. Follow the documentation for the version actually installed in your application.
+
+See the [React Native architecture overview](https://reactnative.dev/architecture/overview) and [MMKV version-specific documentation](https://github.com/margelo/react-native-mmkv).
+
+## State ownership
+
+Use one owner for each kind of state. Redux Toolkit does not mean every temporary UI value must live in Redux.
+
+| State | Preferred owner |
+| :--- | :--- |
+| Input text, a local toggle, or temporary component interaction | Local React state unless another part of the app needs it |
+| Shared workflow state or cross-screen product state | A Redux Toolkit slice |
+| Server data with cache invalidation, shared subscriptions, and deduplication | RTK Query when it is the project's data-fetching standard |
+| A multi-step operation coordinating local cache and remote refresh | A typed thunk or established workflow layer |
+| Data retained across app restarts | A validated persistence adapter with explicit schema and retention policy |
+| Credentials and session secrets | The approved authentication and secure-storage SDK, outside ordinary Redux state and profile cache |
+
+**This example uses `createAsyncThunk`** to make the cache-read → remote-refresh → persistence sequence explicit. Redux Toolkit provides the store, slice, lifecycle actions, request IDs, and abort signal. It does not introduce Zustand or TanStack Query.
+
+RTK Query is included in Redux Toolkit and is the Redux team's recommended purpose-built solution for ordinary server-data fetching and caching. If the application already uses RTK Query, adapt the repository/use-case boundary to that API layer instead of keeping a second copy of the same server data in a profile slice. Establish one policy for in-memory caching, durable storage, refresh, and invalidation. See the [RTK Query overview](https://redux.js.org/toolkit/rtk-query/overview).
+
+<Aside type="tip" title="Hint · loading and content can coexist">
+A cached profile can remain visible while a refresh is running. Represent content, refresh progress, and failure messaging independently. “User exists while loading” is a useful refresh state, not an impossible state.
+</Aside>
+
+## Feature structure and boundaries
 
 ```text
-Features/User/
-├── Domain.swift          # Domain value, errors, repository boundary, use case
-├── Remote.swift          # DTO, remote contract, reference URLSession adapter
-├── Storage.swift         # SwiftData model, local contract, model actor
-├── Repository.swift      # Account-scoped coordination and persistence-first result
-├── Presentation.swift    # Screen state and @MainActor @Observable ViewModel
-├── Views.swift           # Lifecycle-owning route and state-rendering content view
-└── Composition.swift     # Factories and shared store construction
-Tests/
-└── ReferenceChecks.swift # Executable behavior checks; separate from app target
+src/
+├── app/
+│   ├── store.ts                         # Root store, reducer registration, thunk dependencies
+│   ├── hooks.ts                         # Typed dispatch and selector hooks
+│   └── SessionRoot.tsx                  # Minimal account-session Provider example
+└── features/user/
+    ├── domain/
+    │   └── profile.ts                   # Domain model, errors, repository contract, use case
+    ├── data/
+    │   ├── remote/userApiService.ts     # HTTP boundary and DTO validation
+    │   ├── local/userStorage.ts         # Account-scoped, versioned cache adapter
+    │   ├── local/mmkvAdapter.ts         # Injected encrypted MMKV v4 instance
+    │   └── repository/userRepository.ts # Mapping and persistence coordination
+    ├── di/
+    │   └── createProfileUseCase.ts      # Dependency construction
+    └── presentation/
+        ├── state/profileTypes.ts       # Serializable screen state and failure contracts
+        ├── state/profileSlice.ts       # Typed thunk, slice, request guards, selectors
+        ├── hooks/useUserProfile.ts      # Screen lifecycle and cancellation
+        └── views/UserProfileRoute.tsx  # Route adapter and state-rendering view
 ```
 
-Keep files focused on one concern. Split the grouped declarations into smaller files as the feature grows; naming and dependencies matter more than a blanket one-type-per-file rule.
+| Boundary | Rule |
+| :--- | :--- |
+| Presentation → domain | Call use cases. Do not import HTTP clients or storage instances into views. |
+| Domain → data | Depend on an interface; the data layer implements it. |
+| API/cache → domain | Treat external values as `unknown`, validate them, then map to domain values. |
+| Effects → Redux | Dispatch serializable data and failure categories. Do not dispatch promises, SDK clients, or abort controllers as state. |
+| Composition → dependencies | Inject account-scoped implementations through thunk middleware, outside Redux state. |
 
-## How data moves
+Feature directories make ownership visible. Enforce import boundaries with the project's lint rules or package boundaries; directory names alone do not enforce architecture. Reusable application-wide UI and infrastructure modules remain appropriate when they have clear owners.
 
-<MermaidZoom title="iOS architecture · ownership and isolation">
+## Architecture and data flow
+
+<MermaidZoom title="React Native architecture · Redux Toolkit and data boundaries">
 
 ```mermaid
 flowchart TB
-    subgraph UI["01 · PRESENTATION · MAIN ACTOR"]
-        VIEW["SwiftUI route and content<br/>Lifecycle and user actions"]
-        VM["Observable ViewModel<br/>Read-only screen state"]
+    subgraph PRESENTATION["01 · PRESENTATION"]
+        VIEW["Route and view<br/>Render state · emit actions"]
+        HOOK["Lifecycle hook<br/>Dispatch · abort · cleanup"]
+        THUNK["Async thunk<br/>Cache read · refresh workflow"]
+        SLICE["Slice and selectors<br/>Serializable state · request-ID guards"]
     end
-    subgraph DOMAIN["02 · DOMAIN · SENDABLE VALUES"]
-        UC["Profile use case<br/>Identifier validation"]
-        CONTRACT["Repository protocol<br/>Cached read · explicit refresh"]
+    subgraph DOMAIN["02 · DOMAIN"]
+        UC["Profile use case<br/>Validate identifiers"]
+        CONTRACT["Repository contract<br/>Cached read · explicit refresh"]
     end
-    subgraph DATA["03 · DATA · ISOLATED ADAPTERS"]
-        REPO["Account-scoped repository<br/>Map · validate · persist"]
-        REMOTE["Remote source actor<br/>Authenticated adapter in production"]
-        STORE["SwiftData model actor<br/>Context and models stay here"]
+    subgraph DATA["03 · DATA"]
+        REPO["Repository implementation<br/>Map · validate identity · persist"]
+        REMOTE["Approved HTTP adapter<br/>Runtime-validated DTO"]
+        CACHE["Account-scoped MMKV adapter<br/>Versioned records · managed key"]
     end
-    VIEW -->|"Await load"| VM
-    VM --> UC
+    VIEW -->|"Refresh"| HOOK
+    HOOK --> THUNK
+    THUNK --> UC
     UC --> CONTRACT
     REPO -.->|"Implements"| CONTRACT
-    REPO -->|"Fetch"| REMOTE
-    REPO -->|"Read or save"| STORE
-    STORE -->|"Sendable snapshot"| REPO
-    CONTRACT -->|"Domain result"| VM
-    VM -->|"Observable state"| VIEW
+    REPO --> REMOTE
+    REPO --> CACHE
+    THUNK -->|"Lifecycle and cache actions"| SLICE
+    SLICE -->|"Selected UI state"| VIEW
     classDef ui fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
     classDef domain fill:#f0f9ff,stroke:#0284c7,color:#0c4a6e,stroke-width:1.5px;
     classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
-    class VIEW,VM ui;
+    class VIEW,HOOK,THUNK,SLICE ui;
     class UC,CONTRACT domain;
-    class REPO,REMOTE,STORE data;
-    style UI fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
+    class REPO,REMOTE,CACHE data;
+    style PRESENTATION fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
     style DOMAIN fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
     style DATA fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
 ```
 
 </MermaidZoom>
 
-**Read the diagram:** Calls flow through the use case and repository contract. The data implementation satisfies that contract. SwiftData reference objects never leave their model actor; the UI receives immutable domain values through the ViewModel.
+**Read the diagram:** Solid arrows show calls and state updates. The dashed arrow shows the implementation relationship. Results return through the awaited repository/use-case calls to the thunk; reducers publish screen state, and selectors deliver it to the view.
 
-### Cached content, then refresh
+### Cache, refresh, and failure behavior
 
-<MermaidZoom title="Profile loading · success, failure, and cancellation">
+<MermaidZoom title="Profile lifecycle · cached content, safe refresh, and cancellation">
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant V as SwiftUI task
-    participant VM as Main-actor ViewModel
+    participant UI as Screen hook
+    participant T as Async thunk
+    participant S as Redux slice
     participant R as Use case / Repository
-    participant DB as SwiftData actor
-    participant API as Remote source
+    participant C as MMKV adapter
+    participant A as Remote service
 
-    V->>VM: await load(userID)
-    VM->>VM: Validate ID; start request generation
-    VM->>R: Read account-scoped cache
-    R->>DB: Read persistent record
-    DB-->>VM: Domain snapshot through repository
-    Note over VM: Display cached content if available
-    VM->>R: Refresh profile
-    R->>API: Fetch profile
-    alt Valid response and successful save
-        API-->>R: Validated DTO
-        R->>DB: Update or insert; save
-        DB-->>R: Saved domain snapshot
-        R-->>VM: Refreshed profile
-        VM-->>V: Updated observable state
-    else Recoverable refresh failure
-        R-->>VM: Throw failure
-        VM-->>V: Retain cached content; show retry message
-    else Access denied, expired session, or missing profile
-        R->>DB: Invalidate this cached profile
-        R-->>VM: Throw access or cleanup failure
-        VM-->>V: Clear displayed profile; show safe message
+    UI->>T: Dispatch load(screenKey, userId)
+    T->>S: Pending with requestId
+    S->>S: Keep same-profile content; mark refreshing
+    T->>R: Read cached profile
+    R->>C: Read and validate account-scoped record
+    C-->>T: Domain snapshot through repository
+    T->>S: Cache loaded, guarded by requestId
+    T->>R: Refresh with AbortSignal
+    R->>A: Request and validate profile
+    alt Valid response and successful cache write
+        A-->>R: Validated DTO
+        R->>C: Save versioned record
+        C-->>R: Saved domain value
+        R-->>T: Refreshed profile
+        T->>S: Fulfilled, guarded by requestId
+    else Transport or server failure
+        R-->>T: Throw failure
+        T->>S: Rejected with safe message; retain cached content
+    else Session expired, access denied, or profile missing
+        R->>C: Remove this cached profile
+        R-->>T: Throw access or cleanup failure
+        T->>S: Rejected; clear displayed content
     end
-    Note over V,VM: View disappearance or task-ID change cancels the view task
-    Note over VM,R: Cancellation checks and generation guard reject cancelled or obsolete results
+    Note over UI,T: Cleanup aborts the dispatched thunk and its transport signal
+    Note over T,S: Cancelled and older requests cannot replace newer screen state
 ```
 
 </MermaidZoom>
 
-**This is a snapshot-based read/refresh example, not a live database subscription.** Successful refresh returns the persisted snapshot. Changes made elsewhere do not automatically appear on this screen. If the product needs live updates, implement a real repository observation mechanism with defined ordering, buffering, cancellation, and subscriber cleanup. Do not return a one-value `AsyncStream` and call it continuous observation.
+The persistent cache and Redux state have different jobs: MMKV retains validated snapshots across restarts; Redux owns the currently rendered state. This example does not subscribe to arbitrary MMKV changes or implement background synchronization. Add an explicit observation/synchronization policy if another writer must update the screen immediately.
 
 ## Reference implementation
+
+The following files form one example. Keep their contracts together when adapting it. The host application supplies an authenticated HTTP adapter, managed encryption key, navigation focus, session lifecycle, localization, and design-system integration.
 
 <Tabs>
   <TabItem label="1. Domain">
 
-### Domain.swift
+The domain contains no React, React Native, Redux, HTTP-client, or MMKV imports. `AbortSignal` is a cancellation contract provided by the runtime, not a Redux dependency.
 
-The repository instance belongs to one account. Observation is deliberately absent from the contract because this feature uses explicit reads and refreshes.
+### `src/features/user/domain/profile.ts`
 
-```swift
-import Foundation
-
-struct UserDomainModel: Sendable, Equatable, Identifiable {
-    let id: String
-    let name: String
-    let email: String
-    let isVIP: Bool
-    let cachedAt: Date
+```typescript
+export interface UserDomainModel {
+  readonly id: string;
+  readonly name: string;
+  readonly email: string;
+  readonly isVip: boolean;
+  readonly cachedAt: number;
 }
 
-enum UserProfileError: Error, Sendable, Equatable {
-    case invalidUserID
-    case invalidConfiguration
-    case sessionExpired
-    case accessDenied
-    case notFound
-    case cacheInvalidationFailed
-    case invalidResponse
-    case invalidPayload
-    case httpStatus(Int)
+export type ProfileErrorCode =
+  | 'invalid-id' | 'cancelled' | 'unauthorized' | 'forbidden'
+  | 'not-found' | 'http' | 'invalid-payload' | 'cache' | 'cache-invalidation';
+
+export class ProfileError extends Error {
+  constructor(readonly code: ProfileErrorCode) {
+    super(`Profile operation failed: ${code}`);
+    this.name = 'ProfileError';
+  }
 }
 
-/// An instance belongs to one authenticated account.
-protocol UserRepository: Sendable {
-    func cachedProfile(userID: String) async throws -> UserDomainModel?
-    func refreshProfile(userID: String) async throws -> UserDomainModel
+export function checkCancellation(signal: AbortSignal): void {
+  if (signal.aborted) throw new ProfileError('cancelled');
 }
 
-struct GetUserProfileUseCase: Sendable {
-    let repository: any UserRepository
+export function isCancellation(error: unknown, signal: AbortSignal): boolean {
+  return signal.aborted || (error instanceof ProfileError && error.code === 'cancelled');
+}
 
-    // Example API contract: 1–128 ASCII letters, digits, underscores or hyphens.
-    // Replace this rule if the real API uses a different identifier format.
-    func normalizedID(_ rawID: String) throws -> String {
-        let id = rawID.trimmingCharacters(in: .whitespacesAndNewlines)
-        let allowed = CharacterSet(charactersIn:
-            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
-        )
-        guard !id.isEmpty, id.utf8.count <= 128,
-              id.unicodeScalars.allSatisfy({ allowed.contains($0) }) else {
-            throw UserProfileError.invalidUserID
-        }
-        return id
-    }
+/** One repository instance belongs to one authenticated account. */
+export interface UserRepository {
+  cachedProfile(userId: string): Promise<UserDomainModel | null>;
+  refreshProfile(userId: string, signal: AbortSignal): Promise<UserDomainModel>;
+}
 
-    func cachedProfile(userID: String) async throws -> UserDomainModel? {
-        try await repository.cachedProfile(userID: normalizedID(userID))
-    }
+export class GetUserProfileUseCase {
+  constructor(private readonly repository: UserRepository) {}
 
-    func refreshProfile(userID: String) async throws -> UserDomainModel {
-        try await repository.refreshProfile(userID: normalizedID(userID))
-    }
+  normalizeId(rawId: string): string {
+    const id = rawId.trim();
+    // Example API contract; replace this rule if your API uses another ID format.
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) throw new ProfileError('invalid-id');
+    return id;
+  }
+
+  cachedProfile(userId: string): Promise<UserDomainModel | null> {
+    return this.repository.cachedProfile(this.normalizeId(userId));
+  }
+
+  refreshProfile(userId: string, signal: AbortSignal): Promise<UserDomainModel> {
+    checkCancellation(signal);
+    return this.repository.refreshProfile(this.normalizeId(userId), signal);
+  }
 }
 ```
 
-<Aside type="tip" title="Hint · validate before side effects">
-Normalize and validate identifiers before cache or network operations. The ASCII identifier rule is an explicit example API contract, not a universal restriction on user identifiers. Change it together with the endpoint builder and tests if your API uses another format.
+<Aside type="tip" title="Hint · types are not runtime validation">
+`readonly` prevents reassignment during TypeScript checking; it does not freeze JavaScript objects. The data layer validates external values and freezes the flat domain snapshots it creates. Nested mutable objects would require a deliberate immutability policy. The sample ID format is an explicit API assumption—replace it if your real identifiers use a different format.
 </Aside>
+
+`cachedAt` is a client cache timestamp in milliseconds, not the server's modification time. Define freshness, expiry, and retention separately. See [TypeScript's readonly guidance](https://www.typescriptlang.org/docs/handbook/2/objects).
 
   </TabItem>
-  <TabItem label="2. Remote source">
+  <TabItem label="2. Remote boundary">
 
-### Remote.swift
+Inject the approved authenticated network client. The feature does not create a second Axios instance, hardcode an environment, or implement token refresh.
 
-The DTO matches the API payload. Required fields are decoded strictly: missing or mistyped data is a contract failure, not an empty valid profile. The example endpoint expects HTTP 200 with a JSON body.
+### `src/features/user/data/remote/userApiService.ts`
 
-```swift
-import Foundation
+```typescript
+import { z } from 'zod';
+import { checkCancellation, ProfileError } from '../../domain/profile';
 
-struct UserNetworkDTO: Decodable, Sendable {
-    let id: String
-    let fullName: String
-    let email: String
-    let isVIP: Bool
+// Required fields have no fabricated defaults. Match this schema to the API contract.
+export const userNetworkSchema = z.object({
+  id: z.string().min(1),
+  full_name: z.string().min(1),
+  email: z.string(),
+  is_vip: z.boolean(),
+});
+export type UserNetworkDTO = z.infer<typeof userNetworkSchema>;
 
-    enum CodingKeys: String, CodingKey {
-        case id, email
-        case fullName = "full_name"
-        case isVIP = "is_vip"
-    }
+/** Adapter contract implemented by the approved authenticated network SDK.
+ * Resolve every HTTP response, including non-2xx. Reject transport errors.
+ * Honor AbortSignal and normalize cancellation to ProfileError('cancelled').
+ */
+export interface ProfileHttpClient {
+  getJson(path: string, signal: AbortSignal): Promise<{
+    readonly status: number;
+    readonly body: unknown;
+  }>;
 }
 
-protocol UserRemoteSource: Sendable {
-    func fetchProfile(userID: String) async throws -> UserNetworkDTO
+export interface UserRemoteSource {
+  fetchProfile(userId: string, signal: AbortSignal): Promise<UserNetworkDTO>;
 }
 
-/// Reference transport. Production injects the approved authenticated SDK adapter.
-actor URLSessionUserRemoteSource: UserRemoteSource {
-    private let session: URLSession
-    private let baseURL: URL
+export class UserApiService implements UserRemoteSource {
+  constructor(private readonly http: ProfileHttpClient) {}
 
-    init(session: URLSession, baseURL: URL) throws {
-        guard baseURL.scheme == "https", baseURL.host != nil,
-              baseURL.user == nil, baseURL.password == nil,
-              baseURL.query == nil, baseURL.fragment == nil else {
-            throw UserProfileError.invalidConfiguration
-        }
-        self.session = session
-        self.baseURL = baseURL
+  async fetchProfile(userId: string, signal: AbortSignal): Promise<UserNetworkDTO> {
+    checkCancellation(signal);
+    const response = await this.http.getJson(
+      `/v1/users/${encodeURIComponent(userId)}`, signal,
+    );
+    checkCancellation(signal);
+    switch (response.status) {
+      case 200: break; // Endpoint contract requires a JSON profile body.
+      case 401: throw new ProfileError('unauthorized');
+      case 403: throw new ProfileError('forbidden');
+      case 404: throw new ProfileError('not-found');
+      default: throw new ProfileError('http');
     }
-
-    func fetchProfile(userID: String) async throws -> UserNetworkDTO {
-        try Task.checkCancellation()
-        // Validation is repeated at the transport boundary for direct callers.
-        let allowed = CharacterSet(charactersIn:
-            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
-        )
-        guard !userID.isEmpty, userID.utf8.count <= 128,
-              userID.unicodeScalars.allSatisfy({ allowed.contains($0) }) else {
-            throw UserProfileError.invalidUserID
-        }
-        let url = baseURL.appendingPathComponent("v1")
-            .appendingPathComponent("users")
-            .appendingPathComponent(userID)
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.timeoutInterval = 15
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await session.data(for: request)
-        } catch {
-            if Task.isCancelled || (error as? URLError)?.code == .cancelled {
-                throw CancellationError()
-            }
-            throw error
-        }
-        try Task.checkCancellation()
-        guard let http = response as? HTTPURLResponse else {
-            throw UserProfileError.invalidResponse
-        }
-        switch http.statusCode {
-        case 200: break // This endpoint contract requires a profile body.
-        case 401: throw UserProfileError.sessionExpired
-        case 403: throw UserProfileError.accessDenied
-        case 404: throw UserProfileError.notFound
-        default: throw UserProfileError.httpStatus(http.statusCode)
-        }
-        let dto: UserNetworkDTO
-        do {
-            dto = try JSONDecoder().decode(UserNetworkDTO.self, from: data)
-        } catch {
-            throw UserProfileError.invalidPayload
-        }
-        guard dto.id == userID else { throw UserProfileError.invalidPayload }
-        return dto
+    const parsed = userNetworkSchema.safeParse(response.body);
+    if (!parsed.success || parsed.data.id !== userId) {
+      throw new ProfileError('invalid-payload');
     }
+    return parsed.data;
+  }
 }
 ```
 
-<Aside type="tip" title="Hint · adapt the approved network SDK">
-`URLSessionUserRemoteSource` demonstrates the remote contract. In production, inject the approved authenticated SDK adapter, including its redirect, timeout, response-size, retry, and environment policies. Do not copy this transport as a second authentication or networking stack. No credentials are hardcoded, and invalid status codes are not silently treated as offline success.
+<Aside type="tip" title="Hint · map HTTP failures deliberately">
+The injected adapter must resolve HTTP responses—including non-2xx responses—into the stated contract, reject transport failures, and honor the abort signal. For an Axios-backed adapter, configure or map non-2xx handling explicitly. A 401 or 403 must not accidentally become an undifferentiated offline fallback.
 </Aside>
 
-The source actor isolates decoding and request construction from the main-actor ViewModel. `async` alone does not guarantee background execution. Network cancellation can arrive as `URLError.cancelled`; normalize it to `CancellationError` rather than showing a failed-request banner.
+The schema checks the response shape and requested identity. It does not prove authorization, email ownership, or business validity. Required fields have no invented defaults. Configure timeouts, response limits, redirects, and approved retry behavior in the shared network layer.
 
   </TabItem>
-  <TabItem label="3. Persistence">
+  <TabItem label="3. Local cache">
 
-### Storage.swift
+Cache records include a schema version, account ID, and domain snapshot. Cache reads validate both structure and identity; a type assertion after `JSON.parse` would provide no runtime protection.
 
-The local store owns its context and all persistent models. Its interface accepts and returns Sendable value snapshots, including on writes.
+### `src/features/user/data/local/userStorage.ts`
 
-```swift
-import Foundation
-import SwiftData
+```typescript
+import { z } from 'zod';
+import { ProfileError, type UserDomainModel } from '../../domain/profile';
 
-@Model
-final class UserPersistentModel {
-    @Attribute(.unique) var cacheKey: String
-    var accountID: String
-    var userID: String
-    var name: String
-    var email: String
-    var isVIP: Bool
-    var cachedAt: Date
-
-    init(accountID: String, user: UserDomainModel) {
-        // Length prefix avoids ambiguous composite-key concatenation.
-        cacheKey = "\(accountID.utf8.count):\(accountID):\(user.id)"
-        self.accountID = accountID
-        userID = user.id
-        name = user.name
-        email = user.email
-        isVIP = user.isVIP
-        cachedAt = user.cachedAt
-    }
+/** Matches the string operations needed from an injected MMKV v4 instance.
+ * The composition root owns instance creation, encryption keys, and teardown.
+ */
+export interface StringStorage {
+  getString(key: string): string | undefined;
+  set(key: string, value: string): void;
+  remove(key: string): void;
 }
 
-protocol UserLocalStore: Sendable {
-    func read(accountID: String, userID: String) async throws -> UserDomainModel?
-    func save(accountID: String, user: UserDomainModel) async throws -> UserDomainModel
-    func remove(accountID: String, userID: String) async throws
+export interface UserLocalStore {
+  read(userId: string): UserDomainModel | null;
+  save(user: UserDomainModel): UserDomainModel;
+  remove(userId: string): void;
 }
 
-@ModelActor
-actor SwiftDataUserLocalStore: UserLocalStore {
-    func read(accountID: String, userID: String) throws -> UserDomainModel? {
-        try Task.checkCancellation()
-        return try find(accountID: accountID, userID: userID).map(snapshot)
-    }
+const cachedUserSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  email: z.string(),
+  isVip: z.boolean(),
+  cachedAt: z.number().int().nonnegative(),
+});
+const envelopeSchema = z.object({
+  schemaVersion: z.literal(1),
+  accountId: z.string().min(1),
+  user: cachedUserSchema,
+});
 
-    func save(accountID: String, user: UserDomainModel) throws -> UserDomainModel {
-        try Task.checkCancellation()
-        do {
-            let record: UserPersistentModel
-            if let existing = try find(accountID: accountID, userID: user.id) {
-                record = existing
-                record.name = user.name
-                record.email = user.email
-                record.isVIP = user.isVIP
-                record.cachedAt = user.cachedAt
-            } else {
-                record = UserPersistentModel(accountID: accountID, user: user)
-                modelContext.insert(record)
-            }
-            // No suspension between mutation and save: actor work stays serialized.
-            try Task.checkCancellation()
-            try modelContext.save()
-            return snapshot(record)
-        } catch {
-            modelContext.rollback()
-            throw error
-        }
-    }
+export class UserStorage implements UserLocalStore {
+  constructor(
+    private readonly storage: StringStorage,
+    private readonly accountId: string,
+  ) {
+    if (!accountId.trim()) throw new ProfileError('cache');
+  }
 
-    func remove(accountID: String, userID: String) throws {
-        try Task.checkCancellation()
-        do {
-            if let record = try find(accountID: accountID, userID: userID) {
-                modelContext.delete(record)
-                try modelContext.save()
-            }
-        } catch {
-            modelContext.rollback()
-            throw error
-        }
-    }
+  private key(userId: string): string {
+    // JSON encoding prevents ambiguous account/user concatenation.
+    return JSON.stringify(['user-profile', this.accountId, userId]);
+  }
 
-    private func find(accountID: String, userID: String) throws -> UserPersistentModel? {
-        var descriptor = FetchDescriptor<UserPersistentModel>(
-            predicate: #Predicate { $0.accountID == accountID && $0.userID == userID }
-        )
-        descriptor.fetchLimit = 1
-        return try modelContext.fetch(descriptor).first
+  read(userId: string): UserDomainModel | null {
+    const key = this.key(userId);
+    try {
+      const raw = this.storage.getString(key);
+      if (raw === undefined) return null;
+      let decoded: unknown;
+      try { decoded = JSON.parse(raw); }
+      catch { this.storage.remove(key); return null; }
+      const parsed = envelopeSchema.safeParse(decoded);
+      if (!parsed.success || parsed.data.accountId !== this.accountId ||
+          parsed.data.user.id !== userId) {
+        this.storage.remove(key); // Disposable cache: discard incompatible records.
+        return null;
+      }
+      return Object.freeze(parsed.data.user);
+    } catch {
+      throw new ProfileError('cache');
     }
+  }
 
-    private func snapshot(_ record: UserPersistentModel) -> UserDomainModel {
-        UserDomainModel(
-            id: record.userID, name: record.name, email: record.email,
-            isVIP: record.isVIP, cachedAt: record.cachedAt
-        )
+  save(user: UserDomainModel): UserDomainModel {
+    try {
+      const record = envelopeSchema.parse({
+        schemaVersion: 1, accountId: this.accountId, user,
+      });
+      this.storage.set(this.key(user.id), JSON.stringify(record));
+      return Object.freeze(record.user);
+    } catch {
+      throw new ProfileError('cache');
     }
+  }
+
+  remove(userId: string): void {
+    try { this.storage.remove(this.key(userId)); }
+    catch { throw new ProfileError('cache-invalidation'); }
+  }
 }
 ```
 
-<Aside type="tip" title="Hint · serialize mutation and save">
-No suspension occurs between changing a record and saving it. A failed save rolls back pending changes in this dedicated context. Keep this context private to the feature store; rollback must not undo unrelated work. Share one store instance rather than constructing a new context for every request.
+The sample treats the cache as disposable: malformed, incompatible, or incorrectly scoped records are removed and treated as absent. If deletion itself fails, the error propagates. For authoritative offline user edits, implement migrations and recovery rather than discarding records.
+
+### `src/features/user/data/local/mmkvAdapter.ts`
+
+```typescript
+import { createMMKV } from 'react-native-mmkv';
+import { ProfileError } from '../../domain/profile';
+import type { StringStorage } from './userStorage';
+
+/** Call once per account storage lifetime, after the secure key is available. */
+export function createEncryptedProfileCache(
+  instanceId: string,
+  encryptionKey: string,
+): StringStorage {
+  if (!instanceId.trim() || !encryptionKey) throw new ProfileError('cache');
+  return createMMKV({ id: instanceId, encryptionKey });
+}
+```
+
+<Aside type="tip" title="Hint · inject the key; never commit it">
+Resolve the account cache key through the approved secure-storage/key-management integration before creating the MMKV instance. Pass an opaque instance namespace and a key valid for the installed MMKV version. Retain the instance for its owning account lifetime; do not construct it in a component body. Never use a fixed encryption key in source code or the JavaScript bundle.
 </Aside>
 
-The key is account-scoped so two accounts cannot accidentally share a cached profile with the same user ID. The explicit update-or-insert logic controls which fields change; a uniqueness constraint alone does not define a complete synchronization policy.
+MMKV encryption protects persisted cache data according to its configuration; it does not turn a profile cache into a credential vault. Keep authentication secrets in the approved native-backed auth SDK. Account namespacing prevents accidental cross-account reads, but does not replace logout cleanup or access control.
 
-`@ModelActor` provides isolation, not a blanket promise that storage work runs on a background thread. The executor depends on construction and configuration. Profile startup, database size, and query performance on devices. This schema uses a local unique attribute; review schema restrictions before adding CloudKit synchronization.
+Synchronous native operations and JSON parsing still consume time on the calling JS thread. Keep records small and measure real workloads. Do not make universal latency or “times faster” guarantees from a library benchmark.
 
   </TabItem>
-  <TabItem label="4. Repository">
+  <TabItem label="4. Repository and DI">
 
-### Repository.swift
+The repository maps a validated DTO, checks cancellation, and requires the local write to succeed before reporting refresh success. A cache-read API is separate from a refresh API, so an old cached profile cannot silently masquerade as a successful network refresh.
 
-The repository validates response identity, maps DTOs into domain values, and requires a successful save before returning a refreshed profile. A refresh failure remains a failure even when a cached record exists.
+### `src/features/user/data/repository/userRepository.ts`
 
-```swift
-import Foundation
+```typescript
+import {
+  checkCancellation, isCancellation, ProfileError,
+  type UserDomainModel, type UserRepository,
+} from '../../domain/profile';
+import type { UserNetworkDTO, UserRemoteSource } from '../remote/userApiService';
+import type { UserLocalStore } from '../local/userStorage';
 
-struct UserRepositoryImpl: UserRepository {
-    private let accountID: String
-    private let remote: any UserRemoteSource
-    private let local: any UserLocalStore
-    private let now: @Sendable () -> Date
+export class UserRepositoryImpl implements UserRepository {
+  constructor(
+    private readonly remote: UserRemoteSource,
+    private readonly local: UserLocalStore,
+    private readonly now: () => number = Date.now,
+  ) {}
 
-    init(
-        accountID: String,
-        remote: any UserRemoteSource,
-        local: any UserLocalStore,
-        now: @escaping @Sendable () -> Date = { Date() }
-    ) throws {
-        guard !accountID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw UserProfileError.invalidConfiguration
-        }
-        self.accountID = accountID
-        self.remote = remote
-        self.local = local
-        self.now = now
+  async cachedProfile(userId: string): Promise<UserDomainModel | null> {
+    return this.local.read(userId);
+  }
+
+  async refreshProfile(userId: string, signal: AbortSignal): Promise<UserDomainModel> {
+    checkCancellation(signal);
+    let dto: UserNetworkDTO;
+    try {
+      dto = await this.remote.fetchProfile(userId, signal);
+    } catch (error: unknown) {
+      if (isCancellation(error, signal)) throw new ProfileError('cancelled');
+      if (error instanceof ProfileError &&
+          ['unauthorized', 'forbidden', 'not-found'].includes(error.code)) {
+        this.local.remove(userId); // Cleanup failure must also reach the controller.
+      }
+      throw error;
     }
-
-    func cachedProfile(userID: String) async throws -> UserDomainModel? {
-        try Task.checkCancellation()
-        return try await local.read(accountID: accountID, userID: userID)
-    }
-
-    func refreshProfile(userID: String) async throws -> UserDomainModel {
-        try Task.checkCancellation()
-        let dto: UserNetworkDTO
-        do {
-            dto = try await remote.fetchProfile(userID: userID)
-        } catch {
-            if Task.isCancelled || error is CancellationError ||
-                (error as? URLError)?.code == .cancelled {
-                throw CancellationError()
-            }
-            if let failure = error as? UserProfileError,
-               failure == .sessionExpired || failure == .accessDenied || failure == .notFound {
-                // Invalidate this profile. Account-wide cleanup belongs to the session owner.
-                do { try await local.remove(accountID: accountID, userID: userID) }
-                catch {
-                    if Task.isCancelled || error is CancellationError {
-                        throw CancellationError()
-                    }
-                    throw UserProfileError.cacheInvalidationFailed
-                }
-            }
-            throw error
-        }
-        try Task.checkCancellation()
-        guard dto.id == userID else { throw UserProfileError.invalidPayload }
-        let user = UserDomainModel(
-            id: dto.id, name: dto.fullName, email: dto.email,
-            isVIP: dto.isVIP, cachedAt: now()
-        )
-        // Never return network-only content as a successful persisted refresh.
-        let saved = try await local.save(accountID: accountID, user: user)
-        try Task.checkCancellation()
-        return saved
-    }
+    checkCancellation(signal);
+    if (dto.id !== userId) throw new ProfileError('invalid-payload');
+    // The local adapter must succeed before refresh is reported as successful.
+    return this.local.save(Object.freeze({
+      id: dto.id, name: dto.full_name, email: dto.email,
+      isVip: dto.is_vip, cachedAt: this.now(),
+    }));
+  }
 }
 ```
 
-<Aside type="tip" title="Hint · make time deterministic">
-Inject `now` in tests. `cachedAt` records when this client prepared the cache update; it is not the server's last-modified timestamp and does not establish business freshness by itself. Add an explicit TTL or version policy if the product needs one.
+<Aside type="tip" title="Hint · cancellation must reach the write boundary">
+Pass the same signal through the thunk, use case, repository, and remote adapter. Check it after the remote await and before the synchronous cache write. Cancelling a request does not undo a write that has already completed. Server-side work may also continue after client cancellation.
 </Aside>
 
-This repository is a Sendable struct with immutable Sendable dependencies. The storage and remote actors isolate their mutable resources. It does not require `@unchecked Sendable`.
+Unauthorized, forbidden, and missing-profile errors invalidate this profile's cached record. A failed removal propagates `cache-invalidation`, causing the screen to clear its content. The application session coordinator must independently block protected navigation and complete account-wide cleanup.
 
-For access denial, session expiry, or a missing profile, this example invalidates the current cached record. A cleanup failure becomes a distinct error so the screen still clears its content. The session coordinator must independently block protected navigation and complete account-wide cleanup. A cache delete is not an authorization control.
+### `src/features/user/di/createProfileUseCase.ts`
 
-Concurrent callers can still issue overlapping refreshes. The ViewModel's generation guard protects its screen, not global cache ordering. If multiple screens or background jobs refresh the same record, add a repository-level synchronization/version policy appropriate to the server contract; do not assume actor reentrancy or cancellation establishes “latest data wins.”
+```typescript
+import { GetUserProfileUseCase } from '../domain/profile';
+import { UserApiService, type ProfileHttpClient } from '../data/remote/userApiService';
+import { UserStorage, type StringStorage } from '../data/local/userStorage';
+import { UserRepositoryImpl } from '../data/repository/userRepository';
+
+export function createAccountProfileUseCase(dependencies: Readonly<{
+  accountId: string;
+  http: ProfileHttpClient;
+  storage: StringStorage;
+  now?: () => number;
+}>): GetUserProfileUseCase {
+  const local = new UserStorage(dependencies.storage, dependencies.accountId);
+  const remote = new UserApiService(dependencies.http);
+  return new GetUserProfileUseCase(
+    new UserRepositoryImpl(remote, local, dependencies.now ?? Date.now),
+  );
+}
+```
+
+Build this use case once for the authenticated account using the configured HTTP adapter and cache instance. The injected clock makes cache timestamps deterministic in tests. No service-locator import is needed in a component.
+
+Multiple independent writers may still refresh the same profile. Request-ID guards below protect screen state; they do not establish global ordering of cache writes. If background jobs or several screens can write concurrently, define a repository-level deduplication/version policy or use the application's established RTK Query strategy.
 
   </TabItem>
-  <TabItem label="5. Presentation">
+  <TabItem label="5. Redux state and thunk">
 
-### Presentation.swift
+Screen state uses serializable values. SDK clients, functions, abort controllers, and promises remain outside state and action payloads. The diagnostics adapter receives categories only and must not throw.
 
-Content, progress, and errors are independent properties so a temporary network failure does not discard usable cached content.
+### `src/features/user/presentation/state/profileTypes.ts`
 
-```swift
-import Foundation
-import Observation
+```typescript
+import type { UserDomainModel, ProfileErrorCode, GetUserProfileUseCase } from '../../domain/profile';
 
-struct UserProfileUIState: Equatable {
-    var user: UserDomainModel?
-    var isLoading = false
-    var message: String?
+export interface UserProfileUIState {
+  readonly user: UserDomainModel | null;
+  readonly isRefreshing: boolean;
+  readonly message: string | null;
+}
+export const initialProfileState: UserProfileUIState = Object.freeze({
+  user: null, isRefreshing: false, message: null,
+});
+
+/** Non-throwing diagnostics adapter: report categories, never credentials or payloads. */
+export type ProfileDiagnostics = (event: Readonly<{
+  stage: 'cache-read' | 'refresh';
+  code: ProfileErrorCode | 'unexpected';
+}>) => void;
+
+export interface ProfileDependencies {
+  readonly useCase: GetUserProfileUseCase;
+  readonly report: ProfileDiagnostics;
 }
 
-@Observable
-@MainActor
-final class UserProfileViewModel {
-    private(set) var state = UserProfileUIState()
-    @ObservationIgnored private let useCase: GetUserProfileUseCase
-    @ObservationIgnored private var currentUserID: String?
-    @ObservationIgnored private var generation = UUID()
+export interface ProfileLoadArg {
+  readonly screenKey: string;
+  readonly userId: string;
+}
 
-    init(useCase: GetUserProfileUseCase) {
-        self.useCase = useCase
-    }
-
-    /// The caller owns and awaits this operation. No nested unstructured Task.
-    func load(userID rawID: String) async {
-        let request = UUID()
-        generation = request
-        let userID: String
-        do {
-            userID = try useCase.normalizedID(rawID)
-        } catch {
-            currentUserID = nil
-            state = UserProfileUIState(message: "A valid user ID is required.")
-            return
-        }
-        if currentUserID != userID {
-            state = UserProfileUIState() // Do not show a different profile.
-            currentUserID = userID
-        }
-        state.isLoading = true
-        state.message = nil
-        defer {
-            if generation == request { state.isLoading = false }
-        }
-
-        do {
-            do {
-                let cached = try await useCase.cachedProfile(userID: userID)
-                try Task.checkCancellation()
-                guard generation == request else { return }
-                state.user = cached
-            } catch {
-                if isCancellation(error) { throw CancellationError() }
-                guard generation == request else { return }
-                // Cache-read failure must not prevent a recoverable remote fetch.
-                state.message = "Saved profile is unavailable. Trying to refresh."
-            }
-            let fresh = try await useCase.refreshProfile(userID: userID)
-            try Task.checkCancellation()
-            guard generation == request else { return }
-            state.user = fresh
-            state.message = nil
-        } catch {
-            guard generation == request else { return }
-            if isCancellation(error) { return } // Cancellation is not a UI failure.
-            if let failure = error as? UserProfileError {
-                switch failure {
-                case .cacheInvalidationFailed:
-                    state.user = nil
-                    state.message = "Profile access could not be verified. Please sign in again."
-                case .sessionExpired:
-                    state.user = nil
-                    state.message = "Your session has expired. Please sign in again."
-                case .accessDenied:
-                    state.user = nil
-                    state.message = "You do not have access to this profile."
-                case .notFound:
-                    state.user = nil
-                    state.message = "This profile is no longer available."
-                default:
-                    state.message = "Unable to refresh the profile. Please try again."
-                }
-            } else {
-                state.message = "Unable to refresh the profile. Please try again."
-            }
-        }
-    }
-
-    private func isCancellation(_ error: any Error) -> Bool {
-        Task.isCancelled || error is CancellationError ||
-            (error as? URLError)?.code == .cancelled
-    }
+export interface ProfileFailure {
+  readonly code: ProfileErrorCode | 'unexpected';
+  readonly message: string;
+  readonly clearContent: boolean;
 }
 ```
 
-<Aside type="tip" title="Hint · await work instead of hiding a Task">
-`load` is asynchronous and is awaited by the SwiftUI task. It does not create an unstructured task inside the ViewModel. Cancellation can therefore propagate through the use case and repository. The generation token additionally prevents a late result from an older request from changing the current screen—even if a dependency ignores cancellation.
+The slice stores a separate entry for each navigation screen instance. Each entry tracks the latest request ID, so one screen cannot overwrite another screen's state and an old request cannot clear a newer loading indicator.
+
+### `src/features/user/presentation/state/profileSlice.ts`
+
+```typescript
+import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { checkCancellation, isCancellation, ProfileError, type UserDomainModel } from '../../domain/profile';
+import {
+  initialProfileState, type ProfileDependencies, type ProfileFailure,
+  type ProfileLoadArg, type UserProfileUIState,
+} from './profileTypes';
+
+interface ProfileEntry extends UserProfileUIState {
+  readonly userId: string;
+  readonly requestId: string | null;
+}
+export interface ProfilesState {
+  readonly entries: Record<string, ProfileEntry | undefined>;
+}
+const initialState: ProfilesState = { entries: {} };
+
+// JSON encoding prevents arbitrary route keys from becoming prototype property names.
+export const profileEntryKey = (screenKey: string): string => JSON.stringify([screenKey]);
+
+function toFailure(error: unknown): ProfileFailure {
+  const code = error instanceof ProfileError ? error.code : 'unexpected';
+  const clearContent = ['unauthorized', 'forbidden', 'not-found', 'cache-invalidation'].includes(code);
+  const message = code === 'invalid-id' ? 'A valid user ID is required.'
+    : code === 'unauthorized' ? 'Your session has expired. Please sign in again.'
+    : code === 'forbidden' ? 'You do not have access to this profile.'
+    : code === 'not-found' ? 'This profile is no longer available.'
+    : code === 'cache-invalidation' ? 'Profile access could not be verified. Please sign in again.'
+    : 'Unable to refresh the profile. Please try again.';
+  return { code, message, clearContent: clearContent || code === 'invalid-id' };
+}
+
+export const loadUserProfile = createAsyncThunk<
+  UserDomainModel,
+  ProfileLoadArg,
+  {
+    state: { profiles: ProfilesState };
+    extra: ProfileDependencies;
+    rejectValue: ProfileFailure;
+  }
+>('profiles/load', async (arg, api) => {
+  const { extra, signal, requestId, dispatch, getState, rejectWithValue } = api;
+  const key = profileEntryKey(arg.screenKey);
+  const isCurrent = (): boolean => getState().profiles.entries[key]?.requestId === requestId;
+  try {
+    const userId = extra.useCase.normalizeId(arg.userId);
+    checkCancellation(signal);
+    try {
+      const cached = await extra.useCase.cachedProfile(userId);
+      checkCancellation(signal);
+      if (!isCurrent()) throw new ProfileError('cancelled');
+      dispatch(profilesSlice.actions.cacheLoaded({ screenKey: arg.screenKey, requestId, user: cached }));
+    } catch (error: unknown) {
+      if (isCancellation(error, signal) || !isCurrent()) throw new ProfileError('cancelled');
+      extra.report({ stage: 'cache-read', code: toFailure(error).code });
+      // A disposable cache failure must not prevent a recoverable remote fetch.
+    }
+    const user = await extra.useCase.refreshProfile(userId, signal);
+    checkCancellation(signal);
+    if (!isCurrent()) throw new ProfileError('cancelled');
+    return user;
+  } catch (error: unknown) {
+    if (isCancellation(error, signal) || !isCurrent()) {
+      return rejectWithValue({ code: 'cancelled', message: '', clearContent: false });
+    }
+    const failure = toFailure(error);
+    extra.report({ stage: 'refresh', code: failure.code });
+    return rejectWithValue(failure);
+  }
+});
+
+const profilesSlice = createSlice({
+  name: 'profiles',
+  initialState,
+  reducers: {
+    cacheLoaded(state, action: PayloadAction<{
+      screenKey: string; requestId: string; user: UserDomainModel | null;
+    }>) {
+      const entry = state.entries[profileEntryKey(action.payload.screenKey)];
+      if (entry?.requestId === action.payload.requestId) entry.user = action.payload.user;
+    },
+    profileRemoved(state, action: PayloadAction<string>) {
+      delete state.entries[profileEntryKey(action.payload)];
+    },
+    profilesCleared: () => initialState,
+  },
+  extraReducers: (builder) => {
+    builder.addCase(loadUserProfile.pending, (state, action) => {
+      const key = profileEntryKey(action.meta.arg.screenKey);
+      const previous = state.entries[key];
+      state.entries[key] = {
+        user: previous?.userId === action.meta.arg.userId ? previous.user : null,
+        userId: action.meta.arg.userId,
+        requestId: action.meta.requestId,
+        isRefreshing: true,
+        message: null,
+      };
+    });
+    builder.addCase(loadUserProfile.fulfilled, (state, action) => {
+      const entry = state.entries[profileEntryKey(action.meta.arg.screenKey)];
+      if (entry?.requestId !== action.meta.requestId) return;
+      entry.user = action.payload;
+      entry.isRefreshing = false;
+      entry.message = null;
+      entry.requestId = null;
+    });
+    builder.addCase(loadUserProfile.rejected, (state, action) => {
+      const entry = state.entries[profileEntryKey(action.meta.arg.screenKey)];
+      if (entry?.requestId !== action.meta.requestId) return;
+      entry.isRefreshing = false;
+      entry.requestId = null;
+      if (action.meta.aborted || action.payload?.code === 'cancelled') return;
+      entry.message = action.payload?.message ?? 'Unable to load the profile. Please try again.';
+      if (action.payload?.clearContent) entry.user = null;
+    });
+  },
+});
+
+export const { profileRemoved, profilesCleared } = profilesSlice.actions;
+export const profilesReducer = profilesSlice.reducer;
+export const selectProfile = (
+  state: { profiles: ProfilesState }, screenKey: string,
+): UserProfileUIState => state.profiles.entries[profileEntryKey(screenKey)] ?? initialProfileState;
+```
+
+<Aside type="tip" title="Hint · draft mutation is valid inside createSlice">
+Assignments such as `entry.user = action.payload` are intentional: Redux Toolkit uses Immer to produce immutable updates from these reducer drafts. Do not mutate selected Redux objects in components, hooks, repositories, or ordinary functions. Keep reducers free of HTTP, storage, logging, and navigation effects.
 </Aside>
 
-Each suspension is followed by a cancellation check or request-generation check before publishing data. The deferred loading reset also checks the generation, so an older request cannot stop a newer request's loading indicator. Cancellation does not become a user-visible error.
-
-Do not expose raw `localizedDescription` values from transport or persistence errors. The example uses safe messages; production should map error categories to localized UI copy and send redacted technical diagnostics through the approved observability layer.
+`rejectWithValue` carries a typed, serializable failure contract. Abort actions stop progress without becoming error banners. The request-ID check applies to cached content, success, and failure—not just to the final network result. Unknown technical failures map to safe UI copy instead of raw exception messages.
 
   </TabItem>
-  <TabItem label="6. SwiftUI">
+  <TabItem label="6. Store and typed hooks">
 
-### Views.swift
+This is a minimal root-store example. Merge the reducer and dependency injection into the real application store; do not add a nested Redux store for each feature. The default serializability and immutability checks remain enabled.
 
-The route owns the ViewModel for its SwiftUI identity. The content view receives state and a callback and can be previewed without networking or persistence.
+### `src/app/store.ts`
 
-```swift
-import SwiftUI
+```typescript
+import { configureStore } from '@reduxjs/toolkit';
+import { profilesReducer } from '../features/user/presentation/state/profileSlice';
+import type { ProfileDependencies } from '../features/user/presentation/state/profileTypes';
 
-@MainActor
-struct UserProfileRoute: View {
-    let userID: String
-    @State private var viewModel: UserProfileViewModel
-    @State private var revision = 0
+/** Minimal reference store. Integrate this reducer into the real root store. */
+export function makeSessionStore(dependencies: ProfileDependencies) {
+  return configureStore({
+    reducer: { profiles: profilesReducer },
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware({
+      thunk: { extraArgument: dependencies },
+    }),
+    devTools: false, // Enable deliberately in approved development builds only.
+  });
+}
+export type AppStore = ReturnType<typeof makeSessionStore>;
+export type RootState = ReturnType<AppStore['getState']>;
+export type AppDispatch = AppStore['dispatch'];
+```
 
-    init(userID: String, viewModel: UserProfileViewModel) {
-        self.userID = userID
-        _viewModel = State(initialValue: viewModel)
-    }
+### `src/app/hooks.ts`
 
-    private struct RequestKey: Equatable {
-        let userID: String
-        let revision: Int
-    }
+```typescript
+import { useDispatch, useSelector } from 'react-redux';
+import type { AppDispatch, RootState } from './store';
 
-    var body: some View {
-        let key = RequestKey(userID: userID, revision: revision)
-        UserProfileView(state: viewModel.state) { revision += 1 }
-            .navigationTitle("User profile")
-            .task(id: key) {
-                await viewModel.load(userID: key.userID)
-            }
-    }
+// React Redux 9.1+ typed hooks; use your project's approved compatible version.
+export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
+export const useAppSelector = useSelector.withTypes<RootState>();
+```
+
+<Aside type="tip" title="Hint · dependencies belong in middleware, not state">
+Thunk `extraArgument` carries the use case and diagnostics adapter. They are not serialized into the store or passed in a dispatched action. Infer store and dispatch types from the configured store, then use the pretyped hooks throughout presentation code.
+</Aside>
+
+For this reference, the store and injected dependencies belong to one authenticated session. Recreating only the use case variable does not replace the store's existing middleware dependency.
+
+### `src/app/SessionRoot.tsx`
+
+```tsx
+import { useState, type PropsWithChildren } from 'react';
+import { Provider } from 'react-redux';
+import type { ProfileDependencies } from '../features/user/presentation/state/profileTypes';
+import { makeSessionStore } from './store';
+
+type SessionProps = PropsWithChildren<{
+  sessionScopeKey: string;
+  dependencies: ProfileDependencies;
+}>;
+
+/** Minimal app-root example. Do not mount a second Redux Provider inside a feature. */
+export function SessionRoot({ sessionScopeKey, dependencies, children }: SessionProps) {
+  return (
+    <SessionProvider key={sessionScopeKey} dependencies={dependencies}>
+      {children}
+    </SessionProvider>
+  );
 }
 
-@MainActor
-struct UserProfileView: View {
-    let state: UserProfileUIState
-    let onRefresh: () -> Void
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if state.isLoading {
-                    ProgressView(state.user == nil ? "Loading profile…" : "Refreshing…")
-                        .accessibilityLabel("Profile loading")
-                }
-                if let user = state.user {
-                    Text(user.name).font(.title2).fontWeight(.semibold)
-                    Text(user.email).foregroundStyle(.secondary)
-                    if user.isVIP {
-                        Label("VIP account", systemImage: "star.fill")
-                            .font(.callout)
-                    }
-                }
-                if let message = state.message {
-                    Text(message)
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("profile.message")
-                }
-                if !state.isLoading && state.user == nil && state.message == nil {
-                    Text("No saved profile is available.")
-                }
-                Button(state.message == nil ? "Refresh profile" : "Retry",
-                       action: onRefresh)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(state.isLoading)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(24)
-        }
-    }
+function SessionProvider({ dependencies, children }: PropsWithChildren<{
+  dependencies: ProfileDependencies;
+}>) {
+  const [store] = useState(() => makeSessionStore(dependencies));
+  return <Provider store={store}>{children}</Provider>;
 }
 ```
 
-<Aside type="tip" title="Hint · let SwiftUI own cancellation">
-Changing `userID` or the refresh revision changes `.task(id:)`, cancelling the previous view task and starting a new one. Await `viewModel.load` directly. The route's parent owns the `NavigationStack`; nesting a new stack inside every feature screen is unnecessary.
-</Aside>
+`sessionScopeKey` is a non-secret identity that changes for each authenticated session. A new key remounts the session subtree and creates a store with the new dependencies. This component illustrates ownership at the app root; integrate it with the existing application shell and all existing reducers. Do not mount it inside an individual profile screen.
 
-`@State` preserves its initial reference while the route keeps the same identity. When the authenticated account changes, recreate the account-scoped factory and route with a new identity. Do not expect a new initializer argument to replace the existing `@State` object automatically. Pass a stable ViewModel instance from the owning feature coordinator rather than rebuilding the entire dependency graph on each body evaluation.
-
-Replace the example strings with localized resources and use the enterprise theme. The scrollable layout supports larger text; test Dynamic Type, VoiceOver, contrast, and loading/error states on supported devices.
+For an application that retains one root store across login/logout, adapt the dependency resolver and session-reset workflow deliberately. Reset every account-scoped slice, cancel in-flight work, and prevent old-session results from rehydrating protected state.
 
   </TabItem>
-  <TabItem label="7. Composition">
+  <TabItem label="7. Lifecycle and view">
 
-### Composition.swift
+The hook dispatches a typed thunk, keeps its abortable handle in a ref, and cancels it during cleanup. Refetch cancels the previous request for this screen.
 
-Construct shared infrastructure once. Create screen-specific ViewModels through an injected factory. Initialization is throwing so the app can present a controlled recovery state instead of crashing.
+### `src/features/user/presentation/hooks/useUserProfile.ts`
 
-```swift
-import Foundation
-import SwiftData
+```typescript
+import { useCallback, useEffect, useRef } from 'react';
+import { useAppDispatch, useAppSelector } from '../../../../app/hooks';
+import { loadUserProfile, profileRemoved, selectProfile } from '../state/profileSlice';
 
-@MainActor
-struct UserFeatureFactory {
-    let repository: any UserRepository
+export function useUserProfile(screenKey: string, userId: string, isActive: boolean) {
+  const dispatch = useAppDispatch();
+  const state = useAppSelector((root) => selectProfile(root, screenKey));
+  type Request = ReturnType<ReturnType<typeof loadUserProfile>>;
+  const active = useRef<Request | null>(null);
 
-    init(
-        accountID: String,
-        remote: any UserRemoteSource,
-        local: any UserLocalStore
-    ) throws {
-        repository = try UserRepositoryImpl(
-            accountID: accountID, remote: remote, local: local
-        )
-    }
+  const refresh = useCallback(() => {
+    if (!isActive) return;
+    active.current?.abort();
+    active.current = dispatch(loadUserProfile({ screenKey, userId }));
+  }, [dispatch, screenKey, userId, isActive]);
 
-    func makeViewModel() -> UserProfileViewModel {
-        UserProfileViewModel(useCase: GetUserProfileUseCase(repository: repository))
-    }
-}
+  useEffect(() => {
+    refresh();
+    return () => {
+      active.current?.abort();
+      active.current = null;
+    };
+  }, [refresh]);
 
-/// Call once from the app composition root; present a recovery UI if it throws.
-/// Retain the store and share it across this feature's repositories.
-@MainActor
-func makeUserLocalStore(inMemory: Bool = false) throws -> SwiftDataUserLocalStore {
-    let schema = Schema([UserPersistentModel.self])
-    let configuration = ModelConfiguration(
-        schema: schema, isStoredInMemoryOnly: inMemory
-    )
-    let container = try ModelContainer(for: schema, configurations: [configuration])
-    return SwiftDataUserLocalStore(modelContainer: container)
+  useEffect(() => () => {
+    dispatch(profileRemoved(screenKey));
+  }, [dispatch, screenKey]);
+
+  return { state, refresh };
 }
 ```
 
-<Aside type="tip" title="Hint · inject ownership, avoid a global singleton">
-The app owns the model container, store, authenticated remote adapter, and account-scoped factory. Each screen gets its own ViewModel. This keeps previews and tests independent and makes account teardown explicit. Swift Package Manager can organize these types into targets, but does not create or inject their instances.
+<Aside type="tip" title="Hint · mounted does not always mean visible">
+React Navigation screens can remain mounted after losing focus. The host supplies `isActive` from its navigation-focus and application-lifecycle policy. Losing activity cancels screen work; becoming active loads again. Cleanup removes the screen entry when its owning screen is unmounted or its key changes. React Strict Mode may run an extra setup/cleanup cycle in development; the abort and request-ID guards handle that lifecycle.
 </Aside>
 
-This example deliberately does not hardcode an API environment or create an unauthenticated `.shared` session in a feature factory. Inject the approved remote adapter from application configuration.
+The promise returned by dispatching an async thunk resolves to a lifecycle action. Use `.unwrap()` only when a caller needs success/failure control flow, and catch its rejection. This screen renders the result from Redux state, so it does not need `.unwrap()`.
+
+### `src/features/user/presentation/views/UserProfileRoute.tsx`
+
+```tsx
+import {
+  ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import type { UserProfileUIState } from '../state/profileTypes';
+import { useUserProfile } from '../hooks/useUserProfile';
+
+type RouteProps = Readonly<{
+  screenKey: string;
+  userId: string;
+  isActive: boolean;
+}>;
+
+export function UserProfileRoute({ screenKey, userId, isActive }: RouteProps) {
+  const { state, refresh } = useUserProfile(screenKey, userId, isActive);
+  // Avoid showing the prior screen entry for a frame when route params change.
+  const visibleState = state.user?.id !== userId.trim()
+    ? { ...state, user: null } : state;
+  return <UserProfileView state={visibleState} onRefresh={refresh} isActive={isActive} />;
+}
+
+export function UserProfileView({ state, onRefresh, isActive }: Readonly<{
+  state: UserProfileUIState;
+  onRefresh: () => void;
+  isActive: boolean;
+}>) {
+  const disabled = !isActive || state.isRefreshing;
+  return (
+    <SafeAreaView style={styles.root}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text accessibilityRole="header" style={styles.title}>User profile</Text>
+        {state.isRefreshing && (
+          <View style={styles.progress}>
+            <ActivityIndicator accessibilityLabel="Profile loading" />
+            <Text>{state.user ? 'Refreshing…' : 'Loading profile…'}</Text>
+          </View>
+        )}
+        {state.user && (
+          <View style={styles.card}>
+            <Text style={styles.name}>{state.user.name}</Text>
+            <Text style={styles.secondary}>{state.user.email}</Text>
+            {state.user.isVip && <Text style={styles.badge}>VIP account</Text>}
+          </View>
+        )}
+        {state.message && (
+          <Text accessibilityLiveRegion="polite" style={styles.secondary}>{state.message}</Text>
+        )}
+        {!state.user && !state.isRefreshing && !state.message && <Text>No saved profile is available.</Text>}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled, busy: state.isRefreshing }}
+          disabled={disabled}
+          onPress={onRefresh}
+          style={[styles.button, disabled && styles.disabled]}
+        >
+          <Text style={styles.buttonText}>{state.message ? 'Retry' : 'Refresh profile'}</Text>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+// Example palette only: replace with approved theme tokens and localized strings.
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#f8fafc' },
+  content: { flexGrow: 1, padding: 24, gap: 20 },
+  title: { fontSize: 28, fontWeight: '700', color: '#0f172a' },
+  progress: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  card: { padding: 20, gap: 10, borderRadius: 16, backgroundColor: '#ffffff' },
+  name: { fontSize: 22, fontWeight: '600', color: '#0f172a' },
+  secondary: { color: '#475569', fontSize: 16 },
+  badge: { color: '#3730a3', fontWeight: '600' },
+  button: { minHeight: 48, justifyContent: 'center', alignItems: 'center',
+    borderRadius: 12, padding: 14, backgroundColor: '#4338ca' },
+  disabled: { opacity: 0.5 },
+  buttonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+});
+```
+
+Use the navigation route's stable, unique key as `screenKey`, its validated profile parameter as `userId`, and the host's focus/lifecycle value as `isActive`. Do not reuse one constant screen key for several profile screen instances.
+
+The view uses `react-native-safe-area-context`; the app must supply its `SafeAreaProvider`. Coordinate safe-area edges with the host navigator to avoid duplicate insets. Core React Native's legacy `SafeAreaView` is deprecated; see the [React Native reference](https://reactnative.dev/docs/SafeAreaView).
+
+Replace the sample palette and copy with enterprise theme tokens and localized resources. Keep the scrollable layout, disabled/busy semantics, accessible labels, and text scaling. Test announcements on both platforms; an Android live-region prop alone does not establish equivalent iOS VoiceOver behavior.
+
+Memoization is optional. Use `memo`, `useCallback`, or memoized selectors when reference stability or measured rendering cost warrants them. Inline callbacks do not inherently cause “bridge flooding,” and `memo` does not guarantee a performance improvement.
 
   </TabItem>
 </Tabs>
 
-## Integration requirements
+## Application integration
 
-Before adopting the feature in an application:
+1. **Register the feature in the existing root store.** Keep `RootState` and `AppDispatch` inferred from the real store, and inject account-specific dependencies through the established middleware setup.
+2. **Adapt authenticated networking.** Implement `ProfileHttpClient` with the approved SDK, including HTTP-error mapping, timeout, cancellation, and environment policy. Do not duplicate authentication or retry logic inside the feature.
+3. **Prepare storage before rendering protected content.** Resolve the managed key, create the account cache instance, and build the use case. Present controlled startup/recovery UI if this fails.
+4. **Bind navigation explicitly.** Supply a unique screen key, profile ID, and active/focus state. Validate deep links and other external route input at the application boundary as well as in the use case.
+5. **Define session teardown.** Block protected navigation, unmount or deactivate screens, cancel pending requests, clear account Redux state, and remove protected persistent data under the application's session policy. Rotate the session identity before constructing new account dependencies.
+6. **Keep secrets out of Redux.** Do not persist authentication credentials in this slice or profile cache. Review Redux logging, DevTools, analytics, and crash breadcrumbs because profile state contains personal data.
+7. **Apply native setup and release checks.** Install the project's pinned native dependencies, complete platform setup, and build Android and iOS release configurations. Use the SDK catalog's compatibility guidance.
 
-1. **Set the supported configuration.** Confirm deployment target, language mode, actor isolation, and project-managed SDK versions. Resolve compiler diagnostics rather than suppressing Sendable checks.
-2. **Install the real remote adapter.** Implement `UserRemoteSource` using the approved authenticated SDK. Ensure its identity and HTTP-error mapping match the feature contract.
-3. **Create shared persistence.** Register the schema, define migrations, and retain one local-store instance. Handle container initialization failure in the application shell.
-4. **Scope the feature to the account.** Create an account-specific repository/factory. Cancel work, remove protected routes, invalidate session credentials, and clear protected local data when the account changes or access is revoked.
-5. **Apply cache policy.** Decide which profile fields may be stored, for how long, and under which data-protection settings. This sample partitions records; it does not implement full account deletion or encryption policy.
-6. **Own navigation and state.** Put the route inside the host navigation hierarchy. Use a new route identity for a new authenticated account.
-7. **Add observability and localization.** Record redacted error categories and operation outcomes. Replace example copy, theme values, and retry actions with product behavior. Session-expiry messaging also needs the host's sign-in flow.
-8. **Verify the real product.** Build the production target and test on the supported iOS versions, including release configuration and database migration paths.
+Dispatching `profilesCleared()` resets this slice; it does not abort network requests, delete MMKV records, or reset other slices and API caches. If RTK Query is present, its account-scoped cache and subscriptions need their documented session-reset handling too.
 
-Cancellation is cooperative. A save that has already completed is not undone by cancelling a task. Account namespacing, access gating, explicit cleanup, and server-side authorization remain necessary.
+This read/refresh example is not a complete offline synchronization engine. Queued writes require durable operation state, idempotency, conflict resolution, bounded retry, and explicit user recovery. Do not infer those guarantees from an MMKV cache or an async thunk.
 
 ## Expected behavior
 
-| Scenario | What the developer should observe |
+| Scenario | Expected result |
 | :--- | :--- |
-| Empty cache; successful refresh | Initial progress, then a saved profile |
-| Cached profile; refresh in progress | Cached content remains visible with progress |
-| Cached profile; timeout or server failure | Cached content remains visible with a retry message |
-| No cache; refresh fails | Safe error message and Retry action |
-| Cache read fails; refresh succeeds | Remote fetch proceeds; successful persistence restores content |
-| Save fails after a valid response | Refresh fails; network-only data is not reported as a persisted success |
-| Response contains a different user ID | Reject the response; do not cache it under the requested profile |
-| Expired session, denied access, or missing profile | Clear screen content; invalidate this record; host coordinates session/access recovery |
-| Cache invalidation fails | Clear screen content and surface a safe recovery message; host must continue cleanup |
-| Route disappears or task ID changes | Cancel old work; suppress cancelled result/error publication |
-| Old request finishes after a new request | The old result cannot replace the current screen state |
-| Another writer changes SwiftData | No automatic update in this snapshot example; refresh or add a real observation mechanism |
+| Empty cache; valid remote response | Show initial progress, then the saved profile. |
+| Cached profile; refresh running | Keep content visible with a refresh indicator. |
+| Cached profile; timeout or server failure | Retain content and show a retry message; do not report a successful refresh. |
+| Cache JSON malformed or schema incompatible | Remove the disposable record and request fresh data. |
+| Cache read fails | Report the failure category and attempt remote refresh. |
+| Valid response; cache write fails | Reject refresh rather than claiming persisted success. |
+| Response ID differs from requested ID | Reject the payload without writing it. |
+| Session expires, access is denied, or profile is missing | Invalidate this record and clear displayed content; host handles access/session recovery. |
+| Cache invalidation fails | Clear displayed content and report a recovery message; host continues cleanup. |
+| A newer request starts | Abort the older screen request; request-ID guards reject late updates. |
+| Two profile screens are mounted | Maintain separate screen entries and request IDs. |
+| Screen loses activity or unmounts | Abort the screen request; remove its entry on unmount. |
+| State is reset before an old request completes | The old completion cannot recreate a missing entry. |
+| Another writer changes MMKV | No automatic screen update in this snapshot example. |
 
-## Verification
+## TypeScript and review requirements
 
-The companion source bundle includes `ReferenceChecks.swift`, an executable check runner intended for a separate test executable, not the app target. It covers ID validation, the persistence-before-success contract, account isolation, write failure, mismatched response IDs, offline state, access revocation, cleanup failure, cancellation, obsolete results, and blank-ID rendering state. Its controlled continuations avoid sleep-based ordering assumptions.
+Use the project's React Native TypeScript base configuration and enable strict application checks. Do not add browser DOM declarations globally just to satisfy a native typing issue; use the environment types supplied by the approved React Native setup.
 
-**Validation performed for this reference:** Domain, transport, repository, and the local-store protocol passed strict Swift 6 type checking. The checks also passed against the same ViewModel logic with Observation annotations removed in a dedicated verification harness. Macro plugins could not run inside the authoring sandbox, so the full SwiftData/Observation/SwiftUI composition has not been compiled here. In-memory test stores validate the repository contract, not SwiftData's actual persistence behavior. Full target compilation and platform integration tests are required before adoption.
+```json
+{
+  "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  }
+}
+```
 
-### Required project tests
+### Review checklist
 
-- [ ] Compile every reference file in the application's actual Swift configuration with concurrency checks enabled.
-- [ ] Run SwiftData tests with an in-memory `ModelContainer`: insert, update, read, remove, account isolation, and uniqueness.
-- [ ] Test migration and persistent-store initialization failures using the application's real schema.
-- [ ] Exercise the real transport adapter with HTTP 200, 401, 403, 404, 5xx, empty/malformed payloads, timeouts, and cancellation.
-- [ ] Verify refresh/retry uses the same current profile ID and handles cache-read failures.
-- [ ] Verify account changes cancel work, replace route identity, and remove protected data.
-- [ ] Verify no protected content appears after session revocation, including when cache cleanup fails.
-- [ ] Check success, empty, initial loading, refresh loading, cached error, and fatal error layouts with accessibility tools.
-- [ ] Test offline startup and foreground/background transitions on supported iOS versions.
-- [ ] Pass the repository's configured coverage threshold and required CI gates.
+- [ ] Redux Toolkit and typed React Redux hooks follow the application's established setup.
+- [ ] Framework and native dependency versions match the project lockfile and supported toolchain.
+- [ ] Domain code imports no React, Redux, React Native, MMKV, or HTTP implementation.
+- [ ] Network payloads and stored JSON are validated at runtime before use.
+- [ ] Each screen instance has a unique state entry and request-ID guards.
+- [ ] Request cancellation reaches the HTTP adapter and is checked before local writes.
+- [ ] Refresh progress and failures can coexist with valid cached content.
+- [ ] Invalid credentials/access never become an offline success response.
+- [ ] Credentials, abort controllers, SDK objects, and functions are absent from state and dispatched payloads.
+- [ ] Managed encryption keys are supplied at runtime and never hardcoded.
+- [ ] Account switching resets protected state and persistent data according to policy.
+- [ ] Reducers are pure; Immer draft updates occur only in Redux Toolkit reducers.
+- [ ] Diagnostics omit payloads, credentials, raw exception strings, and account identifiers.
+- [ ] React Native focus, backgrounding, unmount, and Strict Mode lifecycle behavior are exercised.
+- [ ] Android and iOS release builds, accessibility checks, and required CI gates pass.
 
-## Common mistakes and corrections
+Use the coverage threshold configured in the repository. The supplied draft contained conflicting percentages; this page does not invent a replacement policy.
 
-| Mistake | Correct approach |
-| :--- | :--- |
-| Writing `Boolean` in Swift | Use `Bool`. |
-| Marking a mutable repository `@unchecked Sendable` to silence diagnostics | Use compiler-checked immutable Sendable dependencies and isolate mutable resources. |
-| Passing `ModelContext` or `@Model` instances across actors | Keep them inside the store actor; return Sendable domain snapshots. |
-| Assuming an actor cannot interleave work across `await` | Account for reentrancy and define ordering for competing refreshes. |
-| Starting a nested `Task` inside a view's `.task` and returning immediately | Await the load directly so view lifecycle cancellation reaches the operation. |
-| Requiring `[weak self]` in every async closure | Analyze ownership and task lifetime. Weak capture alone does not cancel work or eliminate long-lived retention after `guard let self`. |
-| Calling `ObservableObject` or `@Published` universally deprecated | Use Observation for this platform baseline; retain compatible legacy patterns where the application requires them. |
-| Treating cached data as a successful refresh after any error | Preserve cached content and surface refresh failure separately. |
-| Reporting raw technical errors in the UI | Map to safe localized messages and use redacted diagnostics. |
-| Force-unwrapping configuration or crashing on store initialization | Validate configuration, propagate initialization errors, and provide recovery UI. |
-| Describing all Keychain items as Secure Enclave protected | Use the approved Keychain abstraction; protection depends on item accessibility, key type, device, and configuration. |
+### Essential test scenarios
 
-## Internal SDKs and references
+Test validation, schema corruption, account isolation, API status mapping, persistence failure, cached-error state, access revocation, cleanup failure, cancellation before write, late response rejection, separate screen entries, state reset, and cache-read recovery. Use deferred promises or controlled test doubles to establish ordering rather than timing-sensitive sleeps.
 
-Use the [Master SDK Catalog](/mobile/platforms/master-sdk-catalog/) for approved packages, supported versions, and SDK-specific setup. Keep the route aligned with the documentation deployment base.
+The reference's TypeScript files and Redux store/thunk/reducer behavior were checked during preparation. Native MMKV execution, real network SDK behavior, navigation integration, device layouts, and release builds still require validation in the application.
 
-- [Apple: Migrating to Observation](https://developer.apple.com/documentation/swiftui/migrating-from-the-observable-object-protocol-to-the-observable-macro)
-- [Apple: SwiftData model actors](https://developer.apple.com/documentation/swiftdata/modelactor)
-- [Apple: ModelContext lifecycle and rollback](https://developer.apple.com/documentation/swiftdata/modelcontext)
-- [Swift: Concurrency and actor isolation](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency/)
-- [Swift: Migration to Swift 6](https://www.swift.org/migration/documentation/migrationguide/)
+## Internal SDKs and further reading
+
+Use the [Master SDK Catalog](/mobile/platforms/master-sdk-catalog/) for approved package names, supported versions, and platform setup. Keep the route aligned with the documentation deployment base. This guide defines adapter contracts rather than assuming an unverified internal package API.
+
+- [Redux Toolkit: createAsyncThunk, cancellation, and request IDs](https://redux.js.org/toolkit/api/createAsyncThunk)
+- [Redux: typed store and React Redux hooks](https://redux.js.org/usage/usage-with-typescript)
+- [RTK Query overview](https://redux.js.org/toolkit/rtk-query/overview)
+- [React: effect cleanup and stale-response handling](https://react.dev/reference/react/useEffect)
+- [React Native architecture overview](https://reactnative.dev/architecture/overview)
+- [MMKV documentation and version-specific APIs](https://github.com/margelo/react-native-mmkv)
