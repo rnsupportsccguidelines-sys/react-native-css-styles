@@ -1,1012 +1,952 @@
 ---
-title: Cross-Platform React Native Standards & Architecture
-description: React Native engineering standards with Redux Toolkit, typed state and async workflows, validated API and MMKV boundaries, account-scoped caching, and lifecycle-aware cancellation.
+title: Native Android Standards & MVVM Clean Architecture
+description: Android engineering standards with Compose, Hilt, immutable StateFlow state, account-scoped Room caching, explicit refresh failures, and lifecycle-owned coroutine cancellation.
 sidebar:
-  order: 4
-  label: 3.3 React Native Standards
+  order: 2
+  label: 3.1 Android Standards
 ---
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 import MermaidZoom from '../components/mermaid-zoom.astro';
 
-Build features with clear boundaries: **views render state, Redux Toolkit coordinates updates, use cases apply domain rules, and repositories own data access**.
+Build screens from explicit state. Keep business rules independent of Android UI APIs. Give every asynchronous operation a clear owner, and keep persistence and networking behind repository contracts.
 
-This page defines the React Native reference architecture and demonstrates a user-profile feature. The example displays validated cached content, requests fresh data, saves a valid response, and updates the screen without allowing cancelled or older requests to overwrite newer state.
+This guide defines the Android reference architecture and demonstrates a user profile: **read cached content, refresh remotely, persist a valid response, and publish the saved result**.
 
-<Aside type="tip" title="Team standard · Redux Toolkit">
-Use Redux Toolkit for shared application state, React Redux for typed component subscriptions, and the application's established Redux data-fetching pattern. Keep transport and storage behind repository contracts. Components and reducers must not make HTTP calls or access MMKV directly.
+<Aside type="tip" title="Platform standard">
+Use feature-oriented Clean Architecture and unidirectional data flow. Compose renders state and emits actions. A ViewModel coordinates use cases and exposes read-only StateFlow. Repositories implement domain contracts and own data access. The UI never calls Retrofit or Room directly.
 </Aside>
 
 ## Start here
 
 | Your task | Read |
 | :--- | :--- |
-| Understand framework responsibilities | [Runtime and platform baseline](#runtime-and-platform-baseline) |
-| Decide where state belongs | [State ownership](#state-ownership) |
-| Trace an action through the feature | [Architecture and data flow](#architecture-and-data-flow) |
-| Implement or review the feature | [Reference implementation](#reference-implementation) |
-| Connect navigation, authentication, and storage | [Application integration](#application-integration) |
-| Check failure behavior and code quality | [Expected behavior](#expected-behavior) and [Review checklist](#review-checklist) |
+| Understand the stack and state ownership | [Platform baseline](#platform-baseline) |
+| Decide where a class belongs | [Architecture boundaries](#architecture-boundaries) |
+| Trace loading, refresh, and cancellation | [Architecture and data flow](#architecture-and-data-flow) |
+| Implement the feature | [Reference implementation](#reference-implementation) |
+| Connect authentication, navigation, and Hilt | [Application integration](#application-integration) |
+| Review failure behavior and quality requirements | [Expected behavior](#expected-behavior) and [Review checklist](#review-checklist) |
 
-## Runtime and platform baseline
+## Platform baseline
 
 | Technology | Responsibility | Engineering implication |
 | :--- | :--- | :--- |
-| TypeScript | Static checking before execution | Enable strict checking; validate external values at runtime. |
-| Hermes | JavaScript execution engine | TypeScript is transformed to JavaScript; Hermes and JSI are different components. |
-| JSI | Interface between JavaScript and native code | Native access may be synchronous; large synchronous work can still block the calling JS thread. |
-| Fabric | React Native rendering infrastructure | Verify native component compatibility in the application's supported build configuration. |
-| TurboModules | Native module infrastructure | Check each native dependency's integration requirements; not every native package is implemented identically. |
-| Redux Toolkit | Typed reducers, store configuration, and asynchronous workflows | Keep state serializable and isolate effects from reducers. |
-| MMKV | Local key-value persistence | Validate serialized records; use approved encryption and account lifecycle policies. |
+| Kotlin | Application language and explicit data contracts | Prefer immutable values; model nullability and failures deliberately. |
+| Jetpack Compose | Declarative UI | Render state, emit callbacks, and keep composition free of uncontrolled side effects. |
+| ViewModel + StateFlow | Screen state and coordination | Expose read-only state; keep writable flows private. |
+| Coroutines | Structured asynchronous work | Choose an owner, propagate cancellation, and make data operations safe to call from the main thread. |
+| Room | Structured local persistence | Use account-scoped keys, suspend DAO operations, and tested schema migrations. |
+| Retrofit / approved HTTP SDK | Remote API integration | Inject authenticated networking, validate responses, and map HTTP failures explicitly. |
+| Hilt | Dependency construction and scope | Scope objects according to ownership; dependency injection does not manage authentication automatically. |
 
-Use the versions pinned in the approved project template and lockfile. Native dependency compatibility includes React Native, React, the JS engine, Android/iOS toolchains, and any required native integration packages. A JavaScript type check does not replace native release builds.
+Use the versions pinned in the approved project template and version catalog. Kotlin, the Compose compiler/plugin, Android Gradle Plugin, Gradle, JDK, Android SDK, and libraries must form a compatible set. A JDK build setting is separate from Android Runtime, which executes the application on devices.
 
-**Example API baseline:** Redux Toolkit 2.x, React Redux 9.1+ typed hooks, Zod 4 schemas, and an MMKV v4 adapter. MMKV v4 uses `createMMKV` and Nitro Modules; do not mix its setup with older `new MMKV` or `delete` examples. Follow the documentation for the version actually installed in your application.
+**Example API requirements:** Room with `@Upsert` support, lifecycle-aware Compose collection, Kotlin serialization configured as Retrofit's converter, Material 3, and Hilt integration for navigation-scoped ViewModels. Resolve the Hilt Compose import against the version approved in your application; it has changed between library generations.
 
-See the [React Native architecture overview](https://reactnative.dev/architecture/overview) and [MMKV version-specific documentation](https://github.com/margelo/react-native-mmkv).
+**Internal policy versus Android guidance:** This platform uses use cases between ViewModels and repositories. Android's general guidance treats the domain layer as optional depending on complexity. The stricter separation here is a platform convention, not a universal Android requirement. See [Android architecture recommendations](https://developer.android.com/topic/architecture/recommendations).
 
-## State ownership
+### State ownership
 
-Use one owner for each kind of state. Redux Toolkit does not mean every temporary UI value must live in Redux.
-
-| State | Preferred owner |
+| State or operation | Owner |
 | :--- | :--- |
-| Input text, a local toggle, or temporary component interaction | Local React state unless another part of the app needs it |
-| Shared workflow state or cross-screen product state | A Redux Toolkit slice |
-| Server data with cache invalidation, shared subscriptions, and deduplication | RTK Query when it is the project's data-fetching standard |
-| A multi-step operation coordinating local cache and remote refresh | A typed thunk or established workflow layer |
-| Data retained across app restarts | A validated persistence adapter with explicit schema and retention policy |
-| Credentials and session secrets | The approved authentication and secure-storage SDK, outside ordinary Redux state and profile cache |
+| Temporary component interaction, such as an expanded section | Local Compose state |
+| Saveable UI-only values, such as an input draft | Appropriate `rememberSaveable` or saved-state integration |
+| Rendered profile, progress, and safe error category | ViewModel StateFlow |
+| Cached profile retained across process restarts | Room repository boundary |
+| Screen-visible loading in this example | The route's lifecycle-controlled coroutine |
+| Work that must survive navigation | A deliberately longer-lived owner; use WorkManager for suitable persistent background work |
+| Credentials and token lifecycle | Approved authentication/secure-storage SDK |
 
-**This example uses `createAsyncThunk`** to make the cache-read → remote-refresh → persistence sequence explicit. Redux Toolkit provides the store, slice, lifecycle actions, request IDs, and abort signal. It does not introduce Zustand or TanStack Query.
+Loading and content can coexist: retain a cached profile while refreshing it. A transient network failure should not replace useful content with an empty error screen.
 
-RTK Query is included in Redux Toolkit and is the Redux team's recommended purpose-built solution for ordinary server-data fetching and caching. If the application already uses RTK Query, adapt the repository/use-case boundary to that API layer instead of keeping a second copy of the same server data in a profile slice. Establish one policy for in-memory caching, durable storage, refresh, and invalidation. See the [RTK Query overview](https://redux.js.org/toolkit/rtk-query/overview).
+## Architecture boundaries
 
-<Aside type="tip" title="Hint · loading and content can coexist">
-A cached profile can remain visible while a refresh is running. Represent content, refresh progress, and failure messaging independently. “User exists while loading” is a useful refresh state, not an impossible state.
-</Aside>
+| Layer | Owns | Must not depend on |
+| :--- | :--- | :--- |
+| Presentation | Compose views, screen state, ViewModel | Retrofit endpoints, Room DAOs, data implementations |
+| Domain | Profile values, validation, repository protocol | Compose, Android Context, Room, Retrofit |
+| Data | DTOs, entities, mappers, repository implementation | Presentation code |
+| Application infrastructure / DI | Authenticated clients, session guard, dispatchers, clock, object scopes | Product rendering decisions |
 
-## Feature structure and boundaries
+The domain example uses Kotlin coroutines and constructor-injection annotations. “Independent of Android” means no Android framework dependency; it does not mean no library dependencies.
 
 ```text
-src/
-├── app/
-│   ├── store.ts                         # Root store, reducer registration, thunk dependencies
-│   ├── hooks.ts                         # Typed dispatch and selector hooks
-│   └── SessionRoot.tsx                  # Minimal account-session Provider example
-└── features/user/
+com.enterprise.mobile/
+├── core/profile/
+│   └── ProfileInfrastructure.kt          # Session, clock, dispatchers, diagnostics contracts
+├── di/
+│   └── ProfileInfrastructureModule.kt    # Shared dispatcher and clock providers
+└── feature/user/
     ├── domain/
-    │   └── profile.ts                   # Domain model, errors, repository contract, use case
+    │   └── UserProfile.kt                # Model, key, errors, repository, use case
     ├── data/
-    │   ├── remote/userApiService.ts     # HTTP boundary and DTO validation
-    │   ├── local/userStorage.ts         # Account-scoped, versioned cache adapter
-    │   ├── local/mmkvAdapter.ts         # Injected encrypted MMKV v4 instance
-    │   └── repository/userRepository.ts # Mapping and persistence coordination
+    │   ├── remote/UserApiService.kt      # DTO and Retrofit endpoint
+    │   ├── local/UserEntity.kt           # Account-scoped schema
+    │   ├── local/UserDao.kt              # Suspend queries and upsert
+    │   ├── mapper/UserMappers.kt         # DTO → entity → domain
+    │   └── UserRepositoryImpl.kt         # Access checks, refresh, persistence
     ├── di/
-    │   └── createProfileUseCase.ts      # Dependency construction
+    │   └── UserFeatureModule.kt          # ViewModel-scoped repository binding
     └── presentation/
-        ├── state/profileTypes.ts       # Serializable screen state and failure contracts
-        ├── state/profileSlice.ts       # Typed thunk, slice, request guards, selectors
-        ├── hooks/useUserProfile.ts      # Screen lifecycle and cancellation
-        └── views/UserProfileRoute.tsx  # Route adapter and state-rendering view
+        ├── UserProfileUiState.kt         # Content, progress, failure category
+        ├── UserProfileViewModel.kt       # Observable state and load coordination
+        └── UserProfileScreen.kt          # Lifecycle route, content view, preview
 ```
 
-| Boundary | Rule |
-| :--- | :--- |
-| Presentation → domain | Call use cases. Do not import HTTP clients or storage instances into views. |
-| Domain → data | Depend on an interface; the data layer implements it. |
-| API/cache → domain | Treat external values as `unknown`, validate them, then map to domain values. |
-| Effects → Redux | Dispatch serializable data and failure categories. Do not dispatch promises, SDK clients, or abort controllers as state. |
-| Composition → dependencies | Inject account-scoped implementations through thunk middleware, outside Redux state. |
-
-Feature directories make ownership visible. Enforce import boundaries with the project's lint rules or package boundaries; directory names alone do not enforce architecture. Reusable application-wide UI and infrastructure modules remain appropriate when they have clear owners.
+Keep files focused on one concern. Related small declarations may share a file; split them as the feature grows. Packages organize code, while separate Gradle modules and dependency rules enforce build-time boundaries. For a modular build, presentation and data depend on domain; the application composition root wires implementations.
 
 ## Architecture and data flow
 
-<MermaidZoom title="React Native architecture · Redux Toolkit and data boundaries">
+<MermaidZoom title="Android architecture · ownership and data boundaries">
 
 ```mermaid
 flowchart TB
-    subgraph PRESENTATION["01 · PRESENTATION"]
-        VIEW["Route and view<br/>Render state · emit actions"]
-        HOOK["Lifecycle hook<br/>Dispatch · abort · cleanup"]
-        THUNK["Async thunk<br/>Cache read · refresh workflow"]
-        SLICE["Slice and selectors<br/>Serializable state · request-ID guards"]
+    subgraph UI["01 · PRESENTATION · MAIN DISPATCHER"]
+        ROUTE["Compose route<br/>Lifecycle · actions · cancellation"]
+        VM["ViewModel<br/>Read-only StateFlow"]
     end
     subgraph DOMAIN["02 · DOMAIN"]
-        UC["Profile use case<br/>Validate identifiers"]
+        UC["Profile use case<br/>Validate account and user key"]
         CONTRACT["Repository contract<br/>Cached read · explicit refresh"]
     end
-    subgraph DATA["03 · DATA"]
-        REPO["Repository implementation<br/>Map · validate identity · persist"]
-        REMOTE["Approved HTTP adapter<br/>Runtime-validated DTO"]
-        CACHE["Account-scoped MMKV adapter<br/>Versioned records · managed key"]
+    subgraph DATA["03 · DATA · MAIN-SAFE OPERATIONS"]
+        REPO["Repository implementation<br/>Access check · map · persist"]
+        API["Authenticated API adapter<br/>Validated response"]
+        DB["Room DAO<br/>Account-scoped profile records"]
     end
-    VIEW -->|"Refresh"| HOOK
-    HOOK --> THUNK
-    THUNK --> UC
+    ROUTE -->|"Await load"| VM
+    VM --> UC
     UC --> CONTRACT
     REPO -.->|"Implements"| CONTRACT
-    REPO --> REMOTE
-    REPO --> CACHE
-    THUNK -->|"Lifecycle and cache actions"| SLICE
-    SLICE -->|"Selected UI state"| VIEW
+    REPO --> API
+    REPO --> DB
+    CONTRACT -->|"Domain result"| VM
+    VM -->|"Collected UI state"| ROUTE
     classDef ui fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
     classDef domain fill:#f0f9ff,stroke:#0284c7,color:#0c4a6e,stroke-width:1.5px;
     classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
-    class VIEW,HOOK,THUNK,SLICE ui;
+    class ROUTE,VM ui;
     class UC,CONTRACT domain;
-    class REPO,REMOTE,CACHE data;
-    style PRESENTATION fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
+    class REPO,API,DB data;
+    style UI fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
     style DOMAIN fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
     style DATA fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
 ```
 
 </MermaidZoom>
 
-**Read the diagram:** Solid arrows show calls and state updates. The dashed arrow shows the implementation relationship. Results return through the awaited repository/use-case calls to the thunk; reducers publish screen state, and selectors deliver it to the view.
+**Read the diagram:** Solid arrows show calls and state delivery. The dashed arrow shows the implementation relationship. Results return through awaited repository/use-case calls; the ViewModel publishes immutable snapshots for Compose to render.
 
-### Cache, refresh, and failure behavior
+### Cached content, then refresh
 
-<MermaidZoom title="Profile lifecycle · cached content, safe refresh, and cancellation">
+<MermaidZoom title="Profile lifecycle · cache, refresh, and cancellation">
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant UI as Screen hook
-    participant T as Async thunk
-    participant S as Redux slice
+    participant UI as Compose lifecycle coroutine
+    participant VM as ViewModel
     participant R as Use case / Repository
-    participant C as MMKV adapter
-    participant A as Remote service
+    participant DB as Room
+    participant API as Authenticated API
 
-    UI->>T: Dispatch load(screenKey, userId)
-    T->>S: Pending with requestId
-    S->>S: Keep same-profile content; mark refreshing
-    T->>R: Read cached profile
-    R->>C: Read and validate account-scoped record
-    C-->>T: Domain snapshot through repository
-    T->>S: Cache loaded, guarded by requestId
-    T->>R: Refresh with AbortSignal
-    R->>A: Request and validate profile
-    alt Valid response and successful cache write
-        A-->>R: Validated DTO
-        R->>C: Save versioned record
-        C-->>R: Saved domain value
-        R-->>T: Refreshed profile
-        T->>S: Fulfilled, guarded by requestId
-    else Transport or server failure
-        R-->>T: Throw failure
-        T->>S: Rejected with safe message; retain cached content
-    else Session expired, access denied, or profile missing
-        R->>C: Remove this cached profile
-        R-->>T: Throw access or cleanup failure
-        T->>S: Rejected; clear displayed content
+    UI->>VM: Await load(accountId, userId)
+    VM->>VM: Validate key; start request generation
+    VM->>R: Read cached profile
+    R->>R: Verify active account
+    R->>DB: Read by account ID and user ID
+    DB-->>VM: Domain snapshot through repository
+    Note over VM: Render cached content if present
+    VM->>R: Refresh profile
+    R->>API: Request profile
+    alt Valid response and successful write
+        API-->>R: DTO with matching user ID
+        R->>R: Check cancellation and active account
+        R->>DB: Upsert account-scoped entity
+        DB-->>R: Write completed
+        R-->>VM: Saved domain snapshot
+        VM-->>UI: Updated StateFlow
+    else Recoverable refresh failure
+        R-->>VM: Throw failure
+        VM-->>UI: Keep cached content; show retry message
+    else Expired session, denied access, or missing profile
+        R->>DB: Delete this cached profile
+        R-->>VM: Throw access or cleanup failure
+        VM-->>UI: Clear displayed content; show safe message
     end
-    Note over UI,T: Cleanup aborts the dispatched thunk and its transport signal
-    Note over T,S: Cancelled and older requests cannot replace newer screen state
+    Note over UI,VM: Stop, navigation, or changed effect keys cancel the load coroutine
+    Note over VM,R: Cancellation checks and generation guards reject obsolete updates
 ```
 
 </MermaidZoom>
 
-The persistent cache and Redux state have different jobs: MMKV retains validated snapshots across restarts; Redux owns the currently rendered state. This example does not subscribe to arbitrary MMKV changes or implement background synchronization. Add an explicit observation/synchronization policy if another writer must update the screen immediately.
+**This is a snapshot-based reference, matching the iOS and React Native examples.** Successful refresh returns a value only after its Room write succeeds. It does not continuously observe database changes from other writers. If live updates are required, add a repository `Flow`, collect it with explicit ownership, and keep refresh status separate. Room supports both one-shot suspend reads and observable queries; do not describe one as the other. See [Room asynchronous queries](https://developer.android.com/training/data-storage/room/async-queries).
 
 ## Reference implementation
 
-The following files form one example. Keep their contracts together when adapting it. The host application supplies an authenticated HTTP adapter, managed encryption key, navigation focus, session lifecycle, localization, and design-system integration.
+Paths below are relative to `app/src/main/java/com/enterprise/mobile/`. The host project supplies authenticated network configuration, Room database registration, session integration, and the providers explicitly identified in the DI section.
 
 <Tabs>
   <TabItem label="1. Domain">
 
-The domain contains no React, React Native, Redux, HTTP-client, or MMKV imports. `AbortSignal` is a cancellation contract provided by the runtime, not a Redux dependency.
+### `feature/user/domain/UserProfile.kt`
 
-### `src/features/user/domain/profile.ts`
+```kotlin
+package com.enterprise.mobile.feature.user.domain
 
-```typescript
-export interface UserDomainModel {
-  readonly id: string;
-  readonly name: string;
-  readonly email: string;
-  readonly isVip: boolean;
-  readonly cachedAt: number;
+import javax.inject.Inject
+
+data class UserDomainModel(
+    val id: String,
+    val name: String,
+    val email: String,
+    val isVip: Boolean,
+    val cachedAtMillis: Long,
+)
+
+data class ProfileKey(val accountId: String, val userId: String)
+
+enum class ProfileFailure {
+    INVALID_KEY, SESSION_EXPIRED, ACCESS_DENIED, NOT_FOUND,
+    INVALID_PAYLOAD, HTTP_ERROR, CACHE_ERROR, CACHE_INVALIDATION, UNEXPECTED,
 }
 
-export type ProfileErrorCode =
-  | 'invalid-id' | 'cancelled' | 'unauthorized' | 'forbidden'
-  | 'not-found' | 'http' | 'invalid-payload' | 'cache' | 'cache-invalidation';
+class ProfileException(val failure: ProfileFailure) : Exception(failure.name)
 
-export class ProfileError extends Error {
-  constructor(readonly code: ProfileErrorCode) {
-    super(`Profile operation failed: ${code}`);
-    this.name = 'ProfileError';
-  }
+interface UserRepository {
+    suspend fun cachedProfile(key: ProfileKey): UserDomainModel?
+    suspend fun refreshProfile(key: ProfileKey): UserDomainModel
 }
 
-export function checkCancellation(signal: AbortSignal): void {
-  if (signal.aborted) throw new ProfileError('cancelled');
-}
+class GetUserProfileUseCase @Inject constructor(
+    private val repository: UserRepository,
+) {
+    fun validatedKey(accountId: String, rawUserId: String): ProfileKey {
+        val userId = rawUserId.trim()
+        // Example API contract; update this rule if the real API uses other IDs.
+        if (accountId.isBlank() || !USER_ID.matches(userId)) {
+            throw ProfileException(ProfileFailure.INVALID_KEY)
+        }
+        return ProfileKey(accountId, userId)
+    }
 
-export function isCancellation(error: unknown, signal: AbortSignal): boolean {
-  return signal.aborted || (error instanceof ProfileError && error.code === 'cancelled');
-}
+    suspend fun cachedProfile(key: ProfileKey): UserDomainModel? =
+        repository.cachedProfile(validatedKey(key.accountId, key.userId))
 
-/** One repository instance belongs to one authenticated account. */
-export interface UserRepository {
-  cachedProfile(userId: string): Promise<UserDomainModel | null>;
-  refreshProfile(userId: string, signal: AbortSignal): Promise<UserDomainModel>;
-}
+    suspend fun refreshProfile(key: ProfileKey): UserDomainModel =
+        repository.refreshProfile(validatedKey(key.accountId, key.userId))
 
-export class GetUserProfileUseCase {
-  constructor(private readonly repository: UserRepository) {}
-
-  normalizeId(rawId: string): string {
-    const id = rawId.trim();
-    // Example API contract; replace this rule if your API uses another ID format.
-    if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) throw new ProfileError('invalid-id');
-    return id;
-  }
-
-  cachedProfile(userId: string): Promise<UserDomainModel | null> {
-    return this.repository.cachedProfile(this.normalizeId(userId));
-  }
-
-  refreshProfile(userId: string, signal: AbortSignal): Promise<UserDomainModel> {
-    checkCancellation(signal);
-    return this.repository.refreshProfile(this.normalizeId(userId), signal);
-  }
+    private companion object {
+        val USER_ID = Regex("[A-Za-z0-9_-]{1,128}")
+    }
 }
 ```
 
-<Aside type="tip" title="Hint · types are not runtime validation">
-`readonly` prevents reassignment during TypeScript checking; it does not freeze JavaScript objects. The data layer validates external values and freezes the flat domain snapshots it creates. Nested mutable objects would require a deliberate immutability policy. The sample ID format is an explicit API assumption—replace it if your real identifiers use a different format.
+<Aside type="tip" title="Hint · validate before side effects">
+The account ID comes from the trusted authenticated session, not an arbitrary deep-link parameter. Preserve its canonical value. Normalize only the user ID according to the API contract. Kotlin `val` prevents property reassignment; it does not make arbitrary nested mutable objects immutable. This model contains value fields only.
 </Aside>
 
-`cachedAt` is a client cache timestamp in milliseconds, not the server's modification time. Define freshness, expiry, and retention separately. See [TypeScript's readonly guidance](https://www.typescriptlang.org/docs/handbook/2/objects).
+`cachedAtMillis` records client cache time, not server modification time. Define business freshness, expiry, and retention separately.
 
   </TabItem>
-  <TabItem label="2. Remote boundary">
+  <TabItem label="2. Infrastructure contracts">
 
-Inject the approved authenticated network client. The feature does not create a second Axios instance, hardcode an environment, or implement token refresh.
+### `core/profile/ProfileInfrastructure.kt`
 
-### `src/features/user/data/remote/userApiService.ts`
+These interfaces describe the integration the host application must provide; they do not assume an undocumented enterprise SDK API.
 
-```typescript
-import { z } from 'zod';
-import { checkCancellation, ProfileError } from '../../domain/profile';
+```kotlin
+package com.enterprise.mobile.core.profile
 
-// Required fields have no fabricated defaults. Match this schema to the API contract.
-export const userNetworkSchema = z.object({
-  id: z.string().min(1),
-  full_name: z.string().min(1),
-  email: z.string(),
-  is_vip: z.boolean(),
-});
-export type UserNetworkDTO = z.infer<typeof userNetworkSchema>;
+import com.enterprise.mobile.feature.user.domain.ProfileFailure
+import javax.inject.Qualifier
 
-/** Adapter contract implemented by the approved authenticated network SDK.
- * Resolve every HTTP response, including non-2xx. Reject transport errors.
- * Honor AbortSignal and normalize cancellation to ProfileError('cancelled').
- */
-export interface ProfileHttpClient {
-  getJson(path: string, signal: AbortSignal): Promise<{
-    readonly status: number;
-    readonly body: unknown;
-  }>;
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class IoDispatcher
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class MainDispatcher
+
+fun interface EpochClock {
+    fun nowMillis(): Long
 }
 
-export interface UserRemoteSource {
-  fetchProfile(userId: string, signal: AbortSignal): Promise<UserNetworkDTO>;
+interface ProfileSessionGuard {
+    // Thread-safe, non-blocking; throw SESSION_EXPIRED or ACCESS_DENIED when invalid.
+    fun requireActiveAccount(accountId: String)
 }
 
-export class UserApiService implements UserRemoteSource {
-  constructor(private readonly http: ProfileHttpClient) {}
-
-  async fetchProfile(userId: string, signal: AbortSignal): Promise<UserNetworkDTO> {
-    checkCancellation(signal);
-    const response = await this.http.getJson(
-      `/v1/users/${encodeURIComponent(userId)}`, signal,
-    );
-    checkCancellation(signal);
-    switch (response.status) {
-      case 200: break; // Endpoint contract requires a JSON profile body.
-      case 401: throw new ProfileError('unauthorized');
-      case 403: throw new ProfileError('forbidden');
-      case 404: throw new ProfileError('not-found');
-      default: throw new ProfileError('http');
-    }
-    const parsed = userNetworkSchema.safeParse(response.body);
-    if (!parsed.success || parsed.data.id !== userId) {
-      throw new ProfileError('invalid-payload');
-    }
-    return parsed.data;
-  }
+interface ProfileDiagnostics {
+    // Non-blocking and non-throwing. No credentials, IDs, payloads, or raw exceptions.
+    fun report(stage: String, failure: ProfileFailure)
 }
 ```
 
-<Aside type="tip" title="Hint · map HTTP failures deliberately">
-The injected adapter must resolve HTTP responses—including non-2xx responses—into the stated contract, reject transport failures, and honor the abort signal. For an Axios-backed adapter, configure or map non-2xx handling explicitly. A 401 or 403 must not accidentally become an undifferentiated offline fallback.
-</Aside>
+In a multi-module project, place reusable contracts in a dependency direction that does not make generic core infrastructure depend on a feature. Here, `core/profile` is a profile integration contract within the same target; it is not a proposed independent core Gradle module.
 
-The schema checks the response shape and requested identity. It does not prove authorization, email ownership, or business validity. Required fields have no invented defaults. Configure timeouts, response limits, redirects, and approved retry behavior in the shared network layer.
+<Aside type="tip" title="Hint · access checks complement session ownership">
+The authenticated HTTP adapter must bind each request to the intended session. A guard around a mutable global client does not atomically capture credentials. The app must prevent an old account request from being executed with a new account's credentials, cancel old-session work, and replace protected navigation state. The guard is an additional check, not the authentication implementation.
+</Aside>
 
   </TabItem>
-  <TabItem label="3. Local cache">
+  <TabItem label="3. Remote and local data">
 
-Cache records include a schema version, account ID, and domain snapshot. Cache reads validate both structure and identity; a type assertion after `JSON.parse` would provide no runtime protection.
+### `feature/user/data/remote/UserApiService.kt`
 
-### `src/features/user/data/local/userStorage.ts`
+```kotlin
+package com.enterprise.mobile.feature.user.data.remote
 
-```typescript
-import { z } from 'zod';
-import { ProfileError, type UserDomainModel } from '../../domain/profile';
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import retrofit2.Response
+import retrofit2.http.GET
+import retrofit2.http.Path
 
-/** Matches the string operations needed from an injected MMKV v4 instance.
- * The composition root owns instance creation, encryption keys, and teardown.
- */
-export interface StringStorage {
-  getString(key: string): string | undefined;
-  set(key: string, value: string): void;
-  remove(key: string): void;
-}
+@Serializable
+data class UserNetworkDto(
+    @SerialName("id") val id: String,
+    @SerialName("full_name") val fullName: String,
+    @SerialName("email") val email: String,
+    @SerialName("is_vip") val isVip: Boolean,
+)
 
-export interface UserLocalStore {
-  read(userId: string): UserDomainModel | null;
-  save(user: UserDomainModel): UserDomainModel;
-  remove(userId: string): void;
-}
-
-const cachedUserSchema = z.object({
-  id: z.string().min(1),
-  name: z.string(),
-  email: z.string(),
-  isVip: z.boolean(),
-  cachedAt: z.number().int().nonnegative(),
-});
-const envelopeSchema = z.object({
-  schemaVersion: z.literal(1),
-  accountId: z.string().min(1),
-  user: cachedUserSchema,
-});
-
-export class UserStorage implements UserLocalStore {
-  constructor(
-    private readonly storage: StringStorage,
-    private readonly accountId: string,
-  ) {
-    if (!accountId.trim()) throw new ProfileError('cache');
-  }
-
-  private key(userId: string): string {
-    // JSON encoding prevents ambiguous account/user concatenation.
-    return JSON.stringify(['user-profile', this.accountId, userId]);
-  }
-
-  read(userId: string): UserDomainModel | null {
-    const key = this.key(userId);
-    try {
-      const raw = this.storage.getString(key);
-      if (raw === undefined) return null;
-      let decoded: unknown;
-      try { decoded = JSON.parse(raw); }
-      catch { this.storage.remove(key); return null; }
-      const parsed = envelopeSchema.safeParse(decoded);
-      if (!parsed.success || parsed.data.accountId !== this.accountId ||
-          parsed.data.user.id !== userId) {
-        this.storage.remove(key); // Disposable cache: discard incompatible records.
-        return null;
-      }
-      return Object.freeze(parsed.data.user);
-    } catch {
-      throw new ProfileError('cache');
-    }
-  }
-
-  save(user: UserDomainModel): UserDomainModel {
-    try {
-      const record = envelopeSchema.parse({
-        schemaVersion: 1, accountId: this.accountId, user,
-      });
-      this.storage.set(this.key(user.id), JSON.stringify(record));
-      return Object.freeze(record.user);
-    } catch {
-      throw new ProfileError('cache');
-    }
-  }
-
-  remove(userId: string): void {
-    try { this.storage.remove(this.key(userId)); }
-    catch { throw new ProfileError('cache-invalidation'); }
-  }
+interface UserApiService {
+    @GET("v1/users/{userId}")
+    suspend fun fetchProfile(@Path("userId") userId: String): Response<UserNetworkDto>
 }
 ```
 
-The sample treats the cache as disposable: malformed, incompatible, or incorrectly scoped records are removed and treated as absent. If deletion itself fails, the error propagates. For authoritative offline user edits, implement migrations and recovery rather than discarding records.
+Required fields have no invented empty/default values. Kotlin serialization checks payload structure; additional identity/business validation happens before persistence. The example endpoint expects HTTP 200 with a profile body. The approved network layer owns base URL, authentication, timeouts, redirects, response limits, retry policy, and serialization configuration.
 
-### `src/features/user/data/local/mmkvAdapter.ts`
+### `feature/user/data/local/UserEntity.kt`
 
-```typescript
-import { createMMKV } from 'react-native-mmkv';
-import { ProfileError } from '../../domain/profile';
-import type { StringStorage } from './userStorage';
+```kotlin
+package com.enterprise.mobile.feature.user.data.local
 
-/** Call once per account storage lifetime, after the secure key is available. */
-export function createEncryptedProfileCache(
-  instanceId: string,
-  encryptionKey: string,
-): StringStorage {
-  if (!instanceId.trim() || !encryptionKey) throw new ProfileError('cache');
-  return createMMKV({ id: instanceId, encryptionKey });
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+
+@Entity(tableName = "user_profiles", primaryKeys = ["account_id", "user_id"])
+data class UserEntity(
+    @ColumnInfo(name = "account_id") val accountId: String,
+    @ColumnInfo(name = "user_id") val userId: String,
+    @ColumnInfo(name = "full_name") val fullName: String,
+    @ColumnInfo(name = "email") val email: String,
+    @ColumnInfo(name = "is_vip") val isVip: Boolean,
+    @ColumnInfo(name = "cached_at_millis") val cachedAtMillis: Long,
+)
+```
+
+### `feature/user/data/local/UserDao.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.data.local
+
+import androidx.room.Dao
+import androidx.room.Query
+import androidx.room.Upsert
+
+@Dao
+interface UserDao {
+    @Query("""
+        SELECT * FROM user_profiles
+        WHERE account_id = :accountId AND user_id = :userId
+        LIMIT 1
+    """)
+    suspend fun find(accountId: String, userId: String): UserEntity?
+
+    @Upsert
+    suspend fun upsert(entity: UserEntity)
+
+    @Query("""
+        DELETE FROM user_profiles
+        WHERE account_id = :accountId AND user_id = :userId
+    """)
+    suspend fun delete(accountId: String, userId: String)
 }
 ```
 
-<Aside type="tip" title="Hint · inject the key; never commit it">
-Resolve the account cache key through the approved secure-storage/key-management integration before creating the MMKV instance. Pass an opaque instance namespace and a key valid for the installed MMKV version. Retain the instance for its owning account lifetime; do not construct it in a component body. Never use a fixed encryption key in source code or the JavaScript bundle.
+<Aside type="tip" title="Hint · namespace records at the schema boundary">
+The composite primary key prevents two accounts from accidentally sharing a profile with the same user ID. Always include both fields in reads and deletion. A single upsert is one database operation; use a Room transaction when a business update spans multiple dependent operations. Do not use destructive migration as the default upgrade strategy for retained user data.
 </Aside>
 
-MMKV encryption protects persisted cache data according to its configuration; it does not turn a profile cache into a credential vault. Keep authentication secrets in the approved native-backed auth SDK. Account namespacing prevents accidental cross-account reads, but does not replace logout cleanup or access control.
+Room suspend queries perform database work through Room's execution infrastructure; `suspend` on an arbitrary function does not itself move blocking work away from the main thread. See [Room DAO guidance](https://developer.android.com/training/data-storage/room/accessing-data).
 
-Synchronous native operations and JSON parsing still consume time on the calling JS thread. Keep records small and measure real workloads. Do not make universal latency or “times faster” guarantees from a library benchmark.
+### `feature/user/data/mapper/UserMappers.kt`
+
+```kotlin
+package com.enterprise.mobile.feature.user.data.mapper
+
+import com.enterprise.mobile.feature.user.data.local.UserEntity
+import com.enterprise.mobile.feature.user.data.remote.UserNetworkDto
+import com.enterprise.mobile.feature.user.domain.ProfileKey
+import com.enterprise.mobile.feature.user.domain.UserDomainModel
+
+fun UserNetworkDto.toEntity(key: ProfileKey, cachedAtMillis: Long) = UserEntity(
+    accountId = key.accountId,
+    userId = id,
+    fullName = fullName,
+    email = email,
+    isVip = isVip,
+    cachedAtMillis = cachedAtMillis,
+)
+
+fun UserEntity.toDomain() = UserDomainModel(
+    id = userId,
+    name = fullName,
+    email = email,
+    isVip = isVip,
+    cachedAtMillis = cachedAtMillis,
+)
+```
+
+The mapper receives time as a value instead of calling the system clock. It performs no I/O and is straightforward to test.
 
   </TabItem>
-  <TabItem label="4. Repository and DI">
+  <TabItem label="4. Repository">
 
-The repository maps a validated DTO, checks cancellation, and requires the local write to succeed before reporting refresh success. A cache-read API is separate from a refresh API, so an old cached profile cannot silently masquerade as a successful network refresh.
+### `feature/user/data/UserRepositoryImpl.kt`
 
-### `src/features/user/data/repository/userRepository.ts`
+```kotlin
+package com.enterprise.mobile.feature.user.data
 
-```typescript
-import {
-  checkCancellation, isCancellation, ProfileError,
-  type UserDomainModel, type UserRepository,
-} from '../../domain/profile';
-import type { UserNetworkDTO, UserRemoteSource } from '../remote/userApiService';
-import type { UserLocalStore } from '../local/userStorage';
+import com.enterprise.mobile.core.profile.EpochClock
+import com.enterprise.mobile.core.profile.IoDispatcher
+import com.enterprise.mobile.core.profile.ProfileSessionGuard
+import com.enterprise.mobile.feature.user.data.local.UserDao
+import com.enterprise.mobile.feature.user.data.mapper.toDomain
+import com.enterprise.mobile.feature.user.data.mapper.toEntity
+import com.enterprise.mobile.feature.user.data.remote.UserApiService
+import com.enterprise.mobile.feature.user.domain.ProfileException
+import com.enterprise.mobile.feature.user.domain.ProfileFailure
+import com.enterprise.mobile.feature.user.domain.ProfileKey
+import com.enterprise.mobile.feature.user.domain.UserDomainModel
+import com.enterprise.mobile.feature.user.domain.UserRepository
+import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 
-export class UserRepositoryImpl implements UserRepository {
-  constructor(
-    private readonly remote: UserRemoteSource,
-    private readonly local: UserLocalStore,
-    private readonly now: () => number = Date.now,
-  ) {}
+class UserRepositoryImpl @Inject constructor(
+    private val api: UserApiService,
+    private val dao: UserDao,
+    private val session: ProfileSessionGuard,
+    private val clock: EpochClock,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+) : UserRepository {
+    override suspend fun cachedProfile(key: ProfileKey): UserDomainModel? =
+        withContext(ioDispatcher) {
+            session.requireActiveAccount(key.accountId)
+            val cached = try {
+                dao.find(key.accountId, key.userId)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                throw ProfileException(ProfileFailure.CACHE_ERROR)
+            }
+            currentCoroutineContext().ensureActive()
+            session.requireActiveAccount(key.accountId)
+            cached?.toDomain()
+        }
 
-  async cachedProfile(userId: string): Promise<UserDomainModel | null> {
-    return this.local.read(userId);
-  }
+    override suspend fun refreshProfile(key: ProfileKey): UserDomainModel =
+        withContext(ioDispatcher) {
+            try {
+                currentCoroutineContext().ensureActive()
+                session.requireActiveAccount(key.accountId)
+                val response = api.fetchProfile(key.userId)
+                currentCoroutineContext().ensureActive()
+                when (response.code()) {
+                    200 -> Unit
+                    401 -> throw ProfileException(ProfileFailure.SESSION_EXPIRED)
+                    403 -> throw ProfileException(ProfileFailure.ACCESS_DENIED)
+                    404 -> throw ProfileException(ProfileFailure.NOT_FOUND)
+                    else -> throw ProfileException(ProfileFailure.HTTP_ERROR)
+                }
+                val dto = response.body()
+                    ?: throw ProfileException(ProfileFailure.INVALID_PAYLOAD)
+                if (dto.id != key.userId || dto.fullName.isBlank()) {
+                    throw ProfileException(ProfileFailure.INVALID_PAYLOAD)
+                }
+                session.requireActiveAccount(key.accountId)
+                currentCoroutineContext().ensureActive()
+                val entity = dto.toEntity(key, clock.nowMillis())
+                try {
+                    dao.upsert(entity)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    throw ProfileException(ProfileFailure.CACHE_ERROR)
+                }
+                currentCoroutineContext().ensureActive()
+                session.requireActiveAccount(key.accountId)
+                entity.toDomain()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: ProfileException) {
+                if (failure.failure in ACCESS_FAILURES) {
+                    try {
+                        dao.delete(key.accountId, key.userId)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        throw ProfileException(ProfileFailure.CACHE_INVALIDATION)
+                    }
+                }
+                throw failure
+            }
+        }
 
-  async refreshProfile(userId: string, signal: AbortSignal): Promise<UserDomainModel> {
-    checkCancellation(signal);
-    let dto: UserNetworkDTO;
-    try {
-      dto = await this.remote.fetchProfile(userId, signal);
-    } catch (error: unknown) {
-      if (isCancellation(error, signal)) throw new ProfileError('cancelled');
-      if (error instanceof ProfileError &&
-          ['unauthorized', 'forbidden', 'not-found'].includes(error.code)) {
-        this.local.remove(userId); // Cleanup failure must also reach the controller.
-      }
-      throw error;
+    private companion object {
+        val ACCESS_FAILURES = setOf(
+            ProfileFailure.SESSION_EXPIRED,
+            ProfileFailure.ACCESS_DENIED,
+            ProfileFailure.NOT_FOUND,
+        )
     }
-    checkCancellation(signal);
-    if (dto.id !== userId) throw new ProfileError('invalid-payload');
-    // The local adapter must succeed before refresh is reported as successful.
-    return this.local.save(Object.freeze({
-      id: dto.id, name: dto.full_name, email: dto.email,
-      isVip: dto.is_vip, cachedAt: this.now(),
-    }));
-  }
 }
 ```
 
-<Aside type="tip" title="Hint · cancellation must reach the write boundary">
-Pass the same signal through the thunk, use case, repository, and remote adapter. Check it after the remote await and before the synchronous cache write. Cancelling a request does not undo a write that has already completed. Server-side work may also continue after client cancellation.
+<Aside type="tip" title="Hint · a failed refresh is still a failure">
+Transport, serialization, and database failures propagate to presentation. The ViewModel can retain previously read content without claiming the refresh succeeded. HTTP 401, 403, and 404 are not automatically treated as network outages. Cancellation is rethrown; it never becomes a fallback success or error banner.
 </Aside>
 
-Unauthorized, forbidden, and missing-profile errors invalidate this profile's cached record. A failed removal propagates `cache-invalidation`, causing the screen to clear its content. The application session coordinator must independently block protected navigation and complete account-wide cleanup.
+Successful refresh requires the upsert to complete. The returned value reflects the entity written by this operation; the example assumes no database trigger rewrites those fields. If database-derived values are required, read them back within an appropriate transaction.
 
-### `src/features/user/di/createProfileUseCase.ts`
+The coroutine context is checked around suspension and persistence boundaries. Cancellation is cooperative: it does not undo a committed write. Account checks and account-scoped keys reduce cross-session mistakes, while the host remains responsible for session teardown and cache cleanup.
 
-```typescript
-import { GetUserProfileUseCase } from '../domain/profile';
-import { UserApiService, type ProfileHttpClient } from '../data/remote/userApiService';
-import { UserStorage, type StringStorage } from '../data/local/userStorage';
-import { UserRepositoryImpl } from '../data/repository/userRepository';
-
-export function createAccountProfileUseCase(dependencies: Readonly<{
-  accountId: string;
-  http: ProfileHttpClient;
-  storage: StringStorage;
-  now?: () => number;
-}>): GetUserProfileUseCase {
-  const local = new UserStorage(dependencies.storage, dependencies.accountId);
-  const remote = new UserApiService(dependencies.http);
-  return new GetUserProfileUseCase(
-    new UserRepositoryImpl(remote, local, dependencies.now ?? Date.now),
-  );
-}
-```
-
-Build this use case once for the authenticated account using the configured HTTP adapter and cache instance. The injected clock makes cache timestamps deterministic in tests. No service-locator import is needed in a component.
-
-Multiple independent writers may still refresh the same profile. Request-ID guards below protect screen state; they do not establish global ordering of cache writes. If background jobs or several screens can write concurrently, define a repository-level deduplication/version policy or use the application's established RTK Query strategy.
+Concurrent callers can still write the same account/profile. Screen generation guards protect rendered state, not global freshness ordering. Use a server version, synchronization policy, or shared repository coordination if multiple writers must agree which response wins.
 
   </TabItem>
-  <TabItem label="5. Redux state and thunk">
+  <TabItem label="5. State and ViewModel">
 
-Screen state uses serializable values. SDK clients, functions, abort controllers, and promises remain outside state and action payloads. The diagnostics adapter receives categories only and must not throw.
+### `feature/user/presentation/UserProfileUiState.kt`
 
-### `src/features/user/presentation/state/profileTypes.ts`
+```kotlin
+package com.enterprise.mobile.feature.user.presentation
 
-```typescript
-import type { UserDomainModel, ProfileErrorCode, GetUserProfileUseCase } from '../../domain/profile';
+import com.enterprise.mobile.feature.user.domain.ProfileFailure
+import com.enterprise.mobile.feature.user.domain.ProfileKey
+import com.enterprise.mobile.feature.user.domain.UserDomainModel
 
-export interface UserProfileUIState {
-  readonly user: UserDomainModel | null;
-  readonly isRefreshing: boolean;
-  readonly message: string | null;
-}
-export const initialProfileState: UserProfileUIState = Object.freeze({
-  user: null, isRefreshing: false, message: null,
-});
+data class UserProfileUiState(
+    val key: ProfileKey? = null,
+    val user: UserDomainModel? = null,
+    val isRefreshing: Boolean = false,
+    val failure: ProfileFailure? = null,
+)
+```
 
-/** Non-throwing diagnostics adapter: report categories, never credentials or payloads. */
-export type ProfileDiagnostics = (event: Readonly<{
-  stage: 'cache-read' | 'refresh';
-  code: ProfileErrorCode | 'unexpected';
-}>) => void;
+Errors are categories, not raw exception strings. Compose maps them to localized resources. Keeping content and refresh progress separate preserves useful cached data during a transient failure.
 
-export interface ProfileDependencies {
-  readonly useCase: GetUserProfileUseCase;
-  readonly report: ProfileDiagnostics;
-}
+### `feature/user/presentation/UserProfileViewModel.kt`
 
-export interface ProfileLoadArg {
-  readonly screenKey: string;
-  readonly userId: string;
-}
+```kotlin
+package com.enterprise.mobile.feature.user.presentation
 
-export interface ProfileFailure {
-  readonly code: ProfileErrorCode | 'unexpected';
-  readonly message: string;
-  readonly clearContent: boolean;
+import androidx.lifecycle.ViewModel
+import com.enterprise.mobile.core.profile.MainDispatcher
+import com.enterprise.mobile.core.profile.ProfileDiagnostics
+import com.enterprise.mobile.feature.user.domain.GetUserProfileUseCase
+import com.enterprise.mobile.feature.user.domain.ProfileException
+import com.enterprise.mobile.feature.user.domain.ProfileFailure
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
+
+@HiltViewModel
+class UserProfileViewModel @Inject constructor(
+    private val profiles: GetUserProfileUseCase,
+    private val diagnostics: ProfileDiagnostics,
+    @MainDispatcher private val mainDispatcher: CoroutineDispatcher,
+) : ViewModel() {
+    private val mutableState = MutableStateFlow(UserProfileUiState())
+    val state = mutableState.asStateFlow()
+    private var generation = 0L
+
+    // The route awaits this call. No nested unstructured coroutine is created.
+    suspend fun load(accountId: String, userId: String) = withContext(mainDispatcher) {
+        val request = ++generation
+        val key = try {
+            profiles.validatedKey(accountId, userId)
+        } catch (_: ProfileException) {
+            mutableState.value = UserProfileUiState(failure = ProfileFailure.INVALID_KEY)
+            return@withContext
+        }
+        val previous = mutableState.value.takeIf { it.key == key } ?: UserProfileUiState(key = key)
+        mutableState.value = previous.copy(isRefreshing = true, failure = null)
+        try {
+            try {
+                val cached = profiles.cachedProfile(key)
+                currentCoroutineContext().ensureActive()
+                if (generation != request) return@withContext
+                mutableState.value = mutableState.value.copy(user = cached)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                currentCoroutineContext().ensureActive()
+                if (generation != request) return@withContext
+                val failure = category(error)
+                if (failure in ACCESS_FAILURES) throw error
+                diagnostics.report("cache-read", failure)
+                // A recoverable cache-read failure must not block remote refresh.
+            }
+            val fresh = profiles.refreshProfile(key)
+            currentCoroutineContext().ensureActive()
+            if (generation != request) return@withContext
+            mutableState.value = UserProfileUiState(key = key, user = fresh)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            currentCoroutineContext().ensureActive()
+            if (generation != request) return@withContext
+            val failure = category(error)
+            diagnostics.report("load", failure)
+            mutableState.value = mutableState.value.copy(
+                user = if (failure in ACCESS_FAILURES) null else mutableState.value.user,
+                failure = failure,
+            )
+        } finally {
+            if (generation == request) {
+                mutableState.value = mutableState.value.copy(isRefreshing = false)
+            }
+        }
+    }
+
+    private fun category(error: Exception): ProfileFailure =
+        (error as? ProfileException)?.failure ?: ProfileFailure.UNEXPECTED
+
+    private companion object {
+        val ACCESS_FAILURES = setOf(
+            ProfileFailure.SESSION_EXPIRED,
+            ProfileFailure.ACCESS_DENIED,
+            ProfileFailure.NOT_FOUND,
+            ProfileFailure.CACHE_INVALIDATION,
+        )
+    }
 }
 ```
 
-The slice stores a separate entry for each navigation screen instance. Each entry tracks the latest request ID, so one screen cannot overwrite another screen's state and an old request cannot clear a newer loading indicator.
-
-### `src/features/user/presentation/state/profileSlice.ts`
-
-```typescript
-import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { checkCancellation, isCancellation, ProfileError, type UserDomainModel } from '../../domain/profile';
-import {
-  initialProfileState, type ProfileDependencies, type ProfileFailure,
-  type ProfileLoadArg, type UserProfileUIState,
-} from './profileTypes';
-
-interface ProfileEntry extends UserProfileUIState {
-  readonly userId: string;
-  readonly requestId: string | null;
-}
-export interface ProfilesState {
-  readonly entries: Record<string, ProfileEntry | undefined>;
-}
-const initialState: ProfilesState = { entries: {} };
-
-// JSON encoding prevents arbitrary route keys from becoming prototype property names.
-export const profileEntryKey = (screenKey: string): string => JSON.stringify([screenKey]);
-
-function toFailure(error: unknown): ProfileFailure {
-  const code = error instanceof ProfileError ? error.code : 'unexpected';
-  const clearContent = ['unauthorized', 'forbidden', 'not-found', 'cache-invalidation'].includes(code);
-  const message = code === 'invalid-id' ? 'A valid user ID is required.'
-    : code === 'unauthorized' ? 'Your session has expired. Please sign in again.'
-    : code === 'forbidden' ? 'You do not have access to this profile.'
-    : code === 'not-found' ? 'This profile is no longer available.'
-    : code === 'cache-invalidation' ? 'Profile access could not be verified. Please sign in again.'
-    : 'Unable to refresh the profile. Please try again.';
-  return { code, message, clearContent: clearContent || code === 'invalid-id' };
-}
-
-export const loadUserProfile = createAsyncThunk<
-  UserDomainModel,
-  ProfileLoadArg,
-  {
-    state: { profiles: ProfilesState };
-    extra: ProfileDependencies;
-    rejectValue: ProfileFailure;
-  }
->('profiles/load', async (arg, api) => {
-  const { extra, signal, requestId, dispatch, getState, rejectWithValue } = api;
-  const key = profileEntryKey(arg.screenKey);
-  const isCurrent = (): boolean => getState().profiles.entries[key]?.requestId === requestId;
-  try {
-    const userId = extra.useCase.normalizeId(arg.userId);
-    checkCancellation(signal);
-    try {
-      const cached = await extra.useCase.cachedProfile(userId);
-      checkCancellation(signal);
-      if (!isCurrent()) throw new ProfileError('cancelled');
-      dispatch(profilesSlice.actions.cacheLoaded({ screenKey: arg.screenKey, requestId, user: cached }));
-    } catch (error: unknown) {
-      if (isCancellation(error, signal) || !isCurrent()) throw new ProfileError('cancelled');
-      extra.report({ stage: 'cache-read', code: toFailure(error).code });
-      // A disposable cache failure must not prevent a recoverable remote fetch.
-    }
-    const user = await extra.useCase.refreshProfile(userId, signal);
-    checkCancellation(signal);
-    if (!isCurrent()) throw new ProfileError('cancelled');
-    return user;
-  } catch (error: unknown) {
-    if (isCancellation(error, signal) || !isCurrent()) {
-      return rejectWithValue({ code: 'cancelled', message: '', clearContent: false });
-    }
-    const failure = toFailure(error);
-    extra.report({ stage: 'refresh', code: failure.code });
-    return rejectWithValue(failure);
-  }
-});
-
-const profilesSlice = createSlice({
-  name: 'profiles',
-  initialState,
-  reducers: {
-    cacheLoaded(state, action: PayloadAction<{
-      screenKey: string; requestId: string; user: UserDomainModel | null;
-    }>) {
-      const entry = state.entries[profileEntryKey(action.payload.screenKey)];
-      if (entry?.requestId === action.payload.requestId) entry.user = action.payload.user;
-    },
-    profileRemoved(state, action: PayloadAction<string>) {
-      delete state.entries[profileEntryKey(action.payload)];
-    },
-    profilesCleared: () => initialState,
-  },
-  extraReducers: (builder) => {
-    builder.addCase(loadUserProfile.pending, (state, action) => {
-      const key = profileEntryKey(action.meta.arg.screenKey);
-      const previous = state.entries[key];
-      state.entries[key] = {
-        user: previous?.userId === action.meta.arg.userId ? previous.user : null,
-        userId: action.meta.arg.userId,
-        requestId: action.meta.requestId,
-        isRefreshing: true,
-        message: null,
-      };
-    });
-    builder.addCase(loadUserProfile.fulfilled, (state, action) => {
-      const entry = state.entries[profileEntryKey(action.meta.arg.screenKey)];
-      if (entry?.requestId !== action.meta.requestId) return;
-      entry.user = action.payload;
-      entry.isRefreshing = false;
-      entry.message = null;
-      entry.requestId = null;
-    });
-    builder.addCase(loadUserProfile.rejected, (state, action) => {
-      const entry = state.entries[profileEntryKey(action.meta.arg.screenKey)];
-      if (entry?.requestId !== action.meta.requestId) return;
-      entry.isRefreshing = false;
-      entry.requestId = null;
-      if (action.meta.aborted || action.payload?.code === 'cancelled') return;
-      entry.message = action.payload?.message ?? 'Unable to load the profile. Please try again.';
-      if (action.payload?.clearContent) entry.user = null;
-    });
-  },
-});
-
-export const { profileRemoved, profilesCleared } = profilesSlice.actions;
-export const profilesReducer = profilesSlice.reducer;
-export const selectProfile = (
-  state: { profiles: ProfilesState }, screenKey: string,
-): UserProfileUIState => state.profiles.entries[profileEntryKey(screenKey)] ?? initialProfileState;
-```
-
-<Aside type="tip" title="Hint · draft mutation is valid inside createSlice">
-Assignments such as `entry.user = action.payload` are intentional: Redux Toolkit uses Immer to produce immutable updates from these reducer drafts. Do not mutate selected Redux objects in components, hooks, repositories, or ordinary functions. Keep reducers free of HTTP, storage, logging, and navigation effects.
+<Aside type="tip" title="Hint · choose one owner for screen loading">
+This reference intentionally lets the route own a visibility-bound load while the ViewModel retains state. The load is awaited and cancellation propagates down the same coroutine chain. Use `viewModelScope` instead when work should survive the screen becoming inactive, and document that different lifetime. Do not launch a ViewModel job from a route effect and assume cancelling the effect cancels that independent job.
 </Aside>
 
-`rejectWithValue` carries a typed, serializable failure contract. Abort actions stop progress without becoming error banners. The request-ID check applies to cached content, success, and failure—not just to the final network result. Unknown technical failures map to safe UI copy instead of raw exception messages.
+All state coordination runs on the injected main dispatcher. Each request gets a generation number. After suspension, a cancelled or superseded request cannot publish content, an error, or a loading reset over a newer request. Keep diagnostic reporting non-throwing and lightweight.
 
   </TabItem>
-  <TabItem label="6. Store and typed hooks">
+  <TabItem label="6. Compose route and screen">
 
-This is a minimal root-store example. Merge the reducer and dependency injection into the real application store; do not add a nested Redux store for each feature. The default serializability and immutability checks remain enabled.
+### `feature/user/presentation/UserProfileScreen.kt`
 
-### `src/app/store.ts`
+The route owns lifecycle integration. The content screen accepts state and a callback and can be previewed without a ViewModel, database, or network.
 
-```typescript
-import { configureStore } from '@reduxjs/toolkit';
-import { profilesReducer } from '../features/user/presentation/state/profileSlice';
-import type { ProfileDependencies } from '../features/user/presentation/state/profileTypes';
+```kotlin
+package com.enterprise.mobile.feature.user.presentation
 
-/** Minimal reference store. Integrate this reducer into the real root store. */
-export function makeSessionStore(dependencies: ProfileDependencies) {
-  return configureStore({
-    reducer: { profiles: profilesReducer },
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware({
-      thunk: { extraArgument: dependencies },
-    }),
-    devTools: false, // Enable deliberately in approved development builds only.
-  });
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.enterprise.mobile.R
+import com.enterprise.mobile.feature.user.domain.ProfileFailure
+import com.enterprise.mobile.feature.user.domain.UserDomainModel
+
+@Composable
+fun UserProfileRoute(
+    accountId: String,
+    userId: String,
+    viewModel: UserProfileViewModel,
+    modifier: Modifier = Modifier,
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var revision by remember(accountId, userId) { mutableIntStateOf(0) }
+
+    LaunchedEffect(accountId, userId, revision, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.load(accountId, userId)
+        }
+    }
+
+    // Hide another account/profile immediately, before the effect starts loading.
+    val sameProfile = state.key?.accountId == accountId && state.key?.userId == userId.trim()
+    val visibleState = if (sameProfile) state else state.copy(user = null)
+    UserProfileScreen(
+        state = visibleState,
+        onRefresh = { revision += 1 },
+        modifier = modifier,
+    )
 }
-export type AppStore = ReturnType<typeof makeSessionStore>;
-export type RootState = ReturnType<AppStore['getState']>;
-export type AppDispatch = AppStore['dispatch'];
+
+@Composable
+fun UserProfileScreen(
+    state: UserProfileUiState,
+    onRefresh: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxSize()
+            .verticalScroll(rememberScrollState()).padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(stringResource(R.string.profile_title), style = MaterialTheme.typography.headlineMedium)
+        if (state.isRefreshing) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+        state.user?.let { user ->
+            Text(user.name, style = MaterialTheme.typography.titleLarge)
+            Text(user.email, style = MaterialTheme.typography.bodyLarge)
+            if (user.isVip) Text(stringResource(R.string.profile_vip))
+        }
+        state.failure?.let { failure ->
+            Text(profileFailureMessage(failure), color = MaterialTheme.colorScheme.error)
+        }
+        if (state.user == null && !state.isRefreshing && state.failure == null) {
+            Text(stringResource(R.string.profile_empty))
+        }
+        Button(onClick = onRefresh, enabled = !state.isRefreshing) {
+            Text(stringResource(
+                if (state.failure == null) R.string.profile_refresh else R.string.profile_retry
+            ))
+        }
+    }
+}
+
+@Composable
+private fun profileFailureMessage(failure: ProfileFailure): String = stringResource(
+    when (failure) {
+        ProfileFailure.INVALID_KEY -> R.string.profile_invalid_key
+        ProfileFailure.SESSION_EXPIRED -> R.string.profile_session_expired
+        ProfileFailure.ACCESS_DENIED -> R.string.profile_access_denied
+        ProfileFailure.NOT_FOUND -> R.string.profile_not_found
+        ProfileFailure.CACHE_INVALIDATION -> R.string.profile_access_unverified
+        else -> R.string.profile_load_failed
+    }
+)
+
+@Preview(showBackground = true)
+@Composable
+private fun UserProfileSuccessPreview() {
+    MaterialTheme {
+        UserProfileScreen(
+            state = UserProfileUiState(user = UserDomainModel(
+                id = "USR-101", name = "Alex Morgan", email = "alex@example.com",
+                isVip = true, cachedAtMillis = 0L,
+            )),
+            onRefresh = {},
+        )
+    }
+}
 ```
 
-### `src/app/hooks.ts`
-
-```typescript
-import { useDispatch, useSelector } from 'react-redux';
-import type { AppDispatch, RootState } from './store';
-
-// React Redux 9.1+ typed hooks; use your project's approved compatible version.
-export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
-export const useAppSelector = useSelector.withTypes<RootState>();
-```
-
-<Aside type="tip" title="Hint · dependencies belong in middleware, not state">
-Thunk `extraArgument` carries the use case and diagnostics adapter. They are not serialized into the store or passed in a dispatched action. Infer store and dispatch types from the configured store, then use the pretyped hooks throughout presentation code.
+<Aside type="tip" title="Hint · state collection and work lifetime are separate">
+`collectAsStateWithLifecycle()` controls UI-state collection. It does not automatically cancel arbitrary ViewModel work. Here, `repeatOnLifecycle(STARTED)` separately cancels the awaited load when the route becomes inactive and restarts it on re-entry. Changing profile, account, or refresh revision cancels the old effect. Choose a different lifecycle threshold only when product/navigation behavior requires it.
 </Aside>
 
-For this reference, the store and injected dependencies belong to one authenticated session. Recreating only the use case variable does not replace the store's existing middleware dependency.
+Obtain the Hilt ViewModel at the navigation destination, using the Hilt/Compose API approved for the installed version, then pass it to this route. Scope it to the intended back-stack entry. When the authenticated session changes, remove the protected navigation subtree and its ViewModels; changing only a composable parameter is not full session teardown.
 
-### `src/app/SessionRoot.tsx`
+The host owns `Scaffold`, app bars, navigation, and safe-area/inset policy. Pass its content padding through `modifier` and avoid duplicating system-bar padding. Keep the enterprise theme around the destination. Add loading announcements, headings, error semantics, and accessibility checks appropriate to the actual design-system components.
 
-```tsx
-import { useState, type PropsWithChildren } from 'react';
-import { Provider } from 'react-redux';
-import type { ProfileDependencies } from '../features/user/presentation/state/profileTypes';
-import { makeSessionStore } from './store';
+### `app/src/main/res/values/strings.xml`
 
-type SessionProps = PropsWithChildren<{
-  sessionScopeKey: string;
-  dependencies: ProfileDependencies;
-}>;
-
-/** Minimal app-root example. Do not mount a second Redux Provider inside a feature. */
-export function SessionRoot({ sessionScopeKey, dependencies, children }: SessionProps) {
-  return (
-    <SessionProvider key={sessionScopeKey} dependencies={dependencies}>
-      {children}
-    </SessionProvider>
-  );
-}
-
-function SessionProvider({ dependencies, children }: PropsWithChildren<{
-  dependencies: ProfileDependencies;
-}>) {
-  const [store] = useState(() => makeSessionStore(dependencies));
-  return <Provider store={store}>{children}</Provider>;
-}
+```xml
+<resources>
+    <string name="profile_title">User profile</string>
+    <string name="profile_vip">VIP account</string>
+    <string name="profile_empty">No saved profile is available.</string>
+    <string name="profile_refresh">Refresh profile</string>
+    <string name="profile_retry">Retry</string>
+    <string name="profile_invalid_key">A valid account and user ID are required.</string>
+    <string name="profile_session_expired">Your session has expired. Please sign in again.</string>
+    <string name="profile_access_denied">You do not have access to this profile.</string>
+    <string name="profile_not_found">This profile is no longer available.</string>
+    <string name="profile_access_unverified">Profile access could not be verified. Please sign in again.</string>
+    <string name="profile_load_failed">Unable to refresh the profile. Please try again.</string>
+</resources>
 ```
 
-`sessionScopeKey` is a non-secret identity that changes for each authenticated session. A new key remounts the session subtree and creates a store with the new dependencies. This component illustrates ownership at the app root; integrate it with the existing application shell and all existing reducers. Do not mount it inside an individual profile screen.
-
-For an application that retains one root store across login/logout, adapt the dependency resolver and session-reset workflow deliberately. Reset every account-scoped slice, cancel in-flight work, and prevent old-session results from rehydrating protected state.
+The error messages describe recovery, but the host still needs a real sign-in/access-recovery action. A generic Retry button alone is not a complete session-expiry flow.
 
   </TabItem>
-  <TabItem label="7. Lifecycle and view">
+  <TabItem label="7. Hilt composition">
 
-The hook dispatches a typed thunk, keeps its abortable handle in a ref, and cancels it during cleanup. Refetch cancels the previous request for this screen.
+### `feature/user/di/UserFeatureModule.kt`
 
-### `src/features/user/presentation/hooks/useUserProfile.ts`
+```kotlin
+package com.enterprise.mobile.feature.user.di
 
-```typescript
-import { useCallback, useEffect, useRef } from 'react';
-import { useAppDispatch, useAppSelector } from '../../../../app/hooks';
-import { loadUserProfile, profileRemoved, selectProfile } from '../state/profileSlice';
+import com.enterprise.mobile.feature.user.data.UserRepositoryImpl
+import com.enterprise.mobile.feature.user.domain.UserRepository
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.android.components.ViewModelComponent
+import dagger.hilt.android.scopes.ViewModelScoped
 
-export function useUserProfile(screenKey: string, userId: string, isActive: boolean) {
-  const dispatch = useAppDispatch();
-  const state = useAppSelector((root) => selectProfile(root, screenKey));
-  type Request = ReturnType<ReturnType<typeof loadUserProfile>>;
-  const active = useRef<Request | null>(null);
-
-  const refresh = useCallback(() => {
-    if (!isActive) return;
-    active.current?.abort();
-    active.current = dispatch(loadUserProfile({ screenKey, userId }));
-  }, [dispatch, screenKey, userId, isActive]);
-
-  useEffect(() => {
-    refresh();
-    return () => {
-      active.current?.abort();
-      active.current = null;
-    };
-  }, [refresh]);
-
-  useEffect(() => () => {
-    dispatch(profileRemoved(screenKey));
-  }, [dispatch, screenKey]);
-
-  return { state, refresh };
+@Module
+@InstallIn(ViewModelComponent::class)
+abstract class UserFeatureModule {
+    @Binds
+    @ViewModelScoped
+    abstract fun bindUserRepository(implementation: UserRepositoryImpl): UserRepository
 }
 ```
 
-<Aside type="tip" title="Hint · mounted does not always mean visible">
-React Navigation screens can remain mounted after losing focus. The host supplies `isActive` from its navigation-focus and application-lifecycle policy. Losing activity cancels screen work; becoming active loads again. Cleanup removes the screen entry when its owning screen is unmounted or its key changes. React Strict Mode may run an extra setup/cleanup cycle in development; the abort and request-ID guards handle that lifecycle.
+### `di/ProfileInfrastructureModule.kt`
+
+```kotlin
+package com.enterprise.mobile.di
+
+import com.enterprise.mobile.core.profile.EpochClock
+import com.enterprise.mobile.core.profile.IoDispatcher
+import com.enterprise.mobile.core.profile.MainDispatcher
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+
+@Module
+@InstallIn(SingletonComponent::class)
+object ProfileInfrastructureModule {
+    @Provides
+    @IoDispatcher
+    fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
+
+    @Provides
+    @MainDispatcher
+    fun provideMainDispatcher(): CoroutineDispatcher = Dispatchers.Main.immediate
+
+    @Provides
+    @Singleton
+    fun provideEpochClock(): EpochClock = EpochClock { System.currentTimeMillis() }
+}
+```
+
+<Aside type="tip" title="Hint · reuse existing infrastructure bindings">
+Use the application's existing dispatcher qualifiers, clock, database, and network providers where available. Do not register duplicate bindings. The repository lives in the ViewModel component; that scope is not automatically an authenticated-account scope. Session ownership and replacement still belong to the application.
 </Aside>
 
-The promise returned by dispatching an async thunk resolves to a lifecycle action. Use `.unwrap()` only when a caller needs success/failure control flow, and catch its rejection. This screen renders the result from Redux state, so it does not need `.unwrap()`.
+**Required host bindings:** `UserApiService`, `UserDao`, `ProfileSessionGuard`, and `ProfileDiagnostics`. Register `UserEntity` in the real Room database, enable schema export, and add migrations. Configure the application and host with the required Hilt annotations. No fallback unauthenticated client, silent diagnostics implementation, or unrestricted session guard is supplied here.
 
-### `src/features/user/presentation/views/UserProfileRoute.tsx`
-
-```tsx
-import {
-  ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import type { UserProfileUIState } from '../state/profileTypes';
-import { useUserProfile } from '../hooks/useUserProfile';
-
-type RouteProps = Readonly<{
-  screenKey: string;
-  userId: string;
-  isActive: boolean;
-}>;
-
-export function UserProfileRoute({ screenKey, userId, isActive }: RouteProps) {
-  const { state, refresh } = useUserProfile(screenKey, userId, isActive);
-  // Avoid showing the prior screen entry for a frame when route params change.
-  const visibleState = state.user?.id !== userId.trim()
-    ? { ...state, user: null } : state;
-  return <UserProfileView state={visibleState} onRefresh={refresh} isActive={isActive} />;
-}
-
-export function UserProfileView({ state, onRefresh, isActive }: Readonly<{
-  state: UserProfileUIState;
-  onRefresh: () => void;
-  isActive: boolean;
-}>) {
-  const disabled = !isActive || state.isRefreshing;
-  return (
-    <SafeAreaView style={styles.root}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>User profile</Text>
-        {state.isRefreshing && (
-          <View style={styles.progress}>
-            <ActivityIndicator accessibilityLabel="Profile loading" />
-            <Text>{state.user ? 'Refreshing…' : 'Loading profile…'}</Text>
-          </View>
-        )}
-        {state.user && (
-          <View style={styles.card}>
-            <Text style={styles.name}>{state.user.name}</Text>
-            <Text style={styles.secondary}>{state.user.email}</Text>
-            {state.user.isVip && <Text style={styles.badge}>VIP account</Text>}
-          </View>
-        )}
-        {state.message && (
-          <Text accessibilityLiveRegion="polite" style={styles.secondary}>{state.message}</Text>
-        )}
-        {!state.user && !state.isRefreshing && !state.message && <Text>No saved profile is available.</Text>}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled, busy: state.isRefreshing }}
-          disabled={disabled}
-          onPress={onRefresh}
-          style={[styles.button, disabled && styles.disabled]}
-        >
-          <Text style={styles.buttonText}>{state.message ? 'Retry' : 'Refresh profile'}</Text>
-        </Pressable>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-// Example palette only: replace with approved theme tokens and localized strings.
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f8fafc' },
-  content: { flexGrow: 1, padding: 24, gap: 20 },
-  title: { fontSize: 28, fontWeight: '700', color: '#0f172a' },
-  progress: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  card: { padding: 20, gap: 10, borderRadius: 16, backgroundColor: '#ffffff' },
-  name: { fontSize: 22, fontWeight: '600', color: '#0f172a' },
-  secondary: { color: '#475569', fontSize: 16 },
-  badge: { color: '#3730a3', fontWeight: '600' },
-  button: { minHeight: 48, justifyContent: 'center', alignItems: 'center',
-    borderRadius: 12, padding: 14, backgroundColor: '#4338ca' },
-  disabled: { opacity: 0.5 },
-  buttonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
-});
-```
-
-Use the navigation route's stable, unique key as `screenKey`, its validated profile parameter as `userId`, and the host's focus/lifecycle value as `isActive`. Do not reuse one constant screen key for several profile screen instances.
-
-The view uses `react-native-safe-area-context`; the app must supply its `SafeAreaProvider`. Coordinate safe-area edges with the host navigator to avoid duplicate insets. Core React Native's legacy `SafeAreaView` is deprecated; see the [React Native reference](https://reactnative.dev/docs/SafeAreaView).
-
-Replace the sample palette and copy with enterprise theme tokens and localized resources. Keep the scrollable layout, disabled/busy semantics, accessible labels, and text scaling. Test announcements on both platforms; an Android live-region prop alone does not establish equivalent iOS VoiceOver behavior.
-
-Memoization is optional. Use `memo`, `useCallback`, or memoized selectors when reference stability or measured rendering cost warrants them. Inline callbacks do not inherently cause “bridge flooding,” and `memo` does not guarantee a performance improvement.
+Dispatchers and clock are injected so tests can control execution and time. Avoid embedding real network or database construction in previews or composables.
 
   </TabItem>
 </Tabs>
 
 ## Application integration
 
-1. **Register the feature in the existing root store.** Keep `RootState` and `AppDispatch` inferred from the real store, and inject account-specific dependencies through the established middleware setup.
-2. **Adapt authenticated networking.** Implement `ProfileHttpClient` with the approved SDK, including HTTP-error mapping, timeout, cancellation, and environment policy. Do not duplicate authentication or retry logic inside the feature.
-3. **Prepare storage before rendering protected content.** Resolve the managed key, create the account cache instance, and build the use case. Present controlled startup/recovery UI if this fails.
-4. **Bind navigation explicitly.** Supply a unique screen key, profile ID, and active/focus state. Validate deep links and other external route input at the application boundary as well as in the use case.
-5. **Define session teardown.** Block protected navigation, unmount or deactivate screens, cancel pending requests, clear account Redux state, and remove protected persistent data under the application's session policy. Rotate the session identity before constructing new account dependencies.
-6. **Keep secrets out of Redux.** Do not persist authentication credentials in this slice or profile cache. Review Redux logging, DevTools, analytics, and crash breadcrumbs because profile state contains personal data.
-7. **Apply native setup and release checks.** Install the project's pinned native dependencies, complete platform setup, and build Android and iOS release configurations. Use the SDK catalog's compatibility guidance.
+1. **Confirm the supported toolchain.** Use project-managed Kotlin, Compose, lifecycle, Room, Hilt, Retrofit, and serialization versions. Configure their compiler/code-generation requirements in the application.
+2. **Register the schema safely.** Add the account-scoped entity and DAO to the real Room database. Migrate old single-user-key records deliberately; do not accidentally expose them under a different account.
+3. **Bind approved infrastructure.** Supply authenticated networking, the active-account guard, diagnostics, and existing dispatcher/clock abstractions. Ensure every HTTP request captures the intended session.
+4. **Scope navigation correctly.** Supply the trusted account identity and validated route ID. Own the ViewModel at the appropriate navigation destination and remove protected back-stack entries on account/session changes.
+5. **Define cache policy.** Decide which personal data may be stored, how long it remains valid, and which protection/backup settings apply. Room does not encrypt a database automatically.
+6. **Implement session recovery.** Block protected access, cancel old work, clear protected records and credentials, and replace session-owned dependencies. Deleting one profile is not full logout or revocation handling.
+7. **Apply product UX.** Use enterprise theme tokens, localized strings, accessible progress/error states, and real sign-in or permission-recovery actions.
+8. **Verify in the application.** Build the actual target, run migrations and coroutine tests, and exercise supported devices and Android versions.
 
-Dispatching `profilesCleared()` resets this slice; it does not abort network requests, delete MMKV records, or reset other slices and API caches. If RTK Query is present, its account-scoped cache and subscriptions need their documented session-reset handling too.
+Use the approved secure-storage abstraction for credentials. Android Keystore manages cryptographic keys; it is not a general-purpose token database. Hardware-backed protection depends on device and key configuration. Keep credentials out of source, UI state, logs, and profile entities.
 
-This read/refresh example is not a complete offline synchronization engine. Queued writes require durable operation state, idempotency, conflict resolution, bounded retry, and explicit user recovery. Do not infer those guarantees from an MMKV cache or an async thunk.
+This read/refresh example does not implement a durable outbox, background sync, circuit breaking, or automatic retry loops. Add those through approved shared capabilities when the feature requires them. Choose retry rules according to idempotency and error category, not simply “retry every failure.”
 
 ## Expected behavior
 
 | Scenario | Expected result |
 | :--- | :--- |
-| Empty cache; valid remote response | Show initial progress, then the saved profile. |
-| Cached profile; refresh running | Keep content visible with a refresh indicator. |
-| Cached profile; timeout or server failure | Retain content and show a retry message; do not report a successful refresh. |
-| Cache JSON malformed or schema incompatible | Remove the disposable record and request fresh data. |
-| Cache read fails | Report the failure category and attempt remote refresh. |
-| Valid response; cache write fails | Reject refresh rather than claiming persisted success. |
-| Response ID differs from requested ID | Reject the payload without writing it. |
-| Session expires, access is denied, or profile is missing | Invalidate this record and clear displayed content; host handles access/session recovery. |
-| Cache invalidation fails | Clear displayed content and report a recovery message; host continues cleanup. |
-| A newer request starts | Abort the older screen request; request-ID guards reject late updates. |
-| Two profile screens are mounted | Maintain separate screen entries and request IDs. |
-| Screen loses activity or unmounts | Abort the screen request; remove its entry on unmount. |
-| State is reset before an old request completes | The old completion cannot recreate a missing entry. |
-| Another writer changes MMKV | No automatic screen update in this snapshot example. |
+| Empty cache; successful refresh | Initial progress followed by the saved profile. |
+| Cached profile; refresh running | Existing content stays visible with progress. |
+| Cached profile; transient refresh failure | Retain content and display a safe retry message. |
+| Cache read fails; refresh succeeds | Attempt remote recovery; show the successfully persisted profile. |
+| Valid response; Room write fails | Refresh fails; do not display network-only data as a persisted success. |
+| Missing body, malformed payload, or mismatched ID | Reject the response before persistence. |
+| Session expired, access denied, or profile missing | Clear displayed content and invalidate this profile when handled by refresh; host completes access/session recovery. |
+| Cache invalidation fails | Clear displayed content and surface an access-recovery category; host continues cleanup. |
+| Account or profile changes | Clear other-profile content immediately and cancel the old effect. |
+| Route becomes inactive | Cancel the screen-owned load; retain ViewModel state while its owner lives. |
+| Route becomes active again | Start a new cache/read-refresh cycle under the lifecycle policy. |
+| A dependency returns after cancellation | Cancellation/generation checks prevent stale UI updates. |
+| Another writer changes Room | No automatic screen update in this snapshot example; add a real repository Flow if required. |
 
-## TypeScript and review requirements
+## Patterns to avoid
 
-Use the project's React Native TypeScript base configuration and enable strict application checks. Do not add browser DOM declarations globally just to satisfy a native typing issue; use the environment types supplied by the approved React Native setup.
+| Avoid | Use instead |
+| :--- | :--- |
+| Network or DAO calls inside composable bodies | Route effects through the ViewModel and use case. |
+| Activity, View, or lifecycle-bound Context in a ViewModel | Inject focused application abstractions with appropriate ownership. |
+| Public `MutableStateFlow` | Private writable state and a read-only `StateFlow` view. |
+| Catching cancellation inside broad fallback logic | Rethrow `CancellationException` before handling other failures. |
+| Raw exception messages in UI or logs | Typed failure categories, localized copy, and redacted diagnostics. |
+| A full-screen spinner replacing cached content on every refresh | Independent content, progress, and failure properties. |
+| Using `@Immutable` to silence stability concerns | Honor its contract and optimize based on measured rendering behavior. |
+| Hardcoding dispatchers inside business/data operations | Inject dispatchers; configure their real implementations at the root. |
+| Assuming a singleton is an account/session scope | Model session ownership and replacement explicitly. |
+| Treating a cache or client-side flag as authorization | Enforce access on the backend and through the session coordinator. |
 
-```json
-{
-  "extends": "@react-native/typescript-config",
-  "compilerOptions": {
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true
-  }
-}
-```
+## Review checklist
 
-### Review checklist
-
-- [ ] Redux Toolkit and typed React Redux hooks follow the application's established setup.
-- [ ] Framework and native dependency versions match the project lockfile and supported toolchain.
-- [ ] Domain code imports no React, Redux, React Native, MMKV, or HTTP implementation.
-- [ ] Network payloads and stored JSON are validated at runtime before use.
-- [ ] Each screen instance has a unique state entry and request-ID guards.
-- [ ] Request cancellation reaches the HTTP adapter and is checked before local writes.
-- [ ] Refresh progress and failures can coexist with valid cached content.
-- [ ] Invalid credentials/access never become an offline success response.
-- [ ] Credentials, abort controllers, SDK objects, and functions are absent from state and dispatched payloads.
-- [ ] Managed encryption keys are supplied at runtime and never hardcoded.
-- [ ] Account switching resets protected state and persistent data according to policy.
-- [ ] Reducers are pure; Immer draft updates occur only in Redux Toolkit reducers.
-- [ ] Diagnostics omit payloads, credentials, raw exception strings, and account identifiers.
-- [ ] React Native focus, backgrounding, unmount, and Strict Mode lifecycle behavior are exercised.
-- [ ] Android and iOS release builds, accessibility checks, and required CI gates pass.
-
-Use the coverage threshold configured in the repository. The supplied draft contained conflicting percentages; this page does not invent a replacement policy.
+- [ ] Feature boundaries match the domain/data/presentation structure; build rules enforce them where applicable.
+- [ ] Domain code contains no Android framework, Compose, Room, or Retrofit imports.
+- [ ] API contracts define required fields and expected statuses; identity is checked before persistence.
+- [ ] Room reads, writes, and deletion use the account/profile composite key.
+- [ ] Session guard and authenticated HTTP adapter agree on the intended account.
+- [ ] Successful refresh requires a completed local write; failure remains explicit.
+- [ ] Retry uses the current profile identity and keeps valid cached content visible.
+- [ ] Coroutine cancellation propagates through route, ViewModel, use case, and data layer.
+- [ ] Older requests cannot publish state or reset progress over a newer request.
+- [ ] Error categories are mapped to localized resources, with appropriate recovery actions.
+- [ ] Credentials and sensitive telemetry payloads are absent from UI state and profile storage.
+- [ ] Hilt scopes and providers match the actual lifecycle; no duplicate infrastructure bindings exist.
+- [ ] Database migration, backup, retention, and logout cleanup policies are covered.
+- [ ] Accessibility, large text, offline launch, backgrounding, navigation, and account switching are exercised.
+- [ ] Required CI gates and the repository's configured coverage threshold pass.
 
 ### Essential test scenarios
 
-Test validation, schema corruption, account isolation, API status mapping, persistence failure, cached-error state, access revocation, cleanup failure, cancellation before write, late response rejection, separate screen entries, state reset, and cache-read recovery. Use deferred promises or controlled test doubles to establish ordering rather than timing-sensitive sleeps.
+Use controlled coroutine dispatchers and deterministic clocks. Cover key validation, empty/cached reads, successful refresh, 401/403/404/5xx responses, missing or malformed payloads, response-ID mismatch, Room write failure, deletion failure, cache-read recovery, cancellation before persistence, late responses, account switching, and lifecycle stop/start.
 
-The reference's TypeScript files and Redux store/thunk/reducer behavior were checked during preparation. Native MMKV execution, real network SDK behavior, navigation integration, device layouts, and release builds still require validation in the application.
+For coroutine tests, share one test scheduler across injected test dispatchers and configure `Dispatchers.Main` when the Android lifecycle/test setup requires it. Test Room with its real in-memory database and verify migrations against exported schemas. Test stateless Compose content separately from the route's lifecycle behavior. Avoid timing-sensitive sleeps as synchronization.
+
+**Validation boundary:** This page is a documentation reference. Its code has not been compiled or executed in your Android project. Validate imports against the pinned library versions, Hilt bindings, Room code generation, resources, and lifecycle behavior before adoption. Internal links and Mermaid rendering also require checking in the documentation site.
 
 ## Internal SDKs and further reading
 
-Use the [Master SDK Catalog](/mobile/platforms/master-sdk-catalog/) for approved package names, supported versions, and platform setup. Keep the route aligned with the documentation deployment base. This guide defines adapter contracts rather than assuming an unverified internal package API.
+Use the [Master SDK Catalog](/mobile/platforms/master-sdk-catalog/) for approved packages, supported versions, and platform setup. Keep the route aligned with the documentation deployment base. Use the actual CI coverage policy rather than copying conflicting percentages from older documentation.
 
-- [Redux Toolkit: createAsyncThunk, cancellation, and request IDs](https://redux.js.org/toolkit/api/createAsyncThunk)
-- [Redux: typed store and React Redux hooks](https://redux.js.org/usage/usage-with-typescript)
-- [RTK Query overview](https://redux.js.org/toolkit/rtk-query/overview)
-- [React: effect cleanup and stale-response handling](https://react.dev/reference/react/useEffect)
-- [React Native architecture overview](https://reactnative.dev/architecture/overview)
-- [MMKV documentation and version-specific APIs](https://github.com/margelo/react-native-mmkv)
+- [Android architecture recommendations](https://developer.android.com/topic/architecture/recommendations)
+- [Android coroutine best practices](https://developer.android.com/kotlin/coroutines/coroutines-best-practices)
+- [Room asynchronous reads and observable queries](https://developer.android.com/training/data-storage/room/async-queries)
+- [Room DAO operations](https://developer.android.com/training/data-storage/room/accessing-data)
