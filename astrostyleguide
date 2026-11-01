@@ -1,1934 +1,281 @@
 ---
-title: Enterprise App Foundations Suite
-description: Shared mobile foundations for semantic design tokens, credential security, localization, push routing, controlled branding, and recoverable account-data cleanup across Android, iOS, and React Native.
+title: "Start Here: CI/CD Journey, Roles & Prerequisites"
+description: "Follow the governed mobile delivery journey from a new application and private repository to validated enrollment, automated builds, and verified distribution."
 sidebar:
   order: 1
-  label: App Foundations Suite
+  label: "00. Start Here"
 ---
 
-import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
 import MermaidZoom from '../components/mermaid-zoom.astro';
 
-Build product features on shared foundations with clear ownership, predictable lifecycle behavior, and platform-appropriate implementations.
+This section guides you from a new mobile application to a release that its intended testers or users can access. Follow the numbered pages in order for your first application. For an existing application, start at the relevant task and reuse its existing enrollment.
 
-This guide covers six capabilities: **Design & Theming, Security & Credential Storage, Localization, Push Notifications, Branding, and Account Data Cleanup**. Each foundation defines its responsibilities, integration boundary, failure behavior, and implementation hints.
+The supported development tracks are **native Android, native iOS, and React Native**. Platform-specific pages provide the relevant build commands and configuration; shared governance applies across all three.
 
-<Aside type="tip" title="Platform standard">
-Use the approved foundation SDKs and generated resources. Product features consume semantic tokens and typed service contracts; they do not create their own credential stores, notification routers, or account-wipe routines. Android, iOS, and React Native share behavioral requirements while using their own platform APIs.
+<Aside type="tip" title="The delivery model">
+Developers prepare source code and submit secret-free configuration requests. Authorized automation provisions Bitrise, binds approved templates and protected credentials, and executes governed builds. Distribution and user visibility are verified separately from compilation.
 </Aside>
 
-## Find the foundation you need
+## What you will accomplish
 
-| Foundation | What it owns | What a feature provides |
+<CardGrid>
+  <Card title="Prepare a buildable application" icon="document">
+    Obtain access, generate or prepare source code, commit a reproducible project, and verify the required local checks.
+  </Card>
+  <Card title="Enroll through GitOps" icon="setting">
+    Submit an approved configuration request, pass validation and review, and track the protected provisioning apply.
+  </Card>
+  <Card title="Build and verify" icon="puzzle">
+    Use the governed routes, run the required quality and security checks, and verify signing and artifact identity.
+  </Card>
+  <Card title="Confirm delivery" icon="open-book">
+    Verify the destination version, intended audience, and user access. Preserve evidence and stop safely when an outcome is incomplete.
+  </Card>
+</CardGrid>
+
+## 1. Understand the systems
+
+| System | Responsibility | What you verify |
 | :--- | :--- | :--- |
-| Design & Theming | Semantic tokens, theme resolution, shared UI primitives | Accessible composition and product-specific layout |
-| Security & Credential Storage | Credential access, key lifecycle, approved network security | Data classification and required access behavior |
-| Localization | Translation resources, locale selection, formatting, layout direction | Translation keys, plural cases, and localizable content |
-| Push Notifications | Registration, delivery adapters, validated routing | Supported destinations and authorization requirements |
-| Branding | Approved brand registry, asset/token selection, platform icon adapters | An authorized brand selection and safe fallback |
-| Account Data Cleanup | Access gating, stopped writers, scoped deletion, verification, recovery | A complete inventory of account-owned state and storage |
-
-**Scope:** Examples illustrate foundation contracts and integration patterns. They are not a replacement for the SDK catalog's versioned installation instructions. Native setup, generated resources, application configuration, Redux registration, and service adapters must be supplied by the host application. Examples include executable adapter/coordinator logic as well as required host contracts. Code here has not been compiled in your project; native resources, service bindings, and library-version compatibility still need project validation.
-
-## Platform code coverage
-
-Every foundation tab includes Android, iOS, and React Native code. Platform APIs, generated-resource examples, and integration contracts are labeled so developers can distinguish what to implement from what to configure.
-
-| Foundation | Android | iOS | React Native |
-| :--- | :--- | :--- | :--- |
-| Design & Theming | Compose color scheme and theme | Adaptive asset theme modifier | Generated palettes, Redux preferences, theme provider |
-| Security & Credentials | Keystore/AES-GCM credential adapter | Scoped Keychain read/update/delete | Native-backed credential adapter |
-| Localization | Per-app locale application | Observable preference and locale boundary | Engine initialization, serialized changes, Redux listener |
-| Push Notifications | DTO validation, FCM service, open handler | Codable validation and notification delegate | Firebase adapter, listeners, background entry point |
-| Branding | Manifest aliases and icon manager | Validated alternate-icon adapter | Registry, serialized coordinator, Redux publication |
-| Account Data Cleanup | Mutex-owned staged coordinator | Actor coordinator with reentrancy guard | Staged coordinator and application serialization contract |
-
-## Foundation ownership and lifecycle
-
-<MermaidZoom title="Foundation suite · shared behavior, native implementation">
-
-```mermaid
-flowchart TB
-    subgraph PRODUCTS["01 · PRODUCT FEATURES"]
-        A["Android<br/>Compose and ViewModels"]
-        I["iOS<br/>SwiftUI and observable models"]
-        R["React Native<br/>Typed hooks and Redux Toolkit"]
-    end
-    ROOT["Application composition root<br/>Configuration · dependency lifetime · session ownership"]
-    subgraph FOUNDATION["02 · FOUNDATION CONTRACTS"]
-        D["Design and theme"]
-        S["Credential security"]
-        L["Localization"]
-        P["Push and routing"]
-        B["Approved branding"]
-        W["Account cleanup"]
-    end
-    PLATFORM["Platform adapters and owned resources<br/>Native APIs · approved SDKs · generated assets"]
-    A --> ROOT
-    I --> ROOT
-    R --> ROOT
-    ROOT --> D
-    ROOT --> S
-    ROOT --> L
-    ROOT --> P
-    ROOT --> B
-    ROOT --> W
-    D --> PLATFORM
-    S --> PLATFORM
-    L --> PLATFORM
-    P --> PLATFORM
-    B --> PLATFORM
-    W --> PLATFORM
-    classDef app fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
-    classDef boundary fill:#0f172a,stroke:#475569,color:#ffffff,stroke-width:2px;
-    classDef foundation fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
-    class A,I,R app;
-    class ROOT,PLATFORM boundary;
-    class D,S,L,P,B,W foundation;
-    style PRODUCTS fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
-    style FOUNDATION fill:transparent,stroke:#94a3b8,stroke-dasharray:4 4
-```
-
-</MermaidZoom>
-
-The diagram shows ownership and dependency grouping, not a single runtime service through which every call must pass. Construct long-lived adapters at the application root, scope account resources deliberately, and inject the appropriate foundation interfaces into features.
-
-### Startup and session rules
-
-1. Load validated local configuration and bundled theme/localization defaults.
-2. Check for incomplete account cleanup before making protected data available.
-3. Construct approved adapters with explicit process, scene, account, and screen lifetimes.
-4. Resolve session readiness before rendering protected content or routing protected links.
-5. Refresh remote configuration asynchronously where supported; retain safe local defaults.
-6. Dispose subscriptions and cancel account work before replacing session-owned resources.
-
-In React Native, use Redux Toolkit for shared preference and lifecycle state. Keep credentials, native SDK objects, functions, and subscription handles outside Redux state. RTK Query caches, when present, require their own account-reset handling.
-
-<Tabs>
-  <TabItem label="Design & Theming">
-
-## Design & Theming
-
-**Responsibility:** Give every platform the same semantic design vocabulary, with generated light/dark values and consistent component behavior.
-
-### Token delivery pipeline
-
-<MermaidZoom title="Design tokens · reviewed source to platform resources">
-
-```mermaid
-flowchart LR
-    DESIGN["Design authoring<br/>Tokens Studio / approved source"]
-    REVIEW["Versioned token repository<br/>Schema validation and review"]
-    BUILD["Token build pipeline<br/>Resolve aliases · generate resources"]
-    ANDROID["Android<br/>Compose color roles"]
-    IOS["iOS<br/>Adaptive asset colors"]
-    RN["React Native<br/>Typed token objects"]
-    DESIGN --> REVIEW --> BUILD
-    BUILD --> ANDROID
-    BUILD --> IOS
-    BUILD --> RN
-    classDef source fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
-    classDef build fill:#0f172a,stroke:#475569,color:#ffffff,stroke-width:2px;
-    classDef target fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
-    class DESIGN,REVIEW source;
-    class BUILD build;
-    class ANDROID,IOS,RN target;
-```
-
-</MermaidZoom>
-
-Design authoring feeds a reviewed, versioned source. Applications consume generated artifacts from a known release rather than reading live Figma data at runtime. Include token schema checks, unresolved-alias detection, light/dark completeness, and visual/accessibility review in the publishing workflow.
-
-### Semantic palette
-
-These values preserve the palette supplied for this page. They are an example foundation release, not a claim that every possible foreground/background pairing has passed contrast review.
-
-| Semantic role | Token | Light | Dark |
-| :--- | :--- | :--- | :--- |
-| Primary action | `color.primary.base` | `#007a3d` | `#22c55e` |
-| Text on primary | `color.primary.content` | `#ffffff` | `#09130e` |
-| App background | `color.surface.background` | `#f4f8f5` | `#09130e` |
-| Card surface | `color.surface.card` | `#ffffff` | `#0d1912` |
-| Subtle border | `color.border.subtle` | `#d4e2d8` | `#193828` |
-| Primary text | `color.text.primary` | `#0f172a` | `#f1f5f9` |
-| Secondary text | `color.text.muted` | `#475569` | `#94a3b8` |
-
-Use a semantic role such as “text on primary,” not the action color itself, for a button label. Validate the actual pairing, component size, disabled state, focus state, and selected brand. Color must not be the only signal of status.
-
-### Android · generated color roles
-
-`core/design/theme/EnterpriseTheme.kt`
-
-```kotlin
-package com.enterprise.mobile.core.design.theme
-
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-
-// Representative generated output. Edit the source tokens, not these values.
-private val LightColors = lightColorScheme(
-    primary = Color(0xFF007A3D), onPrimary = Color(0xFFFFFFFF),
-    background = Color(0xFFF4F8F5), onBackground = Color(0xFF0F172A),
-    surface = Color(0xFFFFFFFF), onSurface = Color(0xFF0F172A),
-    onSurfaceVariant = Color(0xFF475569), outline = Color(0xFFD4E2D8),
-)
-private val DarkColors = darkColorScheme(
-    primary = Color(0xFF22C55E), onPrimary = Color(0xFF09130E),
-    background = Color(0xFF09130E), onBackground = Color(0xFFF1F5F9),
-    surface = Color(0xFF0D1912), onSurface = Color(0xFFF1F5F9),
-    onSurfaceVariant = Color(0xFF94A3B8), outline = Color(0xFF193828),
-)
-
-@Composable
-fun EnterpriseTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit,
-) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        content = content,
-    )
-}
-```
-
-This color-role example leaves other Material roles at their defaults. A published enterprise theme must also define the roles it uses for errors, containers, typography, shapes, and component states. Product code reads `MaterialTheme` roles or approved semantic extensions instead of copying these literals.
-
-### iOS · adaptive named assets
-
-Generate the named color assets below with light/dark variants in the owning asset catalog. Supply that catalog's bundle explicitly when it is outside the application bundle.
-
-`Core/Design/EnterpriseTheme.swift`
-
-```swift
-import Foundation
-import SwiftUI
-
-struct EnterpriseTheme: ViewModifier {
-    let resourceBundle: Bundle
-
-    func body(content: Content) -> some View {
-        content
-            .tint(Color("foundation.primary", bundle: resourceBundle))
-            .foregroundStyle(Color("foundation.textPrimary", bundle: resourceBundle))
-            .background(Color("foundation.background", bundle: resourceBundle))
-    }
-}
-
-extension View {
-    func enterpriseTheme(resourceBundle: Bundle = .main) -> some View {
-        modifier(EnterpriseTheme(resourceBundle: resourceBundle))
-    }
-}
-```
-
-The named assets adapt to the environment's appearance. Create the exact asset names referenced by the code; a missing asset is an integration error. For Swift Package resources, pass the package's resource bundle from inside the owning package. The app shell separately owns full-screen backgrounds and safe-area behavior.
-
-### React Native · Redux-backed preferences
-
-`src/core/foundations/foundationSlice.ts`
-
-```typescript
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-
-export type ThemePreference = 'system' | 'light' | 'dark';
-export type SupportedLanguage = 'en' | 'ar';
-export type ApprovedBrandId = 'core' | 'partner';
-
-export interface FoundationPreferences {
-  theme: ThemePreference;
-  language: SupportedLanguage | 'system';
-  brand: ApprovedBrandId;
-}
-
-export interface FoundationState extends FoundationPreferences {
-  localeStatus: 'idle' | 'loading' | 'ready' | 'error';
-}
-const initialState: FoundationState = {
-  theme: 'system', language: 'system', brand: 'core', localeStatus: 'idle',
-};
-
-const foundationSlice = createSlice({
-  name: 'foundation',
-  initialState,
-  reducers: {
-    themeChanged(state, action: PayloadAction<ThemePreference>) {
-      state.theme = action.payload;
-    },
-    languageChanged(state, action: PayloadAction<FoundationPreferences['language']>) {
-      state.language = action.payload;
-      state.localeStatus = 'loading';
-    },
-    localeStatusChanged(state, action: PayloadAction<FoundationState['localeStatus']>) {
-      state.localeStatus = action.payload;
-    },
-    brandChanged(state, action: PayloadAction<ApprovedBrandId>) {
-      state.brand = action.payload;
-    },
-    accountBrandReset(state) {
-      state.brand = initialState.brand;
-    },
-  },
-});
-
-export const {
-  themeChanged, languageChanged, localeStatusChanged, brandChanged, accountBrandReset,
-} = foundationSlice.actions;
-export const foundationReducer = foundationSlice.reducer;
-```
-
-Register `foundationReducer` under `foundation` in the existing root store and update the application's inferred state types. Draft assignments inside `createSlice` are valid Immer updates. Persist only preferences that the product intends to retain; an account brand must not accidentally carry into another account.
-
-`src/core/foundations/theme/ThemeProvider.tsx`
-
-```tsx
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
-import { useAppSelector } from '../../../app/hooks';
-
-type Mode = 'light' | 'dark';
-export interface ThemePalette {
-  readonly primary: string;
-  readonly onPrimary: string;
-  readonly background: string;
-  readonly surface: string;
-  readonly border: string;
-  readonly textPrimary: string;
-  readonly textMuted: string;
-}
-export type ThemeTokens = Readonly<Record<Mode, ThemePalette>>;
-
-const ThemeContext = createContext<ThemePalette | null>(null);
-
-// tokens is the complete, generated token set for the currently resolved brand.
-export function ThemeProvider({ tokens, children }: Readonly<{
-  tokens: ThemeTokens;
-  children: ReactNode;
-}>) {
-  const preference = useAppSelector((state) => state.foundation.theme);
-  const system = useColorScheme();
-  const mode: Mode = preference === 'system'
-    ? (system === 'dark' ? 'dark' : 'light') : preference;
-  const palette = useMemo(() => tokens[mode], [tokens, mode]);
-  return <ThemeContext.Provider value={palette}>{children}</ThemeContext.Provider>;
-}
-
-export function useAppTheme(): ThemePalette {
-  const palette = useContext(ThemeContext);
-  if (!palette) throw new Error('ThemeProvider is required.');
-  return palette;
-}
-```
-
-<Aside type="tip" title="Hint · Context distributes derived values; Redux owns preferences">
-Theme mode and selected brand are application preferences in Redux Toolkit. The theme provider distributes the resolved palette; it does not maintain a second theme preference. Missing providers fail explicitly instead of silently rendering a default brand. Validate persisted/remote preference values before dispatch—TypeScript types do not validate runtime input.
-</Aside>
-
-**Review:** No raw visual values in feature components; generated token files may contain literals. Every published token needs the supported variants and meaningful fallbacks. Confirm which rules are actually enforced in CI; code review remains necessary for visual and accessibility behavior.
-
-
-### React Native · generated light/dark token values
-
-`src/core/foundations/theme/coreThemeTokens.ts`
-
-```typescript
-import type { ThemeTokens } from './ThemeProvider';
-
-// Representative generated output for the core brand; never edit in a feature.
-export const coreThemeTokens = Object.freeze({
-  light: Object.freeze({
-    primary: '#007a3d', onPrimary: '#ffffff', background: '#f4f8f5',
-    surface: '#ffffff', border: '#d4e2d8', textPrimary: '#0f172a', textMuted: '#475569',
-  }),
-  dark: Object.freeze({
-    primary: '#22c55e', onPrimary: '#09130e', background: '#09130e',
-    surface: '#0d1912', border: '#193828', textPrimary: '#f1f5f9', textMuted: '#94a3b8',
-  }),
-}) satisfies ThemeTokens;
-```
-
-Pass this value to `ThemeProvider` for the core brand. Generate and validate the complete partner token set before enabling that brand. Feature components call `useAppTheme()` and consume semantic roles instead of defining their own color constants.
-
-
-  </TabItem>
-  <TabItem label="Security & Credentials">
-
-## Security & Credential Storage
-
-**Responsibility:** Protect credentials through approved native storage, controlled access, explicit error behavior, and a managed key lifecycle.
-
-| Concern | Android | iOS | React Native |
-| :--- | :--- | :--- | :--- |
-| Credential storage | Approved storage adapter with Android Keystore integration | Scoped Keychain items with reviewed accessibility/access controls | Approved native-backed auth adapter |
-| Cryptographic keys | Keystore; hardware backing depends on device/key configuration | Keychain and supported Secure Enclave key operations | Delegates to native platform; JSI is not key protection |
-| Biometric access | Policy-backed authentication with supported authenticators | LocalAuthentication / Keychain access controls as appropriate | Native adapter exposes the chosen policy |
-| Cached personal data | Reviewed database/file protection and key lifecycle | Data protection, storage policy, and scoped cleanup | Approved cache encryption and key management |
-| Network security | Approved TLS client and centrally maintained policy | Approved TLS client and platform trust evaluation | Native networking adapter follows the same policy |
-
-Keystore manages keys; it is not an arbitrary token database. Keychain can store small credential values, while Secure Enclave supports particular key operations—it does not mean every generic-password item is an enclave-held key. A native interface or JSI call does not itself supply hardware-backed encryption. See [Apple's Keychain storage guidance](https://developer.apple.com/documentation/cryptokit/storing-cryptokit-keys-in-the-keychain).
-
-### Credential contract
-
-Use equivalent behavior across platforms: return “absent” only when an item is absent; propagate storage, access-control, corruption, and authentication failures distinctly. Writes must not erase the previous credential before a replacement is safely stored. Deletion is restricted to the application's account namespace.
-
-**Android — `core/security/SecureCredentialStore.kt`**
-
-```kotlin
-package com.enterprise.mobile.core.security
-
-data class CredentialScope(val accountRef: String)
-enum class CredentialName { REFRESH_TOKEN }
-
-interface SecureCredentialStore {
-    suspend fun read(scope: CredentialScope, name: CredentialName): ByteArray?
-    suspend fun write(scope: CredentialScope, name: CredentialName, value: ByteArray)
-    suspend fun removeAccountCredentials(scope: CredentialScope)
-}
-```
-
-Implementations must be main-safe and cancellation-aware. Treat the returned byte array as sensitive mutable data: avoid unnecessary copies, do not log it, and do not claim that clearing one array guarantees all runtime copies are erased.
-
-**iOS — `Core/Security/SecureCredentialStore.swift`**
-
-```swift
-import Foundation
-
-struct CredentialScope: Sendable {
-    let accountRef: String
-}
-enum CredentialName: String, Sendable {
-    case refreshToken
-}
-protocol SecureCredentialStore: Sendable {
-    func read(scope: CredentialScope, name: CredentialName) async throws -> Data?
-    func write(scope: CredentialScope, name: CredentialName, value: Data) async throws
-    func removeAccountCredentials(scope: CredentialScope) async throws
-}
-```
-
-A native Keychain adapter scopes queries by service, account, class, and access group where applicable. Treat `errSecItemNotFound` as absence; other statuses require handling. Prefer a scoped update/add strategy over unconditional delete-then-add. Select accessibility deliberately: background access, device lock, migration, backup, and biometric enrollment requirements differ.
-
-**React Native — `src/core/security/secureCredentialStore.ts`**
-
-```typescript
-export type CredentialName = 'refreshToken';
-export interface CredentialScope {
-  readonly accountRef: string;
-}
-export interface SecureCredentialStore {
-  read(scope: CredentialScope, name: CredentialName): Promise<string | null>;
-  write(scope: CredentialScope, name: CredentialName, value: string): Promise<void>;
-  removeAccountCredentials(scope: CredentialScope): Promise<void>;
-}
-```
-
-Bind this contract to the approved native-backed SDK. Do not implement it with a hardcoded MMKV encryption key or store credentials in Redux, AsyncStorage, or a general profile cache. Encrypted MMKV may be used for approved cache data with a managed key; it is not automatically the credential-storage implementation.
-
-<Aside type="caution" title="Choose supported implementations and explicit policy">
-Android's `security-crypto` APIs, including `EncryptedSharedPreferences` and `MasterKey`, are deprecated. Do not copy them as a new universal foundation. Follow the approved supported adapter and migration plan; plain SharedPreferences does not become secure credential storage because an older wrapper is deprecated. See the [Android Security library release notes](https://developer.android.com/jetpack/androidx/releases/security).
-</Aside>
-
-### TLS and biometric policy
-
-- Apply TLS trust evaluation centrally. Never ship sample pins, disable hostname verification, or install a trust-all manager.
-- If enterprise policy requires pinning, maintain reviewed production/backup pins, rotation ownership, expiry behavior, and a recovery plan. Pinning is an additional operational commitment, not a substitute for TLS trust evaluation. See [Apple's identity-pinning guidance](https://developer.apple.com/news/?id=g9ejcf8y).
-- Distinguish a biometric prompt from a cryptographic operation protected by biometric authentication. Define lockout, cancellation, unavailable hardware, enrollment changes, and any permitted device-credential fallback.
-- Keep server credentials and private backend secrets out of mobile binaries. Store only the client credentials the approved flow actually requires.
-
-**Review:** Missing item, device locked, user cancellation, key invalidation, write failure, account isolation, backup/restore, and deletion failure all have explicit behavior.
-
-
-### Android · Keystore-backed credential adapter
-
-`core/security/AndroidCredentialStore.kt`
-
-This API 23+ reference uses an account-specific Keystore AES key and authenticated encryption. Ciphertext files live in the app's no-backup directory. It is a single-process, process-scoped adapter; share one instance so its mutex covers all access. The approved SDK may implement these responsibilities differently.
-
-```kotlin
-package com.enterprise.mobile.core.security
-
-import android.content.Context
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
-import android.util.AtomicFile
-import java.io.File
-import java.io.IOException
-import java.nio.ByteBuffer
-import java.security.KeyStore
-import java.security.MessageDigest
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-
-class AndroidCredentialStore(
-    context: Context,
-    private val ioDispatcher: CoroutineDispatcher,
-) : SecureCredentialStore {
-    private val root = File(context.applicationContext.noBackupFilesDir, "credentials")
-    private val mutex = Mutex()
-
-    private fun accountHash(scope: CredentialScope): String {
-        require(scope.accountRef.isNotBlank())
-        return MessageDigest.getInstance("SHA-256")
-            .digest(scope.accountRef.toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
-    }
-    private fun alias(hash: String) = "enterprise.credentials.$hash"
-    private fun keyStore() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-    private fun existingKey(hash: String): SecretKey? =
-        keyStore().getKey(alias(hash), null) as? SecretKey
-
-    private fun writeKey(hash: String): SecretKey = existingKey(hash) ?: run {
-        val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-        generator.init(KeyGenParameterSpec.Builder(
-            alias(hash), KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
-        ).setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-            .setRandomizedEncryptionRequired(true).setKeySize(256).build())
-        generator.generateKey()
-    }
-
-    override suspend fun write(scope: CredentialScope, name: CredentialName, value: ByteArray) =
-        withContext(ioDispatcher) {
-            mutex.withLock {
-                require(value.size <= 16_384) { "Credential exceeds supported size." }
-                val hash = accountHash(scope)
-                val directory = File(root, hash)
-                if (!directory.isDirectory && !directory.mkdirs()) throw IOException("Credential directory unavailable.")
-                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-                cipher.init(Cipher.ENCRYPT_MODE, writeKey(hash))
-                check(cipher.iv.size == 12) { "Unsupported GCM nonce size." }
-                cipher.updateAAD("$hash:${name.name}".toByteArray(Charsets.UTF_8))
-                val encrypted = cipher.doFinal(value)
-                val record = ByteBuffer.allocate(2 + cipher.iv.size + encrypted.size)
-                    .put(1.toByte()).put(cipher.iv.size.toByte()).put(cipher.iv).put(encrypted).array()
-                val file = AtomicFile(File(directory, name.name))
-                val stream = file.startWrite()
-                try {
-                    stream.write(record)
-                    file.finishWrite(stream)
-                } catch (error: Exception) {
-                    file.failWrite(stream)
-                    throw error
-                }
-            }
-        }
-
-    override suspend fun read(scope: CredentialScope, name: CredentialName): ByteArray? =
-        withContext(ioDispatcher) {
-            mutex.withLock {
-                val hash = accountHash(scope)
-                val file = AtomicFile(File(File(root, hash), name.name))
-                // openRead also recovers an interrupted AtomicFile write when applicable.
-                val bytes = try {
-                    file.openRead().use { input ->
-                        val buffer = ByteArray(16_513)
-                        var count = 0
-                        while (count < buffer.size) {
-                            val next = input.read(buffer, count, buffer.size - count)
-                            if (next < 0) break
-                            count += next
-                        }
-                        if (count == buffer.size) throw IOException("Credential record exceeds limit.")
-                        buffer.copyOf(count)
-                    }
-                } catch (missing: java.io.FileNotFoundException) {
-                    if (file.baseFile.exists() || File(file.baseFile.path + ".bak").exists()) throw missing
-                    return@withLock null
-                }
-                val record = ByteBuffer.wrap(bytes)
-                if (record.remaining() < 2 || record.get().toInt() != 1) throw IOException("Unsupported credential record.")
-                val ivSize = record.get().toInt() and 0xff
-                if (ivSize != 12 || record.remaining() < ivSize + 16) throw IOException("Invalid credential record.")
-                val iv = ByteArray(ivSize).also { record.get(it) }
-                val encrypted = ByteArray(record.remaining()).also { record.get(it) }
-                val key = existingKey(hash) ?: throw IOException("Credential key unavailable.")
-                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-                cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
-                cipher.updateAAD("$hash:${name.name}".toByteArray(Charsets.UTF_8))
-                cipher.doFinal(encrypted)
-            }
-        }
-
-    override suspend fun removeAccountCredentials(scope: CredentialScope) = withContext(ioDispatcher) {
-        mutex.withLock {
-            val hash = accountHash(scope)
-            val directory = File(root, hash)
-            var removed = false
-            try {
-                removed = !directory.exists() || directory.deleteRecursively()
-            } finally {
-                keyStore().deleteEntry(alias(hash))
-            }
-            if (!removed) throw IOException("Credential files could not be removed.")
-        }
-    }
-}
-```
-
-**Hint:** Never create a replacement key while reading an existing ciphertext record. Missing/invalidated keys and authentication failures must reach recovery. The reference does not request StrongBox or biometric-bound keys and therefore makes no universal hardware/biometric guarantee. Add those policies in the approved adapter, including unavailable-hardware behavior. Do not copy this as a second vault when an enterprise SDK already owns credentials. `AtomicFile` requires callers to serialize access; it is not a multi-process lock. See the [AtomicFile contract](https://developer.android.com/reference/android/util/AtomicFile).
-
-### iOS · scoped Keychain implementation
-
-`Core/Security/KeychainCredentialStore.swift`
-
-```swift
-import Foundation
-import Security
-
-enum CredentialStoreError: Error {
-    case status(OSStatus)
-    case malformedValue
-    case invalidScope
-}
-
-actor KeychainCredentialStore: SecureCredentialStore {
-    private let servicePrefix: String
-
-    init(servicePrefix: String) {
-        self.servicePrefix = servicePrefix
-    }
-
-    private func service(_ scope: CredentialScope) throws -> String {
-        guard !scope.accountRef.isEmpty else { throw CredentialStoreError.invalidScope }
-        return "\(servicePrefix).\(scope.accountRef.utf8.count):\(scope.accountRef)"
-    }
-    private func query(_ scope: CredentialScope, _ name: CredentialName) throws -> [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: try service(scope),
-         kSecAttrAccount as String: name.rawValue,
-         kSecAttrSynchronizable as String: false]
-    }
-
-    func read(scope: CredentialScope, name: CredentialName) async throws -> Data? {
-        try Task.checkCancellation()
-        var request = try query(scope, name)
-        request[kSecReturnData as String] = true
-        request[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: CFTypeRef?
-        let status = SecItemCopyMatching(request as CFDictionary, &result)
-        if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess else { throw CredentialStoreError.status(status) }
-        guard let data = result as? Data else { throw CredentialStoreError.malformedValue }
-        return data
-    }
-
-    func write(scope: CredentialScope, name: CredentialName, value: Data) async throws {
-        try Task.checkCancellation()
-        let search = try query(scope, name)
-        let attributes: [String: Any] = [
-            kSecValueData as String: value,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-        ]
-        var status = SecItemUpdate(search as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound {
-            var item = search
-            attributes.forEach { item[$0.key] = $0.value }
-            status = SecItemAdd(item as CFDictionary, nil)
-            // Handles another cooperating writer adding the item between update and add.
-            if status == errSecDuplicateItem {
-                status = SecItemUpdate(search as CFDictionary, attributes as CFDictionary)
-            }
-        }
-        guard status == errSecSuccess else { throw CredentialStoreError.status(status) }
-    }
-
-    func removeAccountCredentials(scope: CredentialScope) async throws {
-        try Task.checkCancellation()
-        let request: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: try service(scope),
-            kSecAttrSynchronizable as String: false,
-        ]
-        let status = SecItemDelete(request as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
-            throw CredentialStoreError.status(status)
-        }
-    }
-}
-```
-
-**Hint:** This policy allows access only while unlocked and prevents migration of these items to another device. Background token access may need a different reviewed policy. Add an explicit access-group restriction when using shared Keychain groups. The actor serializes this adapter's access; Keychain APIs remain synchronous system calls. Do not invoke them in a tight UI loop or assume an actor alone guarantees a particular background thread. See [Keychain update/delete behavior](https://developer.apple.com/documentation/security/updating-and-deleting-keychain-items).
-
-### React Native · native Keychain adapter
-
-`src/core/security/nativeCredentialStore.ts`
-
-This implementation uses the documented `react-native-keychain` 9.x-style API contract, including its `false` results; adapt the calls to the version approved in the application. See the [package API documentation](https://oblador.github.io/react-native-keychain/docs/9.2.x/api/functions/getGenericPassword/). If the enterprise auth SDK already owns credential access, bind the same contract to that SDK instead.
-
-```typescript
-import * as Keychain from 'react-native-keychain';
-import type { CredentialName, CredentialScope, SecureCredentialStore } from './secureCredentialStore';
-
-const credentialNames: readonly CredentialName[] = ['refreshToken'];
-
-export class NativeCredentialStore implements SecureCredentialStore {
-  constructor(private readonly servicePrefix: string) {}
-
-  private service(scope: CredentialScope, name: CredentialName): string {
-    if (!scope.accountRef.trim()) throw new Error('Credential scope is required.');
-    return `${this.servicePrefix}:${encodeURIComponent(scope.accountRef)}:${name}`;
-  }
-
-  async read(scope: CredentialScope, name: CredentialName): Promise<string | null> {
-    const item = await Keychain.getGenericPassword({ service: this.service(scope, name) });
-    if (item === false) return null;
-    if (item.username !== name) throw new Error('Unexpected credential record.');
-    return item.password;
-  }
-
-  async write(scope: CredentialScope, name: CredentialName, value: string): Promise<void> {
-    const result = await Keychain.setGenericPassword(name, value, {
-      service: this.service(scope, name),
-      accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-    });
-    if (result === false) throw new Error('Credential write did not complete.');
-  }
-
-  async removeAccountCredentials(scope: CredentialScope): Promise<void> {
-    let failed = false;
-    for (const name of credentialNames) {
-      const service = this.service(scope, name);
-      try {
-        if (await Keychain.getGenericPassword({ service }) !== false) {
-          if (!await Keychain.resetGenericPassword({ service })) failed = true;
-        }
-      } catch {
-        failed = true; // Attempt all registered names; report overall failure to caller.
-      }
-    }
-    if (failed) throw new Error('Credential cleanup is incomplete.');
-  }
-}
-```
-
-**Hint:** Keep one registered credential inventory and update cleanup when adding a credential name. Serialize writes with session cleanup through the application coordinator. Do not place a token returned by this adapter in Redux or diagnostic output. Confirm native setup and the package's supported version/platform options; an iOS accessibility setting is not proof of equivalent Android hardware properties.
-
-
-  </TabItem>
-  <TabItem label="Localization">
-
-## Localization & Internationalization
-
-**Responsibility:** Resolve a supported language, load native translation resources, format values correctly, and apply the appropriate layout direction.
-
-Resolve language in this order: **supported explicit user preference → supported system-language match → documented fallback**. Persist a language tag or the choice “system,” not translated strings or formatted amounts.
-
-| Concern | Android | iOS | React Native |
-| :--- | :--- | :--- | :--- |
-| Resources | `strings.xml`, plurals, localized resources | String Catalogs / localized resources | Versioned i18next resources or approved localization SDK |
-| Per-app language | Platform/AppCompat integration for supported versions | System app-language settings or app-owned locale environment where supported | Foundation coordinates Redux preference and i18n engine |
-| Number/date formatting | Locale-aware platform formatters | Foundation `FormatStyle` / locale-aware formatters | Supported `Intl` or approved formatter integration |
-| Layout direction | Resolved resource/layout configuration | SwiftUI layout direction and localized content | Native RTL configuration and component behavior |
-
-Plural resources and message syntax differ across systems. Do not assume native resource formats and i18next all accept the same ICU syntax without an installed, configured adapter. Never concatenate translated fragments to form a sentence.
-
-### Android · supported per-app language
-
-```kotlin
-package com.enterprise.mobile.core.localization
-
-import androidx.annotation.MainThread
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.os.LocaleListCompat
-
-object AppLanguage {
-    private val supported = setOf("en", "ar")
-
-    @MainThread
-    fun apply(languageTag: String?) {
-        require(languageTag == null || languageTag in supported)
-        val locales = if (languageTag == null) {
-            LocaleListCompat.getEmptyLocaleList() // Follow system language.
-        } else {
-            LocaleListCompat.forLanguageTags(languageTag)
-        }
-        AppCompatDelegate.setApplicationLocales(locales)
-    }
-}
-```
-
-Configure the language manifest/resources and persistence integration for your supported Android versions. Backward-compatible AppCompat behavior depends on the host/context setup, particularly on Android 12 and earlier. Language changes may recreate UI; preserve appropriate state rather than promising no recreation. Read direction from the actual resource/layout environment, not the first character of a locale's display name. See [Android per-app language guidance](https://developer.android.com/guide/topics/resources/app-languages).
-
-### iOS · app-owned SwiftUI locale boundary
-
-```swift
-import Foundation
-import SwiftUI
-
-struct AppLocaleBoundary<Content: View>: View {
-    let languageTag: String? // nil means follow system; validate supported tags upstream.
-    @Environment(\.locale) private var inheritedLocale
-    private let content: Content
-
-    init(languageTag: String?, @ViewBuilder content: () -> Content) {
-        self.languageTag = languageTag
-        self.content = content()
-    }
-
-    var body: some View {
-        content.environment(
-            \.locale,
-            languageTag.map { Locale(identifier: $0) } ?? inheritedLocale
-        )
-    }
-}
-```
-
-This sets locale for descendant environment-aware SwiftUI content. It does not change every framework, server response, precomputed string, or native surface. Implement and test layout direction explicitly where the application's language-switching design requires it. Do not mutate `AppleLanguages` with `UserDefaults.synchronize()` as a substitute for a supported localization strategy.
-
-### React Native · Redux preference, one i18n owner
-
-Use `foundation.language` from the Redux slice as the serialized preference. A single application-level coordinator resolves it, awaits the i18n engine's language change, publishes readiness, and handles failures. Do not create a separate independent language preference in a Context provider.
-
-```typescript
-export type LanguageTag = 'en' | 'ar';
-export type LanguagePreference = LanguageTag | 'system';
-
-export function resolveLanguage(
-  preference: LanguagePreference,
-  systemTags: readonly string[],
-): LanguageTag {
-  if (preference !== 'system') return preference;
-  for (const tag of systemTags) {
-    const base = tag.toLowerCase().split('-')[0];
-    if (base === 'en' || base === 'ar') return base;
-  }
-  return 'en';
-}
-```
-
-This demonstrates language-only fallback. Apps supporting regional variants need a richer supported-tag negotiation policy. Validate stored preferences and device-language inputs before use. Serialize or version asynchronous language-change requests so an older completion cannot override a newer selection.
-
-<Aside type="tip" title="Hint · text language and native RTL direction are different concerns">
-Changing i18next language can update subscribed text without restarting the app. React Native `I18nManager` direction changes are native configuration changes; they take effect on a later application start, and `forceRTL` is primarily a testing mechanism. Do not promise immediate global RTL switching. Define and communicate the supported restart/recreation behavior. See the [I18nManager reference](https://reactnative.dev/docs/i18nmanager).
-</Aside>
-
-### Formatting and layout rules
-
-- Keep money as a decimal value or appropriate minor-unit representation according to the domain contract. Do not make binary floating-point the universal financial model.
-- Carry a currency code explicitly; language alone does not identify the currency. Format amounts and dates at the presentation boundary.
-- Test zero/one/many and language-specific plural categories, long translations, non-Latin digits, and large text.
-- Use logical start/end layout. Mirror directional navigation where appropriate, not logos, media, or every icon indiscriminately.
-- Keep identifiers, URLs, and mixed-direction text readable; test their bidirectional rendering deliberately.
-
-
-### iOS · observable preference and persistence
-
-`Core/Localization/LanguagePreference.swift`
-
-```swift
-import Foundation
-import Observation
-
-enum AppLanguageChoice: String, CaseIterable, Sendable {
-    case system, en, ar
-    var languageTag: String? { self == .system ? nil : rawValue }
-}
-
-@Observable
-@MainActor
-final class LanguagePreference {
-    private(set) var choice: AppLanguageChoice
-    @ObservationIgnored private let defaults: UserDefaults
-    private static let storageKey = "foundation.language"
-
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
-        let stored = defaults.string(forKey: Self.storageKey)
-        choice = stored.flatMap(AppLanguageChoice.init(rawValue:)) ?? .system
-    }
-
-    func select(_ choice: AppLanguageChoice) {
-        self.choice = choice
-        defaults.set(choice.rawValue, forKey: Self.storageKey)
-    }
-}
-```
-
-Pass `preference.choice.languageTag` into `AppLocaleBoundary` at the app/scene root. The String Catalog must contain the referenced translations. Selecting an unsupported stored value falls back to “system”; no private system preference is changed. Test any non-SwiftUI screens separately.
-
-### React Native · initialized engine and Redux listener
-
-`src/core/localization/languageCoordinator.ts`
-
-```typescript
-import { createInstance, type i18n } from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import { resolveLanguage, type LanguagePreference } from './resolveLanguage';
-
-export async function createLanguageEngine() {
-  const engine = createInstance();
-  await engine.use(initReactI18next).init({
-    lng: 'en', fallbackLng: 'en', supportedLngs: ['en', 'ar'],
-    interpolation: { escapeValue: false },
-    resources: {
-      en: { translation: { welcome: 'Welcome back, {{name}}' } },
-      ar: { translation: { welcome: 'مرحبًا بك، {{name}}' } },
-    },
-  });
-  return engine;
-}
-
-export class LanguageCoordinator {
-  private queue: Promise<void> = Promise.resolve();
-  constructor(readonly engine: i18n) {}
-
-  apply(preference: LanguagePreference, systemTags: readonly string[]): Promise<void> {
-    const language = resolveLanguage(preference, systemTags);
-    const operation = this.queue.then(async () => { await this.engine.changeLanguage(language); });
-    // Recover the internal queue, while the returned operation still rejects for callers.
-    this.queue = operation.catch(() => undefined);
-    return operation;
-  }
-}
-```
-
-Place the existing `resolveLanguage` function and its exported types in `src/core/localization/resolveLanguage.ts`.
-
-`src/core/localization/localizationListener.ts`
-
-```typescript
-import { createListenerMiddleware } from '@reduxjs/toolkit';
-import { languageChanged, localeStatusChanged, type FoundationState } from '../foundations/foundationSlice';
-import type { LanguageCoordinator } from './languageCoordinator';
-
-export function createLocalizationListener(
-  coordinator: LanguageCoordinator,
-  systemTags: () => readonly string[],
-  reportFailure: (category: 'language-change') => void,
-) {
-  const listener = createListenerMiddleware<{ foundation: FoundationState }>();
-  let generation = 0;
-  listener.startListening({
-    actionCreator: languageChanged,
-    effect: async (action, api) => {
-      const request = ++generation;
-      try {
-        await coordinator.apply(action.payload, systemTags());
-        if (request === generation) api.dispatch(localeStatusChanged('ready'));
-      } catch {
-        if (request === generation) {
-          api.dispatch(localeStatusChanged('error'));
-          reportFailure('language-change');
-        }
-      }
-    },
-  });
-  return listener;
-}
-```
-
-**Hint:** Initialize the engine before mounting translated content, use `I18nextProvider` with that engine, and prepend the returned listener middleware to the existing Redux middleware chain. Dispatch `languageChanged` with the validated stored preference after startup; redispatch “system” when relevant OS-language settings change. Serialize engine changes, and use a generation guard for readiness so a late completion does not publish a stale status. `localeStatus` is transient and must not be persisted as a user preference. Native layout-direction changes still follow the documented platform restart/recreation policy.
-
-
-  </TabItem>
-  <TabItem label="Push Notifications">
-
-## Push Notifications & Validated Routing
-
-**Responsibility:** Manage registration and token changes, adapt OS callbacks, and convert untrusted notification data into authorized in-app navigation.
-
-Push delivery is not a reliable transaction or an authorization signal. The app must recover authoritative state when it starts, resumes, or reconnects even when no push arrived.
-
-<MermaidZoom title="Push routing · validate first, authorize before navigation">
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant G as Enterprise gateway
-    participant OS as APNs / FCM and device OS
-    participant A as Platform push adapter
-    participant R as Application router
-    participant S as Session and API
-    participant UI as Feature screen
-
-    G->>OS: Notification or background update
-    alt OS permits delivery
-        OS->>A: Supported callback / initial launch payload
-        A->>A: Extract bounded payload; validate schema
-        A->>R: Typed intent with event identity
-        R->>R: Deduplicate and wait for app readiness
-        R->>S: Resolve session and resource authorization
-        alt Access allowed
-            S-->>R: Authorized destination
-            R->>UI: Navigate with validated arguments
-        else Access unavailable
-            S-->>R: Sign-in required / access denied / missing resource
-            R->>UI: Show supported recovery route
-        end
-    else Delivery delayed, dropped, or unavailable
-        Note over S,UI: Reconcile state through normal startup/resume flows
-    end
-```
-
-</MermaidZoom>
-
-The OS may present a notification without invoking the application's foreground callback. iOS notification service extensions are a separate, conditional path for eligible notification modification, not a universal Android/iOS delivery stage. They have time limits and need a fallback that preserves completion behavior.
-
-### Platform integration checklist
-
-| Android | iOS | React Native |
-| :--- | :--- | :--- |
-| Configure channels and notification runtime permission where required. | Configure capabilities, APNs registration, notification authorization, and delegates. | Complete both native setups and use the installed SDK's supported API style. |
-| Separate notification/data payload behavior and foreground/background handling. | Treat foreground presentation, notification taps, cold launch, and background updates separately. | Handle foreground events, opened-from-background events, initial notification, and token refresh. |
-| Use explicit app navigation intents; make pending intents immutable where supported and give destinations correct identity. | Route through the app coordinator; do not send arbitrary payload URLs to `UIApplication.open`. | Register background handlers at the SDK-required entry point; ordinary component effects are insufficient for that path. |
-| Keep callback work bounded; delegate suitable longer work to an approved scheduler. | Call completion handlers on every path and respect background execution limits. | Retain unsubscribe functions and remove subscriptions with their owner. |
-
-Android 13+ notification permission affects posting notifications; account for target/OS behavior in the actual app. FCM notification messages can be displayed by the OS while backgrounded. Apple's background notification delivery is not guaranteed. See [Android permissions](https://developer.android.com/develop/ui/compose/notifications/notification-permission), [FCM Android delivery](https://firebase.google.com/docs/cloud-messaging/android/receive-messages), and [Apple background updates](https://developer.apple.com/documentation/usernotifications/pushing-background-updates-to-your-app).
-
-### Typed payload boundary · React Native example
-
-This sample uses a structured intent instead of opening a supplied URI. The payload is a navigation hint; the server remains authoritative about resource access.
-
-`src/core/push/pushIntent.ts`
-
-```typescript
-import { z } from 'zod';
-
-const destinationSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('home') }),
-  z.object({
-    kind: z.literal('order'),
-    orderId: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
-  }),
-]);
-
-const pushIntentSchema = z.object({
-  version: z.literal(1),
-  eventId: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
-  expiresAtMillis: z.number().int().nonnegative(),
-  destination: destinationSchema,
-});
-export type PushIntent = z.infer<typeof pushIntentSchema>;
-
-export function parsePushIntent(raw: unknown, nowMillis: number): PushIntent | null {
-  if (typeof raw !== 'string' || raw.length > 2048) return null;
-  let decoded: unknown;
-  try { decoded = JSON.parse(raw); }
-  catch { return null; } // Invalid external input is an expected rejection path.
-  const parsed = pushIntentSchema.safeParse(decoded);
-  if (!parsed.success || parsed.data.expiresAtMillis <= nowMillis) return null;
-  return parsed.data;
-}
-```
-
-The application limit above is a string-length bound, not the provider's byte-size limit. Set actual payload limits in the gateway/adapter as well. Expiry checks are client freshness checks and depend on the clock; they do not authenticate a command. Rooted/compromised clients and server authorization require separate controls.
-
-### Subscription ownership · adapter contract
-
-`src/core/push/attachPushListeners.ts`
-
-```typescript
-import type { PushIntent } from './pushIntent';
-
-type Unsubscribe = () => void;
-export interface PushAdapter {
-  onForeground(handler: (intent: PushIntent) => void): Unsubscribe;
-  onOpened(handler: (intent: PushIntent) => void): Unsubscribe;
-  initialIntent(): Promise<PushIntent | null>;
-}
-
-export function attachPushListeners(
-  adapter: PushAdapter,
-  receiveForeground: (intent: PushIntent) => Promise<void>,
-  routeIntent: (intent: PushIntent) => Promise<void>,
-  reportFailure: (category: 'foreground' | 'initial-notification' | 'routing') => void,
-): Unsubscribe {
-  let active = true;
-  const deliver = (intent: PushIntent): void => {
-    if (!active) return;
-    void Promise.resolve().then(() => active ? routeIntent(intent) : undefined).catch(() => {
-      if (active) reportFailure('routing');
-    });
-  };
-  const removeForeground = adapter.onForeground((intent) => {
-    if (!active) return;
-    void Promise.resolve().then(() => active ? receiveForeground(intent) : undefined).catch(() => {
-      if (active) reportFailure('foreground');
-    });
-  });
-  let removeOpened: Unsubscribe;
-  try {
-    removeOpened = adapter.onOpened(deliver);
-  } catch (error: unknown) {
-    active = false;
-    removeForeground();
-    throw error;
-  }
-  void Promise.resolve().then(() => adapter.initialIntent()).then((intent) => {
-    if (intent) deliver(intent);
-  }).catch(() => {
-    if (active) reportFailure('initial-notification');
-  });
-  return () => {
-    active = false;
-    try { removeForeground(); }
-    finally { removeOpened(); }
-  };
-}
-```
-
-The adapter emits validated intents; map the SDK's actual payload shape before this boundary. Diagnostics must be non-throwing and contain no payload/token data. Subscription removal is synchronous, non-throwing, and must be safe when cleanup repeats. The initial-notification call is wrapped in a promise chain so a synchronous adapter failure is also reported.
-
-<Aside type="tip" title="Hint · one router handles every entry point">
-Cold-start notification, background tap, explicit foreground-banner interaction, and ordinary deep links must converge on the same application router. That router serializes routing, deduplicates event IDs, checks the current session and backend authorization, and constructs a valid back stack. Foreground receipt updates/presents content but does not auto-navigate. Listener cleanup prevents new delivery; it does not cancel a navigation already in progress. The router must recheck session identity before committing navigation.
-</Aside>
-
-For URL-based deep links, validate scheme, host, path, parameters, and supported destinations; prefer verified app/universal links where applicable. Do not pass arbitrary incoming URLs directly to the OS. A regex-valid resource ID is not proof that the current account may view it.
-
-Never log registration tokens or complete notification payloads. Synchronize token registration/rotation to the backend, handle account association changes, and distinguish provider acceptance, device delivery, display, and user-open metrics.
-
-
-### Android · payload validation and FCM ingestion
-
-`core/push/PushIntent.kt`
-
-```kotlin
-package com.enterprise.mobile.core.push
-
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-
-@Serializable
-sealed interface PushDestination {
-    @Serializable @SerialName("home")
-    data object Home : PushDestination
-    @Serializable @SerialName("order")
-    data class Order(val orderId: String) : PushDestination
-}
-
-@Serializable
-data class PushIntent(
-    val version: Int,
-    val eventId: String,
-    val expiresAtMillis: Long,
-    val destination: PushDestination,
-)
-
-object PushIntentDecoder {
-    private val json = Json { classDiscriminator = "kind"; ignoreUnknownKeys = true }
-    private val idPattern = Regex("[A-Za-z0-9_-]{1,128}")
-
-    fun parse(raw: String?, nowMillis: Long): PushIntent? {
-        if (raw == null || raw.length > 2048) return null
-        val intent = try { json.decodeFromString<PushIntent>(raw) }
-        catch (_: kotlinx.serialization.SerializationException) { return null }
-        catch (_: IllegalArgumentException) { return null }
-        if (intent.version != 1 || !idPattern.matches(intent.eventId) ||
-            intent.expiresAtMillis <= nowMillis) return null
-        val destination = intent.destination
-        if (destination is PushDestination.Order && !idPattern.matches(destination.orderId)) return null
-        return intent
-    }
-}
-```
-
-`core/push/EnterprisePushService.kt`
-
-```kotlin
-package com.enterprise.mobile.core.push
-
-import com.google.firebase.messaging.FirebaseMessagingService
-import com.google.firebase.messaging.RemoteMessage
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
-
-interface PushIngress {
-    // Bounded, non-blocking handoff. Receipt may update/present; it must not auto-navigate.
-    fun received(intent: PushIntent)
-    // Called only for a user-open action; application router performs auth/deduplication.
-    fun opened(intent: PushIntent)
-}
-interface PushTokenRegistry {
-    // Queue approved registration work; never log the registration token.
-    fun scheduleTokenSync(token: String)
-}
-
-@AndroidEntryPoint
-class EnterprisePushService : FirebaseMessagingService() {
-    @Inject lateinit var ingress: PushIngress
-    @Inject lateinit var tokens: PushTokenRegistry
-
-    override fun onNewToken(token: String) {
-        tokens.scheduleTokenSync(token)
-    }
-    override fun onMessageReceived(message: RemoteMessage) {
-        val intent = PushIntentDecoder.parse(message.data["intent"], System.currentTimeMillis()) ?: return
-        ingress.received(intent)
-    }
-}
-
-// Call from the explicit notification-open path in Activity onCreate/onNewIntent.
-fun handleNotificationOpen(raw: String?, ingress: PushIngress) {
-    PushIntentDecoder.parse(raw, System.currentTimeMillis())?.let(ingress::opened)
-}
-```
-
-Register the service and supply its Hilt bindings:
-
-```xml
-<service
-    android:name=".core.push.EnterprisePushService"
-    android:exported="false">
-    <intent-filter>
-        <action android:name="com.google.firebase.MESSAGING_EVENT" />
-    </intent-filter>
-</service>
-```
-
-**Hint:** `PushIngress.received` owns any application-rendered notification through the approved presentation adapter, including channels, permission checks, a real small icon, and an explicit immutable navigation PendingIntent. Handle OS-rendered background notification extras through the Activity open path too. Do not show a second banner for a message already displayed by the OS, and do not navigate merely because `onMessageReceived` ran. Bind these contracts at application scope and make background work durable when needed.
-
-### iOS · APNs intent validation and notification delegate
-
-`Core/Push/PushIntent.swift`
-
-```swift
-import Foundation
-
-struct PushIntent: Decodable, Sendable {
-    struct Destination: Decodable, Sendable {
-        enum Kind: String, Decodable, Sendable { case home, order }
-        let kind: Kind
-        let orderId: String?
-    }
-    let version: Int
-    let eventId: String
-    let expiresAtMillis: Int64
-    let destination: Destination
-}
-
-func decodePushIntent(_ raw: Any?, now: Date = .now) -> PushIntent? {
-    guard let text = raw as? String, text.utf8.count <= 8192,
-          text.utf16.count <= 2048,
-          let data = text.data(using: .utf8),
-          let intent = try? JSONDecoder().decode(PushIntent.self, from: data),
-          intent.version == 1,
-          Double(intent.expiresAtMillis) > now.timeIntervalSince1970 * 1000 else { return nil }
-    func validID(_ value: String) -> Bool {
-        let bytes = value.utf8
-        return (1...128).contains(bytes.count) && bytes.allSatisfy {
-            (65...90).contains($0) || (97...122).contains($0) ||
-            (48...57).contains($0) || $0 == 95 || $0 == 45
-        }
-    }
-    guard validID(intent.eventId) else { return nil }
-    if intent.destination.kind == .order {
-        guard let id = intent.destination.orderId, validID(id) else { return nil }
-    }
-    return intent
-}
-```
-
-`Core/Push/PushNotificationCoordinator.swift`
-
-The async delegate methods below require the corresponding supported OS baseline (iOS 15+). This suite's iOS feature baseline is iOS 17+. As in the iOS standards page, value types/decoders assume nonisolated default actor isolation; the UI coordinator explicitly uses `@MainActor`.
-
-```swift
-import Foundation
-import UIKit
-import UserNotifications
-
-@MainActor
-protocol PushRouting: AnyObject {
-    func received(_ intent: PushIntent)
-    func opened(_ intent: PushIntent) async throws
-    func reportFailure(_ category: String)
-}
-
-@MainActor
-final class PushNotificationCoordinator: NSObject, UNUserNotificationCenterDelegate {
-    private let router: any PushRouting
-    init(router: any PushRouting) { self.router = router }
-
-    func installDelegate() {
-        UNUserNotificationCenter.current().delegate = self
-    }
-
-    // Invoke from the product's contextual permission flow, not on every appearance.
-    func requestAlertPermission() async throws -> Bool {
-        let granted = try await UNUserNotificationCenter.current()
-            .requestAuthorization(options: [.alert, .badge, .sound])
-        if granted { UIApplication.shared.registerForRemoteNotifications() }
-        return granted
-    }
-
-    nonisolated func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification
-    ) async -> UNNotificationPresentationOptions {
-        guard let intent = decodePushIntent(notification.request.content.userInfo["intent"]) else { return [] }
-        await received(intent)
-        return [.banner, .sound]
-    }
-
-    nonisolated func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) async {
-        guard let intent = decodePushIntent(response.notification.request.content.userInfo["intent"]) else { return }
-        if response.actionIdentifier == UNNotificationDismissActionIdentifier { return }
-        // Add a separate allowlisted mapping if the product defines custom actions.
-        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else { return }
-        await opened(intent)
-    }
-
-    private func received(_ intent: PushIntent) {
-        router.received(intent)
-    }
-    private func opened(_ intent: PushIntent) async {
-        do { try await router.opened(intent) }
-        catch is CancellationError { return }
-        catch { router.reportFailure("notification-routing") }
-    }
-}
-```
-
-**Hint:** Retain the coordinator at app lifetime, install its delegate before notifications need handling, and forward APNs registration success/failure from the app delegate to the approved token-registration adapter. Initial launch, scene readiness, background updates, and rich-media extensions require their own supported app/scene callbacks; they converge on the same validated router. Permission denial is a supported state, not an exception to loop-prompt. This sample chooses banners for valid foreground notifications; apply your actual privacy and foreground presentation policy.
-
-
-### React Native · Firebase modular adapter and background entry point
-
-`src/core/push/firebasePushAdapter.ts`
-
-Use the modular API when supported by the installed React Native Firebase version. If another library owns notification interaction events, route its documented callbacks through this same adapter boundary rather than assuming both libraries emit the same tap events.
-
-```typescript
-import {
-  getMessaging, getInitialNotification, onMessage,
-  onNotificationOpenedApp, onTokenRefresh, setBackgroundMessageHandler,
-} from '@react-native-firebase/messaging';
-import type { PushAdapter } from './attachPushListeners';
-import { parsePushIntent, type PushIntent } from './pushIntent';
-
-export class FirebasePushAdapter implements PushAdapter {
-  onForeground(handler: (intent: PushIntent) => void): () => void {
-    return onMessage(getMessaging(), (message) => {
-      const intent = parsePushIntent(message.data?.intent, Date.now());
-      if (intent) handler(intent);
-    });
-  }
-  onOpened(handler: (intent: PushIntent) => void): () => void {
-    return onNotificationOpenedApp(getMessaging(), (message) => {
-      const intent = parsePushIntent(message.data?.intent, Date.now());
-      if (intent) handler(intent);
-    });
-  }
-  async initialIntent(): Promise<PushIntent | null> {
-    const message = await getInitialNotification(getMessaging());
-    return parsePushIntent(message?.data?.intent, Date.now());
-  }
-}
-
-export function attachTokenRotation(queueSync: (token: string) => void): () => void {
-  return onTokenRefresh(getMessaging(), queueSync);
-}
-
-// Call from the JS entry point before AppRegistry.registerComponent.
-export function registerBackgroundPushReceiver(
-  receive: (intent: PushIntent) => Promise<void>,
-  reportFailure: (category: 'background-push') => void,
-): void {
-  setBackgroundMessageHandler(getMessaging(), async (message) => {
-    const intent = parsePushIntent(message.data?.intent, Date.now());
-    if (!intent) return;
-    try { await receive(intent); }
-    catch { reportFailure('background-push'); }
-  });
-}
-```
-
-**Hint:** Complete native capabilities/configuration and permission handling before expecting delivery. Register the initial device token with the backend as well as subscribing to rotation; the rotation callback is not an initial-registration API. `queueSync` must be non-blocking and non-throwing. Background receipt may reconcile approved data; it must not navigate or depend on a mounted React screen. Create subscriptions once at the appropriate app/session root and retain their cleanup functions. See [React Native Firebase messaging](https://rnfirebase.io/messaging/usage).
-
-
-  </TabItem>
-  <TabItem label="Branding">
-
-## Branding & Controlled Identity
-
-**Responsibility:** Resolve an approved brand and publish a coherent set of design tokens, in-app assets, and supported platform identity choices.
-
-Treat brand ID as configuration. Do not accept arbitrary remote colors, file paths, asset URLs, executable content, or icon names as a replacement for an approved registry.
-
-| Surface | What can change | Constraint |
-| :--- | :--- | :--- |
-| In-app colors, logos, typography | A complete validated brand asset/token set | Maintain supported light/dark variants, accessibility, fallback, and version compatibility. |
-| Android launcher icon | Supported predeclared activity aliases | Manifest configuration and launcher behavior matter; test device/launcher differences. |
-| iOS launcher icon | Supported alternate icons bundled/configured in the app | Check support, use approved icon names, and handle asynchronous failure. |
-| Launch screen / native splash | Build-time or platform-supported configuration | Do not promise arbitrary remotely replaced startup assets. |
-| App name, package/bundle identity, store listing | Build/distribution configuration | A runtime theme switch does not change application identity. |
-
-### Approved registry boundary
-
-`src/core/branding/brandRegistry.ts`
-
-```typescript
-import type { ApprovedBrandId } from '../foundations/foundationSlice';
-
-export interface BrandDescriptor {
-  readonly id: ApprovedBrandId;
-  readonly tokenSet: string;
-  readonly logoAsset: string;
-  readonly alternateIcon: string | null;
-}
-
-// Identifiers resolve through generated, bundled registries—not arbitrary file paths.
-export const brands: Readonly<Record<ApprovedBrandId, BrandDescriptor>> = Object.freeze({
-  core: Object.freeze({
-    id: 'core', tokenSet: 'core-v1', logoAsset: 'brand.core.logo', alternateIcon: null,
-  }),
-  partner: Object.freeze({
-    id: 'partner', tokenSet: 'partner-v1', logoAsset: 'brand.partner.logo', alternateIcon: 'partner',
-  }),
-});
-
-export function approvedBrandId(candidate: unknown): ApprovedBrandId | null {
-  return candidate === 'core' || candidate === 'partner' ? candidate : null;
-}
-```
-
-These are example registry identifiers. Bundle and validate the corresponding token sets, assets, and platform icon definitions before enabling either entry. Runtime type checking establishes membership only; the tenant/session policy must separately authorize the selected brand.
-
-### Apply a brand as one configuration change
-
-1. Resolve the permitted brand from trusted tenant/session configuration.
-2. Validate registry membership, resource availability, token-set compatibility, and required variants.
-3. Prepare the complete token/asset set before publishing the brand change.
-4. Dispatch the validated brand ID through Redux Toolkit on React Native; pass the resolved palette into the existing theme provider.
-5. Apply any requested launcher-icon change through the native adapter. Track its result separately from the in-app theme.
-6. On failure, retain the previous coherent brand or use the documented default. Do not leave half the UI on a new palette.
-
-### Native icon implementation hints
-
-- **Android:** Declare aliases and icons in the manifest. Keep an available launcher entry during a switch; coordinate enabling the target and disabling previous aliases. Use platform-supported batching where applicable and test installation, restart, upgrade, and launcher caching. Do not blindly disable every alias before the target is available.
-- **iOS:** Check `supportsAlternateIcons`, use a configured alternate name, and pass `nil` for the primary icon. Run UI-facing coordination on the main actor, await the result, and surface a safe failure. An icon request is not a guarantee that every launcher surface updates immediately.
-- **React Native:** Call the approved native branding adapter. Do not store an independent mutable brand preference in Context alongside Redux. Asset identifiers in the registry resolve through the bundler/platform asset system, not an assumed `asset:/` URL convention.
-
-<Aside type="tip" title="Hint · brand identity is not access control">
-A logo, theme, or app icon must never determine tenant permissions, account membership, or entitlements. Clear account-scoped brand selection during session replacement while preserving only the preferences the product explicitly owns across accounts.
-</Aside>
-
-
-### Android · controlled launcher-alias switching
-
-`core/branding/DynamicIconManager.kt`
-
-```kotlin
-package com.enterprise.mobile.core.branding
-
-import android.content.ComponentName
-import android.content.Context
-import android.content.pm.PackageManager
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-
-enum class AppBrand(val aliasClass: String) {
-    CORE("com.enterprise.mobile.LauncherCore"),
-    PARTNER("com.enterprise.mobile.LauncherPartner"),
-}
-
-class DynamicIconManager(
-    context: Context,
-    private val ioDispatcher: CoroutineDispatcher,
-) {
-    private val appContext = context.applicationContext
-    private val mutex = Mutex()
-
-    suspend fun apply(brand: AppBrand) = withContext(ioDispatcher) {
-        mutex.withLock {
-            val manager = appContext.packageManager
-            // Enable the target first. A later failure must not remove every entry point.
-            manager.setComponentEnabledSetting(
-                ComponentName(appContext.packageName, brand.aliasClass),
-                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                PackageManager.DONT_KILL_APP,
-            )
-            AppBrand.values().filter { it != brand }.forEach { other ->
-                manager.setComponentEnabledSetting(
-                    ComponentName(appContext.packageName, other.aliasClass),
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                    PackageManager.DONT_KILL_APP,
-                )
-            }
-        }
-    }
-}
-```
-
-Declare the alias names exactly as used in code, adjust the namespace to the app, and ensure the target Activity has no competing launcher intent filter:
-
-```xml
-<activity-alias
-    android:name="com.enterprise.mobile.LauncherCore"
-    android:targetActivity=".MainActivity"
-    android:enabled="true"
-    android:exported="true"
-    android:icon="@mipmap/ic_launcher_core"
-    android:label="@string/app_name">
-    <intent-filter>
-        <action android:name="android.intent.action.MAIN" />
-        <category android:name="android.intent.category.LAUNCHER" />
-    </intent-filter>
-</activity-alias>
-<activity-alias
-    android:name="com.enterprise.mobile.LauncherPartner"
-    android:targetActivity=".MainActivity"
-    android:enabled="false"
-    android:exported="true"
-    android:icon="@mipmap/ic_launcher_partner"
-    android:label="@string/app_name">
-    <intent-filter>
-        <action android:name="android.intent.action.MAIN" />
-        <category android:name="android.intent.category.LAUNCHER" />
-    </intent-filter>
-</activity-alias>
-```
-
-**Hint:** The target Activity must be declared before its aliases, and both icon resources must exist. Inject one manager instance so operations share its mutex. The portable sequence can briefly leave two enabled aliases and is not an atomic launcher transaction; reconcile partial failure and test launcher caching, upgrade, and process behavior. Use a supported batch API when your OS baseline and policy allow it. In-app token changes remain a separate published state, not an inference from launcher state.
-
-### iOS · validated alternate-icon adapter
-
-`Core/Branding/AppIconSwitcher.swift`
-
-```swift
-import UIKit
-
-enum AppBrand: String, Sendable {
-    case core, partner
-    var alternateIconName: String? { self == .core ? nil : "partner" }
-}
-enum AppIconError: Error { case unsupported }
-
-@MainActor
-final class AppIconSwitcher {
-    func apply(_ brand: AppBrand) async throws {
-        let app = UIApplication.shared
-        let name = brand.alternateIconName
-        if app.alternateIconName == name { return }
-        guard app.supportsAlternateIcons else { throw AppIconError.unsupported }
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            app.setAlternateIconName(name) { error in
-                if let error { continuation.resume(throwing: error) }
-                else { continuation.resume() }
-            }
-        }
-    }
-}
-```
-
-**Hint:** Configure `partner` in the platform's alternate-icon assets/build settings; `nil` restores the primary icon. Serialize brand/icon requests in the owning coordinator, await this result, and publish icon status separately from the selected in-app theme. The code never accepts an arbitrary icon name from a server. Display a supported fallback when alternate icons are unavailable.
-
-### React Native · publish a prepared brand through Redux Toolkit
-
-`src/core/branding/applyBrand.ts`
-
-```typescript
-import type { AppDispatch } from '../../app/store';
-import type { ApprovedBrandId } from '../foundations/foundationSlice';
-import { brandChanged } from '../foundations/foundationSlice';
-import { approvedBrandId } from './brandRegistry';
-
-export interface BrandRuntime {
-  // Prepare tokens/assets without changing the currently visible UI.
-  prepare(id: ApprovedBrandId): Promise<void>;
-  // Publish the prepared token/asset set synchronously, then invoke publishPreference.
-  // Must either commit a coherent set or leave the previous set intact.
-  commit(id: ApprovedBrandId, publishPreference: () => void): void;
-  applyNativeIcon(id: ApprovedBrandId): Promise<void>;
-}
-
-export class BrandCoordinator {
-  private queue: Promise<void> = Promise.resolve();
-  constructor(
-    private readonly runtime: BrandRuntime,
-    private readonly dispatch: AppDispatch,
-    private readonly reportFailure: (stage: 'brand-icon') => void,
-  ) {}
-
-  apply(candidate: unknown): Promise<void> {
-    const id = approvedBrandId(candidate);
-    if (!id) return Promise.reject(new Error('Unsupported brand.'));
-    const operation = this.queue.then(async () => {
-      await this.runtime.prepare(id);
-      this.runtime.commit(id, () => this.dispatch(brandChanged(id)));
-      try { await this.runtime.applyNativeIcon(id); }
-      catch { this.reportFailure('brand-icon'); }
-    });
-    this.queue = operation.catch(() => undefined);
-    return operation;
-  }
-}
-```
-
-**Hint:** The application must authorize `candidate` for the current tenant before calling the coordinator and serialize this work with account changes. The runtime is the approved generated-asset/native bridge adapter, not a second brand preference store. `commit` has an explicit coherent-publication contract; implement it with the app's resolved-theme boundary. Preparation/commit failures reject to the caller; icon failure is reported separately because the already-committed in-app brand remains valid. Reporting must not throw. No native module name is invented here—bind the actual approved icon adapter to `applyNativeIcon`.
-
-
-  </TabItem>
-  <TabItem label="Data Cleanup">
-
-## Account Data Cleanup & Wipe Recovery
-
-**Responsibility:** Make protected account data unavailable immediately, stop new writes, remove the resources the app owns, verify the result, and recover safely after interruption.
-
-Use this foundation for logout, account removal, authorized offboarding, and validated device-policy actions. An incoming push or a local root/jailbreak signal is not automatically an authenticated wipe command; validate authority, target scope, replay protection, and policy before invoking destructive cleanup.
-
-<Aside type="caution" title="Define an achievable guarantee">
-App-level cleanup is not one atomic transaction across Keychain/Keystore, databases, files, caches, and Redux. File deletion does not guarantee physical overwriting on flash storage or removal from backups, shared services, server systems, or previously captured telemetry. Report a verified scoped cleanup outcome rather than promising “zero residual” or “100% shredding.”
-</Aside>
-
-### Recoverable cleanup lifecycle
-
-<MermaidZoom title="Account cleanup · gate access, stop writers, verify, recover">
+| Approved application template | Generates a starting application for the selected platform | The generated project—not the template generator itself—is committed to your source repository. |
+| Application source repository | Stores the application, dependency locks, tests, native configuration, and declared metadata | Repository identity, required source branch, and exact source commit. |
+| Platform configuration repository | Stores secret-free enrollment requests and their review history | Request location, schema, selected template version, access groups, and promotion commits. |
+| Approved workflow catalog | Defines the available immutable CI/CD templates and their compatibility rules | The selected template version is currently approved for the requested platform and routes. |
+| Vela / protected apply automation | Validates requests and, at the protected live boundary, performs authorized provisioning and orchestration | Validation versus live-apply mode, exact commit, correlation identity, and sanitized outcome. |
+| Bitrise | Executes builds and produces private artifacts, reports, and build evidence | Workflow/route identity, source commit, build status, and produced artifacts. |
+| Sauce Labs | Executes the configured real-device tests | Exact tested artifact, device/test configuration, outcomes, and retained evidence. |
+| NowSecure | Performs the configured application-security assessment | Assessment completion, applicable findings, and the release-gate decision. |
+| App Management | Performs the approved internal distribution process, including distribution signing where applicable | Exact version, signing outcome, enablement, audience assignment, and catalog visibility. |
+| Google Play / App Store Connect | Processes public-store testing and release submissions | Destination build/version, processing and release state, and intended tester/user availability. |
+
+Internal endpoints, access-group names, application IDs, and operational links belong in the approved access-controlled location. Examples in this guide use placeholders rather than real identifiers or credentials.
+
+## 2. Follow the complete journey
+
+<MermaidZoom title="Mobile delivery journey · from new application to verified access">
 
 ```mermaid
 flowchart TD
-    START["Validated cleanup request<br/>Explicit account scope"]
-    GATE["Block protected access<br/>Prevent new session work"]
-    JOURNAL["Persist pending-cleanup checkpoint<br/>Outside the namespace being deleted"]
-    STOP["Stop and await writers<br/>Requests · sync · subscriptions · database owners"]
-    BARRIER{"Writers stopped?"}
-    CLEAN["Run idempotent scoped cleanup<br/>Credentials · data · caches · keys · memory state"]
-    VERIFY{"All required steps<br/>and verification passed?"}
-    DONE["Mark local cleanup complete<br/>Present unauthenticated shell"]
-    RETRY["Keep protected access blocked<br/>Retain checkpoint and retry safely"]
-    START --> GATE --> JOURNAL --> STOP --> BARRIER
-    BARRIER -->|"Yes"| CLEAN --> VERIFY
-    BARRIER -->|"No"| RETRY
-    VERIFY -->|"Yes"| DONE
-    VERIFY -->|"No"| RETRY
-    RETRY -.->|"Resume after restart / recovery"| JOURNAL
+    START["Obtain access and prepare the workstation"]
+    SOURCE["Generate or prepare application source<br/>Private repository · branch · exact commit"]
+    LOCAL["Run local readiness checks<br/>Configuration · dependencies · tests · build"]
+    REQUEST["Submit secret-free enrollment request<br/>Approved catalog and template version"]
+    REVIEW["Validate and review<br/>Request PR · sanitized preview · promotion PR"]
+    APPLY["Protected main merge<br/>Authorized one-time provisioning apply"]
+    BUILD["Execute governed routes<br/>Build · signing · required test/security gates"]
+    TARGET{"Approved destination"}
+    INTERNAL["App Management<br/>Distribution signing · enablement · assignment"]
+    STORE["Google Play / App Store Connect<br/>Upload · processing · approved release flow"]
+    VERIFY["Verify each route and destination<br/>Exact version · intended audience · user access"]
+    EVIDENCE["Record release evidence<br/>Complete · failed · unknown / partial outcome"]
+    START --> SOURCE --> LOCAL --> REQUEST --> REVIEW --> APPLY --> BUILD --> TARGET
+    TARGET -->|"Internal distribution"| INTERNAL
+    TARGET -->|"Store delivery"| STORE
+    INTERNAL --> VERIFY
+    STORE --> VERIFY
+    VERIFY --> EVIDENCE
     classDef stage fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
+    classDef control fill:#0f172a,stroke:#475569,color:#ffffff,stroke-width:2px;
     classDef decision fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-width:1.5px;
-    classDef done fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
-    classDef blocked fill:#fff1f2,stroke:#e11d48,color:#881337,stroke-width:1.5px;
-    class START,GATE,JOURNAL,STOP,CLEAN stage;
-    class BARRIER,VERIFY decision;
-    class DONE done;
-    class RETRY blocked;
+    classDef result fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
+    class START,SOURCE,LOCAL,REQUEST,REVIEW,BUILD stage;
+    class APPLY control;
+    class TARGET decision;
+    class INTERNAL,STORE,VERIFY,EVIDENCE result;
 ```
 
 </MermaidZoom>
 
-The session coordinator serializes cleanup with login/account switching. It owns the operation independently of a disappearing logout screen. On startup, inspect the checkpoint before opening protected storage or rendering protected routes. A missing or unreadable checkpoint store must not silently bypass the application's cleanup/access policy.
+This is the lifecycle overview, not the exact Bitrise dependency graph. Signing, device-test preparation, security assessment, and distribution ordering follow the approved route/template. Do not infer that every repository publishes to every destination or that all gates run only once.
 
-### Scoped resource inventory
+The required template determines source-branch requirements. The configuration repository has its own review and promotion branches. Do not confuse an application source branch with the branch that authorizes a live provisioning apply.
 
-| Resource | Required cleanup behavior |
+## 3. Know who performs each action
+
+| Role | Responsibility |
 | :--- | :--- |
-| Credentials | Remove only the account/service namespace owned by this app; verify statuses. |
-| Encryption keys | Destroy the intended account keys under the reviewed recovery policy; do not recreate them during cleanup. |
-| Room / SwiftData / MMKV data | Stop owners, close/release resources as required, and remove only registered account stores/records and applicable sidecar files. |
-| HTTP, image, web, and file caches | Purge account-owned data through each owning SDK/API, including app-extension or shared-container data where owned. |
-| Background work | Cancel and await writers; prevent queued work from restoring removed data. |
-| Redux / in-memory repositories / navigation | Reset account slices, RTK Query caches where used, memoized user data, and protected routes. |
-| Push association | Update/remove the backend account-to-device association under the registration policy. |
-| Backups / server retention | Handle through the relevant backup/server policy; local cleanup alone cannot prove their deletion. |
+| Application developer / request author | Prepare the application, verify local readiness, submit a secret-free request, and record the intended source identity. |
+| Reviewer / code owner | Review source or configuration changes, validate requested access and template compatibility, and satisfy the applicable branch rules. |
+| Platform Engineering | Own provisioning, approved templates, protected credential bindings, platform changes, and recovery from partial applies. |
+| Authorized Vela operator | Inspect protected validation/apply results through the approved access path and share sanitized evidence. |
+| QA / business tester | Verify the intended application version and report test results and audience access. |
+| Application owner / release authority | Own the intended audience, applicable approvals, and authorization to release to the selected destination. |
 
-Use an explicit inventory instead of deleting every database, preference file, or application-support directory. Keep shared non-account resources and the cleanup journal outside the target scope. Record failures without including personal data.
+A workshop facilitator may coordinate these roles, but does not replace protected-branch rules or release authorization. Developers do not need raw signing credentials or manual app-provisioning access to follow the governed enrollment path.
 
-### React Native · staged cleanup coordinator
+### Access readiness
 
-All three implementations use the same staged behavior and app-provided resource adapters. The TypeScript coordinator below must be called through a serialized session owner; the Android/iOS versions below show platform-specific serialization. These coordinators are not general-purpose filesystem deletion utilities.
+Before starting a live exercise or first enrollment, confirm:
 
-`src/core/wipe/cleanupCoordinator.ts`
+- You can access the approved application template and its dependency registry instructions.
+- You can create or contribute to the intended private application repository.
+- You can read the current workflow catalog and submit the configuration request through the approved process.
+- Required reviewers and Platform Engineering contacts are identified.
+- An authorized operator can inspect Vela results through the approved network/access path.
+- You can inspect the relevant Bitrise builds and approved distribution catalog for your role.
+- The target account, environment, and audience are explicitly identified.
 
-```typescript
-export interface CleanupScope {
-  readonly accountRef: string;
-}
-export type CleanupStage =
-  | 'checkpoint' | 'stop-writers' | 'credentials' | 'data'
-  | 'caches' | 'keys' | 'memory' | 'verify' | 'complete';
-export interface CleanupResult {
-  readonly status: 'complete' | 'incomplete';
-  readonly failedStages: readonly CleanupStage[];
-}
+**Attach screenshot — Approved access-request categories, with personal information and sensitive identifiers redacted.**
 
-export interface CleanupPorts {
-  // Immediately close access and refuse new work for this scope. Must not throw.
-  blockProtectedAccess(scope: CleanupScope): void;
-  // Durable, idempotent journal in app-owned storage outside the target namespace.
-  recordPending(scope: CleanupScope): Promise<void>;
-  // Resolves only after writers have stopped; rejects if that barrier is not met.
-  stopWriters(scope: CleanupScope): Promise<void>;
-  removeCredentials(scope: CleanupScope): Promise<void>;
-  removeData(scope: CleanupScope): Promise<void>;
-  removeCaches(scope: CleanupScope): Promise<void>;
-  destroyKeys(scope: CleanupScope): Promise<void>;
-  resetMemoryAndRedux(scope: CleanupScope): Promise<void>;
-  // Throw unless every required registered resource is absent/inaccessible as specified.
-  verify(scope: CleanupScope): Promise<void>;
-  markComplete(scope: CleanupScope): Promise<void>;
-  // Non-throwing: report categories only, never the account reference or raw errors.
-  reportFailure(stage: CleanupStage): void;
-}
+Detailed access and workstation setup is covered in Page 01. Do not create credentials or request broad administrator permissions merely to work around an access failure.
 
-export async function cleanAccount(
-  scope: CleanupScope,
-  ports: CleanupPorts,
-): Promise<CleanupResult> {
-  const failed: CleanupStage[] = [];
-  const step = async (stage: CleanupStage, action: () => Promise<void>): Promise<boolean> => {
-    try { await action(); return true; }
-    catch {
-      failed.push(stage);
-      ports.reportFailure(stage);
-      return false;
-    }
-  };
-  const incomplete = (): CleanupResult => ({ status: 'incomplete', failedStages: [...failed] });
+## 4. Separate enrollment from recurring builds
 
-  ports.blockProtectedAccess(scope);
-  if (!await step('checkpoint', () => ports.recordPending(scope))) return incomplete();
-  if (!await step('stop-writers', () => ports.stopWriters(scope))) return incomplete();
+### First-time enrollment
 
-  // Every operation is idempotent and independent after the writers barrier.
-  await step('credentials', () => ports.removeCredentials(scope));
-  await step('data', () => ports.removeData(scope));
-  await step('caches', () => ports.removeCaches(scope));
-  await step('keys', () => ports.destroyKeys(scope));
-  await step('memory', () => ports.resetMemoryAndRedux(scope));
-  await step('verify', () => ports.verify(scope));
-  if (failed.length > 0) return incomplete();
-  if (!await step('complete', () => ports.markComplete(scope))) return incomplete();
-  return { status: 'complete', failedStages: [] };
-}
-```
+1. Prepare a unique, approved application source repository.
+2. Select a currently approved catalog entry and exact template version.
+3. Submit one secret-free request in the configuration repository.
+4. Run the authoritative local validator and open the request PR.
+5. Obtain PR validation, required review, and configuration-branch promotion.
+6. Track the protected merge and its exact live apply.
+7. Verify the provisioned app and the outcome of every applicable route.
 
-<Aside type="tip" title="Hint · completion is a verified outcome">
-Continue independent cleanup steps after one fails, but never claim completion while a required step is unresolved. Operations above must be safe after earlier credentials/data/keys have already been removed. If your adapters require a different dependency order, encode those dependencies in the plan rather than using this sequence unchanged. Only verification and successful journal completion establish the reported local outcome.
+Local validation and PR previews do not create a live application. The protected apply is the boundary at which authorized automation can perform external writes.
+
+### Subsequent builds and releases
+
+Reuse the existing enrolled application and its approved template. Trigger builds through the configured source events or other approved route controls. Follow the applicable update/change procedure for configuration changes; do not resubmit a create-only enrollment request to retry an existing application.
+
+<Aside type="caution" title="One enrollment is not permission to retry provisioning">
+If provisioning partially succeeds or its outcome is unknown, preserve the existing app and evidence. Do not rerun enrollment, replay the protected merge, delete the app, or replace signing material as an assumed fix. Platform Engineering must reconcile the exact state through the approved recovery procedure.
 </Aside>
 
-This plan is serialized by the application coordinator; it does not itself lock concurrent invocations. The host must validate the scope and reject conflicting login/cleanup operations. Platform cancellation is not an ordinary recoverable error to swallow in a Kotlin/Swift translation: preserve cancellation, leave the checkpoint pending, and resume through the durable recovery owner. The TypeScript contract exposes no cancellation signal; its owner must keep running or resume it after process interruption.
+## 5. Recognize the four governed routes
 
-`markComplete` must update the journal consistently. If checkpoint creation fails, access stays blocked and the application must use its documented fail-closed startup/recovery policy; an unrecorded operation cannot be assumed resumable. `verify` checks the local app-owned scope, not remote retention or forensic erasure.
+| Route | Platform | Intended purpose | Required completion evidence |
+| :--- | :--- | :--- | :--- |
+| `qa_android` | Android | Deliver the approved private QA build | Correct artifact/version and verified access for the intended QA audience. |
+| `qa_ios` | iOS | Deliver the approved private QA build | Correct IPA/version, required distribution signing, and verified QA access. |
+| `uat_android` | Android | Deliver the approved UAT build | Required approvals, correct artifact/version, and verified business-tester access. |
+| `uat_ios` | iOS | Deliver the approved UAT build | Required approvals, correct IPA/version, required signing, and verified business-tester access. |
 
-### Platform-specific deletion hints
+The approved catalog defines the artifact type, destination, trigger, and supported platform combinations. For a native-only repository, follow the catalog's explicit applicability rules rather than attempting an unsupported platform build. Do not silently mark an unsupported or unexecuted route as successful.
 
-- **Android:** Use owning database/file APIs after work has stopped. Check deletion results. Remove the correct Keystore aliases separately from encrypted preference values; clearing preferences does not prove key destruction. Avoid deleting preference files behind active singleton instances.
-- **iOS:** Scope Keychain queries by the owned service/account/access group and inspect `OSStatus`. Close/release SwiftData or other database owners before deleting registered stores. Do not broadly delete every Keychain class or silently ignore filesystem errors.
-- **React Native:** Reset account Redux slices and API caches, dispose native subscriptions, and close/delete the registered MMKV instances through the installed adapter. Recreating one instance and calling `clearAll()` does not inventory every account store or in-memory cache.
+These four identifiers name governed QA/UAT routes. They do not, by themselves, establish authorization for a public production release. Store testing and production release follow the destination-specific approval and delivery policy.
 
-Local cleanup and server revocation are related but distinct. Request server-side session/device revocation under the authentication policy without making loss of connectivity a reason to retain local access. Retain only the minimum approved retry/audit metadata needed for recovery, outside the removed account data.
+### Configuration versus secrets
 
-
-### Android · serialized cleanup coordinator
-
-`core/wipe/AccountCleanupCoordinator.kt`
-
-```kotlin
-package com.enterprise.mobile.core.wipe
-
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-
-data class CleanupScope(val accountRef: String)
-enum class CleanupStage {
-    CHECKPOINT, STOP_WRITERS, CREDENTIALS, DATA, CACHES, KEYS, MEMORY, VERIFY, COMPLETE,
-}
-data class CleanupResult(val complete: Boolean, val failedStages: List<CleanupStage>)
-
-interface CleanupPorts {
-    // Atomic access gate; non-blocking and non-throwing.
-    fun blockProtectedAccess(scope: CleanupScope)
-    suspend fun recordPending(scope: CleanupScope)
-    suspend fun stopWriters(scope: CleanupScope)
-    suspend fun removeCredentials(scope: CleanupScope)
-    suspend fun removeData(scope: CleanupScope)
-    suspend fun removeCaches(scope: CleanupScope)
-    suspend fun destroyKeys(scope: CleanupScope)
-    suspend fun resetMemoryAndNavigation(scope: CleanupScope)
-    suspend fun verify(scope: CleanupScope)
-    suspend fun markComplete(scope: CleanupScope)
-    fun reportFailure(stage: CleanupStage)
-}
-
-class AccountCleanupCoordinator(private val ports: CleanupPorts) {
-    private val mutex = Mutex()
-
-    suspend fun execute(scope: CleanupScope): CleanupResult = mutex.withLock {
-        require(scope.accountRef.isNotBlank())
-        val failed = mutableListOf<CleanupStage>()
-        suspend fun step(stage: CleanupStage, action: suspend () -> Unit): Boolean {
-            return try {
-                currentCoroutineContext().ensureActive()
-                action()
-                true
-            } catch (cancelled: CancellationException) {
-                throw cancelled // Preserve the pending journal for durable recovery.
-            } catch (_: Exception) {
-                currentCoroutineContext().ensureActive()
-                failed += stage
-                ports.reportFailure(stage)
-                false
-            }
-        }
-        fun incomplete() = CleanupResult(false, failed.toList())
-
-        ports.blockProtectedAccess(scope)
-        if (!step(CleanupStage.CHECKPOINT) { ports.recordPending(scope) }) return@withLock incomplete()
-        if (!step(CleanupStage.STOP_WRITERS) { ports.stopWriters(scope) }) return@withLock incomplete()
-
-        step(CleanupStage.CREDENTIALS) { ports.removeCredentials(scope) }
-        step(CleanupStage.DATA) { ports.removeData(scope) }
-        step(CleanupStage.CACHES) { ports.removeCaches(scope) }
-        step(CleanupStage.KEYS) { ports.destroyKeys(scope) }
-        step(CleanupStage.MEMORY) { ports.resetMemoryAndNavigation(scope) }
-        step(CleanupStage.VERIFY) { ports.verify(scope) }
-        if (failed.isNotEmpty()) return@withLock incomplete()
-        if (!step(CleanupStage.COMPLETE) { ports.markComplete(scope) }) return@withLock incomplete()
-        CleanupResult(true, emptyList())
-    }
-}
+```yaml
+# Orientation only: route identifiers, not a Bitrise configuration or enrollment schema.
+route_ids:
+  - qa_android
+  - qa_ios
+  - uat_android
+  - uat_ios
 ```
 
-**Hint:** Keep one coordinator in the session/application owner, not a screen ViewModel. Its mutex serializes this instance's cleanup calls, not every login or external database writer. All ports must be main-safe, idempotent, and scoped to the registered account resources; use the owning SDK's close/delete APIs. The session owner must also serialize account replacement with this coordinator. A durable pending record must be checked during startup before reopening protected stores. `reportFailure` must not throw or contain account identifiers.
+The executable request and pipeline YAML appear in their implementation pages. Do not paste this orientation example into a provisioning request.
 
-### iOS · reentrancy-safe cleanup coordinator
+Safe request configuration identifies the application, source repository/branch, approved template/version, and permitted access groups. Tokens, passwords, private keys, signing files, and certificate material stay outside requests, Git history, screenshots, PR text, and shared logs.
 
-`Core/Wipe/AccountCleanupCoordinator.swift`
+## 6. Distinguish build success from delivery success
 
-```swift
-import Foundation
+| Observation | What it proves | What it does not prove |
+| :--- | :--- | :--- |
+| Local validation passed | The checked local request/configuration met those validation rules. | Provider access, app creation, or successful provisioning. |
+| PR checks passed | The checked PR revision passed its configured gates. | That it was promoted, applied, or deployed. |
+| Protected apply started | Authorized orchestration began for an identified commit. | Completion of provisioning or any release route. |
+| Bitrise build passed | The identified workflow completed according to its build checks. | App Management signing, publication, assignment, or user visibility. |
+| Artifact uploaded | The destination received or registered the identified upload. | Processing completion, enablement, review approval, or audience access. |
+| Required signing verified | The required signature/distribution-signing evidence is present. | That the exact version is enabled and assigned. |
+| User visibility verified | The intended account/audience can access the identified version through the approved destination. | Successful installation or launch unless those were separately tested. |
 
-struct CleanupScope: Sendable { let accountRef: String }
-enum CleanupStage: String, Sendable {
-    case checkpoint, stopWriters, credentials, data, caches, keys, memory, verify, complete
-}
-struct CleanupResult: Sendable {
-    let complete: Bool
-    let failedStages: [CleanupStage]
-}
-enum CleanupError: Error { case invalidScope, alreadyRunning }
+Build signing and App Management distribution signing are separate operations where the selected distribution path uses both. A successful iOS build does not prove that downstream distribution signing succeeded.
 
-protocol CleanupPorts: Sendable {
-    func blockProtectedAccess(_ scope: CleanupScope) async
-    func recordPending(_ scope: CleanupScope) async throws
-    func stopWriters(_ scope: CleanupScope) async throws
-    func removeCredentials(_ scope: CleanupScope) async throws
-    func removeData(_ scope: CleanupScope) async throws
-    func removeCaches(_ scope: CleanupScope) async throws
-    func destroyKeys(_ scope: CleanupScope) async throws
-    func resetMemoryAndNavigation(_ scope: CleanupScope) async throws
-    func verify(_ scope: CleanupScope) async throws
-    func markComplete(_ scope: CleanupScope) async throws
-    func reportFailure(_ stage: CleanupStage) async
-}
+The release-evidence page defines the seven milestone names and their destination-specific evidence. Record checkpoints as evidence becomes available; do not mistake a reporting list for a universal signing/upload execution order.
 
-actor AccountCleanupCoordinator {
-    private let ports: any CleanupPorts
-    private var isRunning = false
-    init(ports: any CleanupPorts) { self.ports = ports }
+### Record outcomes per route
 
-    // Actor methods can interleave at await: reject overlapping executions explicitly.
-    func execute(_ scope: CleanupScope) async throws -> CleanupResult {
-        guard !scope.accountRef.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw CleanupError.invalidScope
-        }
-        guard !isRunning else { throw CleanupError.alreadyRunning }
-        isRunning = true
-        defer { isRunning = false }
-        let ports = self.ports
-        await ports.blockProtectedAccess(scope)
+Use evidence-backed states such as:
 
-        if let failure = try await Self.attempt(.checkpoint, ports: ports, operation: {
-            try await ports.recordPending(scope)
-        }) { return CleanupResult(complete: false, failedStages: [failure]) }
-        if let failure = try await Self.attempt(.stopWriters, ports: ports, operation: {
-            try await ports.stopWriters(scope)
-        }) { return CleanupResult(complete: false, failedStages: [failure]) }
+- **Not started:** execution has not begun for this route.
+- **Build passed:** the build succeeded; downstream delivery is not yet established.
+- **Published and verified:** the required distribution and audience checks passed for the exact version.
+- **Failed:** a specific required operation failed.
+- **Unknown:** available evidence cannot establish the outcome.
 
-        let operations: [(CleanupStage, @Sendable () async throws -> Void)] = [
-            (.credentials, { try await ports.removeCredentials(scope) }),
-            (.data, { try await ports.removeData(scope) }),
-            (.caches, { try await ports.removeCaches(scope) }),
-            (.keys, { try await ports.destroyKeys(scope) }),
-            (.memory, { try await ports.resetMemoryAndNavigation(scope) }),
-            (.verify, { try await ports.verify(scope) }),
-        ]
-        var failed: [CleanupStage] = []
-        for (stage, operation) in operations {
-            if let failure = try await Self.attempt(stage, ports: ports, operation: operation) {
-                failed.append(failure)
-            }
-        }
-        if !failed.isEmpty { return CleanupResult(complete: false, failedStages: failed) }
-        if let failure = try await Self.attempt(.complete, ports: ports, operation: {
-            try await ports.markComplete(scope)
-        }) { return CleanupResult(complete: false, failedStages: [failure]) }
-        return CleanupResult(complete: true, failedStages: [])
-    }
+A successful QA Android route does not establish success for QA iOS or either UAT route. A partial result must identify what completed, what failed, and what remains unverified.
 
-    private nonisolated static func attempt(
-        _ stage: CleanupStage,
-        ports: any CleanupPorts,
-        operation: @Sendable () async throws -> Void
-    ) async throws -> CleanupStage? {
-        do {
-            try Task.checkCancellation()
-            try await operation()
-            return nil
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            try Task.checkCancellation()
-            await ports.reportFailure(stage)
-            return stage
-        }
-    }
-}
+**Attach screenshot — Sanitized route outcome summary showing separate build and distribution results.**
+
+## 7. Understand approvals and store boundaries
+
+Required TGRC security approval must be established before UAT or Production deployment under the supplied company policy. Record approval identity and applicability through the approved evidence mechanism; never infer approval from a green compilation result.
+
+Detailed listing metadata, screenshots, public privacy-policy requirements, submission procedures, enterprise installation, and user-entitlement instructions belong in the dedicated **App Store documentation section**.
+
+This CI/CD section covers automated delivery, protected credential integration, approval gates, destination readback, and release evidence. An upload to Google Play testing or TestFlight is not automatically a public production release.
+
+## 8. Stop safely on partial failure
+
+<MermaidZoom title="Unknown external outcome · preserve and reconcile">
+
+```mermaid
+flowchart TD
+    RESULT{"External operation outcome"}
+    SUCCESS["Confirmed success<br/>Record evidence and continue approved dependencies"]
+    FAILURE["Confirmed failure or unknown side effect"]
+    STOP["Stop affected operation<br/>Preserve app, artifacts, credentials, and completed routes"]
+    READ["Authorized read-only reconciliation<br/>Match request, commit, operation identity, and destination state"]
+    RECOVERY["Follow reviewed recovery procedure<br/>No blind create, upload, or credential replacement"]
+    RESULT -->|"Confirmed"| SUCCESS
+    RESULT -->|"Failed / ambiguous"| FAILURE --> STOP --> READ --> RECOVERY
+    classDef ok fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
+    classDef control fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
+    classDef caution fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-width:1.5px;
+    class RESULT caution;
+    class SUCCESS ok;
+    class FAILURE,STOP,READ,RECOVERY control;
 ```
 
-**Hint:** The actor guards overlapping cleanup but does not control external logins; the session owner provides that wider gate. Implement UI/navigation ports on the main actor and persistence ports with their correct storage isolation. Ports pass Sendable values, not a SwiftData `ModelContext`. Preserve cancellation and journal state; never turn a cancelled operation into reported completion. Implement scoped Keychain deletion through the credential adapter and inspect file/database deletion outcomes instead of using `try?` on required cleanup.
+</MermaidZoom>
 
+The one-write rule prohibits blindly repeating an ambiguous external mutation. Preserve the request revision, protected merge, apply/build identities, correlation identity, exact failed route, and sanitized result. A timeout does not prove that the external service rejected the operation. A single negative readback may also be insufficient to establish absence.
 
-  </TabItem>
-</Tabs>
+The operator recovery guide defines the permitted reconciliation and any subsequently authorized mutation. The developer's immediate action is to preserve state and escalate with evidence, not improvise a repair.
 
-## Integration and review checklist
+## 9. Use workshop evidence correctly
 
-- [ ] Each foundation has an owner, typed contract, documented lifetime, and approved implementation.
-- [ ] Design tokens are versioned/generated; semantic light/dark pairs and actual color combinations are reviewed.
-- [ ] React Native shared preferences use Redux Toolkit; providers distribute derived values rather than owning duplicate preference state.
-- [ ] Credentials use the approved native-backed adapter; no secrets or fixed encryption keys appear in source or Redux.
-- [ ] Locked storage, key invalidation, biometric cancellation, and missing credentials are distinguished.
-- [ ] Network trust/pinning configuration follows reviewed policy and a maintained rotation/recovery process.
-- [ ] Localization uses supported tags, fallbacks, native resources, correct plurals, and explicit RTL/restart behavior.
-- [ ] Push adapters cover registration changes, foreground/background/cold-start paths, permission denial, and subscription cleanup.
-- [ ] Notification intents are validated, deduplicated, session-aware, and authorized before navigation.
-- [ ] Branding publishes a coherent approved token/asset set and handles icon/platform failure without corrupting the in-app theme.
-- [ ] Cleanup has a scoped resource inventory, writer barrier, durable checkpoint, failure reporting, and restart recovery.
-- [ ] Account cleanup resets protected in-memory/Redux/navigation state and verifies the registered persistent resources.
-- [ ] No guarantee depends on timely push delivery, a universal hardware vault, or atomic cross-storage deletion.
-- [ ] Actual Android/iOS builds, platform resources, native SDK setup, accessibility, and required CI gates are verified.
+The supplied workshop demonstrates application generation, secret-free request submission, validation, promotion, protected apply inspection, and route-by-route distribution checks.
 
-### Essential scenarios to exercise
+Its historical reference run had a partial outcome: one QA route had confirmed distribution, another had build success followed by distribution-signing failure, and UAT publication was not confirmed. That observation does not establish current platform health or the status of a new application.
 
-| Area | Scenarios |
+The workshop page contains sanitized exercises and dated historical evidence. Do not reuse its existing application identity as a new enrollment request, copy its historical template version as the current approved version, or invent a root cause for the observed failure.
+
+## 10. Follow the implementation pages
+
+| Page | What you do next |
 | :--- | :--- |
-| Design | System/light/dark changes, all brands, missing assets, large text, reduced contrast states |
-| Security | Missing item, device lock, auth cancellation, enrollment/key changes, write/deletion errors, account switch |
-| Localization | System fallback, unsupported/stale preference, Arabic/RTL, mixed-direction content, plural categories, long translations |
-| Push | Permission denied, token rotation, duplicate/expired payload, malformed destination, signed-out startup, account change during routing |
-| Branding | Unknown/unauthorized brand, incomplete asset set, unsupported icon change, failed switch, session replacement |
-| Cleanup | Offline logout, stopped-writer failure, partial deletion, key-removal failure, process termination between stages, retry after restart |
+| **01. Obtain Access & Prepare Your Development Environment** | Confirm entitlements, workstation prerequisites, approved registries, and support contacts. |
+| **02. Generate, Configure & Verify Your Mobile Repository** | Create the application/source repository and run the Android, iOS, or React Native readiness checks. |
+| **03. Submit the Secret-Free GitOps Enrollment Request** | Create the validated request using the current catalog and authoritative path/schema. |
+| **04. Validate, Review & Promote the Request** | Obtain checks and reviews, promote configuration, and track the protected merge. |
+| **05. Verify Provisioning & Your Four Governed Build Routes** | Read the apply result, identify the provisioned app, and inspect applicable routes. |
+| **06. Configure & Verify PR Quality Gates with Danger.js** | Understand the approved rules and required status checks; change only the team-owned extension points. |
+| **07. Understand Pipeline Execution, Parallel Tests & Caching** | Read the governed YAML, affected-module logic, workflow handoffs, and cache behavior. |
+| **08. Verify Protected Signing & Credential Integration** | Verify the approved bindings and signature evidence without handling raw credentials. |
+| **09. Run Sauce Labs Real-Device Tests** | Execute approved device suites and retain the evidence for the tested artifact. |
+| **10. Pass NowSecure Security Gates & Required Release Approvals** | Establish assessment completion, applicable severity decisions, and required approvals. |
+| **11. Distribute Through App Management & Verify User Access** | Verify distribution signing, enablement, assignment, and exact-version user visibility. |
+| **12. Automate Google Play & App Store Connect Delivery** | Follow the approved store-delivery route and verify processing and intended access. |
+| **13. Verify Release Evidence & Deployment Completion** | Assemble destination-specific evidence and report only established outcomes. |
+| **14. Troubleshoot Failures & Recover Safely** | Preserve state and follow authorized diagnosis/reconciliation/recovery. |
+| **15. Platform Provisioning & Template Administration** | Reference operator-owned provisioning, template, access, and credential administration. |
+| **16. Bitrise MCP Integration** | Use approved optional tooling with the same access and mutation controls. |
+| **17. Guided Workshop: From New App to Verified Distribution** | Practice the full journey using an isolated application or sanitized read-only evidence. |
 
-**Validation boundary:** This page defines documentation contracts and reference patterns. Code compilation, generated assets, native APIs, internal routes, and Mermaid rendering must be checked in the actual project/site. Tests should validate the promised behavior rather than assuming every policy is automatically enforced by CI.
+These are the planned page titles; navigation links should be added when the final documentation routes are established. There is one authoritative implementation for each shared YAML/script contract, with platform-specific examples where behavior differs.
 
-## Internal SDKs
+## Before continuing
 
-Use the [Master SDK Catalog](/mobile/platforms/master-sdk-catalog/) for package names, supported versions, installation, and platform-specific quick starts. Keep that route aligned with the documentation deployment base. Do not infer an internal SDK method or release number from an illustrative contract on this page.
+- [ ] I know whether I am enrolling a new application or building an existing one.
+- [ ] I understand which actions belong to developers, reviewers, and platform operators.
+- [ ] I can identify the required source repository, configuration repository, and catalog.
+- [ ] I understand that request validation, live apply, build success, and distribution are separate outcomes.
+- [ ] I will use current approved templates and keep credentials out of requests and evidence.
+- [ ] I know that every applicable route needs its own verified result.
+- [ ] I know where to request authorized inspection and how to stop after partial failure.
+
+Continue with **Page 01 — Obtain Access & Prepare Your Development Environment**.
