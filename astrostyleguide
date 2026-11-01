@@ -73,3 +73,213 @@ The Auth SDK entry is reserved for the team's approved authentication integratio
 
   </TabItem>
 </Tabs>
+
+
+
+
+------------
+
+---
+title: Development Platforms & Shared SDKs
+description: Find Android, iOS, React Native, app foundation, and shared SDK implementation guidance for your mobile application.
+sidebar:
+  label: Platforms Overview
+  order: 1
+---
+
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+# Development Platforms & Shared SDKs
+
+This section turns the shared architecture into platform-specific implementation guidance. Use it to build features, apply common application foundations, and integrate SDKs through documented contracts.
+
+**React Native with TypeScript and Redux Toolkit is our strongly preferred choice for new applications.** Native Android and iOS are supported where requirements justify them. Maintain the established stack of an existing app unless a migration is explicitly agreed.
+
+For the wider ecosystem—including Bitrise, Sauce Labs, NowSecure, Datadog, and distribution—start with [Mobile Platform Overview](/mobile/onboarding/platform-overview/). This section focuses on application implementation rather than repeating that ecosystem guide.
+
+> **Confidential — internal use only.** Keep company code, SDK information, configuration, and evidence in approved systems. Never include credentials, signing material, private artifact URLs, or sensitive user data in examples or screenshots.
+
+## 1. Find the right implementation guide
+
+| Page | Use it to | Main outcome |
+| :--- | :--- | :--- |
+| **Android Standards** | Implement Kotlin features with the documented Android architecture, state, concurrency, and data patterns. | An Android feature with explicit ownership and testable boundaries. |
+| **iOS Standards** | Implement Swift features with the documented iOS architecture, state, concurrency, and data patterns. | An iOS feature with deliberate actor and lifecycle boundaries. |
+| **React Native Standards** | Implement TypeScript features using React Native and Redux Toolkit. | A feature with clear component, store, async-work, and native integration responsibilities. |
+| **App Foundations** | Apply shared patterns for design, themes, localization, secure storage, notifications, branding, and cleanup. | Consistent application behavior across supported platforms. |
+| **Master SDK Catalog** | Find the SDK entries and platform-specific contracts supplied by the responsible teams. | A confirmed dependency and integration path when details are available. |
+
+**The Master SDK Catalog is a separate page in this section.** It owns SDK availability, package details, compatibility, installation, and API examples. It currently contains only the Auth SDK entry; team-provided technical details are pending.
+
+A foundation example is not proof that a separately published internal SDK exists. Do not invent a package to connect a pattern to the catalog.
+
+## 2. Understand the implementation boundaries
+
+<MermaidZoom title="Platforms and shared implementation: choose a guide, apply foundations, confirm SDK contracts">
+
+```mermaid
+flowchart TB
+    START["Application feature"] --> STACK{"Established or approved stack"}
+    STACK --> RN["React Native standards<br/>TypeScript and Redux Toolkit"]
+    STACK --> ANDROID["Android standards<br/>Kotlin"]
+    STACK --> IOS["iOS standards<br/>Swift"]
+    RN --> ARCH["Apply shared architecture<br/>State ownership and dependency boundaries"]
+    ANDROID --> ARCH
+    IOS --> ARCH
+    ARCH --> FOUND["Apply required app foundations<br/>Platform-specific implementations"]
+    FOUND --> NEED{"Shared SDK integration needed?"}
+    NEED -->|Yes| CATALOG["Consult the separate SDK Catalog<br/>Check availability and contract"]
+    NEED -->|No| VERIFY["Verify behavior<br/>Tests and platform checks"]
+    CATALOG --> CONTRACT{"Approved contract available?"}
+    CONTRACT -->|Yes| ADAPTER["Integrate through documented adapter"]
+    CONTRACT -->|No| OWNER["Obtain contract from SDK owner<br/>Do not invent package or API"]
+    ADAPTER --> VERIFY
+
+    classDef entry fill:#172554,stroke:#60a5fa,color:#ffffff,stroke-width:2px;
+    classDef platform fill:#312e81,stroke:#a5b4fc,color:#ffffff,stroke-width:2px;
+    classDef foundation fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    classDef decision fill:#78350f,stroke:#fcd34d,color:#ffffff,stroke-width:2px;
+    classDef pending fill:#4c1d95,stroke:#c4b5fd,color:#ffffff,stroke-width:2px;
+    class START,VERIFY entry;
+    class RN,ANDROID,IOS platform;
+    class ARCH,FOUND,ADAPTER foundation;
+    class STACK,NEED,CONTRACT decision;
+    class CATALOG,OWNER pending;
+```
+
+</MermaidZoom>
+
+The arrows show the developer's implementation path, not runtime service calls or code imports. Color distinguishes platform guidance, shared implementation, decisions, and pending SDK information. Text labels preserve the meaning without relying on color alone.
+
+## 3. Apply the platform standards consistently
+
+The shared architecture separates presentation, business rules, repository contracts, and concrete data adapters. Platform-specific mechanisms implement those responsibilities.
+
+| Concern | Android | iOS | React Native |
+| :--- | :--- | :--- | :--- |
+| **Feature implementation** | Kotlin. | Swift. | TypeScript. |
+| **New declarative UI** | Jetpack Compose. | SwiftUI. | React Native components. |
+| **Feature state** | ViewModel and read-only state exposure using the documented pattern. | Observable presentation model with appropriate actor isolation. | Local component state where sufficient; Redux Toolkit for Redux-owned feature/application state. |
+| **Asynchronous work** | Coroutines and lifecycle-aware ownership. | Swift concurrency with explicit task and actor ownership. | Async operations with cancellation and request identity, including established Redux Toolkit coordination. |
+| **Business/data boundary** | Interfaces and injected implementations. | Protocols and injected implementations. | Typed contracts and injected implementations. |
+| **Local persistence** | The documented repository/storage adapter, including Room where required. | The documented persistence adapter. | The documented storage adapter and native integration where required. |
+| **Session cleanup** | Coordinate requests, state, and account-scoped writers/storage. | Coordinate tasks, state, and account-scoped writers/storage. | Coordinate thunks/requests, Redux state, native resources, and account-scoped storage. |
+
+Use the source-defined platform conventions for new work. Existing XML, UIKit, or other supported integration may require deliberate interoperability rather than an unrelated rewrite.
+
+Do not put every screen value in a shared store, expose transport DTOs directly to UI, or create concrete clients inside business rules. Read [Clean Architecture & Dependency Boundaries](/mobile/architecture/mobile-architecture/) for the common contract model.
+
+### Read the platform guide as an implementation reference
+
+Each platform guide should connect a complete feature across UI, state coordination, domain operations, data adapters, and dependency construction. Supporting types, resources, configuration, and verification notes must accompany the example.
+
+Use the platform guide to answer these practical questions:
+
+1. Where do I add this feature and its dependencies?
+2. How does the screen receive state and submit actions?
+3. Who owns asynchronous work, and what invalidates its result?
+4. How are transport and persistence models mapped into domain outcomes?
+5. How do I test behavior without relying on live services?
+6. What needs separate native or device verification?
+
+The guides should share the same architectural meaning while using appropriate platform mechanisms. They should not force identical folder names or introduce a new framework simply to make examples look alike.
+
+## 4. Know what App Foundations covers
+
+App Foundations provides Android, iOS, and React Native guidance for each foundation area. Integrate only the capabilities needed by the application, with the required lifecycle and verification behavior.
+
+| Foundation | What an application must decide and verify |
+| :--- | :--- |
+| **Design and themes** | Approved resources/components, semantic colors, light/dark behavior, accessibility, and preference ownership. |
+| **Localization** | Resource keys, supported locales, fallback, formatting, and locale-change behavior. |
+| **Secure storage** | Permitted data, appropriate native protection, access conditions, account scope, and deletion. |
+| **Push notifications** | Registration, payload validation, foreground behavior, authorized routing, and account changes. |
+| **Branding** | Assets, supported identity options, and platform-specific constraints. |
+| **Logout and cleanup** | Stop or invalidate work, coordinate writers, remove permitted scopes, and verify the resulting state. |
+
+Authentication is documented through the Auth SDK entry once its real contract is supplied. Do not infer sign-in methods, token ownership, renewal, or logout guarantees from an empty catalog entry.
+
+## 5. Keep standards, foundations, and SDK contracts separate
+
+| Reference | What belongs there | How to use it |
+| :--- | :--- | :--- |
+| **Platform standard** | Feature structure, state, concurrency, data boundaries, dependency construction, and platform-specific code. | Follow it while implementing or reviewing a feature. |
+| **App Foundations** | Cross-feature application behavior with Android, iOS, and React Native implementations. | Apply the required foundation without duplicating infrastructure in each screen. |
+| **Master SDK Catalog — separate page** | Confirmed SDK artifacts, owners, versions, platform support, installation, configuration, APIs, and verification. | Consult it before adding or upgrading an actual shared dependency. |
+
+The catalog is the single home for SDK-specific instructions. This overview does not duplicate its platform tabs or placeholders. A foundation pattern does not imply that a published internal SDK exists for it.
+
+When the Auth SDK contract is supplied, integrate it through the established composition and session boundaries. Until then, do not infer package names, sign-in methods, token ownership, renewal, or logout guarantees.
+
+## 6. Make startup and service ownership explicit
+
+Construct services at their intended lifetime and expose readiness through the established state owner. Construction, remote readiness, interactive authentication, and UI rendering are separate events.
+
+| Scope | Appropriate responsibility | Common mistake |
+| :--- | :--- | :--- |
+| **Application** | Long-lived, configured clients and application-level coordinators. | Recreating a client on every screen render. |
+| **Authenticated session** | Account context, session-bound requests, and account-scoped data ownership. | Reusing a previous account's state after sign-in changes. |
+| **Feature/screen** | Feature requests, presentation state, and lifecycle-bound subscriptions. | Allowing obsolete work to update a new screen or session. |
+
+Keep startup bounded. Optional remote configuration should not create an indefinite loading screen. Required service failures need controlled, safe recovery. Follow each SDK's actual initialization and threading contract rather than imposing one universal startup order.
+
+**Platform hints:**
+
+- **Android:** do not perform blocking network work in `Application.onCreate()` or construct services during recomposition. Consider multi-process behavior when applicable.
+- **iOS:** keep app, scene, and task lifetimes distinct. A view `.task` can restart and is not an application-wide once-only initializer.
+- **React Native:** an effect can rerun during development or remounting. Own application services outside render and make lifecycle behavior deliberate.
+
+“Initialize once” is a lifecycle design requirement, not a promise that the OS will create only one process or instance forever.
+
+## 7. Connect implementation to quality and delivery
+
+| Topic | Apply here | Detailed owner |
+| :--- | :--- | :--- |
+| **Resilience** | Propagate cancellation, classify failures, and use reviewed retry/breaker policies. | Architecture: Network Resilience & Circuit Breakers. |
+| **Feature flags** | Consume approved Unleash mobile integration through the defined configuration boundary. | Architecture: Feature Flags & Remote Configuration. |
+| **Testing** | Add meaningful assertions and meet the defined 100% coverage scope and metrics. | Testing & Quality, including Sauce Labs. |
+| **Observability** | Add permitted events and verify release-specific diagnostics. | Observability, including Datadog platform guides. |
+| **AI assistance** | Use approved rules/context and review generated code and tests. | GenAI & Developer Tools. |
+| **Build and distribution** | Keep project configuration compatible with approved workflows. | CI/CD and App Store & Distribution. |
+
+A provider integration is not automatically a published internal SDK. Unleash and Datadog guidance should not appear as unconfirmed additional catalog entries.
+
+## 8. Select and upgrade dependencies deliberately
+
+Use the versions managed by the approved project and its dependency locks. Framework, compiler, build tools, OS targets, and native SDKs must be compatible as a set; an open-ended “version X or newer” statement is not a complete compatibility policy.
+
+| Platform | Review when a dependency changes |
+| :--- | :--- |
+| **Android** | Gradle wrapper, Android Gradle Plugin, JDK, Kotlin, Compose, SDK levels, and native dependencies as applicable. |
+| **iOS** | Xcode/Swift compatibility, deployment target, package resolution, concurrency requirements, and native linkage. |
+| **React Native** | React Native/React, Node/package manager, native modules, Android/iOS toolchains, and release build behavior. |
+
+Keep setup commands in Machine Setup and package-specific instructions in the SDK Catalog. For an upgrade, review migration notes, lockfile changes, initialization, account transitions, and the affected development/release configurations. Do not change versions merely to bypass an unrelated local failure.
+
+## 9. Review before using an example in an application
+
+Documentation examples must identify their scope: conceptual snippet, complete component, integration contract, or working feature. Check accompanying verification notes rather than assuming all samples were built on every platform.
+
+Before adopting an example:
+
+- Match it to the project's actual versions, architecture, and supported devices.
+- Include its supporting types, resources, configuration, and dependencies.
+- Replace synthetic data only through approved configuration and test-data processes.
+- Verify failure, cancellation, lifecycle, and account-switch behavior.
+- Run the repository's actual test and build checks.
+- Report mismatches against the supplied source of truth rather than silently inventing an API or changing policy.
+
+## 10. Implementation readiness checklist
+
+- [ ] I know the relevant platform standard and established project stack.
+- [ ] The implementation follows shared dependency and state-ownership rules.
+- [ ] Required foundation behavior is defined for the target platform.
+- [ ] Any SDK integration uses a real, supplied contract and approved version.
+- [ ] SDK-specific details are taken from the separate catalog, with unresolved contracts treated as pending.
+- [ ] Configuration, credentials, and telemetry follow the permitted data policy.
+- [ ] Tests and platform checks cover the affected behavior and documented coverage requirement.
+- [ ] Startup, cancellation, session changes, and cleanup have explicit ownership.
+- [ ] Integration risks and remaining verification gaps are recorded accurately.
+
+**Continue:** read the Android, iOS, or React Native Standards for your application, then apply the relevant App Foundations. Consult the Master SDK Catalog when a supplied SDK contract is available.
+
