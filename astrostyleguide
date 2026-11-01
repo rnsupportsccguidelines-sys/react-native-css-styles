@@ -1,3 +1,15 @@
+ENTERPRISE MOBILE CI/CD — ALL 10 MDX PAGES
+Confidential — internal use only.
+
+Copy each page into its named file. This bundle is a text reference, not one renderable MDX page.
+Internal contract placeholders and verification limitations remain as documented in each page.
+
+
+================================================================================
+PAGE 01 OF 10 — FILE: index.mdx
+BEGIN FILE
+================================================================================
+
 ---
 title: Mobile CI/CD Overview & Developer Journey
 description: Understand governed enrollment, Bitrise builds, QA/UAT routes, release gates, and the evidence required to confirm mobile delivery.
@@ -164,14 +176,20 @@ A schema-validation pass does not prove provider access. A successful protected 
 
 | Route | Platform | Intended purpose | Required outcome evidence |
 | :--- | :--- | :--- | :--- |
-| `qa_android` | Android | Private QA delivery. | Artifact identity, applicable signing, destination state, and intended QA visibility. |
+| `qa_android` | Android | Signed private QA APK delivery. | Artifact identity, applicable signing, destination state, and intended QA visibility. |
 | `qa_ios` | iOS | Private QA IPA delivery. | Artifact identity, required signing, destination state, and intended QA visibility. |
-| `uat_android` | Android | Approved business acceptance delivery. | Applicable approvals, artifact/version, destination state, and intended UAT visibility. |
+| `uat_android` | Android | Signed private UAT APK delivery. | Applicable approvals, artifact/version, destination state, and intended UAT visibility. |
 | `uat_ios` | iOS | Approved business acceptance IPA delivery. | Applicable approvals, artifact/version, required signing, and intended UAT visibility. |
 
 The approved catalog defines applicability, triggers, artifact format, and destination. React Native requires independent Android and iOS verification. Record native-only applicability accurately; do not report unsupported routes as successful.
 
+The latest kit specifies private **APK** outputs for Android QA/UAT and private **IPA** outputs for iOS QA/UAT. Store AAB delivery is a separate destination contract. The kit describes all four routes at enrollment, while native-only applicability still needs a compatible catalog contract; never fabricate a successful unsupported route.
+
 These four routes do not automatically authorize public production publication. Store delivery follows its separate approved destination and release process.
+
+### Later builds use recurring distribution
+
+After enrollment, app-source changes use the existing app identity. The kit describes a recurring worker that monitors the designated source branch for successful builds and advances eligible artifacts through distribution verification. A durable cursor retains verified progress to prevent duplicate uploads after interruption. An uncertain in-flight write must first be reconciled read-only; a saved checkpoint is not permission to repeat that write. See [Delivery & Release Evidence](./delivery-and-verification/) for the worker boundary.
 
 ## 7. Read success claims precisely
 
@@ -271,17 +289,15 @@ CI/CD implements the approved automation and collects its evidence. It does not 
 
 **Next: [Prepare Your Repository](./repository-readiness/)** — identify and verify the source that the platform will build.
 
+================================================================================
+END FILE: index.mdx
+================================================================================
 
 
-
-
-
---------------------------
-
-
-
-
-
+================================================================================
+PAGE 02 OF 10 — FILE: repository-readiness.mdx
+BEGIN FILE
+================================================================================
 
 ---
 title: Prepare Your Repository for CI/CD
@@ -748,9 +764,15 @@ A blocked required input must be resolved before the dependent enrollment step. 
 
 **Next: [Enrollment, Validation & Promotion](../gitops-enrollment/)** — submit the secret-free configuration request and follow its governed review path.
 
+================================================================================
+END FILE: repository-readiness.mdx
+================================================================================
 
 
--------------------
+================================================================================
+PAGE 03 OF 10 — FILE: gitops-enrollment.mdx
+BEGIN FILE
+================================================================================
 
 ---
 title: Enrollment, Validation & Protected Promotion
@@ -807,24 +829,21 @@ The template establishes source requirements, supported platforms, four-route ap
 
 ## 3. Resolve the exact request path
 
-The supplied materials contain a case-sensitive path discrepancy:
+The latest supplied **Enterprise Mobile Build & Release Kit** specifies the lowercase path:
 
-| Supplied reference | Path spelling |
-| :--- | :--- |
-| Enrollment summary and recording conversation log | `config/teams/<team>/bitrise/apps/<app>.yaml` |
-| Workshop request exercise | `Config/Teams/<team>/Bitrise/Apps/<app>.yaml` |
+```text
+config/teams/<team>/bitrise/apps/<app_name>.yaml
+```
 
-**Both are supplied source material; they conflict.** Before adding a file, establish the current canonical spelling from the configuration repository's request validator and maintained examples, with its owner. Do not create parallel uppercase/lowercase trees or assume macOS filesystem behavior represents CI.
+Use this spelling for new requests. It supersedes the uppercase path shown in the older workshop photograph. Do not create a parallel uppercase directory tree. If the checked-out validator disagrees, stop and report the documentation/implementation mismatch to Platform Engineering.
 
-The filename must match `app_name`, and the team directory must match `team`, as required by the workshop. Keep this path decision in the request's evidence so reviewers can see which contract was applied.
-
-**Required clarification before a request is actionable:** the canonical path casing and current validator command are not present consistently in the supplied material. The placeholders below do not resolve those missing details.
+The team directory must exactly match `team`; the filename basename must exactly match `app_name`. For the example below, the path is `config/teams/sample-team/bitrise/apps/sample-mobile-app.yaml`.
 
 ## 4. Author one secret-free request
 
-The workshop supplies the following request field structure. This example retains that structure and replaces historical identifiers with clearly marked placeholders.
+The latest Build & Release Kit confirms the workshop request structure. This example preserves those fields and replaces identifiers and catalog choices with clearly marked placeholders.
 
-**File:** the canonical request directory confirmed above, with filename matching `app_name`.
+**File:** `config/teams/sample-team/bitrise/apps/sample-mobile-app.yaml`.
 
 ```yaml
 # Replace placeholders using the approved catalog and actual request schema.
@@ -855,17 +874,19 @@ optional_users: []
 | `template_id` | Approved catalog entry compatible with that platform. |
 | `template_version` | Exact approved version, not an unreviewed historical or floating selection. |
 | `access_groups` | Reviewed groups that receive app access. |
-| `optional_users` | Additional access assignments only as allowed by the schema and review. Empty in the example. |
+| `optional_users` | Optional list of explicit user emails for viewer-level access under the latest contract. Empty in the example; review every addition. |
 
 Do not add a `source_commit` field merely because evidence must record the commit: that field was not supplied in this request contract. Record the source commit alongside the request unless the actual schema provides a supported pinning field.
 
-The provided evidence demonstrates this YAML structure for React Native. Exact Android/iOS platform values, template IDs, and schema requirements must come from the approved catalog. Do not duplicate this request into native tabs with guessed values.
+The latest contract supports `platform: react-native`, `platform: android`, and `platform: ios`. Select the correct value and a compatible approved template/version. The supplied material does not establish current native template IDs or versions; do not invent them. `template_version` is a quoted exact semantic-version string, not a floating selection.
 
 ### Keep request metadata separate
 
 Application-root `campfile.yml` and this enrollment request have different consumers and responsibilities. A metadata platform spelling, identifier mapping, or distribution example must not be copied into the enrollment schema without validation.
 
-No request field is a place for a keystore password, Apple API key, service-account JSON, private certificate, or private download URL. Protected automation binds the approved credentials after authorization.
+The create-only schema rejects lifecycle instructions such as `action: update`, `operation: reconcile`, and `delete: true`. It also prohibits credential references in the enrollment request, as well as raw tokens, keys, certificates, keystores, and profiles. Do not add a vault path, secret ID, credential URL, or a guessed credential-binding field. Platform-owned automation resolves approved bindings outside this request.
+
+`repo_url` must be a credential-free repository URL. Access-group names are governed access assignments, not credential bindings.
 
 ## 5. Create the request branch from configuration `develop`
 
@@ -890,7 +911,14 @@ git switch -c "$MOBILE_REQUEST_BRANCH"
 
 If the branch setup differs or fast-forward fails, investigate before continuing. Do not overwrite local work or force-reset a configuration branch.
 
-Add **one intended request YAML** at the confirmed path. Use the current validator command documented in that repository, with its exact supported arguments. Record the command, validator version/revision where available, and result. A guessed validator script would not be a safe copy-ready example, so none is invented here.
+Add **one intended request YAML** at the lowercase contract path. The latest kit supplies these local checks, run from the configuration repository with its approved tooling already prepared:
+
+```bash
+npm test
+npm run lint
+```
+
+Run both and record their command, configuration-repository revision, and results. Use any additional request-specific validator required by that checkout. These commands validate configuration tooling; they are separate from app-source tests. If either script is missing, report the contract mismatch rather than inventing a replacement or treating validation as passed.
 
 ### What validation must establish
 
@@ -900,7 +928,12 @@ Under the supplied governed enrollment model, pre-merge checks inspect:
 - Request schema and allowed input values.
 - Approved template/version and platform compatibility.
 - Forbidden secret content, private keys, and certificates.
-- Other repository-defined access and create-only constraints.
+- Rejection of lifecycle mutation fields and credential references.
+- Read-only repository accessibility and remote source-branch existence checks in the CI runner.
+- Entropy/secret scanning alongside schema and content checks.
+- Other repository-defined access constraints.
+
+A local pass does not establish CI runner connectivity. Secret scanning is a required gate, not a guarantee that every possible secret is detected; review staged content as well.
 
 A generic YAML parser can confirm syntax; it cannot establish these policy conditions. `.gitignore` and `git diff --check` are also not substitutes for the request validator or secret checks.
 
@@ -1020,7 +1053,7 @@ Check whether the result establishes:
 
 | Area | Evidence to inspect |
 | :--- | :--- |
-| **App creation and source connection** | Correct new resource identity, repository, and source branch. |
+| **App creation and source connection** | Correct new resource identity, repository, source branch, read-only deploy-key binding, and approved webhook registration. |
 | **Template and access** | Approved attached template/version and intended access groups. |
 | **Protected inputs** | Required credential/signing bindings without exposing secret values. |
 | **Builds** | Correct applicable workflows and source revisions. |
@@ -1075,7 +1108,7 @@ Keep evidence in the approved internal location. A safe summary should be suffic
 ## Completion checklist
 
 - [ ] This is a new, uniquely identified app with no existing enrollment to reuse.
-- [ ] Canonical path casing and the current validator command are confirmed.
+- [ ] Lowercase contract path is used; configuration `npm test` and `npm run lint` results are recorded.
 - [ ] Request filename/team directory match the supplied identity fields.
 - [ ] Source branch and template version satisfy the approved catalog contract.
 - [ ] Request contains no secrets, certificates, or signing material.
@@ -1088,10 +1121,15 @@ Keep evidence in the approved internal location. A safe summary should be suffic
 
 **Next: [Pipelines & Four Build Routes](../bitrise-pipelines/)** — understand the approved workflows and how they execute against enrolled source.
 
+================================================================================
+END FILE: gitops-enrollment.mdx
+================================================================================
 
--------------------------
 
-
+================================================================================
+PAGE 04 OF 10 — FILE: bitrise-pipelines.mdx
+BEGIN FILE
+================================================================================
 
 ---
 title: Bitrise Pipelines & Four Governed Build Routes
@@ -1183,6 +1221,8 @@ A route name is not automatically a Gradle task, Xcode scheme, or top-level YAML
 
 Record non-applicable routes accurately for native-only apps. React Native builds still produce separate Android and iOS outputs. A QA success does not establish UAT completion or authorize public production release.
 
+The latest kit specifies signed private **APK** outputs for both Android QA/UAT routes and private **IPA** outputs for both iOS routes. An AAB intended for Google Play is a separate artifact/destination contract, not a replacement for the kit's private APK output.
+
 ### Resolve triggers explicitly
 
 Confirm the approved event, repository, branch/ref, route mapping, permissions, and duplicate-trigger handling. Distinguish:
@@ -1191,7 +1231,7 @@ Confirm the approved event, repository, branch/ref, route mapping, permissions, 
 - An application PR that runs validation.
 - An approved source push, tag, or authorized action that starts a build/delivery route.
 
-The source material does not establish a complete current event-to-route mapping for all four governed routes. Keep that mapping tied to the approved catalog; do not copy the draft's `develop`/`staging`/`main` production trigger table as the governed route contract.
+The latest kit establishes a recurring distribution worker that monitors the designated source branch for successful builds after enrollment. It does not specify the polling/event implementation, timing, or a complete event-to-route mapping. Keep those details tied to the approved catalog; do not copy the draft's `develop`/`staging`/`main` production trigger table as the governed route contract. The worker reuses existing enrollment and reconciles its durable checkpoint before continuing after interruption.
 
 ## 4. Select the appropriate runner
 
@@ -1499,11 +1539,15 @@ Measure performance before claiming savings: include baseline, sample size, work
 
 **Next: [PR, Testing & Security Gates](../quality-and-security-gates/)** — enforce Danger, test/coverage, device, and assessment results before progression.
 
+================================================================================
+END FILE: bitrise-pipelines.mdx
+================================================================================
 
 
-
-------------------
-
+================================================================================
+PAGE 05 OF 10 — FILE: quality-and-security-gates.mdx
+BEGIN FILE
+================================================================================
 
 ---
 title: PR, Testing & Security Gates
@@ -1975,11 +2019,15 @@ it('warns rather than claiming coverage when tests did not change', () => {
 
 **Next: [Protected Signing & Credentials](../signing-and-credentials/)** — bind signing material through authorized platform automation and verify the artifact signatures.
 
+================================================================================
+END FILE: quality-and-security-gates.mdx
+================================================================================
 
 
-
------------------------
-
+================================================================================
+PAGE 06 OF 10 — FILE: signing-and-credentials.mdx
+BEGIN FILE
+================================================================================
 
 ---
 title: Protected Signing & Credentials
@@ -2031,6 +2079,8 @@ Before changing a build, record:
 QA/UAT labels do not uniquely determine a certificate type or iOS export method. Use the approved route contract, not a universal `app-store` export setting.
 
 **Required internal inputs:** the actual signing inventory, binding API/worker contract, per-route profile/certificate map, and rotation runbook were not supplied in full. Examples below explain supported mechanisms; they do not invent those internal values.
+
+Enrollment YAML also rejects **credential references**, not only secret values. Vault paths, secret IDs, and credential URLs belong to the protected platform binding mechanism, not the developer request. Workflow variables in this page describe that separate authorized execution boundary.
 
 ## 3. Keep private inputs inside the protected execution boundary
 
@@ -2313,10 +2363,15 @@ Use synthetic fixtures or approved test identities for development of verificati
 
 **Next: [Delivery & Release Evidence](../delivery-and-verification/)** — verify destination ingestion, publication state, audience assignment, and exact-version access.
 
+================================================================================
+END FILE: signing-and-credentials.mdx
+================================================================================
 
----------------------
 
-
+================================================================================
+PAGE 07 OF 10 — FILE: delivery-and-verification.mdx
+BEGIN FILE
+================================================================================
 
 ---
 title: Delivery & Release Evidence
@@ -2420,6 +2475,18 @@ flowchart TB
 </MermaidZoom>
 
 This reflects the supplied internal distribution journey. Confirm actual operation ordering and prerequisites against the integration contract. Do not assume its signing sequence is the same as a store's processing sequence.
+
+### Provisional Upload Checkpoint
+
+The latest kit names an uploaded artifact that is not yet signed or enabled a **Provisional Upload Checkpoint**. Record the confirmed upload identity and the remaining signing/enablement work. This is incomplete delivery, never a released version. If assignment or intended-user visibility is still missing later, delivery also remains incomplete.
+
+### Recurring distribution and durable checkpoints
+
+The kit describes a background worker for subsequent successful builds on the enrolled `source_branch`. It reuses the existing application and progresses the candidate through the remaining verification milestones without replaying enrollment.
+
+The durable cursor must associate progress with the exact application, source/build, route, and destination candidate. On restart, inspect the last verified checkpoint and reconcile any uncertain in-flight operation read-only before continuing. Do not reset the cursor or repeat upload because a response was lost. A checkpoint records verified progress; it does not prove that an interrupted operation had no effect.
+
+The internal cursor schema, concurrency/ownership mechanism, worker implementation, and readback adapters were not supplied. This page documents the required behavior without claiming those controls were exercised.
 
 ### Readback and user verification
 
@@ -2651,9 +2718,9 @@ Report that run as **partial failure**, preserving the confirmed Android outcome
 An upload timeout may occur after the destination accepted the artifact. Under the supplied one-write rule:
 
 1. Preserve the artifact, hashes, source/build identities, correlation data, and confirmed route outcomes.
-2. Do not repeat upload, recreate app/version records, replay enrollment, or replace credentials blindly.
+2. Do not repeat the uncertain upload, recreate app/version records, replay enrollment, or replace credentials as a guessed repair.
 3. Have the authorized owner reconcile through supported read-only queries and audit evidence.
-4. Wait for the reviewed recovery decision before another mutation.
+4. Resume only the reviewed remaining work from verified state; do not interpret recovery approval as permission to repeat the uncertain mutation.
 
 A negative read during processing may be inconclusive. Reusing the same filename or version number does not itself make a retry safe. See [Troubleshooting & Safe Recovery](../troubleshooting-and-recovery/).
 
@@ -2690,10 +2757,15 @@ Use approved test destinations and identities for integration verification. A mo
 
 **Next: [Troubleshooting & Safe Recovery](../troubleshooting-and-recovery/)** — diagnose failures while preserving resources and confirmed outcomes.
 
+================================================================================
+END FILE: delivery-and-verification.mdx
+================================================================================
 
 
-
---------------------------
+================================================================================
+PAGE 08 OF 10 — FILE: troubleshooting-and-recovery.mdx
+BEGIN FILE
+================================================================================
 
 ---
 title: Troubleshooting & Safe Recovery
@@ -2710,7 +2782,7 @@ import MermaidZoom from '../components/mermaid-zoom.astro';
 
 Investigate the **exact failed operation**, not just the final red build status. A workflow can fail after it created an app, signed an artifact, uploaded a version, or completed another route successfully.
 
-The supplied **one-write rule** is the recovery boundary: automation attempts an external mutation at most once in its normal execution. After a timeout or ambiguous response, stop, preserve state, and perform approved **GET-only reconciliation** before any further mutation is authorized.
+The latest kit's **one-write rule** is the recovery boundary: an external mutation is attempted at most once. After a timeout, transient 5xx, or ambiguous response, stop, preserve state, and perform approved **GET-only reconciliation**. Do not retry the uncertain mutation or replay enrollment. Further work must use verified existing state and the reviewed remaining scope.
 
 **Outcome:** the failure is localized, completed work is preserved, the authoritative state is established as far as evidence permits, and the next action has an owner and reviewed authorization.
 
@@ -2810,7 +2882,9 @@ Follow the provider's documented bounded observation and the internal reconcilia
 
 ## 4. Make the recovery decision explicit
 
-The supplied master guide permits controlled retry **after absence is established**. The workshop requires a reviewed recovery procedure and prohibits blind reruns. Apply both requirements: establish authoritative state first, then obtain authorization for the exact recovery action.
+The older master guide permits controlled retry after absence is established; the latest **Enterprise Mobile Build & Release Kit** instead states that uncertain enrollment mutations are never retried. These statements conflict. This documentation follows the latest, stricter no-retry rule for uncertain writes. An absence result is evidence for owner review, not permission to repeat the original mutation.
+
+Resume remaining work only after readback confirms the state and the owner approves that exact scope. Use the durable worker checkpoint; preserve confirmed resources and do not reset progress or replay completed operations. Any proposal to change the no-retry policy requires an explicit policy-owner resolution outside this runbook.
 
 The following helper expresses a documentation-level decision. It does not perform readback, prove absence, authorize a user, or execute a retry.
 
@@ -2863,7 +2937,7 @@ export function recoveryDecision(
 
 `recoveryAuthorized` represents a decision already verified through the approved authority, not a command-line bypass. `absenceConclusive` must reflect the actual service contract and evidence. These fields are example-owned normalized inputs, not vendor response fields.
 
-A present result still needs identity, completeness, and ownership checks before it is adopted. Authorization may prescribe an action other than repeating the original mutation. A newly uncertain recovery attempt must stop for reconciliation again; this helper is not a retry loop.
+A present result still needs identity, completeness, and ownership checks before it is adopted. Authorization must prescribe a permitted recovery action; it does not authorize repetition of the uncertain original mutation. A newly uncertain recovery attempt must stop for reconciliation again; this helper is not a retry loop.
 
 ## 5. Diagnose the failing layer
 
@@ -3012,7 +3086,7 @@ A support request is not approval to rerun. Record the explicit authorized next 
 | Resource remains pending | Bounded observation or escalation, not repeated upload. |
 | Absence is non-authoritative or not conclusive | Do not authorize another write from that observation. |
 | Conclusive authoritative absence without recovery approval | Request reviewed recovery. |
-| Conclusive absence with validated approval | Follow only that authorized recovery scope. |
+| Conclusive absence with validated approval | Follow only permitted owner-reviewed recovery; never infer permission to retry the uncertain mutation. |
 | One route already verified | Its resources and evidence remain intact. |
 | Recovery attempt becomes uncertain | Stop again and reconcile; do not loop blindly. |
 | Credential exposure | Incident handling occurs without spreading the secret. |
@@ -3035,10 +3109,15 @@ Test the decision helper with synthetic records; verify actual read-only adapter
 
 **Next: [Platform Operations & MCP](../platform-operations/)** — understand platform-owned administration and governed integration access.
 
+================================================================================
+END FILE: troubleshooting-and-recovery.mdx
+================================================================================
 
 
-----------------------------
-
+================================================================================
+PAGE 09 OF 10 — FILE: platform-operations.mdx
+BEGIN FILE
+================================================================================
 
 ---
 title: Platform Operations & Bitrise MCP
@@ -3095,7 +3174,7 @@ An unexpected public exposure requires containment and escalation under the inci
 
 ## 3. Inspect source access and event routing
 
-The source material describes a dedicated read-only source deploy key or other approved source integration. Confirm its actual permission and ownership rather than assuming all generated credentials are read-only.
+The latest kit specifies automated read-only SSH deploy-key registration and Bitrise webhook attachment during enrollment. Verify the generated key's effective read-only permission, repository association, and platform ownership. An alternative integration requires an explicitly approved contract; do not assume its permissions match a deploy key.
 
 For event routing, verify:
 
@@ -3110,6 +3189,10 @@ Do not copy a private webhook URL into this page or assume a blank webhook secre
 Inspect existing delivery evidence before sending a test event. An event may start external writes through its configured route; a “test webhook” is not necessarily a read-only operation.
 
 **Attach screenshot — sanitized event delivery and matched workflow/commit, with webhook secrets and private URLs hidden.**
+
+### Verify recurring worker recovery
+
+For later successful source builds, the kit's recurring distribution worker must retain a durable milestone cursor, reuse the existing app, and continue only from verified state. Inspect its candidate/route association and reconcile interrupted writes before resuming remaining work. Restarting a worker must not replay enrollment or duplicate upload. The internal state-store and concurrency contracts still require operator verification; see [Delivery & Release Evidence](../delivery-and-verification/).
 
 ## 4. Maintain templates through reviewed releases
 
@@ -3328,14 +3411,19 @@ Before publishing a copy-ready connection for your environment, obtain the appro
 
 **Next: [Workshop Walkthrough](../workshop-walkthrough/)** — practise the governed journey and record what each applicable route actually achieved.
 
+================================================================================
+END FILE: platform-operations.mdx
+================================================================================
 
--------------
 
-
+================================================================================
+PAGE 10 OF 10 — FILE: workshop-walkthrough.mdx
+BEGIN FILE
+================================================================================
 
 ---
 title: Workshop — Mobile Build & Release Automation
-description: Practise application preparation, secret-free enrollment, protected promotion, live-apply inspection, and evidence-based route verification.
+description: Follow the Enterprise workshop from a new React Native repository to reviewed enrollment, protected provisioning, and verified distribution, with commands and checkpoints.
 sidebar:
   label: Workshop Walkthrough
   order: 10
@@ -3345,68 +3433,46 @@ import MermaidZoom from '../components/mermaid-zoom.astro';
 
 # Workshop — Mobile Build & Release Automation
 
-Practise the governed journey for a **new React Native application**: generate source, publish a separate private repository, submit one enrollment request, complete validation and promotion, inspect live apply, and verify the actual distribution outcomes.
+This workshop teaches you how to take a **new React Native application** through the Enterprise build and distribution process. You will prepare its source, request enrollment in YAML, review the validation results, follow protected promotion, and check what actually reached users.
 
-This walkthrough consolidates the supplied company workshop. Detailed commands and authoritative implementation guidance remain in the linked CI/CD pages rather than being duplicated here.
+You will work in **two different repositories**. Keep them separate throughout the exercise:
 
-**Main output:** a reviewed request and an evidence-backed result for every applicable route. Compilation alone is not a completed release.
-
-> **Confidential — internal use only.** Use an approved isolated test application and permitted test data. Keep tokens, passwords, signing files, private keys, private artifact URLs, and raw sensitive logs out of requests, PR text, screenshots, prompts, and shared workshop notes. Store temporary work inside the project folder, such as `.tmp/workshop/`, as required by the supplied workshop.
-
-## 1. Choose live practice or read-only review
-
-| Mode | What participants do | External effects |
+| Repository | What you put there | Branch meaning |
 | :--- | :--- | :--- |
-| **Live exercise** | Create an isolated source app and submit a reviewed new enrollment under the facilitator's approved scope. | The protected merge can create resources, start builds, and initiate distribution. |
-| **Read-only reference review** | Inspect the approved historical evidence and explain what each outcome establishes. | No new app, build, upload, signing change, or publication is requested. |
+| **Your application repository** | Generated React Native code, Android/iOS projects, tests, and application configuration. | The selected catalog entry defines which source branch the build uses. |
+| **Platform configuration repository** | One secret-free YAML request describing the new app. | Request PR goes to `develop`; reviewed promotion goes from `develop` to protected `main`. |
 
-Before a live exercise, the facilitator confirms the target workspace, environment, unique app identity, repository ownership, audience, access groups, and authorized operators. Reading this page is not authorization to create resources in any arbitrary environment.
+The application template generates the first repository's files. The approved workflow catalog describes the build template selected by the request. Neither is the same as your generated application's source repository.
 
-If external queues or unavailable permissions prevent completion, use the reference evidence to complete the learning objectives. Record what was not executed; do not force a rerun or bypass a gate to finish within the session.
+**By the end:** you should be able to explain which app was requested, which source was built, which routes were distributed, and which results remain incomplete. A green build alone does not complete the exercise.
 
-## 2. Learning objectives
+> **Confidential — internal use only.** Use approved test data and an isolated workshop app. Keep credentials, private keys, signing files, private artifact links, and unredacted logs out of Git, PRs, screenshots, and shared notes. Replace organization names with **Enterprise** in reusable material. Keep temporary work inside the project, for example `.tmp/workshop/`.
 
-By the end, participants can:
+## Before you begin
 
-- Distinguish the template generator, generated source repository, configuration repository, provisioning engine, and workflow catalog.
-- Prepare the source branch and record its exact commit.
-- Select an approved template/version and author a secret-free request.
-- Explain local validation, Vela PR preview, review, promotion, and protected live apply as separate boundaries.
-- Find the correct apply and Bitrise executions using recorded identities.
-- Distinguish build success, downstream signing, publication, assignment, and exact-version user visibility.
-- Preserve confirmed outcomes and escalate partial or unknown results safely.
+Complete the macOS Apple Silicon [Machine Setup](/mobile/onboarding/machine-setup-guide/) and [First Local Run](/mobile/onboarding/first-local-run/) relevant to your work. Installation is covered there.
 
-## 3. Roles and prerequisites
+Ask the facilitator to confirm these workshop inputs before creating anything:
 
-| Role | Workshop responsibility |
+| Input | Why you need it |
 | :--- | :--- |
-| **Request author / participant pair** | Prepare source, author one request, run local validation, and record evidence. |
-| **Reviewer** | Inspect the intended request and promotion, including access and current-revision checks. |
-| **Platform Engineering** | Perform the authorized protected merge, inspect provisioning, and own recovery decisions. |
-| **Vela operator** | Inspect validation/apply through the approved VPN/access path and share sanitized results. |
-| **Facilitator** | Confirm exercise scope, coordinate roles, and distinguish observed results from assumptions. |
-| **Intended tester/user** | Verify the correct environment and exact version through the authorized user endpoint. |
+| Unique test app name and approved private repository location | Prevents accidental reuse of an existing app or the historical canary. |
+| Approved generator command/version and template package/version | Produces the supported application layout. |
+| Approved catalog entry and exact version | Defines source requirements, native targets, and build route applicability. |
+| Configuration repository and owning team | Determines where the enrollment request belongs. |
+| Intended workspace, environment, access groups, and audience | Keeps provisioning and distribution within the exercise scope. |
+| Reviewer, Platform Engineering contact, and authorized Vela operator | Provides the people needed at each review and live-operation boundary. |
 
-Confirm required access to source control, the approved React Native template and private registry, configuration/catalog repositories, Bitrise, App Management, and Vela through the approved operator. Participants need only the permissions their role requires.
+Access to Vela may require the approved VPN path. An authorized operator can inspect Vela for participants who do not have that access. Participants do not need production signing keys or store-administrator permissions.
 
-Workstation setup and the first local run belong in [Onboarding](/mobile/onboarding/). Store account/listing preparation and user installation requirements belong in **App Store & Distribution**.
+Choose the mode with the facilitator:
 
-## 4. Suggested session plan
+- **Live exercise:** create a new isolated source app and submit a reviewed request. The protected merge can create external resources, start builds, and begin distribution.
+- **Read-only exercise:** inspect the historical evidence and explain each outcome. Do not submit a request, trigger a build, or claim a new deployment was performed.
 
-The supplied workshop uses a **180-minute facilitated session, plus external build time**. These are planning slots, not service-level guarantees.
+The original workshop allocates **180 minutes plus external build time**. Queues may extend the session. If a prerequisite is missing, record the blocker and continue with read-only learning where possible.
 
-| Minutes | Activity | Evidence/output |
-| :--- | :--- | :--- |
-| 0–15 | Confirm scope, roles, and system boundaries. | Approved exercise target and mode. |
-| 15–45 | Generate and publish the isolated application. | Source repository, branch, and exact commit. |
-| 45–75 | Prepare and validate one request. | Request file and local validation result. |
-| 75–90 | Review the request and Vela preview. | Exact PR revision, checks, and sanitized preview. |
-| 90–100 | Break. | Preserve current progress. |
-| 100–120 | Promote the reviewed request. | Promotion review and protected merge identity. |
-| 120–160 | Inspect apply, builds, and distribution. | Actual evidence for each applicable route. |
-| 160–180 | Review partial failures and close. | Accurate route outcomes, blockers, and safe next action. |
-
-## 5. Trace the exercise boundaries
+## Follow the journey
 
 <MermaidZoom title="Workshop path: generation and review precede the live boundary">
 
@@ -3438,177 +3504,444 @@ flowchart TB
 
 </MermaidZoom>
 
-## 6. Exercise: generate and publish the source application
+The local checks and PR preview are validation steps. The protected configuration merge is the boundary that can start **live provisioning**.
 
-Follow [Prepare Your Repository](../repository-readiness/) for the implementation steps.
+## Step 1 — Create an empty private source repository
 
-1. Create a separate empty private repository in the approved organization. The supplied exercise begins without a README.
-2. Open the approved React Native template README and follow its current registry/setup instructions. Keep authentication in the approved credential store.
-3. Generate a unique application through the approved template workflow in a project-local working directory.
-4. Enter the generated application directory and verify expected files, including `package.json`, Android native build files, and iOS dependency/project configuration.
-5. Review and publish the generated source to the branch required by the selected catalog entry.
-6. Confirm the source in the repository UI and record the repository, branch, and exact commit.
+**You are working in:** the Enterprise source-control interface.
 
-Do not run the historical workshop generator's `@latest` command merely because it appears in the photograph. Use the approved generator/version contract for this exercise. The historical source branch and React Native version are evidence of that run, not current defaults.
+1. Create a new private repository in the location approved by the facilitator.
+2. Use the unique workshop repository name agreed for your application.
+3. Follow the workshop's empty-repository setup: do not initialize it with a README.
+4. Record its credential-free clone URL in your approved workshop notes.
+5. Confirm with the facilitator that the intended app identity is not already enrolled in Bitrise.
 
-**Expected result:** an isolated private repository contains the generated application and the intended source branch. Record any local build or readiness blocker separately.
+**Why:** the generator will create the application files locally. An empty remote lets you publish that generated history without first resolving an unrelated initial commit. The workshop uses a separate repository for each participant or pair so that requests do not collide.
 
-**Attach screenshot — generated source in the private repository and intended branch, with sensitive identifiers redacted.**
+**Check before continuing:** the repository is private, you can access it, and it belongs to the approved exercise location. You have not manually created a Bitrise app.
 
-## 7. Exercise: author and validate one request
+**Attach screenshot — empty private repository, with organization/account details and sensitive identifiers redacted.**
 
-Follow [Enrollment, Validation & Protected Promotion](../gitops-enrollment/) for the source-backed request YAML and review procedure.
+## Step 2 — Generate the application from the approved template
 
-1. Inspect the current catalog and select an exact version approved for new enrollment.
-2. Confirm its source requirements, platform compatibility, external configuration, and route applicability.
-3. Create a request branch from configuration `develop`.
-4. Establish the canonical request path casing from the maintained validator and owner. The supplied uppercase/lowercase path conflict must be resolved before adding the file.
-5. Add one request whose filename matches `app_name` and team directory matches `team`.
-6. Run the current documented validator and record its actual command/result.
-7. Open the request PR to `develop`; inspect its full diff and record the exact head commit.
+**You are working in:** a project-local working directory on your Mac.
 
-Use the YAML structure on the enrollment page. Do not reuse the historical canary's identity, source URL, access group, or template version. Review access-group membership and intended permissions before live apply.
+1. Open the approved React Native template README.
+2. Follow its registry-access instructions. Store authentication only through the approved credential mechanism.
+3. Copy the generator command approved for the exercise. Use its approved CLI version, application name, template package, and template version.
+4. Run it from the chosen parent directory, then enter the newly generated application directory.
 
-**Expected result:** local validation passes for the intended request and a reviewable PR exists. This does not prove provider access or that a Bitrise app can be created.
+The workshop recording shows this **command shape**. Replace every placeholder with the README's approved values before running it:
 
-The canonical request path casing and exact validator command remain unresolved in the supplied material. If the facilitator cannot establish them through the approved source/owner, stop the dependent live steps and use read-only review instead.
-
-## 8. Exercise: review and promote
-
-1. Have the authorized Vela operator inspect the PR build through the approved access path.
-2. Match validation and the sanitized preview to the current PR revision.
-3. Compare app identity, source branch, approved template/version, and access groups with the request.
-4. Wait for pending checks and obtain required review before merging to `develop`.
-5. Open the promotion PR from configuration `develop` to protected `main`.
-6. Review its complete diff, including any accumulated requests, and record its head/check/review evidence.
-7. Platform Engineering completes the authorized protected merge under the repository's rules.
-8. Record the actual resulting merge commit and the associated live-apply execution.
-
-**Expected result:** request review, promotion review, checks, and the protected merge are recorded separately. The protected `main` push can start live provisioning; it is not merely a preview.
-
-Do not bypass checks to fit the workshop schedule. A bypass is an administrative decision and does not make a pending or failed check pass.
-
-**Attach screenshot — sanitized Vela preview and protected promotion evidence associated with their exact revisions.**
-
-## 9. Exercise: inspect live apply and builds
-
-Ask the operator to inspect the protected-merge execution. Record execution reference, configuration commit, correlation identity, reported mode/status, completed steps, failed route, and the prescribed next action.
-
-Inspect the following through the approved evidence path:
-
-| Area | Questions to answer |
-| :--- | :--- |
-| **Provisioning** | Was the intended app created and connected to the correct source? |
-| **Template/access** | Were the approved version and reviewed groups applied? |
-| **Protected inputs** | Are required bindings established without exposing their values? |
-| **Build execution** | Which route ran and which source commit did it actually use? |
-| **Artifacts** | Are the intended private outputs identified and validated? |
-| **Distribution** | What signing, enablement, assignment, and visibility evidence exists? |
-
-Use [Pipelines & Build Routes](../bitrise-pipelines/), [Quality & Security Gates](../quality-and-security-gates/), and [Signing & Credentials](../signing-and-credentials/) to interpret the operations.
-
-Do not download or share private artifact URLs merely to demonstrate progress. Inspect only the artifacts and evidence your role is authorized to access.
-
-**Expected result:** provisioning and route evidence are distinguished. “App created” and “build passed” are not substituted for “published and verified.”
-
-## 10. Exercise: verify as an intended user
-
-Follow [Delivery & Release Evidence](../delivery-and-verification/).
-
-1. Match the exact enrolled app, source, route, and build.
-2. Use the approved App Management user endpoint/catalog for the intended environment and audience.
-3. Confirm app identity and the exact intended version/build, not just a familiar app name.
-4. Record signing, enabled state, assignment, and user visibility only when supported by evidence.
-5. Compare those observations with the Vela apply summary and investigate discrepancies.
-6. Record installation/launch separately if required by the exercise acceptance criteria.
-
-If a route is unconfirmed, mark it **unknown** or its actual documented status. Do not infer either UAT result from QA Android success or infer signing/publication from a passed iOS build.
-
-**Attach screenshot — intended user's catalog with the exact version visible, with identity and private links redacted.**
-
-## 11. Study the historical reference result
-
-The supplied workshop uses a canary execution from **28 October 2026**. The table below records that historical evidence without reproducing private repository, PR, app, or build identifiers.
-
-| Evidence area | Observed historical result | What it means |
-| :--- | :--- | :--- |
-| **Request validation** | Vela PR validation passed. | The request revision passed that validation execution. |
-| **Protected apply** | App creation and private artifact verification completed; apply reported `partial_failure`. | Provisioning progress did not establish complete delivery. |
-| **QA Android** | Distribution signing, enablement, assignment, and latest-version user visibility were confirmed. | This route had confirmed distribution evidence for that run. |
-| **QA iOS** | Bitrise build passed; App Management signing failed with `distribution_signing_failed`. | Build success did not establish downstream signing/publication. |
-| **UAT Android and iOS** | Publication was not confirmed in the apply result. | Do not report UAT delivery as successful. |
-| **Recovery** | Reconcile QA iOS while preserving QA Android publication. | Recover the unresolved scope without recreating confirmed resources. |
-
-The iOS issue was accepted as known for the exercise, but its root cause was not established. Do not convert that statement into a diagnosis or a universal certificate-replacement instruction.
-
-This record does not establish current platform health, approval of the historical template version, or permission to retry the existing canary. Use internal evidence references only within their approved access context.
-
-## 12. Practise the partial-failure decision
-
-When an operation reports partial failure or an unknown external outcome:
-
-1. Stop and preserve the app, source access, signing material, destination applications/versions, artifacts, and completed route evidence.
-2. Do not reenroll, replay the protected merge, or repeat an upload/route blindly.
-3. Identify the exact failed operation and completed steps from sanitized evidence.
-4. Ask Platform Engineering to reconcile authoritative state through supported read-only operations and the available audit trail.
-5. Follow the reviewed recovery decision and record its outcome.
-
-See [Troubleshooting & Safe Recovery](../troubleshooting-and-recovery/) for the full procedure. A single missing readback may be inconclusive. The workshop does not authorize deletion, credential replacement, or another external write as an assumed repair.
-
-### Discussion questions
-
-- Which operation crossed the first live external-write boundary?
-- Which source commit did each build actually use?
-- What proved QA Android publication beyond compilation?
-- What evidence is missing for QA iOS and UAT?
-- Why would another create-only request be unsafe?
-- Which owner can authorize the next action, and what state must be reconciled first?
-
-## 13. Record the exercise outcome
-
-Use this documentation-owned template in the approved internal location. It is not a platform API schema.
-
-```markdown
-# Mobile CI/CD Workshop Outcome
-
-- Exercise mode: live / read-only reference review
-- Facilitator, participant roles, and approved scope:
-- Source repository, required branch, and actual commit:
-- Approved template/version and compatibility:
-- Confirmed canonical request path:
-- Local validator command/result:
-- Request PR head, checks, and review result:
-- Promotion review and protected merge commit:
-- Live-apply reference, correlation identity, and status:
-- Actual build/source identity for each applicable route:
-- QA Android outcome and evidence:
-- QA iOS outcome and evidence:
-- UAT Android outcome and evidence:
-- UAT iOS outcome and evidence:
-- Required steps not executed or still unknown:
-- Preserved resources and recovery/escalation action:
-- Owner of each remaining blocker:
+```bash
+MOBILE_RN_CLI_VERSION='REPLACE_WITH_APPROVED_CLI_VERSION'
+MOBILE_PROJECT_NAME='REPLACE_WITH_VALID_UNIQUE_PROJECT_NAME'
+MOBILE_TEMPLATE_SPEC='REPLACE_WITH_APPROVED_TEMPLATE_PACKAGE_AND_VERSION'
+npx "@react-native-community/cli@$MOBILE_RN_CLI_VERSION" init "$MOBILE_PROJECT_NAME" \
+  --template "$MOBILE_TEMPLATE_SPEC"
+cd "$MOBILE_PROJECT_NAME"
 ```
 
-Do not replace unknowns with optimistic statements. A read-only participant records understanding of the reference evidence, not a newly verified live release.
+These `MOBILE_...` variables are local example inputs, not platform-provided variables. Follow a different command if the approved README requires it. Do not copy the photograph's historical `@latest` selection as a current version policy.
 
-## Completion checklist
+**Why:** the template repository contains the generator; its root is not the application that Bitrise should build. Your generated folder must contain the actual application.
 
-- [ ] The mode, roles, environment, audience, and live boundary were agreed before execution.
-- [ ] Generated source, branch, and commit are identified separately from the template repository.
-- [ ] Current catalog approval and actual request path/validator are established for live work.
-- [ ] The request contains no secrets and only intended access assignments.
-- [ ] Local validation, PR checks, request review, and promotion evidence are recorded separately.
-- [ ] The protected merge is linked to the actual apply and build identities.
-- [ ] Every applicable route has an evidence-backed result or is explicitly unknown/not executed.
-- [ ] Historical canary evidence is labelled historical and not reused as a create request.
-- [ ] Partial failures preserve successful work and have an owner-approved next action.
-- [ ] Participants can explain what was actually distributed and what remains unverified.
+**Check before continuing:** inspect the generated files. The photographed workshop template checks for:
 
-**Continue:** return to the relevant implementation page for unresolved work. Use **Support & FAQ** and the approved Teams channel for help, with sanitized evidence and a clear requested decision.
+```text
+package.json
+android/gradlew
+android/app/build.gradle
+ios/Podfile
+```
 
+Use the actual approved layout. Some projects use `build.gradle.kts` or a different module layout. Review a difference against the template instructions rather than creating empty files to satisfy this list.
 
+If generation or registry access fails, stop and resolve that failure. Do not publish an incomplete app or put a registry token in the repository to make access work.
 
+## Step 3 — Verify local readiness and publish the source
 
+**You are working in:** the generated application directory.
 
+1. Complete the generated README's dependency and local configuration steps.
+2. Run the actual configured checks. For the established npm script contract:
 
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run test:coverage
+```
+
+3. Run the applicable Android and iOS checks from [Repository Readiness](../repository-readiness/). JavaScript checks alone do not establish native build readiness.
+4. Inspect Git before committing:
+
+```bash
+git status --short --branch
+git remote -v
+```
+
+Review the files and any staged changes locally. Exclude credentials and signing material. If the generator did not initialize Git or create an initial commit, follow its README to initialize and review the first commit. Do not assume that generation already committed everything.
+
+5. Publish to the **application source branch required by the selected catalog entry**. The historical workshop used `development`; this is not a universal branch default.
+
+The following commands apply only if the generated app already has a Git commit and has **no existing `origin`**:
+
+```bash
+MOBILE_SOURCE_BRANCH='REPLACE_WITH_CATALOG_REQUIRED_SOURCE_BRANCH'
+MOBILE_REPO_URL='REPLACE_WITH_APPROVED_PRIVATE_REPOSITORY_URL'
+git switch -c "$MOBILE_SOURCE_BRANCH"
+git remote add origin "$MOBILE_REPO_URL"
+git push --set-upstream origin "$MOBILE_SOURCE_BRANCH"
+```
+
+If the intended branch or remote already exists, inspect and use it instead of repeating creation commands. Do not reset existing work.
+
+6. Record the published identity:
+
+```bash
+git branch --show-current
+git rev-parse HEAD
+git ls-remote origin "refs/heads/$MOBILE_SOURCE_BRANCH"
+```
+
+Open the repository in the source-control interface and confirm the application files are present on that branch. Compare the intended local commit with the remote branch result. Resolve a mismatch before claiming that the prepared source was published.
+
+**Why:** the enrollment request points to a repository and branch. If your files only exist on your Mac, the build runner cannot build them.
+
+**Check before continuing:** record the source repository, required branch, exact published commit, local check results, and any blocker. Never label a failed or unexecuted check as passed.
+
+**Attach screenshot — generated application files on the intended source branch, with sensitive details redacted.**
+
+## Step 4 — Select the approved build template
+
+**You are working in:** the workflow catalog and your internal workshop notes.
+
+1. Find the catalog entry approved for a new React Native application.
+2. Select an exact approved version. Do not copy a historical version simply because the canary used it.
+3. Read its required source branch, native target configuration, external prerequisites, and route applicability.
+4. Record the selected template ID and version for the request.
+5. Confirm the intended access groups with the facilitator. Check that their membership and permissions are appropriate for this app.
+
+**Why:** the application generator creates source; the workflow template defines how the platform builds and distributes it. Their names and versions have different purposes.
+
+**Check before continuing:** you have a currently approved ID/version and understand what source it expects. If that information is unavailable, stop request preparation at this point rather than guessing a template.
+
+## Step 5 — Prepare a request branch in the configuration repository
+
+**You are now working in:** the platform configuration repository, separate from the application repository.
+
+1. Open or clone the approved configuration repository through the normal internal source-access process.
+2. Verify the checkout and inspect local changes:
+
+```bash
+git rev-parse --show-toplevel
+git status --short --branch
+git remote -v
+```
+
+3. With a clean working tree, create the request branch from current configuration `develop`:
+
+```bash
+MOBILE_REQUEST_BRANCH='REPLACE_WITH_APPROVED_REQUEST_BRANCH'
+git fetch origin
+git switch develop
+git merge --ff-only origin/develop
+git switch -c "$MOBILE_REQUEST_BRANCH"
+```
+
+These commands assume the approved remote is `origin` and local `develop` exists. If either assumption is false, use the repository's documented setup. If fast-forward fails or local work is present, investigate before continuing.
+
+**Why:** your request must follow the configuration review process. Adding YAML to the app repository or pushing directly to protected configuration `main` does not follow that process.
+
+**Check before continuing:** your terminal is in the configuration repository on the intended new request branch.
+
+## Step 6 — Write one secret-free enrollment request
+
+Create this file in the configuration repository:
+
+```text
+config/teams/sample-team/bitrise/apps/sample-mobile-app.yaml
+```
+
+The lowercase path comes from the latest supplied kit. It supersedes the older workshop photograph's uppercase path. Replace `sample-team` and `sample-mobile-app` with the approved values; keep directory and filename identities consistent with the YAML.
+
+```yaml
+app_name: sample-mobile-app
+team: sample-team
+repo_url: "https://git.example.invalid/mobile/sample-mobile-app.git"
+source_branch: "REPLACE_WITH_CATALOG_REQUIRED_SOURCE_BRANCH"
+platform: react-native
+template_id: "REPLACE_WITH_APPROVED_TEMPLATE_ID"
+template_version: "REPLACE_WITH_EXACT_APPROVED_VERSION"
+access_groups:
+  - "REPLACE_WITH_REVIEWED_ACCESS_GROUP"
+optional_users: []
+```
+
+The URL and sample identities above are synthetic. Replace them; this is not a ready-to-submit request.
+
+Read the file line by line before saving:
+
+| Field | What you must put here |
+| :--- | :--- |
+| `app_name` | The unique new app identity. The filename must be this value plus `.yaml`. |
+| `team` | The owning team. The directory under `teams/` must match this value. |
+| `repo_url` | The generated application's approved clone URL, without embedded credentials. |
+| `source_branch` | The branch you published in Step 3 and verified against the catalog. This is not automatically configuration `develop`. |
+| `platform` | `react-native` for this exercise. The kit also defines `android` and `ios` for compatible native enrollments. |
+| `template_id` | The approved workflow catalog entry selected in Step 4. |
+| `template_version` | Its exact approved semantic version, kept as a quoted string. |
+| `access_groups` | Reviewed groups receiving app access. Do not copy the historical group's identity. |
+| `optional_users` | Optional viewer-level user emails under the current schema; leave empty when none are approved. |
+
+Do not add tokens, certificates, keystores, profiles, credential URLs, vault paths, or secret IDs. Platform automation binds credentials separately. The request is create-only: fields such as `action: update`, `operation: reconcile`, and `delete: true` are prohibited.
+
+Record the prepared source commit in your evidence notes; do not invent a `source_commit` YAML field. The supplied request selects a branch, so later steps must still record the commit actually built.
+
+**Check before continuing:** one intended request exists, its names match its path, all placeholders are replaced, access is reviewed, and no secrets or credential references are present.
+
+## Step 7 — Validate locally and open the request PR
+
+**You are working in:** the configuration repository, with its approved tooling already prepared.
+
+Run the kit's checks:
+
+```bash
+npm test
+npm run lint
+```
+
+Run any additional request-specific checks required by that checkout. If a script is absent or a validator disagrees with the latest contract, report the mismatch. Do not invent a replacement script or call validation successful.
+
+If checks fail, read the reported rule and correct the request on this branch. Typical issues include path/name mismatch, unsupported template/version, prohibited fields, and secret content. Run the checks again after corrections.
+
+After successful local validation, inspect and stage only the intended file:
+
+```bash
+MOBILE_REQUEST_FILE='config/teams/sample-team/bitrise/apps/sample-mobile-app.yaml'
+git diff --check
+git status --short
+git add -- "$MOBILE_REQUEST_FILE"
+git diff --cached --stat
+git diff --cached --check
+git diff --cached -- "$MOBILE_REQUEST_FILE"
+```
+
+Replace the sample path first. Review the staged content locally, then commit and publish through the repository's approved process. For example:
+
+```bash
+git commit -m "chore(bitrise): request enrollment for sample mobile app"
+git push --set-upstream origin HEAD
+git rev-parse HEAD
+```
+
+Open a request PR targeting **configuration `develop`**. Include the app/team identity, source branch and recorded commit, selected template/version, reviewed access, and local validation results. Add the required assignee and reviewers.
+
+**Why:** local checks catch problems before review. CI then validates the exact proposed revision using its configured rules, catalog checks, secret scanning, and read-only source/branch access checks.
+
+**Check before continuing:** record the request PR and its exact head commit. A local validation pass does not prove that CI can access the source or that a live app has been created.
+
+## Step 8 — Read the Vela validation and preview
+
+Ask the authorized Vela operator to open the validation execution for your PR through the approved access path.
+
+1. Match its PR identity and commit to the current request head.
+2. Read the actual check result. Pending means wait; failure means fix and revalidate.
+3. Compare the sanitized creation preview with your YAML:
+   - Correct new app and team.
+   - Correct application source repository and branch.
+   - Correct approved template and exact version.
+   - Only the reviewed groups/users.
+4. Confirm this execution is validation/preview, not live apply.
+5. Record the result and sanitized evidence reference.
+
+If you change the PR, repeat these checks for the new head. An earlier green result does not validate the changed request.
+
+**Why:** the preview lets reviewers check what the request describes before protected provisioning. Neither local validation nor this PR preview creates the app.
+
+**Check before continuing:** the current revision has the required checks and review evidence. Complete the approved request merge into `develop` only after repository requirements are met. A bypass does not convert a pending check into a pass.
+
+**Attach screenshot — Vela validation and sanitized creation preview for the exact PR revision.**
+
+## Step 9 — Follow protected promotion from `develop` to `main`
+
+**You are working with:** the reviewer and Platform Engineering in the configuration repository.
+
+1. Open the promotion PR from configuration `develop` to protected `main` through the approved process.
+2. Review the **entire promotion diff**. It may contain changes beyond your request; every promoted change must be intended and authorized.
+3. Record the promotion head, required check results, and required reviews separately from the request PR.
+4. Wait for Platform Engineering to complete the protected merge under current branch rules.
+5. Record the resulting configuration `main` merge commit and identify its live-apply execution.
+
+**Why:** promotion authorizes the platform worker to act on the reviewed configuration. This protected merge can start real app creation, credential binding, builds, and distribution.
+
+Do not merge directly to protected `main` as a participant shortcut. Do not replay the merge because an external result is unclear.
+
+**Check before continuing:** you can link the promoted request to the exact protected merge and live-apply execution. A successful merge is not yet evidence of successful provisioning.
+
+**Attach screenshot — promotion PR, complete diff review, checks, and protected merge evidence, with sensitive content redacted.**
+
+## Step 10 — Inspect what live apply actually completed
+
+Ask the authorized operator to open the apply associated with the protected merge from Step 9. First record its execution reference, correlation ID where provided, mode, overall status, completed steps, failed route, and prescribed next action.
+
+Then inspect each boundary:
+
+| Boundary | What to look for | What you may conclude |
+| :--- | :--- | :--- |
+| App creation | Intended new Bitrise app under Enterprise workspace ownership. | The app resource exists. |
+| Source connection | Correct source repository/branch, approved read-only deploy key, and webhook attachment. | The expected source integration is configured. |
+| Template and access | Selected immutable template/version and reviewed groups/users. | The requested bindings were applied. |
+| Protected credentials | Required platform-owned bindings, without displaying their values. | Required bindings are reported; actual signing still needs its own result. |
+| Build execution | Applicable route, actual source commit, native configuration, and outcome. | That identified workflow passed or failed. |
+| Artifact validation | Intended APK/IPA, non-zero size, identity, and recorded hash. | An identified build artifact exists and has validation evidence. |
+| Distribution | Upload, downstream signing, enablement, audience, and user visibility. | Only the individually confirmed milestones are complete. |
+
+The kit defines private Android **APK** and iOS **IPA** outputs for the QA/UAT routes. Store AAB delivery has a separate contract.
+
+The request selects a source branch, which can move. Compare the actual build commit with your prepared commit. If they differ, identify what was built rather than assuming the earlier source was used.
+
+**Check before continuing:** app creation, build success, and distribution each have separate recorded results. If apply is partial or unknown, go to Step 13 before attempting another operation.
+
+**Attach screenshot — sanitized apply summary and matched Bitrise route/build results.**
+
+## Step 11 — Verify the version as an intended user
+
+**You are working with:** an eligible user/tester and the approved App Management endpoint or catalog.
+
+For **each applicable route**, perform these checks:
+
+1. Select the intended environment and exact app identity.
+2. Match the destination version/build to the identified source/build artifact.
+3. Confirm required downstream signing succeeded. Do not infer it from Bitrise build success.
+4. Confirm the intended version is enabled.
+5. Confirm assignment to the reviewed audience. Do not assign All Users to solve a visibility issue.
+6. Use an authorized intended user's view to confirm that exact version is visible.
+7. Record installation and launch separately when required by the exercise.
+8. Compare your observations with the apply summary. Escalate disagreements instead of choosing the more optimistic result.
+
+An upload awaiting signing or enablement is a **Provisional Upload Checkpoint**, not a release. An enabled version without verified intended-user access is also incomplete.
+
+Use a table like this in your approved notes. Replace every `Unknown` only when evidence establishes the result:
+
+| Route | Actual build commit | Build | Distribution signing | Enabled | Assigned and exact-version visible |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `qa_android` | Record observed commit. | Unknown | Unknown | Unknown | Unknown |
+| `qa_ios` | Record observed commit. | Unknown | Unknown | Unknown | Unknown |
+| `uat_android` | Record observed commit. | Unknown | Unknown | Unknown | Unknown |
+| `uat_ios` | Record observed commit. | Unknown | Unknown | Unknown | Unknown |
+
+Distinguish not started, failed, and unknown where the evidence supports them. Record approved non-applicability with a reason. QA success does not establish UAT publication; a React Native application requires independent Android and iOS results.
+
+UAT progression requires the supplied TGRC authorization. Do not bypass it for the exercise. This workshop demonstrates internal distribution; it does not itself complete TestFlight, Google Play, or public store release.
+
+**Check before continuing:** every applicable route has an accurate outcome and an evidence reference or a clearly identified missing check.
+
+**Attach screenshot — intended user's catalog showing the exact version, with user identity and private links redacted.**
+
+## Step 12 — Understand what happens after first enrollment
+
+Once the app is enrolled, later source changes use the **existing app identity**. Do not submit the create-only request again for each build.
+
+The latest kit describes a recurring distribution worker that monitors successful builds on the designated source branch. It advances eligible candidates through distribution verification and records verified progress in a durable cursor.
+
+For the workshop, explain this behavior using the evidence available:
+
+1. The next eligible build belongs to the existing enrolled app.
+2. The worker associates progress with the correct candidate and route.
+3. Verified milestones are retained after interruption.
+4. An uncertain in-flight write is reconciled read-only before remaining work continues.
+5. Completed enrollment and uploads are not replayed.
+
+Do not trigger an extra build solely to demonstrate this unless the facilitator has explicitly included it in the exercise. The internal worker/cursor implementation was not supplied, so describe the required behavior without claiming that restart safety was tested.
+
+## Step 13 — Stop safely if the result is partial or unknown
+
+If an external write times out, returns an ambiguous result, or apply reports `partial_failure` or `side_effect_unknown`:
+
+1. **Stop further writes.** Do not press rerun, submit another request, replay the protected merge, or repeat the uncertain upload.
+2. **Preserve completed work.** Keep the app, source connection, signing material, destination versions, artifacts, and successful route evidence.
+3. **Identify the exact failed boundary.** Record whether the failure was creation, build, upload, signing, enablement, assignment, or user verification.
+4. **Ask Platform Engineering for GET-only reconciliation.** Use app/build/version identities, correlation data, and the audit trail to establish actual state.
+5. **Record the reviewed remaining action.** Resume only permitted remaining work from verified state. Approval to recover is not permission to repeat the uncertain mutation.
+6. **Verify and record the outcome.** If uncertainty remains, keep it explicit and escalate.
+
+A missing result from one read does not establish absence: processing, access, filters, or eventual consistency can hide the object. Do not delete resources or replace credentials as a guessed repair.
+
+For a validation failure before any live apply, correct the YAML and rerun validation. That is different from retrying a write that may already have created a resource.
+
+See [Troubleshooting & Safe Recovery](../troubleshooting-and-recovery/) for the full recovery boundary, including the documented conflict with older retry guidance.
+
+## Step 14 — Read the historical canary correctly
+
+The original workshop uses a **28 October 2026** canary as its reference. It is historical evidence, not an app identity to reuse or proof of current platform health.
+
+Read the result in this order:
+
+1. **Request validation passed.** That request revision passed its Vela validation execution.
+2. **Live apply created the app and verified private artifacts.** Provisioning progressed, but the overall result still had to account for distribution.
+3. **QA Android distribution was confirmed.** Signing, enablement, assignment, and exact latest-version user visibility were established.
+4. **QA iOS built successfully in Bitrise.** The later App Management signing operation failed with `distribution_signing_failed`. Therefore the passed build did not establish iOS publication.
+5. **UAT publication was not confirmed.** Do not infer success from QA Android or describe an unconfirmed route as definitely not started.
+6. **The overall result was partial failure.** The prescribed direction was to preserve QA Android publication and reconcile QA iOS.
+
+The iOS failure was accepted as a known issue for that exercise; its underlying cause was not established. The evidence does not justify a generic certificate-replacement or reenrollment procedure.
+
+**Workshop lesson:** reporting the exact completed and incomplete steps is part of completing the exercise. You should be able to explain why the Android route had confirmed delivery while the iOS route had only a passed build and a failed downstream signature.
+
+## Step 15 — Close with a clear outcome record
+
+Save the following in the approved internal evidence location. It is a documentation template, not an API payload:
+
+```markdown
+# Enterprise Mobile CI/CD Workshop Outcome
+
+- Exercise mode: live / read-only
+- Approved test scope and participant roles:
+- Application source repository and required branch:
+- Prepared source commit and actual per-route build commits:
+- Selected template ID/version:
+- Enrollment request path:
+- Configuration npm test / npm run lint results:
+- Request PR head, validation, preview, and reviews:
+- Request merge into develop:
+- Promotion PR head, complete diff review, and checks:
+- Protected main merge and live-apply reference:
+- Correlation identity and overall apply result:
+- QA Android result and evidence:
+- QA iOS result and evidence:
+- UAT Android result and evidence:
+- UAT iOS result and evidence:
+- Steps not executed or still unknown:
+- Preserved resources and verified checkpoints:
+- Owner-reviewed remaining action and responsible owner:
+```
+
+Before closing, explain to your reviewer:
+
+- Which source and configuration commits have different purposes.
+- Which action crossed the live provisioning boundary.
+- What proves distribution beyond build success.
+- Which route results are confirmed and which remain unknown.
+- Why reenrollment or an uncertain write retry is prohibited.
+
+If you used read-only mode, label the outcome as a review of historical evidence. Do not report it as a newly executed release. For blockers, use the approved Teams support channel with sanitized evidence and a precise requested decision.
+
+## Further implementation detail
+
+| When you need more detail | Page |
+| :--- | :--- |
+| Native readiness, application metadata, and local build checks | [Repository Readiness](../repository-readiness/) |
+| Enrollment schema, review, and protected promotion | [GitOps Enrollment](../gitops-enrollment/) |
+| Workflow execution, change detection, and artifact handoff | [Bitrise Pipelines](../bitrise-pipelines/) |
+| Danger, coverage, Sauce Labs, NowSecure, and release authorization | [Quality & Security Gates](../quality-and-security-gates/) |
+| Native and downstream signing evidence | [Signing & Credentials](../signing-and-credentials/) |
+| Destination verification and durable progress | [Delivery & Release Evidence](../delivery-and-verification/) |
+| Partial failure and read-only reconciliation | [Troubleshooting & Safe Recovery](../troubleshooting-and-recovery/) |
+
+The workshop steps above explain the supplied process directly. Current internal generator values, catalog approvals, credential bindings, and service adapters still come from their approved owners; placeholders do not establish a working integration.
+
+================================================================================
+END FILE: workshop-walkthrough.mdx
+================================================================================
