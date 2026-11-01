@@ -1,281 +1,1625 @@
 ---
-title: "Start Here: CI/CD Journey, Roles & Prerequisites"
-description: "Follow the governed mobile delivery journey from a new application and private repository to validated enrollment, automated builds, and verified distribution."
+title: Welcome & Developer Roadmap
+description: Start your mobile engineering journey, prepare your workstation, run an application, and complete your first contribution.
 sidebar:
+  label: Welcome & Roadmap
   order: 1
-  label: "00. Start Here"
 ---
 
-import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
-import MermaidZoom from '../components/mermaid-zoom.astro';
+# Welcome & Developer Roadmap
 
-This section guides you from a new mobile application to a release that its intended testers or users can access. Follow the numbered pages in order for your first application. For an existing application, start at the relevant task and reuse its existing enrollment.
+Start here to understand how our mobile engineering documentation fits together and what to complete before contributing to an application.
 
-The supported development tracks are **native Android, native iOS, and React Native**. Platform-specific pages provide the relevant build commands and configuration; shared governance applies across all three.
+This onboarding section supports **Android, iOS, and React Native engineers**, including developers moving from web or backend development. Workstation installation instructions cover **macOS on Apple Silicon only**.
 
-<Aside type="tip" title="The delivery model">
-Developers prepare source code and submit secret-free configuration requests. Authorized automation provisions Bitrise, binds approved templates and protected credentials, and executes governed builds. Distribution and user visibility are verified separately from compilation.
-</Aside>
+> **Confidential — internal use only.** Keep this documentation and company source material within approved company systems. Never include passwords, access tokens, signing material, personal data, or unredacted sensitive logs in examples, screenshots, support requests, or AI prompts. Use only company-approved tools and sharing destinations.
 
-## What you will accomplish
+## 1. What you will achieve
 
-<CardGrid>
-  <Card title="Prepare a buildable application" icon="document">
-    Obtain access, generate or prepare source code, commit a reproducible project, and verify the required local checks.
-  </Card>
-  <Card title="Enroll through GitOps" icon="setting">
-    Submit an approved configuration request, pass validation and review, and track the protected provisioning apply.
-  </Card>
-  <Card title="Build and verify" icon="puzzle">
-    Use the governed routes, run the required quality and security checks, and verify signing and artifact identity.
-  </Card>
-  <Card title="Confirm delivery" icon="open-book">
-    Verify the destination version, intended audience, and user access. Preserve evidence and stop safely when an outcome is incomplete.
-  </Card>
-</CardGrid>
+By the end of onboarding, you should be able to:
 
-## 1. Understand the systems
+- Explain the purpose of your application and identify its owning team.
+- Access the repositories and development services required for your assigned work.
+- Configure a compatible workstation using the project's approved toolchain.
+- Build and run the assigned application or approved starter locally.
+- Find the architecture, platform, testing, and security guidance relevant to a change.
+- Submit a focused first pull request with meaningful verification evidence.
 
-| System | Responsibility | What you verify |
-| :--- | :--- | :--- |
-| Approved application template | Generates a starting application for the selected platform | The generated project—not the template generator itself—is committed to your source repository. |
-| Application source repository | Stores the application, dependency locks, tests, native configuration, and declared metadata | Repository identity, required source branch, and exact source commit. |
-| Platform configuration repository | Stores secret-free enrollment requests and their review history | Request location, schema, selected template version, access groups, and promotion commits. |
-| Approved workflow catalog | Defines the available immutable CI/CD templates and their compatibility rules | The selected template version is currently approved for the requested platform and routes. |
-| Vela / protected apply automation | Validates requests and, at the protected live boundary, performs authorized provisioning and orchestration | Validation versus live-apply mode, exact commit, correlation identity, and sanitized outcome. |
-| Bitrise | Executes builds and produces private artifacts, reports, and build evidence | Workflow/route identity, source commit, build status, and produced artifacts. |
-| Sauce Labs | Executes the configured real-device tests | Exact tested artifact, device/test configuration, outcomes, and retained evidence. |
-| NowSecure | Performs the configured application-security assessment | Assessment completion, applicable findings, and the release-gate decision. |
-| App Management | Performs the approved internal distribution process, including distribution signing where applicable | Exact version, signing outcome, enablement, audience assignment, and catalog visibility. |
-| Google Play / App Store Connect | Processes public-store testing and release submissions | Destination build/version, processing and release state, and intended tester/user availability. |
+Onboarding completion is based on these outcomes. Access approvals, project requirements, and build dependencies can affect the time needed.
 
-Internal endpoints, access-group names, application IDs, and operational links belong in the approved access-controlled location. Examples in this guide use placeholders rather than real identifiers or credentials.
+## 2. Choose your reading path
 
-## 2. Follow the complete journey
+Both paths use the same setup and contribution guides. Choose the path that matches your experience; revisit the mobile foundations guide whenever a concept is unfamiliar.
 
-<MermaidZoom title="Mobile delivery journey · from new application to verified access">
+| Your background | Recommended reading order |
+| :--- | :--- |
+| **Experienced mobile engineer** | This page → Platform Overview → Machine Setup → First Local Run → First Contribution |
+| **Web, backend, or other engineer new to mobile** | This page → Platform Overview → Mobile Foundations → Machine Setup → First Local Run → First Contribution |
 
 ```mermaid
 flowchart TD
-    START["Obtain access and prepare the workstation"]
-    SOURCE["Generate or prepare application source<br/>Private repository · branch · exact commit"]
-    LOCAL["Run local readiness checks<br/>Configuration · dependencies · tests · build"]
-    REQUEST["Submit secret-free enrollment request<br/>Approved catalog and template version"]
-    REVIEW["Validate and review<br/>Request PR · sanitized preview · promotion PR"]
-    APPLY["Protected main merge<br/>Authorized one-time provisioning apply"]
-    BUILD["Execute governed routes<br/>Build · signing · required test/security gates"]
-    TARGET{"Approved destination"}
-    INTERNAL["App Management<br/>Distribution signing · enablement · assignment"]
-    STORE["Google Play / App Store Connect<br/>Upload · processing · approved release flow"]
-    VERIFY["Verify each route and destination<br/>Exact version · intended audience · user access"]
-    EVIDENCE["Record release evidence<br/>Complete · failed · unknown / partial outcome"]
-    START --> SOURCE --> LOCAL --> REQUEST --> REVIEW --> APPLY --> BUILD --> TARGET
-    TARGET -->|"Internal distribution"| INTERNAL
-    TARGET -->|"Store delivery"| STORE
-    INTERNAL --> VERIFY
-    STORE --> VERIFY
-    VERIFY --> EVIDENCE
-    classDef stage fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
-    classDef control fill:#0f172a,stroke:#475569,color:#ffffff,stroke-width:2px;
-    classDef decision fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-width:1.5px;
-    classDef result fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
-    class START,SOURCE,LOCAL,REQUEST,REVIEW,BUILD stage;
-    class APPLY control;
-    class TARGET decision;
-    class INTERNAL,STORE,VERIFY,EVIDENCE result;
+    START["Start: Welcome and Roadmap"] --> OVERVIEW["Understand the Mobile Platform"]
+    OVERVIEW --> EXPERIENCE{"New to Mobile Development?"}
+    EXPERIENCE -->|Yes| FOUNDATIONS["Learn Mobile Foundations"]
+    EXPERIENCE -->|No| SETUP["Prepare Access and Workstation"]
+    FOUNDATIONS --> SETUP
+    SETUP --> RUN["Build and Run the Assigned App"]
+    RUN --> CHANGE["Complete a First Contribution"]
+    CHANGE --> READY["Continue with the Relevant Engineering Guides"]
 ```
 
-</MermaidZoom>
+## 3. Follow the onboarding pages in order
 
-This is the lifecycle overview, not the exact Bitrise dependency graph. Signing, device-test preparation, security assessment, and distribution ordering follow the approved route/template. Do not infer that every repository publishes to every destination or that all gates run only once.
-
-The required template determines source-branch requirements. The configuration repository has its own review and promotion branches. Do not confuse an application source branch with the branch that authorizes a live provisioning apply.
-
-## 3. Know who performs each action
-
-| Role | Responsibility |
-| :--- | :--- |
-| Application developer / request author | Prepare the application, verify local readiness, submit a secret-free request, and record the intended source identity. |
-| Reviewer / code owner | Review source or configuration changes, validate requested access and template compatibility, and satisfy the applicable branch rules. |
-| Platform Engineering | Own provisioning, approved templates, protected credential bindings, platform changes, and recovery from partial applies. |
-| Authorized Vela operator | Inspect protected validation/apply results through the approved access path and share sanitized evidence. |
-| QA / business tester | Verify the intended application version and report test results and audience access. |
-| Application owner / release authority | Own the intended audience, applicable approvals, and authorization to release to the selected destination. |
-
-A workshop facilitator may coordinate these roles, but does not replace protected-branch rules or release authorization. Developers do not need raw signing credentials or manual app-provisioning access to follow the governed enrollment path.
-
-### Access readiness
-
-Before starting a live exercise or first enrollment, confirm:
-
-- You can access the approved application template and its dependency registry instructions.
-- You can create or contribute to the intended private application repository.
-- You can read the current workflow catalog and submit the configuration request through the approved process.
-- Required reviewers and Platform Engineering contacts are identified.
-- An authorized operator can inspect Vela results through the approved network/access path.
-- You can inspect the relevant Bitrise builds and approved distribution catalog for your role.
-- The target account, environment, and audience are explicitly identified.
-
-**Attach screenshot — Approved access-request categories, with personal information and sensitive identifiers redacted.**
-
-Detailed access and workstation setup is covered in Page 01. Do not create credentials or request broad administrator permissions merely to work around an access failure.
-
-## 4. Separate enrollment from recurring builds
-
-### First-time enrollment
-
-1. Prepare a unique, approved application source repository.
-2. Select a currently approved catalog entry and exact template version.
-3. Submit one secret-free request in the configuration repository.
-4. Run the authoritative local validator and open the request PR.
-5. Obtain PR validation, required review, and configuration-branch promotion.
-6. Track the protected merge and its exact live apply.
-7. Verify the provisioned app and the outcome of every applicable route.
-
-Local validation and PR previews do not create a live application. The protected apply is the boundary at which authorized automation can perform external writes.
-
-### Subsequent builds and releases
-
-Reuse the existing enrolled application and its approved template. Trigger builds through the configured source events or other approved route controls. Follow the applicable update/change procedure for configuration changes; do not resubmit a create-only enrollment request to retry an existing application.
-
-<Aside type="caution" title="One enrollment is not permission to retry provisioning">
-If provisioning partially succeeds or its outcome is unknown, preserve the existing app and evidence. Do not rerun enrollment, replay the protected merge, delete the app, or replace signing material as an assumed fix. Platform Engineering must reconcile the exact state through the approved recovery procedure.
-</Aside>
-
-## 5. Recognize the four governed routes
-
-| Route | Platform | Intended purpose | Required completion evidence |
+| Step | Page | What you will do | Completion evidence |
 | :--- | :--- | :--- | :--- |
-| `qa_android` | Android | Deliver the approved private QA build | Correct artifact/version and verified access for the intended QA audience. |
-| `qa_ios` | iOS | Deliver the approved private QA build | Correct IPA/version, required distribution signing, and verified QA access. |
-| `uat_android` | Android | Deliver the approved UAT build | Required approvals, correct artifact/version, and verified business-tester access. |
-| `uat_ios` | iOS | Deliver the approved UAT build | Required approvals, correct IPA/version, required signing, and verified business-tester access. |
+| **01** | **[Platform Overview](/mobile/01-onboarding/platform-overview/)** | Understand the ecosystem, repository responsibilities, supported stacks, and how to approach platform selection. | You can identify your application, stack, owning team, and relevant repositories. |
+| **02** | **[Mobile Foundations](/mobile/01-onboarding/non-mobile-engineer-guide/)** | Learn mobile lifecycle, UI state, networking, local storage, native capabilities, and distribution concepts. Recommended for engineers new to mobile. | You can explain the main differences that affect your first mobile change. |
+| **03** | **[Machine Setup — macOS Apple Silicon](/mobile/01-onboarding/machine-setup-guide/)** | Request necessary access, install the required tools, and verify your workstation. | Required access works and the checks for your assigned platform pass. |
+| **04** | **[First Local Run](/mobile/01-onboarding/first-local-run/)** | Obtain the assigned application or approved starter, use its locked dependencies, configure local settings, and build and run it. | The expected app screen opens on the documented simulator, emulator, or approved device. |
+| **05** | **[First Contribution](/mobile/01-onboarding/new-engineer-onboarding/)** | Make a team-agreed change, add or update tests, run required checks, and submit it for review. | Your PR includes the change, verification results, and review information required by the repository. |
 
-The approved catalog defines the artifact type, destination, trigger, and supported platform combinations. For a native-only repository, follow the catalog's explicit applicability rules rather than attempting an unsupported platform build. Do not silently mark an unsupported or unexecuted route as successful.
+**All workstation installation instructions live in Machine Setup.** Later guides reference that page rather than repeat installation commands.
 
-These four identifiers name governed QA/UAT routes. They do not, by themselves, establish authorization for a public production release. Store testing and production release follow the destination-specific approval and delivery policy.
+## 4. Confirm your starting point
 
-### Configuration versus secrets
+Before installing tools or creating a repository, agree on the following with your team:
 
-```yaml
-# Orientation only: route identifiers, not a Bitrise configuration or enrollment schema.
-route_ids:
-  - qa_android
-  - qa_ios
-  - uat_android
-  - uat_ios
-```
+| Confirm | Why it matters |
+| :--- | :--- |
+| **Assigned application or approved starter** | An existing application and a newly generated application have different starting steps. |
+| **Platform and target devices** | Install the tools needed for your work. React Native applications still require native tooling for each target platform. |
+| **Repository, source branch, and setup instructions** | Start from the intended source and follow the application's documented workflow. |
+| **Supported toolchain and dependency versions** | Use the versions required by the project and approved template. Installing the newest version of every tool can introduce incompatibilities. |
+| **Access requirements and approvers** | Request the permissions needed for your responsibilities. Store administration and production signing access are not universal onboarding prerequisites. |
+| **First task and reviewer** | A small, agreed change gives you a concrete way to validate your development workflow. |
 
-The executable request and pipeline YAML appear in their implementation pages. Do not paste this orientation example into a provisioning request.
+For an existing application, follow its established stack and architecture. A new application's stack selection should be reviewed with the responsible team using the Platform Overview guidance.
 
-Safe request configuration identifies the application, source repository/branch, approved template/version, and permitted access groups. Tokens, passwords, private keys, signing files, and certificate material stay outside requests, Git history, screenshots, PR text, and shared logs.
+## 5. Know where each topic belongs
 
-## 6. Distinguish build success from delivery success
+Use this map as your work moves beyond the first local build.
 
-| Observation | What it proves | What it does not prove |
+| Documentation section | Open it when you need to… |
+| :--- | :--- |
+| **1. Onboarding** | Set up your environment, understand mobile basics, and start contributing. |
+| **2. Architecture** | Understand dependency boundaries, data flow, resilience, feature flags, and branching and PR conventions. |
+| **3. Platforms & SDKs** | Implement Android, iOS, or React Native features and integrate shared app foundations. React Native guidance uses Redux Toolkit. |
+| **4. GenAI & Developer Tools** | Use approved development tools, rule files, and AI-assisted workflows with controlled context and human verification. |
+| **5. Testing & Quality** | Write meaningful tests, apply coverage requirements, and validate behavior locally and on Sauce Labs. |
+| **6. Observability** | Integrate Datadog, protect telemetry data, and investigate application performance and failures. |
+| **7. CI/CD** | Enroll an application and understand governed validation, builds, testing, signing, delivery, and recovery. |
+| **8. App Store & Distribution** | Prepare distribution destinations, testing tracks, submissions, releases, and availability verification. |
+| **9. Support & FAQ** | Find help and answers to recurring questions. |
+
+Testing and observability are part of feature development. Consult their guidance while implementing a change, before preparing it for release.
+
+## 6. Separate local development from enrollment and release
+
+A successful local build confirms that you can build and run the application in the environment you tested. It does not confirm CI access, distribution signing, store approval, or availability to users.
+
+For a new application, the CI/CD section describes the governed enrollment process. Developers submit a secret-free configuration request; approved platform automation provisions the external resources. **Do not manually create a Bitrise app or upload production credentials as an onboarding shortcut.**
+
+For an existing application, use its established setup. Do not submit a new enrollment request simply to obtain a local build or investigate a pipeline failure.
+
+Release completion requires destination-specific evidence. A passed build alone does not establish that a signed application is distributed to its intended audience.
+
+## 7. Work safely and ask for help effectively
+
+- Follow the Machine Setup guide for corporate access, network, and trust configuration. Do not disable certificate validation to bypass connection failures.
+- Obtain local configuration through the team's approved process. Keep real secrets out of tracked files and command output shared with others.
+- Treat AI-generated code and tests as drafts. Review them against the repository's rules and execute the relevant checks before submission.
+- When blocked, report the step, platform, source revision, expected result, actual result, and a sanitized error excerpt through the approved support channel.
+- For signing, provisioning, or distribution failures, preserve the existing state and follow the relevant recovery guide. Avoid unverified changes to credentials or external resources.
+
+## 8. Onboarding completion checklist
+
+Use this checklist with your team. Record evidence in the team's approved location without copying sensitive values into it.
+
+- [ ] I understand the application, owning team, and repositories relevant to my role.
+- [ ] I have completed Mobile Foundations or reviewed the concepts relevant to my experience.
+- [ ] My required access works and my macOS Apple Silicon setup checks pass.
+- [ ] I have built and run the assigned application from the intended source revision.
+- [ ] I know where to find architecture and platform implementation standards.
+- [ ] I understand the testing, coverage, and telemetry requirements that apply to my change.
+- [ ] I have submitted a focused first PR with the required checks and verification evidence.
+- [ ] I have addressed review feedback and recorded any remaining onboarding blockers.
+- [ ] I know how to request support without exposing confidential information.
+
+**Next: [Platform Overview](/mobile/01-onboarding/platform-overview/)** — understand the platform and your project's place within it before preparing your workstation.
+
+
+
+-----------------------------------
+
+
+
+
+---
+title: Platform Overview & Stack Selection
+description: Understand the mobile ecosystem, repository responsibilities, engineering standards, and decisions behind your application stack.
+sidebar:
+  label: Platform Overview
+  order: 2
+---
+
+# Platform Overview & Stack Selection
+
+The mobile platform brings together application standards, shared foundations, development tools, testing services, observability, and governed delivery. Application teams use these capabilities to build and operate Android, iOS, and React Native applications.
+
+This page explains **what each part does, where responsibilities sit, and how to approach stack selection**. Installation commands belong in [Machine Setup](/mobile/01-onboarding/machine-setup-guide/); implementation details belong in Architecture and Platforms & SDKs.
+
+> **Confidential — internal use only.** Keep source, configuration, operational evidence, and company identifiers within approved systems. Examples must not contain real credentials, private artifact links, or sensitive user data.
+
+## 1. Identify your starting point
+
+| Your assignment | Start here |
+| :--- | :--- |
+| **Contribute to an existing app** | Confirm its owning team, repository, source branch, established stack, and project instructions. Follow the existing implementation unless a change has been explicitly agreed. |
+| **Create a new app** | Confirm the business requirements, supported devices, owning team, approved starter, and stack decision before generating source or requesting enrollment. |
+| **Learn mobile development** | Read this overview, then complete [Mobile Foundations](/mobile/01-onboarding/non-mobile-engineer-guide/) before workstation setup. |
+
+Do not create a new repository, replace a framework, or enroll another CI application simply to work on an existing app.
+
+## 2. Understand the ecosystem
+
+Two connected paths support an application: the **engineering and delivery path** prepares a release; the **runtime path** serves users after installation.
+
+| Path | Main components | Purpose |
 | :--- | :--- | :--- |
-| Local validation passed | The checked local request/configuration met those validation rules. | Provider access, app creation, or successful provisioning. |
-| PR checks passed | The checked PR revision passed its configured gates. | That it was promoted, applied, or deployed. |
-| Protected apply started | Authorized orchestration began for an identified commit. | Completion of provisioning or any release route. |
-| Bitrise build passed | The identified workflow completed according to its build checks. | App Management signing, publication, assignment, or user visibility. |
-| Artifact uploaded | The destination received or registered the identified upload. | Processing completion, enablement, review approval, or audience access. |
-| Required signing verified | The required signature/distribution-signing evidence is present. | That the exact version is enabled and assigned. |
-| User visibility verified | The intended account/audience can access the identified version through the approved destination. | Successful installation or launch unless those were separately tested. |
+| **Engineering and delivery** | Source control, review, automated checks, Bitrise, device testing, distribution destinations | Validate committed changes, build artifacts, and deliver through approved routes. |
+| **Runtime** | Installed app, shared foundations, backend APIs, approved telemetry services | Present features, manage state and data, communicate with services, and report permitted diagnostic information. |
 
-Build signing and App Management distribution signing are separate operations where the selected distribution path uses both. A successful iOS build does not prove that downstream distribution signing succeeded.
-
-The release-evidence page defines the seven milestone names and their destination-specific evidence. Record checkpoints as evidence becomes available; do not mistake a reporting list for a universal signing/upload execution order.
-
-### Record outcomes per route
-
-Use evidence-backed states such as:
-
-- **Not started:** execution has not begun for this route.
-- **Build passed:** the build succeeded; downstream delivery is not yet established.
-- **Published and verified:** the required distribution and audience checks passed for the exact version.
-- **Failed:** a specific required operation failed.
-- **Unknown:** available evidence cannot establish the outcome.
-
-A successful QA Android route does not establish success for QA iOS or either UAT route. A partial result must identify what completed, what failed, and what remains unverified.
-
-**Attach screenshot — Sanitized route outcome summary showing separate build and distribution results.**
-
-## 7. Understand approvals and store boundaries
-
-Required TGRC security approval must be established before UAT or Production deployment under the supplied company policy. Record approval identity and applicability through the approved evidence mechanism; never infer approval from a green compilation result.
-
-Detailed listing metadata, screenshots, public privacy-policy requirements, submission procedures, enterprise installation, and user-entitlement instructions belong in the dedicated **App Store documentation section**.
-
-This CI/CD section covers automated delivery, protected credential integration, approval gates, destination readback, and release evidence. An upload to Google Play testing or TestFlight is not automatically a public production release.
-
-## 8. Stop safely on partial failure
-
-<MermaidZoom title="Unknown external outcome · preserve and reconcile">
+The installed app does not invoke Bitrise to serve a user request. CI/CD operates on source and release artifacts.
 
 ```mermaid
-flowchart TD
-    RESULT{"External operation outcome"}
-    SUCCESS["Confirmed success<br/>Record evidence and continue approved dependencies"]
-    FAILURE["Confirmed failure or unknown side effect"]
-    STOP["Stop affected operation<br/>Preserve app, artifacts, credentials, and completed routes"]
-    READ["Authorized read-only reconciliation<br/>Match request, commit, operation identity, and destination state"]
-    RECOVERY["Follow reviewed recovery procedure<br/>No blind create, upload, or credential replacement"]
-    RESULT -->|"Confirmed"| SUCCESS
-    RESULT -->|"Failed / ambiguous"| FAILURE --> STOP --> READ --> RECOVERY
-    classDef ok fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
-    classDef control fill:#eef2ff,stroke:#6366f1,color:#1e1b4b,stroke-width:1.5px;
-    classDef caution fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-width:1.5px;
-    class RESULT caution;
-    class SUCCESS ok;
-    class FAILURE,STOP,READ,RECOVERY control;
+sequenceDiagram
+    autonumber
+    participant DEV as Developer
+    participant GIT as Source Repository
+    participant CI as Governed CI
+    participant DEST as Distribution Destination
+    participant APP as Installed App
+    participant API as Backend Services
+    participant OBS as Observability
+
+    DEV->>GIT: Submit source and reviewed tests
+    GIT->>CI: Trigger configured validation or build
+    CI->>CI: Execute required checks and build
+    Note over CI,DEST: Delivery requires the applicable gates and authorization
+    CI->>DEST: Deliver approved artifact through configured route
+    DEST-->>APP: Make eligible version available to intended users
+    APP->>API: Request business data through approved integration
+    API-->>APP: Return response
+    APP->>OBS: Send permitted diagnostic events
+    Note over APP,OBS: Consent and privacy controls govern collection
 ```
 
-</MermaidZoom>
+This is a responsibility map, not a promise that every source event triggers delivery. Exact triggers, approvals, and destinations are defined by the approved pipeline and release process.
 
-The one-write rule prohibits blindly repeating an ambiguous external mutation. Preserve the request revision, protected merge, apply/build identities, correlation identity, exact failed route, and sanitized result. A timeout does not prove that the external service rejected the operation. A single negative readback may also be insufficient to establish absence.
+## 3. Know which repository does what
 
-The operator recovery guide defines the permitted reconciliation and any subsequently authorized mutation. The developer's immediate action is to preserve state and escalate with evidence, not improvise a repair.
+The platform's source, configuration, provisioning engine, and workflow catalog have different responsibilities. They are not interchangeable.
 
-## 9. Use workshop evidence correctly
+| Repository or resource | Responsibility | What an application developer needs to know |
+| :--- | :--- | :--- |
+| **Application source repository** | Application code, dependency locks, tests, and project configuration. | This is where you implement and review feature changes. Record the source branch and commit when investigating a build. |
+| **Approved application template** | Generates the starting application structure. | The template repository is a generator; its root is not the generated application. Follow the approved template's instructions. |
+| **Platform configuration repository** | Declarative enrollment requests and their review history. | A new application uses a secret-free request following the current schema and catalog. |
+| **Provisioning engine repository** | Validation and live-apply implementation. | Platform automation performs provisioning. Developers inspect sanitized results through the approved process. |
+| **Workflow template catalog** | Approved workflow definitions and versions. | Select a version approved for the requested platform and route. Historical workshop versions are not automatic approval for new use. |
+| **Shared foundation and SDK repositories** | Reusable platform capabilities and their contracts. | Use documented, compatible versions. Confirm actual package names and APIs in the relevant integration guide. |
 
-The supplied workshop demonstrates application generation, secret-free request submission, validation, promotion, protected apply inspection, and route-by-route distribution checks.
+A source commit identifies application code. A configuration merge commit identifies an enrollment or configuration change. Record both when relevant; one does not substitute for the other.
 
-Its historical reference run had a partial outcome: one QA route had confirmed distribution, another had build success followed by distribution-signing failure, and UAT publication was not confirmed. That observation does not establish current platform health or the status of a new application.
+## 4. Understand the supported stacks
 
-The workshop page contains sanitized exercises and dated historical evidence. Do not reuse its existing application identity as a new enrollment request, copy its historical template version as the current approved version, or invent a root cause for the observed failure.
+| Stack | Application code and UI | Key consideration |
+| :--- | :--- | :--- |
+| **Native Android** | Kotlin and the Android UI approach established by the project. | Direct Android platform integration, Android device requirements, and compatibility with vendor SDKs. |
+| **Native iOS** | Swift and the iOS UI approach established by the project. | Direct Apple platform integration, supported iOS devices, and compatibility with required Apple capabilities. |
+| **React Native** | TypeScript and React Native, with **Redux Toolkit** for Redux state management. | Shared feature implementation across Android and iOS, while retaining native projects, platform configuration, and device-specific verification. |
 
-## 10. Follow the implementation pages
+React Native does not remove the need for Android and iOS knowledge. Platform permissions, signing, native dependencies, lifecycle behavior, and release packaging still require platform-specific work.
 
-| Page | What you do next |
+Availability of a shared SDK must be checked per platform and version. A capability supported in one stack should not be assumed to have an equivalent wrapper in another.
+
+## 5. Select a stack for a new application
+
+Use requirements and evidence to make the decision with the responsible team. Team familiarity is an input, alongside device support, integration risk, accessibility, performance, security, and long-term maintenance.
+
+| Question | What to evaluate |
 | :--- | :--- |
-| **01. Obtain Access & Prepare Your Development Environment** | Confirm entitlements, workstation prerequisites, approved registries, and support contacts. |
-| **02. Generate, Configure & Verify Your Mobile Repository** | Create the application/source repository and run the Android, iOS, or React Native readiness checks. |
-| **03. Submit the Secret-Free GitOps Enrollment Request** | Create the validated request using the current catalog and authoritative path/schema. |
-| **04. Validate, Review & Promote the Request** | Obtain checks and reviews, promote configuration, and track the protected merge. |
-| **05. Verify Provisioning & Your Four Governed Build Routes** | Read the apply result, identify the provisioned app, and inspect applicable routes. |
-| **06. Configure & Verify PR Quality Gates with Danger.js** | Understand the approved rules and required status checks; change only the team-owned extension points. |
-| **07. Understand Pipeline Execution, Parallel Tests & Caching** | Read the governed YAML, affected-module logic, workflow handoffs, and cache behavior. |
-| **08. Verify Protected Signing & Credential Integration** | Verify the approved bindings and signature evidence without handling raw credentials. |
-| **09. Run Sauce Labs Real-Device Tests** | Execute approved device suites and retain the evidence for the tested artifact. |
-| **10. Pass NowSecure Security Gates & Required Release Approvals** | Establish assessment completion, applicable severity decisions, and required approvals. |
-| **11. Distribute Through App Management & Verify User Access** | Verify distribution signing, enablement, assignment, and exact-version user visibility. |
-| **12. Automate Google Play & App Store Connect Delivery** | Follow the approved store-delivery route and verify processing and intended access. |
-| **13. Verify Release Evidence & Deployment Completion** | Assemble destination-specific evidence and report only established outcomes. |
-| **14. Troubleshoot Failures & Recover Safely** | Preserve state and follow authorized diagnosis/reconciliation/recovery. |
-| **15. Platform Provisioning & Template Administration** | Reference operator-owned provisioning, template, access, and credential administration. |
-| **16. Bitrise MCP Integration** | Use approved optional tooling with the same access and mutation controls. |
-| **17. Guided Workshop: From New App to Verified Distribution** | Practice the full journey using an isolated application or sanitized read-only evidence. |
+| **Which operating systems and devices must we support?** | Android only, iOS only, both platforms, managed devices, and required OS versions. |
+| **Which native capabilities are essential?** | Vendor SDK support, scanners, Bluetooth, background execution, camera, device management, or other platform services. |
+| **Can a shared implementation meet the requirements?** | Availability and maintenance of native modules, platform-specific UI requirements, and the amount of custom native work. |
+| **What performance must be demonstrated?** | Representative workloads on target hardware. Measure uncertain interactions instead of relying on framework rankings. |
+| **Can the team maintain the entire application?** | Skills for feature development, native integration, testing, debugging, accessibility, and release support. |
+| **Does the platform support the proposed delivery path?** | Approved starter, SDK compatibility, workflow catalog, device testing, signing, and distribution requirements. |
 
-These are the planned page titles; navigation links should be added when the final documentation routes are established. There is one authoritative implementation for each shared YAML/script contract, with platform-specific examples where behavior differs.
+Typical starting points for evaluation:
 
-## Before continuing
+- **Android-only product:** evaluate native Android against the device and integration requirements.
+- **iOS-only product:** evaluate native iOS against the required Apple capabilities and UI behavior.
+- **Product targeting both platforms:** evaluate React Native and separate native implementations against the same requirements and maintenance expectations.
+- **High-risk native integration:** prove the uncertain capability on target hardware before committing to a stack. Hardware integration does not automatically rule out React Native.
 
-- [ ] I know whether I am enrolling a new application or building an existing one.
-- [ ] I understand which actions belong to developers, reviewers, and platform operators.
-- [ ] I can identify the required source repository, configuration repository, and catalog.
-- [ ] I understand that request validation, live apply, build success, and distribution are separate outcomes.
-- [ ] I will use current approved templates and keep credentials out of requests and evidence.
-- [ ] I know that every applicable route needs its own verified result.
-- [ ] I know where to request authorized inspection and how to stop after partial failure.
+Do not assume a fixed percentage of shared code, a universal performance winner, or a guaranteed delivery speed.
 
-Continue with **Page 01 — Obtain Access & Prepare Your Development Environment**.
+### Record the decision
+
+Use the team's decision-record location. A concise record should include:
+
+```markdown
+# Mobile Stack Decision
+
+- Application and owner:
+- Required platforms, OS versions, and devices:
+- Critical user journeys:
+- Native or vendor integrations:
+- Security, accessibility, and performance requirements:
+- Options evaluated:
+- Prototype or compatibility evidence:
+- Selected stack and reasons:
+- Trade-offs and unresolved risks:
+- Approved starter and delivery compatibility:
+- Reviewers and decision date:
+```
+
+For an existing application, consult its decision history before proposing a different stack.
+
+## 6. Apply shared principles through platform-specific code
+
+The stacks share architectural goals; their directories, APIs, and lifecycle mechanisms differ.
+
+| Concern | Shared expectation | Detailed guidance |
+| :--- | :--- | :--- |
+| **Dependency boundaries** | Keep business rules independent of concrete UI, network, and persistence frameworks. Use contracts to separate policy from implementation. | Architecture; platform standards |
+| **State and lifecycle** | Make state ownership explicit and prevent cancelled or outdated work from replacing current results. | Android, iOS, and React Native standards |
+| **Data and resilience** | Define caching, freshness, account scope, timeouts, failure handling, and any retry or circuit-breaker policy. | Architecture; data integration examples |
+| **Shared foundations** | Integrate supported design, localization, security, notification, branding, and cleanup capabilities through documented contracts. | Platforms & SDKs |
+| **Testing** | Verify behavior with meaningful assertions and meet the defined coverage requirement. Coverage alone is not proof of correctness. | Testing & Quality |
+| **Telemetry** | Collect only approved data, respect consent, and verify release-specific diagnostics. | Observability |
+| **AI assistance** | Use approved tools and context boundaries; review and execute generated code and tests. | GenAI & Developer Tools |
+
+A circuit breaker is one resilience mechanism, not a guarantee against crashes. Feature flags are configuration controls, not substitutes for server-side authorization. Detailed guidance belongs in Architecture rather than in onboarding examples.
+
+## 7. Separate enrollment, builds, and release
+
+| Activity | What happens | What it does not establish |
+| :--- | :--- | :--- |
+| **Local development** | You build and run the intended source on a documented local target. | CI readiness or distribution availability. |
+| **Request validation** | Local and PR checks inspect a secret-free enrollment request and provide review evidence. | Creation of a live Bitrise app. |
+| **Protected promotion and live apply** | Approved platform automation provisions resources after the governed configuration promotion. | Successful publication of every requested route. |
+| **Later builds** | The enrolled application runs its configured workflows against identified source. | Successful delivery merely because compilation passed. |
+| **Distribution verification** | Evidence confirms the intended artifact, signing, destination version, audience, and availability. | Success for a different route, platform, or version. |
+
+The governed route names are `qa_android`, `qa_ios`, `uat_android`, and `uat_ios`. Applicability is determined by the approved platform template. Verify each applicable route independently; a QA result does not prove a UAT result.
+
+Developers do not manually provision Bitrise applications or paste production signing credentials into the web console as part of onboarding. Follow CI/CD guidance for enrollment and recovery, and App Store & Distribution guidance for destination requirements.
+
+## 8. Confirm responsibilities
+
+These boundaries guide collaboration; confirm the actual owners and approvers for your application.
+
+| Responsibility | Expected collaboration |
+| :--- | :--- |
+| **Feature implementation** | Application developers implement changes, tests, and instrumentation with reviewers. |
+| **Architecture and stack decisions** | The application team and responsible architecture or platform owners review significant choices. |
+| **Governed provisioning and workflow changes** | Platform owners manage approved automation and investigate provisioning outcomes. |
+| **Signing and credential access** | Authorized owners manage protected credentials and bindings through the approved process. |
+| **Quality and release evidence** | Developers, QA, and release owners verify the requirements relevant to their responsibilities. |
+| **Production operation** | The owning team follows agreed monitoring, support, and escalation arrangements. |
+
+## 9. Before you continue
+
+- [ ] I know whether I am joining an existing app or starting a new one.
+- [ ] I can identify the owning team, source repository, and established or approved stack.
+- [ ] I understand the difference between application source, templates, configuration, and provisioning automation.
+- [ ] I know where implementation, testing, telemetry, and delivery guidance lives.
+- [ ] I understand that enrollment, a successful build, and verified distribution are separate outcomes.
+
+**New to mobile?** Continue to [Mobile Foundations](/mobile/01-onboarding/non-mobile-engineer-guide/).
+
+**Already experienced in mobile?** Continue to [Machine Setup — macOS Apple Silicon](/mobile/01-onboarding/machine-setup-guide/).
+
+
+
+
+
+---------------------------
+
+
+
+---
+title: Mobile Foundations for Web & Backend Engineers
+description: Understand mobile lifecycle, state, networking, storage, security, testing, and distribution before your first local build.
+sidebar:
+  label: Mobile Foundations
+  order: 3
+---
+
+# Mobile Foundations for Web & Backend Engineers
+
+Your experience with components, APIs, domain logic, and automated tests transfers to mobile development. The additional challenge is managing software installed on a user's device: connectivity changes, the operating system controls execution, and users may remain on older versions.
+
+This page introduces the concepts needed before [Machine Setup](/mobile/01-onboarding/machine-setup-guide/). Experienced mobile engineers can use it as a refresher. Full implementations belong in Architecture and Platforms & SDKs.
+
+> **Confidential — internal use only.** Use synthetic data in learning exercises. Keep credentials, sensitive telemetry, private artifacts, and company source within approved systems.
+
+## 1. Start with the right mental model
+
+The app is a client of backend services. It manages presentation, interaction, and permitted local data; the backend remains responsible for authorization and authoritative server-side business decisions.
+
+| Familiar concept | Mobile consideration | Practical consequence |
+| :--- | :--- | :--- |
+| **Updating a deployed service** | Installed app versions can coexist for an extended period. | Design API compatibility and migration behavior explicitly. A source merge does not update every user's device. |
+| **An active browser page or server process** | Apps and screens have lifecycles controlled partly by the OS. | Scope work to its owner and recover from interruption. |
+| **Network requests** | A device can have connectivity without being able to reach the API. | Handle timeouts, expired sessions, server failures, and unavailable networks separately. |
+| **Application state** | Screen state, shared session state, and persisted data have different lifetimes. | Choose ownership and storage deliberately. |
+| **Server configuration and credentials** | Client binaries and client-accessible configuration can be inspected. | Keep privileged secrets on protected services. Remote configuration is not a secret vault. |
+| **Automated checks** | Device behavior adds permissions, rotation, backgrounding, and OS differences. | Combine logic tests with integration, UI, and device tests. |
+
+These concerns also appear in web and backend systems. Mobile makes device lifecycle and installed-version compatibility central to everyday development.
+
+## 2. Understand lifecycle and cancellation
+
+A screen can disappear while a request is running. The app can move to the background, lose its process, or restart with a new session. Background execution is restricted and differs by platform and task type.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor USER as User
+    participant SCREEN as Screen
+    participant STATE as State Owner
+    participant DATA as Data Layer
+
+    USER->>SCREEN: Open feature
+    SCREEN->>STATE: Request data for current account
+    STATE->>DATA: Start asynchronous operation
+    USER->>SCREEN: Leave feature or change account
+    SCREEN->>STATE: End ownership or invalidate request
+    STATE->>DATA: Cancel work where supported
+    DATA-->>STATE: Operation completes or is cancelled
+    Note over STATE: Reject results that no longer belong to current state
+```
+
+Cancellation is cooperative: it may not stop a request already processed by a server. It also does not replace protection against stale results.
+
+| Event | Required consideration |
+| :--- | :--- |
+| **Navigation away** | Cancel screen-owned work when appropriate; shared work may have a longer-lived owner. |
+| **Rotation or UI recreation** | Preserve suitable state through the platform's state owner rather than restarting every operation blindly. |
+| **Backgrounding** | Save necessary progress using supported mechanisms. Do not assume an arbitrary task will keep running. |
+| **Process termination** | Reconstruct the app from persisted, permitted state. Cleanup callbacks are not guaranteed to run. |
+| **Logout or account switch** | Invalidate prior requests and prevent one account's data from appearing in another account's UI or cache. |
+
+Use the platform standards for lifecycle-bound coroutines, Swift concurrency, or React Native effect and async-request ownership.
+
+## 3. Separate UI state, business rules, and data access
+
+A useful way to reason about a feature is:
+
+1. The screen renders state and emits user actions.
+2. A state owner coordinates work and exposes the next UI state.
+3. Business rules decide what the operation means.
+4. Repository contracts hide concrete network and persistence implementations from those rules.
+
+The Architecture section defines dependency direction. This list describes runtime responsibilities, not a universal folder structure.
+
+| Kind of state | Example | Usual owner |
+| :--- | :--- | :--- |
+| **Screen-local state** | Whether a disclosure panel is expanded. | Screen or component. |
+| **Feature state** | Loaded items, refresh progress, or a recoverable failure. | Feature ViewModel or the established feature state mechanism. |
+| **Shared application state** | Current session or app-wide preferences. | Established application-level owner. React Native uses Redux Toolkit where Redux state is needed. |
+| **Persisted data** | Account-scoped cached records or allowed preferences. | Repository or dedicated storage abstraction. |
+
+Do not move every temporary UI value into a global store. Do not let a screen directly assemble authentication headers, SQL queries, and business decisions.
+
+### Small example: represent a feature outcome explicitly
+
+The following snippets illustrate **data models only**, not complete screens or SDK integrations. Each represents the same read-only feature with loading, empty, content, and error states.
+
+**Android — Kotlin**
+
+```kotlin
+data class BalanceItem(val id: String, val label: String)
+
+sealed interface BalanceUiState {
+    data object Loading : BalanceUiState
+    data object Empty : BalanceUiState
+    data class Content(val items: List<BalanceItem>) : BalanceUiState
+    data class Error(val canRetry: Boolean) : BalanceUiState
+}
+```
+
+**iOS — Swift**
+
+```swift
+struct BalanceItem: Identifiable, Equatable, Sendable {
+    let id: String
+    let label: String
+}
+
+enum BalanceUIState: Equatable, Sendable {
+    case loading
+    case empty
+    case content([BalanceItem])
+    case error(canRetry: Bool)
+}
+```
+
+**React Native — TypeScript**
+
+```typescript
+type BalanceItem = Readonly<{ id: string; label: string }>;
+
+type BalanceUiState =
+  | { status: 'loading' }
+  | { status: 'empty' }
+  | { status: 'content'; items: readonly BalanceItem[] }
+  | { status: 'error'; canRetry: boolean };
+```
+
+**Hint:** Convert raw failures into safe, localized presentation messages. Do not render a server response body or exception string directly to the user. A feature that keeps content visible during refresh will need a richer state model than this introductory example.
+
+## 4. Design for interrupted networks
+
+A connection indicator is not proof that a request will succeed. Attempt the operation and handle its actual result.
+
+| Situation | Expected design |
+| :--- | :--- |
+| **No usable network or timeout** | Show a recoverable state. Offer retry where safe; show permitted cached content when the feature supports it. |
+| **Expired authentication** | Follow the approved session renewal or sign-in flow. Avoid independent refresh loops in every screen. |
+| **Permission denied by the server** | Respect the denial. A hidden button or enabled feature flag does not grant authorization. |
+| **Backend failure** | Apply the agreed error and resilience policy. Do not retry indefinitely. |
+| **Unknown result after a write** | Establish whether the write occurred before resubmitting it. Use the backend's supported idempotency or reconciliation contract. |
+| **Stale cached content** | Make freshness and refresh behavior clear when it affects user decisions. |
+
+A circuit breaker can reduce repeated calls to a failing dependency. It does not provide offline storage, authorize a retry, or prevent all crashes.
+
+Offline support is a product decision. Some features allow cached reads; others require a live response. Offline writes require an explicit design for queues, duplicates, conflicts, expiry, and account scope.
+
+## 5. Store only what the feature needs
+
+| Data | Guidance |
+| :--- | :--- |
+| **Temporary UI state** | Keep in memory unless restoration is required. |
+| **Non-sensitive preferences** | Use the project's preference abstraction and documented defaults. |
+| **Authentication material** | Use the approved secure-storage and authentication integration. Do not place tokens in ordinary preferences, logs, or Redux state persisted without appropriate controls. |
+| **Business records** | Define permission to store, account scope, freshness, retention, and deletion behavior. Use encryption where required by the data classification. |
+| **Diagnostics** | Collect only approved attributes. Avoid raw payloads and identifiers that disclose sensitive information. |
+
+Logout is more than changing the visible screen. It must coordinate session invalidation, in-flight work, account-scoped caches, and other resources defined by the application. Follow the shared cleanup design; do not promise that a simple file deletion guarantees forensic erasure.
+
+## 6. Keep the UI responsive and accessible
+
+Network access, database operations, and expensive computation must use the appropriate asynchronous or background mechanisms. Declaring a function asynchronous does not automatically move CPU-heavy work off the UI thread or the React Native JavaScript thread.
+
+For every user journey:
+
+- Provide meaningful loading, empty, content, and error states.
+- Prevent accidental duplicate submissions while preserving accessible feedback.
+- Use semantic controls, accessible labels, and stable automation identifiers.
+- Support the text sizing, localization, and input behavior required by the app.
+- Request permissions when needed and handle refusal without trapping the user.
+- Validate on the target platform; simulator or emulator success does not prove hardware behavior.
+
+Automation identifiers help tests find a control. They do not replace accessible labels that explain it to a person.
+
+## 7. Understand native integration in React Native
+
+React Native shares JavaScript or TypeScript feature code, but produces Android and iOS applications with native dependencies and configuration.
+
+| Concern | What still needs platform-specific attention |
+| :--- | :--- |
+| **Permissions** | Android manifest and runtime permissions; iOS capability and usage-description requirements. |
+| **Native SDKs** | Compatible Android and iOS implementations, supported native-module integration, and release configuration. |
+| **Notifications and links** | Platform registration, routing, lifecycle handling, and authorization of the destination. |
+| **Builds** | Native toolchains, dependency locks, application identifiers, and signing. |
+| **Testing** | Android and iOS behavior, accessibility locators, OS differences, and real-device capabilities. |
+
+Use Redux Toolkit according to the React Native standards. Native modules, network clients, and business rules should not be scattered across screen components.
+
+## 8. Distinguish build artifacts and distribution
+
+| Term | Meaning |
+| :--- | :--- |
+| **Android APK** | An installable Android package, subject to device compatibility, signing, and installation policy. |
+| **Android AAB** | An Android App Bundle used for publishing. It is not installed directly like an APK; distribution tooling produces installable APKs. |
+| **iOS IPA** | A packaged iOS app whose installation depends on the applicable signing, provisioning, and distribution method. |
+| **Simulator build** | A build for a simulator environment. It is not interchangeable with a physical-device release artifact. |
+| **Code signing** | Platform-specific mechanisms used to establish application integrity and signing identity. Signing alone does not establish store approval or user availability. |
+| **Verified distribution** | Evidence that the intended version is available through the intended destination to the intended audience. |
+
+A local debug build is for development. Share application builds with testers through the approved distribution process. Do not distribute production signing material or private artifact URLs as a shortcut.
+
+The CI/CD section explains governed automation. App Store & Distribution explains destination setup, submission, testing tracks, and release verification.
+
+## 9. Build quality into the first feature
+
+Start with one small, team-agreed change. Define its expected behavior before writing or generating code.
+
+| Check | Example question |
+| :--- | :--- |
+| **Business logic** | Does the rule return the expected result for valid, empty, and invalid inputs? |
+| **State transitions** | Does loading become content, empty, or a recoverable error correctly? |
+| **Cancellation and accounts** | Can an older request or a previous account overwrite current state? |
+| **Data integration** | Are mapping, cache behavior, and failure handling verified? |
+| **UI and accessibility** | Can a user complete the journey with the required input and accessibility modes? |
+| **Telemetry privacy** | Are diagnostic events useful without exposing credentials or sensitive data? |
+
+The documentation's required coverage target is **100% within the explicitly defined coverage scope**. The Testing & Quality section defines applicable metrics and enforcement. Do not silently exclude production files or treat a coverage percentage as evidence that all behavior is correct.
+
+AI-generated tests remain drafts until reviewed and executed. Provide only approved context; never include real credentials in prompts. The agreed CI workflow executes committed, reviewed tests without calling an LLM to generate them during the run.
+
+## 10. Check your understanding
+
+Before continuing, make sure you can explain:
+
+- [ ] Why a request can finish after its screen or account is no longer current.
+- [ ] Which state belongs to a screen, a shared owner, or persistent storage.
+- [ ] Why connectivity checks and circuit breakers do not guarantee successful operations.
+- [ ] Why a mobile app cannot safely hold a privileged backend secret.
+- [ ] Why Android and iOS need separate verification even with shared React Native code.
+- [ ] Why a passed local build is different from a verified release.
+- [ ] Which tests and diagnostic signals your first change needs.
+
+**Next: [Machine Setup — macOS Apple Silicon](/mobile/01-onboarding/machine-setup-guide/)** — prepare access and install the tools required by your assigned application.
+
+
+
+
+-----------------------------
+
+
+---
+title: Machine Setup — macOS Apple Silicon
+description: Configure access, common development tools, and Android, iOS, or React Native tooling on an Apple Silicon Mac.
+sidebar:
+  label: Machine Setup
+  order: 4
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+# Machine Setup — macOS Apple Silicon
+
+Use this single guide to prepare your workstation. Complete the common steps, then the tab for your assigned platform. React Native engineers complete the native tooling steps for each target platform as well as the React Native tab.
+
+**Outcome:** required access works, the correct tool versions are selected, and a suitable emulator or simulator starts. Building the assigned app is the next page, [First Local Run](/mobile/01-onboarding/first-local-run/).
+
+> **Confidential — internal use only.** Obtain software, access, certificates, and configuration through approved channels. Redact account names, internal hosts, tokens, and sensitive paths before sharing diagnostics. Installation commands below are instructions for developers; preparing this page does not install software on your Mac.
+
+## 1. Confirm requirements before installing
+
+Use the application README, approved starter documentation, dependency manifests, and CI configuration to establish compatible versions. Do not select every tool's newest release independently.
+
+| Requirement | Where to confirm it |
+| :--- | :--- |
+| **macOS and Xcode** | Project requirements, native dependency support, and Apple's Xcode compatibility information. |
+| **Android Studio, Gradle, and JDK** | Project instructions, Gradle wrapper, Android Gradle Plugin version, and any Gradle daemon JVM configuration. |
+| **Android SDK and native tools** | Build configuration: `compileSdk`, explicit Build Tools version if present, and NDK/CMake requirements if used. |
+| **Node and package manager** | Project version file such as `.node-version` or `.nvmrc`, `package.json`, lockfile, and documented package-manager setup. |
+| **Ruby, Bundler, and CocoaPods** | Project Ruby version file, `Gemfile`, and `Gemfile.lock`, where present. |
+| **Test devices** | Supported OS versions, required services, and the team's device matrix. |
+
+**Stop if these requirements conflict or are missing.** Ask the application owner for the supported combination rather than changing dependency locks to accommodate your machine. This guide intentionally does not invent a company-wide version matrix.
+
+### Check the Mac and terminal
+
+Run in Terminal:
+
+```bash
+sw_vers
+uname -m
+sysctl -in sysctl.proc_translated 2>/dev/null || true
+df -h .
+```
+
+Expected: `uname -m` reports `arm64`. A translation value of `1` indicates a process running under Rosetta; open a native terminal before continuing. Compare macOS and available disk space with the selected tools' requirements.
+
+## 2. Request the access needed for your role
+
+| Access | When needed | Verify |
+| :--- | :--- | :--- |
+| **Corporate identity and device compliance** | All developers. | Required SSO and managed-device checks succeed. |
+| **VPN, network, and corporate trust configuration** | When required for internal services. | The approved service is reachable using the prescribed network configuration. |
+| **Source repository** | All contributors. | You can read the assigned repository and have the contribution permissions your role requires. |
+| **Private dependency registries** | Projects using private packages or SDKs. | Authorized package resolution works through the approved credential mechanism. |
+| **Bitrise and validation results** | When your role requires build or enrollment evidence. | You can inspect the relevant sanitized result. |
+| **Datadog and Sauce Labs** | Instrumentation, diagnostics, or device-testing responsibilities. | Required workspace or project is visible with the intended permissions. |
+| **Apple developer or store services** | Physical-device or release tasks requiring that entitlement. | The authorized team confirms the correct account and role. Simulator setup alone does not require production signing access. |
+
+Use the company's approved access request process. Production signing files, store upload keys, and provisioning credentials are not general workstation prerequisites.
+
+**Attach screenshot — approved access-request entry point, with personal and internal account details redacted.**
+
+### Corporate certificates and proxies
+
+Have IT provision the required trust and proxy configuration. Do not download an arbitrary certificate or copy a trust command from another project.
+
+macOS Keychain trust does not automatically configure every Node, Ruby, or Java runtime. If a tool reports a certificate error, follow the approved instructions for that runtime and registry. Never use `curl -k`, disable Git certificate verification, or disable package-manager TLS verification as a workaround.
+
+## 3. Prepare common command-line tools
+
+### Apple command-line tools
+
+Check the current selection:
+
+```bash
+xcode-select -p
+git --version
+```
+
+If developer tools are absent and your managed software process permits it:
+
+```bash
+xcode-select --install
+```
+
+Complete the installer. iOS development additionally requires the full Xcode setup in the iOS tab.
+
+### Homebrew, when approved
+
+Use the corporate software catalog if it supplies Homebrew. Otherwise follow the [official installation instructions](https://docs.brew.sh/Installation) when company policy permits. Homebrew's default Apple Silicon prefix is `/opt/homebrew`.
+
+If already installed, verify it rather than reinstalling:
+
+```bash
+/opt/homebrew/bin/brew --version
+/opt/homebrew/bin/brew --prefix
+```
+
+For zsh, add the following line **once** to `~/.zprofile` using your editor:
+
+```bash
+eval "$(/opt/homebrew/bin/brew shellenv)"
+```
+
+Open a new terminal, then check:
+
+```bash
+command -v brew
+brew --prefix
+```
+
+Expected prefix: `/opt/homebrew`. Resolve an unexpected Intel installation or conflicting PATH with support before adding another installation.
+
+### Configure Git identity and authentication
+
+Use your approved author identity. Replace both sample values before running:
+
+```bash
+git config --global user.name "YOUR_APPROVED_AUTHOR_NAME"
+git config --global user.email "YOUR_APPROVED_AUTHOR_EMAIL"
+git config --get user.name
+git config --get user.email
+```
+
+Use repository-local configuration instead of `--global` if you maintain different identities. Authenticate using the company's approved HTTPS credential helper or SSH process; do not embed a token in a clone URL.
+
+If your organization uses SSH, create a dedicated passphrase-protected key only when one is needed. Do not overwrite an existing key:
+
+```bash
+ssh-keygen -t ed25519 -f "$HOME/.ssh/id_ed25519_work"
+ssh-add --apple-use-keychain "$HOME/.ssh/id_ed25519_work"
+```
+
+Register **only the `.pub` file** through the approved source-control process, including SSO authorization if required. Configure its identity for the real corporate host using the team's SSH instructions. Verify host fingerprints against an approved source before accepting a new host key.
+
+From the assigned repository's browser page, obtain its approved clone URL. To check read access without cloning, replace the sample value:
+
+```bash
+MOBILE_REPO_URL='REPLACE_WITH_APPROVED_CLONE_URL'
+git ls-remote "$MOBILE_REPO_URL" HEAD
+```
+
+Expected: successful authentication and a HEAD reference for an initialized repository. An empty new repository may have no HEAD yet. Read access does not prove permission to push or administer the repository.
+
+## 4. Configure your platform
+
+<Tabs>
+<TabItem label="Android">
+
+### A. Install Android Studio for Apple Silicon
+
+Install the approved release through the software catalog or [Android's installation guide](https://developer.android.com/studio/install). Select the Mac package for Apple Silicon and complete the Setup Wizard.
+
+Open **SDK Manager** and confirm the SDK location. Install:
+
+- The SDK Platform matching the project's `compileSdk`.
+- SDK Platform-Tools and Android Emulator.
+- Android SDK Command-line Tools when command-line SDK management is needed.
+- A specific Build Tools, NDK, or CMake version only when required by the project.
+- A compatible **ARM64** emulator image for your test target.
+
+A Google APIs image and a Google Play image are different options. Select Google Play support only when the test requires it. Do not install Intel HAXM for this Apple Silicon setup.
+
+**Attach screenshot — Android SDK Manager showing the project-required components and SDK location.**
+
+### B. Align the JDK used by the IDE and terminal
+
+Follow the project's JDK requirements. Android Studio includes a Java runtime, but its presence alone does not prove it is the right Gradle runtime for your project. Consult [Android's JDK guidance](https://developer.android.com/build/jdks).
+
+In Android Studio's Gradle settings, select the supported Gradle JDK. Check for project-managed daemon JVM criteria or other explicit Java configuration before overriding it.
+
+For terminal builds, set `JAVA_HOME` to the confirmed JDK home, not its `bin` directory. The bundled runtime below is an option **only if it matches the project's requirements** and Studio is installed at that path:
+
+```bash
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+export PATH="$JAVA_HOME/bin:$PATH"
+java -version
+```
+
+For a separately approved JDK, install it through the approved distributor or catalog and substitute its actual home. Do not assume one Java major version supports every Gradle project.
+
+### C. Configure the Android SDK path
+
+Add the following block once to `~/.zshrc`, adjusting the SDK location to match SDK Manager. Include your confirmed Java configuration alongside it if needed:
+
+```bash
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+```
+
+Open a new terminal and check:
+
+```bash
+java -version
+printf '%s\n' "$JAVA_HOME" "$ANDROID_HOME"
+adb version
+emulator -version
+```
+
+If command-line tools were installed using a versioned directory instead of `latest`, use its actual path. Avoid introducing a conflicting `ANDROID_SDK_ROOT` value.
+
+Review and accept the required SDK licenses through SDK Manager. If `sdkmanager` is configured, the interactive equivalent is:
+
+```bash
+sdkmanager --licenses
+```
+
+Do not pipe automatic acceptance into this command.
+
+### D. Create and start an emulator
+
+In **Device Manager**:
+
+1. Create a virtual device matching a supported device profile.
+2. Select a compatible installed ARM64 system image.
+3. Finish creation and start the device.
+4. Wait until Android has booted.
+
+Verify:
+
+```bash
+emulator -list-avds
+adb devices -l
+```
+
+Expected: the running emulator appears with status `device`. `offline` or `unauthorized` is not a successful check.
+
+**Attach screenshot — running Android emulator and its configured API level.**
+
+**Android readiness:** selected JDK is compatible, required SDK packages and licenses are present, and a supported emulator is available. Use the repository's Gradle wrapper during First Local Run; do not install a global Gradle version to replace it.
+
+</TabItem>
+<TabItem label="iOS">
+
+### A. Install the compatible Xcode release
+
+Obtain the project-supported Xcode through the approved software source, the Mac App Store, or Apple Developer downloads. Confirm its macOS requirements using [Apple's Xcode support matrix](https://developer.apple.com/support/xcode/).
+
+Open Xcode and complete first-launch component installation and license review. Install iOS platform support and the required Simulator runtime through Xcode Settings. Follow [Apple's component guidance](https://developer.apple.com/documentation/xcode/downloading-and-installing-additional-xcode-components); labels can differ by Xcode version.
+
+Select the intended Xcode for terminal tools. If installed at the standard path:
+
+```bash
+sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+xcode-select -p
+xcodebuild -version
+xcrun swift --version
+```
+
+For side-by-side installations, substitute the approved app's actual path. The selection should identify the full Xcode developer directory, rather than only `/Library/Developer/CommandLineTools`.
+
+**Attach screenshot — selected Xcode version and installed iOS Simulator runtime.**
+
+### B. Prepare dependency tooling only when required
+
+| Project dependency method | Setup |
+| :--- | :--- |
+| **Swift Package Manager** | Use Xcode's supported package resolution and the repository's committed resolution policy. No CocoaPods installation is needed solely for SPM. |
+| **CocoaPods with Gemfile** | Use the project-supported Ruby, Bundler, and locked CocoaPods version. Run Pod commands through `bundle exec`. |
+| **Another documented method** | Follow the project's approved setup; do not add a second package manager. |
+
+For a CocoaPods project, obtain the approved ARM64 Ruby runtime through the managed catalog or the team's documented Ruby version manager. Activate the version required by its Ruby version file or Gemfile. Confirm:
+
+```bash
+ruby --version
+command -v ruby
+gem --version
+bundle --version
+```
+
+If Bundler is absent or incompatible, install the approved version matching `Gemfile.lock` using that Ruby environment. Do not use `sudo gem install` against the macOS system Ruby as a generic fix.
+
+The project-specific `bundle install` and `bundle exec pod install` steps belong in First Local Run, after obtaining the repository. [CocoaPods explains why `bundle exec` preserves the Gemfile's version selection](https://guides.cocoapods.org/using/a-gemfile.html).
+
+### C. Verify Simulator readiness
+
+```bash
+xcrun simctl list runtimes
+xcrun simctl list devices available
+open -a Simulator
+```
+
+Choose a supported device in Simulator, or create one through Xcode's device management UI. If booting from Terminal, copy an actual available device UDID and replace the sample value:
+
+```bash
+MOBILE_SIMULATOR_UDID='REPLACE_WITH_AVAILABLE_DEVICE_UDID'
+xcrun simctl boot "$MOBILE_SIMULATOR_UDID"
+xcrun simctl bootstatus "$MOBILE_SIMULATOR_UDID" -b
+```
+
+Run `boot` only for a shutdown device. If already booted, proceed to the status check.
+
+A physical iPhone additionally requires approved device setup and development signing. Arrange the necessary entitlements with the owner; do not download production signing profiles to make Simulator setup work.
+
+**Attach screenshot — running iOS Simulator with its device type and runtime version.**
+
+**iOS readiness:** the intended Xcode is selected, a compatible simulator boots, and the project's dependency tooling is available.
+
+</TabItem>
+<TabItem label="React Native">
+
+### A. Complete native setup for each target
+
+Complete the Android tab for Android development and the iOS tab for iOS development. Complete both for dual-platform work. This guide covers projects that build native applications locally; follow the approved starter's workflow rather than adding an unrelated framework or global CLI.
+
+### B. Install a Node version manager
+
+Keep the team's existing version manager if one is prescribed. If FNM is approved and Homebrew is available:
+
+```bash
+brew install fnm
+```
+
+Add this line once to `~/.zshrc`:
+
+```bash
+eval "$(fnm env --use-on-cd --shell zsh)"
+```
+
+Open a new terminal. From the project root, where a supported `.node-version` or `.nvmrc` is present:
+
+```bash
+fnm install
+fnm use
+node --version
+node -p 'process.arch'
+npm --version
+```
+
+Expected architecture: `arm64`. Confirm the reported Node version matches the project. If the project has no version file, obtain its supported version before running an install command; do not infer one from an old workshop example. See the [FNM configuration reference](https://github.com/Schniz/fnm/blob/master/docs/configuration.md).
+
+### C. Select the package manager
+
+Use the project's documented package-manager version and committed lockfile. Yarn, npm, and pnpm are not interchangeable within a project. Do not create a different lockfile to bypass installation problems.
+
+If Yarn or pnpm is required, follow the repository's approved bootstrap method. Do not assume Corepack is installed or enabled with every Node distribution.
+
+Watchman may be required or recommended by the project's Metro setup. If approved and needed:
+
+```bash
+brew install watchman
+watchman --version
+```
+
+The [React Native environment guide](https://reactnative.dev/docs/set-up-your-environment) provides upstream context. Use the documentation matching the project's React Native version and keep project compatibility requirements authoritative.
+
+### D. Verify readiness
+
+```bash
+node --version
+node -p 'process.arch'
+command -v node
+```
+
+Also run the package manager's version command and the native checks for your targets. Check that the IDE and terminal resolve the intended Node and native tools; an Xcode build environment can differ from your interactive shell.
+
+Do not use an unverified internal Doctor package or `npx` command as proof of certification. If the project provides a reviewed diagnostic command, run its documented version and interpret the individual checks.
+
+**React Native readiness:** correct Node and package manager are available, required native setup is complete, and repository-specific dependency installation can begin on the next page.
+
+</TabItem>
+</Tabs>
+
+## 5. Resolve common setup failures
+
+| Symptom | Check first | Avoid |
+| :--- | :--- | :--- |
+| **`command not found`** | Installation location, PATH, shell startup file, and a newly opened terminal. | Repeatedly appending conflicting environment blocks. |
+| **TLS or registry authentication failure** | VPN, service access, approved CA configuration for that runtime, and registry credential binding. | Disabling verification or sharing complete credential files. |
+| **Gradle Java compatibility error** | Wrapper, plugin, Gradle JDK settings, daemon JVM criteria, and terminal Java selection. | Random JDK upgrades or replacing the wrapper. |
+| **SDK package or license missing** | SDK Manager, actual SDK path, requested package version, and accepted licenses. | Installing unrelated API levels until the error disappears. |
+| **Emulator fails to start** | ARM64 image, supported runtime, disk space, and emulator diagnostics. | Intel acceleration packages or unnecessary device-data resets. |
+| **`xcodebuild` requires Xcode** | `xcode-select -p`, selected full Xcode, and completed first launch. | Reinstalling every Apple developer tool. |
+| **Simulator runtime unavailable** | Runtime compatibility with the selected Xcode and actual downloaded components. | Assuming a simulator device name from another Mac exists locally. |
+| **Ruby, Pod, or native architecture error** | ARM64 terminal, Ruby and gem architecture, dependency compatibility, and project locks. | Blanket Rosetta conversion, `sudo` gem installs, or deleting lockfiles. |
+| **Node differs between IDE and terminal** | Node version manager, project version files, shell setup, and documented build environment configuration. | Hardcoded paths to another developer's machine. |
+
+When escalation is needed, share the failing step, selected versions, expected result, and a sanitized error excerpt through the approved Teams support channel. Review diagnostics before posting; environment dumps can disclose secrets.
+
+## 6. Complete the workstation checklist
+
+- [ ] macOS and native ARM64 tooling meet the assigned project's requirements.
+- [ ] Required corporate identity, network, repository, and registry access works.
+- [ ] Shell configuration has one consistent selection for each relevant tool.
+- [ ] Android engineers: supported Java and SDK tools are available; the required emulator boots.
+- [ ] iOS engineers: the intended Xcode is selected; the required simulator boots.
+- [ ] React Native engineers: correct Node and package manager are selected; native setup is complete for each target.
+- [ ] I have not added production signing credentials or secrets to tracked configuration.
+- [ ] Any unresolved access or compatibility issue is recorded with the owning team.
+
+Passing these checks establishes workstation readiness, not a successful application build or production-release approval.
+
+**Next: [First Local Run](/mobile/01-onboarding/first-local-run/)** — obtain the assigned source and verify an actual application build.
+
+
+
+
+
+--------------------------------------
+
+
+---
+title: Build & Run Your First App
+description: Obtain the assigned source, install locked dependencies, configure your local environment, and verify an Android, iOS, or React Native application.
+sidebar:
+  label: First Local Run
+  order: 5
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+# Build & Run Your First App
+
+Use this guide after completing [Machine Setup](/mobile/01-onboarding/machine-setup-guide/). Start from the application and source branch assigned by your team, then follow its platform tab.
+
+**Outcome:** the intended application builds and opens on a supported local target, and you record the source revision and verification result. This is a development check, not CI enrollment or release approval.
+
+> **Confidential — internal use only.** Use approved test accounts and environments. Never commit credentials, paste secrets into commands, or share unredacted logs and screens. Keep test data separate from production data.
+
+## 1. Confirm the inputs
+
+| Input | Confirm before continuing |
+| :--- | :--- |
+| **Source** | Existing application repository, or the approved generator for a new application. |
+| **Branch and revision** | The team's intended starting branch or exact commit. Do not assume every application starts from `main` or `development`. |
+| **Toolchain** | Required tools and versions are available from Machine Setup. |
+| **Local configuration** | Approved environment, application identifiers, test account process, and configuration instructions. |
+| **Build target** | Android module and variant, iOS workspace or project and scheme, or React Native package scripts. |
+| **Expected behavior** | Launch screen, sign-in requirement, and a small journey that proves the app is usable. |
+
+Commands containing `REPLACE_WITH_...` require a real value from the project. They are not ready to execute unchanged. Commands below assume zsh or bash on macOS.
+
+## 2. Obtain the application source
+
+### Existing application
+
+Choose an approved local workspace outside synchronized personal storage. Replace the sample values and run:
+
+```bash
+MOBILE_REPO_URL='REPLACE_WITH_APPROVED_CLONE_URL'
+MOBILE_SOURCE_BRANCH='REPLACE_WITH_ASSIGNED_SOURCE_BRANCH'
+git clone --branch "$MOBILE_SOURCE_BRANCH" "$MOBILE_REPO_URL" mobile-app
+cd mobile-app
+git status --short --branch
+git rev-parse HEAD
+```
+
+If you already have a checkout, inspect its branch, revision, and changes first. Do not reset or overwrite uncommitted work to match this example.
+
+### New application
+
+Use the approved template's current generation instructions. Confirm the exact generator, version, platform options, and registry authentication with the owning team.
+
+1. Generate into a new local directory using the approved command.
+2. Enter the **generated application directory**, not the template repository root.
+3. Confirm the expected application files and dependency locks exist.
+4. Review the generated files and run its documented initialization steps.
+5. Publish to the assigned private repository and source branch through the approved process.
+
+Do not substitute a public generator or an unpinned `latest` command for a company-approved template. Application generation and source publication do not enroll the app in Bitrise.
+
+### Record what you are running
+
+For an existing checkout, record its commit. For newly generated, uncommitted source, record the approved generator version and options first; record the application commit after the initial reviewed source is committed.
+
+Do not describe a dirty checkout as an exact reproduction of its HEAD commit. Record relevant local changes separately.
+
+## 3. Configure the local environment
+
+Follow the repository's documented configuration contract. File names such as `.env.local`, `local.properties`, or an `.xcconfig` are project-specific; creating one does not make an application read it automatically.
+
+| Configuration | Handling |
+| :--- | :--- |
+| **Non-secret environment selection** | Use the approved local or development environment and documented configuration keys. |
+| **Credentials and session tokens** | Obtain through the approved sign-in or test-credential process. Keep out of tracked files and terminal history. |
+| **Private registry authentication** | Use the approved credential helper or local secret binding. Do not add credentials to dependency manifests. |
+| **Device-reachable API address** | Confirm that the target can reach it through the required network. A simulator, emulator, and physical phone can have different routing. |
+| **Signing** | Use the documented development or simulator configuration. Production signing material is not a prerequisite for a first local run. |
+
+Before adding a local configuration file, verify the team's ignore rules. For a real file path, the following reports whether Git ignores it:
+
+```bash
+MOBILE_LOCAL_CONFIG='REPLACE_WITH_LOCAL_CONFIG_FILE_PATH'
+git check-ignore -v -- "$MOBILE_LOCAL_CONFIG"
+git status --short
+```
+
+No output from `git check-ignore` means no matching ignore rule was found. An ignore rule does not protect a file already tracked by Git. Never use `git add .` to publish setup files without reviewing the staged content.
+
+Do not disable TLS verification or relax application transport security to make a development endpoint work. Follow the project's approved network and certificate configuration.
+
+## 4. Build and run your platform
+
+<Tabs>
+<TabItem label="Android">
+
+### A. Open the correct Gradle root
+
+For a native Android app, use the directory containing `gradlew` and the Gradle settings file. For a React Native app, this is commonly its `android` directory; follow the actual project layout.
+
+Use the checked-in wrapper, not a global Gradle installation:
+
+```bash
+./gradlew --version
+./gradlew projects
+./gradlew tasks --all
+```
+
+Confirm the Gradle runtime and available application tasks. A universal `./gradlew sync` task does not exist; Android Studio performs project synchronization through its own integration.
+
+If execution is denied, inspect the wrapper's permissions and repository instructions. Correct an unintended missing executable bit through the team's normal process rather than broadly changing permissions.
+
+### B. Select the application variant
+
+Open the project in Android Studio, let it synchronize, and select the documented development variant. Confirm its application ID, endpoint, and debug configuration.
+
+For a standard module named `app` with a `debug` variant, an example build is:
+
+```bash
+./gradlew :app:assembleDebug
+```
+
+This task name is illustrative. A flavored project may use a task such as `:app:assembleDevDebug`; use the task that actually exists. Do not rename flavors or change plugin versions just to fit an example command.
+
+**Expected:** the chosen assemble task completes successfully and produces an APK at the output location reported by the build. Dependency resolution can require network access even with locked versions.
+
+### C. Start the target and install
+
+Start the supported emulator from Device Manager, then check:
+
+```bash
+adb devices -l
+```
+
+Select that target in Android Studio and click **Run** for the correct application configuration. This builds, installs, and launches the app.
+
+For a project with the standard `app` debug variant, the CLI installation example is:
+
+```bash
+./gradlew :app:installDebug
+```
+
+Installation is not the same as launch. Open the installed app on the emulator, or use the project's documented launch command. If multiple targets are connected, select the intended target explicitly rather than accepting an arbitrary one.
+
+### D. Verify
+
+- Confirm the expected application and environment opened.
+- Check the expected launch or sign-in screen.
+- Complete the agreed non-destructive development journey.
+- Inspect relevant Logcat errors without copying tokens or payloads into shared evidence.
+
+**Attach screenshot — Android app running on the supported emulator, with sensitive information redacted.**
+
+</TabItem>
+<TabItem label="iOS">
+
+### A. Resolve dependencies through the project's method
+
+For Swift Package Manager, open the documented Xcode project or workspace and let Xcode resolve the expected package graph. Follow the project's `Package.resolved` policy; do not update every package to resolve a setup issue.
+
+For CocoaPods with a root-level `Gemfile` and an `ios` Podfile directory, the common pattern is:
+
+```bash
+bundle check || bundle install
+(
+  cd ios
+  bundle exec pod install
+)
+```
+
+Run from the directory containing the Gemfile; adjust the Podfile directory to match the application. Use the selected Ruby and locked Bundler/CocoaPods versions. Do not run `pod update` or add `--repo-update` by default. If a required specification is unavailable, investigate the registry or follow the team's documented update procedure.
+
+### B. Open the correct workspace or project
+
+For a CocoaPods integration, open its generated `.xcworkspace`. For another setup, use the documented `.xcodeproj` or workspace. Do not open a Pods dependency project as the application.
+
+To inspect schemes in a known workspace, replace the sample path:
+
+```bash
+MOBILE_IOS_WORKSPACE='REPLACE_WITH_WORKSPACE_PATH'
+xcodebuild -list -workspace "$MOBILE_IOS_WORKSPACE"
+```
+
+For a project without a workspace, use `-project` with its actual `.xcodeproj` path instead. Choose the team's development scheme and a compatible Simulator destination.
+
+### C. Build and run
+
+In Xcode:
+
+1. Select the documented workspace or project and development scheme.
+2. Select an available iOS Simulator.
+3. Confirm local configuration and dependency resolution.
+4. Choose **Product → Run**.
+5. Wait for the build and launch to finish.
+
+An optional CLI build for a workspace is shown below. Replace all values; choose a scheme that supports the specified configuration:
+
+```bash
+MOBILE_IOS_WORKSPACE='REPLACE_WITH_WORKSPACE_PATH'
+MOBILE_IOS_SCHEME='REPLACE_WITH_SHARED_DEVELOPMENT_SCHEME'
+MOBILE_SIMULATOR_UDID='REPLACE_WITH_AVAILABLE_SIMULATOR_UDID'
+xcodebuild \
+  -workspace "$MOBILE_IOS_WORKSPACE" \
+  -scheme "$MOBILE_IOS_SCHEME" \
+  -configuration Debug \
+  -destination "platform=iOS Simulator,id=$MOBILE_SIMULATOR_UDID" \
+  build
+```
+
+This command **builds**; it does not install or launch the application. Use Xcode Run for this onboarding journey. Do not work around Simulator failures by importing production certificates or changing the app's signing team without guidance.
+
+### D. Verify
+
+- The app opens on the intended Simulator without a launch crash.
+- The expected environment and initial screen are visible.
+- The agreed development journey works.
+- Relevant Xcode diagnostics contain no unresolved launch failure.
+
+**Attach screenshot — iOS app running on the selected Simulator, with sensitive information redacted.**
+
+</TabItem>
+<TabItem label="React Native">
+
+### A. Activate the project toolchain
+
+From the generated or checked-out application root, confirm `package.json` and the expected lockfile. Activate the documented Node and package-manager versions from Machine Setup.
+
+```bash
+node --version
+node -p 'process.arch'
+```
+
+Expected architecture: `arm64`. Use the project's package scripts and installed tooling rather than fetching a different CLI with `npx ...@latest`.
+
+### B. Install locked JavaScript dependencies
+
+Use **one** command matching the repository's package manager and version:
+
+| Project configuration | Typical locked installation |
+| :--- | :--- |
+| npm with committed `package-lock.json` | `npm ci` |
+| Modern Yarn | `yarn install --immutable` |
+| Yarn Classic | `yarn install --frozen-lockfile` |
+| pnpm | `pnpm install --frozen-lockfile` |
+
+Follow any workspace-specific instructions. If the command reports a manifest/lock mismatch, stop and investigate the source revision and tool versions. Do not regenerate or delete a lockfile merely to obtain a successful installation.
+
+For iOS, complete the CocoaPods or other native dependency steps documented in the iOS tab and the application README. Installing JavaScript dependencies alone does not complete native setup.
+
+### C. Inspect the scripts before running them
+
+Read `package.json`. If the project defines standard `start`, `android`, and `ios` scripts, the npm examples below apply. For another package manager, use its corresponding script command.
+
+Terminal 1, from the application root:
+
+```bash
+npm run start
+```
+
+Start the required emulator or simulator. Then, in Terminal 2 from the same application root, run **one** target:
+
+```bash
+# Android target, only if the project defines this script:
+npm run android
+```
+
+Or:
+
+```bash
+# iOS target, only if the project defines this script:
+npm run ios
+```
+
+These scripts are conventions, not guaranteed project APIs. Use the documented variant, scheme, destination, and script arguments for your app. Some scripts start Metro automatically; follow the project workflow to avoid duplicate servers.
+
+A physical device must be able to reach the development server through the approved network path. Do not expose Metro publicly or bypass corporate network controls.
+
+### D. Verify both intended platforms
+
+- The native build succeeds and the app launches.
+- The development build connects to its expected JavaScript bundle source.
+- The initial screen renders without an unhandled JavaScript exception.
+- The agreed feature journey works on each target platform in scope.
+- Reload behavior does not conceal a native dependency or configuration issue.
+
+React Native guidance uses Redux Toolkit for Redux state management. A first run should use the established store and configuration; do not introduce another state library as a setup fix.
+
+**Attach screenshot — React Native app running on each supported local target, with sensitive information redacted.**
+
+</TabItem>
+</Tabs>
+
+## 5. Check the result as a user
+
+Compilation is only the first check. Use an approved test environment and perform this small smoke verification:
+
+| Check | Expected result |
+| :--- | :--- |
+| **Identity** | Correct app, local build configuration, and target environment. |
+| **Launch** | Initial screen appears without a fatal error. |
+| **Session** | Approved test sign-in succeeds, or the documented unauthenticated state appears. |
+| **Primary read journey** | The team's selected screen loads expected test data or the documented empty state. |
+| **Failure behavior** | A safe, agreed failure exercise produces a recoverable UI rather than a crash. Do not disrupt shared infrastructure. |
+| **Restart** | Closing and reopening the app yields its documented session and restoration behavior. |
+
+This smoke check does not replace automated tests, accessibility checks, coverage gates, or real-device validation in Testing & Quality.
+
+## 6. Investigate failures without changing the project blindly
+
+| Failure | Check first |
+| :--- | :--- |
+| **Private dependency cannot resolve** | Registry entitlement, approved credentials, corporate trust, and exact package version. |
+| **Lockfile would change** | Correct branch, package manager, toolchain version, and documented installation method. |
+| **Android task not found** | Correct Gradle root, application module, flavors, and available tasks. |
+| **Wrong Java runtime** | IDE Gradle JDK, terminal selection, and project daemon JVM configuration. |
+| **iOS scheme or destination missing** | Correct workspace/project, shared scheme, installed runtime, and selected Xcode. |
+| **Missing CocoaPods module** | Locked Pod installation completed and the app workspace is open. |
+| **App cannot reach API** | Actual device routing, VPN requirements, endpoint, trust configuration, and session status. |
+| **React Native cannot load bundle** | Project script, Metro process, development build configuration, port, and target connectivity. |
+| **App starts but shows an unexpected screen** | Environment, signed-in account, feature configuration, and expected test data. |
+
+Do not delete all caches, upgrade packages, replace signing settings, or disable security controls as the first response. Preserve the original error and narrow the failing layer. If escalation is needed, share sanitized evidence through the approved Teams support channel.
+
+## 7. Record the first-run evidence
+
+Use the team's approved tracking location. Keep credentials, personal identifiers, and private artifact URLs out of this record.
+
+```markdown
+# First Local Run
+
+- Application:
+- Platform and local target:
+- Source branch and commit:
+- Local source changes, if any:
+- Approved generator version, if a new app:
+- Relevant tool versions:
+- Development environment:
+- Build configuration, variant, or scheme:
+- Build and run commands or IDE actions:
+- Launch result:
+- Smoke journey and result:
+- Remaining failures or limitations:
+- Sanitized evidence location:
+```
+
+Inspect the working tree after dependency resolution and the run:
+
+```bash
+git status --short
+git diff --stat
+```
+
+Investigate unexpected manifest, lockfile, signing, or project changes. Do not commit generated output or local configuration simply because a tool created it.
+
+## 8. Completion checklist
+
+- [ ] I used the assigned application source or the approved generator.
+- [ ] I recorded the actual revision and any relevant local changes.
+- [ ] Dependencies resolved through the project's documented locked workflow.
+- [ ] Local configuration uses an approved environment and contains no committed secrets.
+- [ ] The correct application built and opened on each local target in scope.
+- [ ] The agreed smoke journey passed, or blockers are recorded accurately.
+- [ ] Unexpected file changes have been reviewed.
+- [ ] I understand that local success is separate from CI enrollment, device-cloud testing, and verified distribution.
+
+**Next: [Complete Your First Contribution](/mobile/01-onboarding/new-engineer-onboarding/)** — make a small change, verify it, and submit it for review.
+
+
+
+---------------------------
+
+---
+title: Complete Your First Contribution
+description: Plan a focused mobile change, implement and test it, submit a pull request, and complete review with clear evidence.
+sidebar:
+  label: First Contribution
+  order: 6
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+# Complete Your First Contribution
+
+Use this guide after [First Local Run](/mobile/01-onboarding/first-local-run/). Both experienced mobile engineers and engineers new to mobile follow the same contribution process.
+
+Choose a small, useful change with your team. The goal is to demonstrate that you can navigate the code, preserve its architecture, verify behavior, and respond to review—not simply create a commit.
+
+> **Confidential — internal use only.** Keep source, review discussions, and evidence in approved systems. Use synthetic test data and redact credentials, personal information, and sensitive application details from diagnostics and screenshots.
+
+## 1. Agree on a focused task
+
+Confirm the task and reviewer before changing code. Suitable examples include correcting a localized label, adding a missing validation rule, improving an accessible control, or fixing a small state-handling defect.
+
+| Agree on | Record |
+| :--- | :--- |
+| **Problem** | What is wrong or missing, and who experiences it? |
+| **Expected behavior** | Observable acceptance criteria, including relevant failure or empty states. |
+| **Scope** | Files, feature, and platforms affected. Include shared-code effects on both native targets. |
+| **Verification** | Tests, manual checks, and evidence needed to demonstrate the outcome. |
+| **Review and integration** | Intended target branch, branch convention, reviewer, and required checks. |
+
+Avoid combining the first task with a framework migration, broad dependency upgrade, signing change, or unrelated refactor. If a larger change is needed, agree its scope separately.
+
+## 2. Read the rules that apply
+
+Before implementing:
+
+- Read the repository README, contribution instructions, PR template, and approved development rules.
+- Review [Clean Architecture](/mobile/02-architecture/mobile-architecture/) and [Branching & PR Conventions](/mobile/02-architecture/branching-prs/).
+- Read the relevant Android, iOS, or React Native standards and shared foundation contract.
+- Consult Testing & Quality for test selection and coverage enforcement, and Observability if diagnostics change.
+- Use GenAI & Developer Tools guidance if using an approved IDE assistant. Review generated code and tests as carefully as handwritten changes.
+
+Repository rules determine the actual branch names, approval count, status checks, and merge method. Do not infer them from an illustrative command or a historical workshop run.
+
+## 3. Create the working branch
+
+Begin from the team's assigned integration branch. Inspect your checkout first:
+
+```bash
+git status --short --branch
+git remote -v
+```
+
+Do not discard existing local work. Check that the remote is correct before fetching; redact remote URLs if they contain sensitive information before sharing output.
+
+The following assumes the approved remote is `origin`, your working tree is clean, and the assigned base branch exists locally and remotely. Replace both sample values:
+
+```bash
+MOBILE_BASE_BRANCH='REPLACE_WITH_ASSIGNED_BASE_BRANCH'
+MOBILE_WORK_BRANCH='REPLACE_WITH_APPROVED_TASK_BRANCH'
+git fetch origin
+git switch "$MOBILE_BASE_BRANCH"
+git merge --ff-only "origin/$MOBILE_BASE_BRANCH"
+git switch -c "$MOBILE_WORK_BRANCH"
+```
+
+If the local base branch does not exist, follow the team's tracking-branch setup. If fast-forwarding fails, inspect the divergence; do not force-reset it. Record the starting commit:
+
+```bash
+git rev-parse HEAD
+```
+
+An application source branch is distinct from a configuration-repository enrollment or promotion branch. This page describes an application contribution, not a new enrollment request.
+
+## 4. Implement the behavior at the correct boundary
+
+| Change | Keep responsibility clear |
+| :--- | :--- |
+| **Presentation** | Render explicit state, use localized resources, and preserve accessibility. |
+| **Business rule** | Keep the rule independently testable without a concrete screen, network client, or database. |
+| **Data access** | Use the established repository contracts and account-scoping rules. |
+| **Asynchronous work** | Respect cancellation, lifecycle ownership, and protection against stale results. |
+| **Shared foundation** | Use the documented integration; do not invent an SDK method or duplicate its implementation. |
+| **Telemetry** | Use approved event names and attributes; avoid raw payloads and sensitive identifiers. |
+
+React Native changes must follow the established Redux Toolkit approach where Redux state is used. Do not introduce a competing state library for an isolated feature fix.
+
+Keep lockfiles and toolchain configuration unchanged unless the task requires a reviewed update. Do not alter a production signing setting to fix a local development issue.
+
+## 5. Add meaningful tests
+
+Test the behavior that motivated the change, including the failure condition that would reveal a regression. Where practical, demonstrate that the new regression test fails against the old behavior and passes with the fix.
+
+| Concern | Verification to consider |
+| :--- | :--- |
+| **Business logic** | Valid, invalid, boundary, and empty inputs relevant to the rule. |
+| **State transitions** | Loading, success, empty, and failure outcomes; retained content during refresh if supported. |
+| **Concurrency** | Cancellation, duplicate actions, stale responses, and account switches where relevant. |
+| **Data integration** | Mapping, persistence, freshness, and error handling at affected boundaries. |
+| **UI** | Observable behavior, accessible controls, and supported platform differences. |
+| **Privacy** | No credentials or sensitive data in diagnostic events, logs, or snapshots. |
+
+The required target is **100% within the defined coverage scope**. Use Testing & Quality's platform-specific metrics and enforcement. Every production file must be accounted for; exclusions require an explicit documented basis. Do not lower thresholds or add superficial assertions to obtain a green report.
+
+AI assistance is optional. Generated tests must use real project contracts and locators, have meaningful assertions, and be reviewed and executed. CI runs committed tests without generating them through an LLM.
+
+## 6. Run the required local checks
+
+Use the repository's documented checks and variants. The examples below show common command shapes, not guaranteed tasks in every project. Record the exact commands and results you actually obtained.
+
+<Tabs>
+<TabItem label="Android">
+
+Run from the directory containing the Gradle wrapper. For a standard `app` module with a `debug` variant:
+
+```bash
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+```
+
+Use the task names for your actual module and variant. Confirm the project's separate coverage task and threshold enforcement; the commands above do not automatically establish 100% coverage.
+
+If the change requires instrumentation tests and the project uses the standard debug task, start the approved emulator or device and run:
+
+```bash
+./gradlew :app:connectedDebugAndroidTest
+```
+
+Check the generated reports, not only the terminal summary. Device-cloud execution and required device matrices follow Testing & Quality and CI/CD guidance.
+
+</TabItem>
+<TabItem label="iOS">
+
+Use the documented workspace, test-enabled shared scheme, and supported Simulator. Replace the sample values:
+
+```bash
+MOBILE_IOS_WORKSPACE='REPLACE_WITH_WORKSPACE_PATH'
+MOBILE_IOS_SCHEME='REPLACE_WITH_TEST_ENABLED_SHARED_SCHEME'
+MOBILE_SIMULATOR_UDID='REPLACE_WITH_AVAILABLE_SIMULATOR_UDID'
+xcodebuild \
+  -workspace "$MOBILE_IOS_WORKSPACE" \
+  -scheme "$MOBILE_IOS_SCHEME" \
+  -destination "platform=iOS Simulator,id=$MOBILE_SIMULATOR_UDID" \
+  -enableCodeCoverage YES \
+  test
+```
+
+For a project without a workspace, use its documented `-project` invocation. Run the repository's lint, formatting, and coverage-evaluation commands too. Enabling coverage collection does not enforce a threshold or ensure that every intended test target is in the scheme.
+
+Inspect test failures and result bundles through Xcode or the project's reporting workflow. Do not describe Simulator results as physical-device verification.
+
+</TabItem>
+<TabItem label="React Native">
+
+Read `package.json` and use its documented scripts. If these scripts exist and npm is the assigned package manager:
+
+```bash
+npm run typecheck
+npm run lint
+npm run test:coverage
+```
+
+These names are examples. Confirm the test runner, coverage scope, thresholds, and report paths from the repository configuration. Do not invent scripts merely to match this page.
+
+Also build and run the affected Android and iOS targets using [First Local Run](/mobile/01-onboarding/first-local-run/). JavaScript tests do not validate native linking, permissions, or platform rendering. Add the required component, native, and end-to-end checks for the change.
+
+For Appium, Espresso, XCUITest, and Sauce Labs execution, use Testing & Quality's framework-specific instructions and the approved CI invocation.
+
+</TabItem>
+</Tabs>
+
+For all platforms, inspect the working tree after checks. Review any generated changes and run the agreed manual acceptance journey. If a required check cannot run, record the blocker; do not mark it passed.
+
+## 7. Review and commit the intended changes
+
+Inspect the diff for unrelated edits, sensitive values, generated output, and unexpected lockfile changes:
+
+```bash
+git status --short
+git diff --check
+git diff
+```
+
+Stage specific reviewed files. Replace the sample paths:
+
+```bash
+git add -- path/to/changed-source-file path/to/changed-test-file
+git diff --cached --check
+git diff --cached
+```
+
+Commit using the repository's convention. For a repository using Conventional Commits, this is an illustrative message:
+
+```bash
+git commit -m "fix(balance): show empty state when no records are returned"
+git push --set-upstream origin HEAD
+```
+
+Confirm the pushed branch and commit. If a security scan detects a credential, stop and follow the incident process; deleting it in a later commit is not sufficient remediation.
+
+## 8. Open a reviewable pull request
+
+Choose the correct target branch and use the repository's PR template. If no template exists, this structure makes the change reviewable:
+
+```markdown
+## Problem
+Describe the concrete issue and affected behavior.
+
+## Change
+Explain the resulting behavior and relevant implementation decisions.
+
+## Verification
+- Automated checks: exact commands and outcomes.
+- Coverage: measured scope, metrics, and report location.
+- Manual checks: platform, target, and observed outcome.
+- Not run or blocked: reason and required follow-up.
+
+## Evidence
+Add approved report links and redacted screenshots where useful.
+
+## Risk and follow-up
+Record material limitations, compatibility concerns, or required coordination.
+```
+
+Add the required assignee and reviewers, link the task, and provide a meaningful description. Use draft status honestly while work is incomplete; meet the repository's ready-for-review rules before requesting merge.
+
+**Attach screenshot — PR overview showing the description, requested reviewers, and status checks, with sensitive details redacted.**
+
+### Understand the checks
+
+| Check | What it establishes |
+| :--- | :--- |
+| **Danger.js** | The configured PR conventions and metadata rules. It does not automatically prove coverage, test correctness, or runtime safety. |
+| **Lint, type, and static checks** | The configured source rules pass for the checked scope. |
+| **Tests and coverage evaluation** | Selected tests pass and measured coverage meets the configured requirement. |
+| **Build** | The selected configuration compiles and packages successfully. |
+| **Device tests** | The selected journeys pass on the recorded devices and environments. |
+| **Peer review** | Required reviewers have assessed the change under the repository's rules. |
+
+A check blocks merging only when the repository's protection and status configuration enforce it. A pending check is not a passing check. Capture evidence for the current PR revision, not an earlier commit.
+
+## 9. Address review and complete integration
+
+1. Respond to feedback with a code change or a clear explanation.
+2. Keep follow-up commits focused and update the PR description when behavior or scope changes.
+3. Rerun checks affected by the update and obtain the required current-revision CI results.
+4. Resolve discussions according to team practice and obtain the required approvals.
+5. Merge only through the approved method after required conditions are satisfied, or hand off to the authorized maintainer.
+6. Record the merged revision and any follow-up task.
+
+Do not bypass a failing check, force-push shared history, or rerun an external provisioning action as a shortcut. A merged source PR does not prove that a build has been distributed. Deployment and per-route verification belong in CI/CD and App Store & Distribution.
+
+If integration is blocked by access or an external service, record the accurate status and owner. Do not report the contribution as merged or released before it is.
+
+## 10. Complete onboarding with your team
+
+| Milestone | Evidence |
+| :--- | :--- |
+| **Understand the platform** | You can identify your application, owners, stack, and relevant guides. |
+| **Prepare the workstation** | Required access and platform setup checks pass. |
+| **Run the app** | Intended source builds and the agreed local journey works. |
+| **Make a contribution** | Focused source and tests are reviewed with verification evidence. |
+| **Complete review** | Feedback is addressed and integration status is recorded accurately. |
+| **Know how to get help** | You can report a blocker through the approved Teams support channel without exposing confidential information. |
+
+- [ ] The agreed acceptance criteria are satisfied or remaining blockers are explicitly recorded.
+- [ ] Required tests, coverage evaluation, and relevant platform checks have evidence.
+- [ ] No secrets, sensitive screenshots, or unintended files are included.
+- [ ] The PR has the required review and current-revision check results.
+- [ ] Merge or handoff status is recorded, along with unresolved dependencies.
+- [ ] The team has agreed on my next task and any remaining learning needs.
+
+**Continue with the guides relevant to your next feature:** Architecture, Platforms & SDKs, GenAI & Developer Tools, Testing & Quality, and Observability. Use CI/CD and App Store & Distribution when your responsibilities extend to enrollment and delivery.
+
+
+
+
+
+
+
+
