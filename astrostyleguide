@@ -1,294 +1,2283 @@
 ---
-title: Mobile Platform Overview & Ecosystem
-description: Discover the platforms, shared foundations, tools, testing services, observability, and governed delivery capabilities used throughout mobile development.
+title: Mobile Architecture Overview
+description: Understand shared mobile architecture principles, feature responsibilities, and the path to platform-specific implementation.
 sidebar:
-  label: Platform Overview
-  order: 2
+  label: Architecture Overview
+  order: 1
 ---
 
 import MermaidZoom from '../components/mermaid-zoom.astro';
 
-# Mobile Platform Overview & Ecosystem
+# Mobile Architecture Overview
 
-Our mobile engineering platform connects the capabilities teams need to **build, test, secure, deliver, and support mobile applications**. It brings together engineering standards, shared app foundations, development tools, automated pipelines, device testing, security assessment, observability, and distribution.
+Architecture defines where a responsibility belongs and which dependencies are allowed. Use this section to design features that can be understood, tested, and maintained across Android, iOS, and React Native.
 
-Start with the big picture here. Then follow the linked onboarding pages and the dedicated engineering sections for implementation instructions.
+**React Native with TypeScript and Redux Toolkit is the strongly preferred starting point for new applications.** Native Android and iOS remain supported where requirements justify them. Existing applications keep their established stack unless a migration is explicitly agreed.
 
-> **Confidential — internal use only.** Keep company source, architecture, configuration, and operational evidence within approved systems. Never include credentials, private artifact URLs, or sensitive user data in examples, screenshots, support requests, or AI prompts.
+These principles apply across the supported stacks. Their concrete UI, state, concurrency, persistence, and dependency-injection mechanisms belong in Platforms & SDKs.
 
-## 1. What the platform provides
+> **Confidential — internal use only.** Keep architecture decisions, internal service details, source, and diagnostic evidence within approved systems. Use synthetic examples and never include credentials or sensitive user data in diagrams or code.
 
-| Capability | What it gives your team | When you use it |
+## 1. What this section helps you decide
+
+Use these pages when planning or reviewing a feature:
+
+| Question | Architectural decision |
+| :--- | :--- |
+| **Where does this logic belong?** | Separate presentation, business rules, and concrete data access. |
+| **Who owns this state and work?** | Define lifecycle, cancellation, account scope, and stale-result handling. |
+| **What happens when a dependency fails?** | Define timeouts, failure classification, safe retries, circuit breaking, and permitted fallback. |
+| **How can behavior change safely?** | Define feature defaults, refresh behavior, rollout, and kill-switch limitations. |
+| **How is a change integrated?** | Follow repository branching, review, and required-check conventions. |
+
+Workstation installation belongs in Onboarding. SDK integration belongs in Platforms & SDKs. Test tooling, telemetry setup, provisioning, and release procedures have their own sections.
+
+## 2. Read these pages in order
+
+| Order | Page | What it explains |
 | :--- | :--- | :--- |
-| **Architecture and platform standards** | Clear boundaries for presentation, business rules, data access, state, and asynchronous work. | Designing and reviewing a feature. |
-| **Shared foundations and SDKs** | Reusable application capabilities and documented integration patterns. | Building consistent experiences without duplicating platform infrastructure. |
-| **Developer tools and GenAI guidance** | Approved workflows, project rules, and controlled assistance for authoring code and tests. | During local implementation and investigation. |
-| **Testing and coverage** | Behavioral checks, coverage requirements, and platform-specific verification. | While implementing a change and before integration. |
-| **Danger.js** | Automated feedback on configured PR conventions and metadata. | Preparing a pull request for review. |
-| **Bitrise** | Governed build workflows, automated checks, artifact production, and delivery integration. | Validating changes and producing distributable builds. |
-| **Sauce Labs** | Real-device execution and diagnostic evidence for supported mobile test frameworks. | Validating selected journeys across the approved device matrix. |
-| **NowSecure** | Automated mobile security assessment and evidence for security decisions. | Evaluating artifacts at the policy-defined gates. |
-| **Datadog** | Mobile experience, error, crash, and performance telemetry, with backend correlation where configured. | Verifying instrumentation and investigating application behavior. |
-| **Distribution services** | Controlled delivery to enterprise users, testers, and store audiences. | Making a verified application version available to its intended users. |
+| **01** | **This overview** | Shared principles, runtime responsibilities, and review expectations. |
+| **02** | **[Clean Architecture & Dependency Boundaries](/mobile/02-architecture/mobile-architecture/)** | Contracts, implementation boundaries, state and data flow, and platform-specific mappings. |
+| **03** | **[Network Resilience & Circuit Breakers](/mobile/02-architecture/circuit-breaker-resilience/)** | Timeouts, cancellation, retry safety, circuit states, and fallback behavior. |
+| **04** | **[Feature Flags & Remote Configuration](/mobile/02-architecture/feature-flags/)** | Defaults, caching, refresh failures, rollout, and testing. |
+| **05** | **[Branching & Pull Request Conventions](/mobile/02-architecture/branching-prs/)** | Working branches, focused commits, review evidence, and integration rules. |
 
-These capabilities complement one another. A passing PR check does not replace tests; a successful build does not prove distribution; telemetry does not replace security assessment.
+## 3. Separate runtime flow from dependency direction
 
-## 2. Understand how the ecosystem connects
+A user action may travel from a screen through business logic to a data implementation. That runtime journey does not mean business rules should import the concrete network client or database.
 
-The delivery path operates on source, test suites, and artifacts. The runtime path begins when users run the installed app.
+| Responsibility | Owns | Boundary |
+| :--- | :--- | :--- |
+| **Presentation** | Rendering, user actions, and UI-facing state. | Uses the feature's agreed application or domain contract. Avoid direct transport and database implementation dependencies. |
+| **Application/domain logic** | Feature operations and business decisions. | Depends on the contracts it needs, rather than concrete UI, transport, or storage frameworks. |
+| **Repository contract** | The data operations the feature requires and their meaning. | Expresses domain-facing inputs, outputs, and failures without exposing transport DTOs or database rows. |
+| **Data implementation** | Network/storage adapters, mapping, and the defined data policy. | Implements the contract and integrates concrete services. |
+| **Composition** | Constructing and connecting implementations. | Supplies concrete dependencies at the application boundary. |
 
-<MermaidZoom title="Engineering ecosystem: from a reviewed change to an observable application">
+A repository is a pattern spanning a contract and its implementation, not necessarily a fourth architectural layer. File placement and module boundaries should make dependency direction clear without forcing every platform into identical folders.
+
+### Example runtime journey: load a balance summary
+
+<MermaidZoom title="Feature journey: state, business rules, and data boundaries">
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor DEV as Developer
-    participant GIT as Source and PR Review
-    participant CI as Bitrise
-    participant SAUCE as Sauce Labs
-    participant SEC as NowSecure
-    participant DIST as Distribution
     actor USER as User
-    participant APP as Mobile App
-    participant OBS as Datadog
+    participant UI as Screen
+    participant STATE as State Owner
+    participant USECASE as Feature Operation
+    participant REPO as Repository Implementation
+    participant SOURCE as API or Local Store
 
-    DEV->>GIT: Submit feature and reviewed tests
-    GIT->>CI: Trigger configured validation workflow
-    CI->>CI: Run required checks and build artifacts
-    opt Device testing required by the workflow
-        CI->>SAUCE: Dispatch supported app and test packages
-        SAUCE-->>CI: Return test outcomes and diagnostic evidence
-    end
-    opt Security assessment required by policy
-        CI->>SEC: Submit supported artifact for assessment
-        SEC-->>CI: Return completed assessment and gate evidence
-    end
-    Note over CI,DIST: Applicable checks and release authorization must be satisfied
-    CI->>DIST: Deliver approved artifact through configured route
-    USER->>DIST: Access the eligible application version
-    USER->>APP: Open the installed application
-    APP->>OBS: Send approved telemetry under privacy controls
+    USER->>UI: Open balance summary
+    UI->>STATE: Request current account summary
+    STATE->>STATE: Expose loading state
+    STATE->>USECASE: Execute with account context
+    USECASE->>REPO: Call through repository contract
+    REPO->>SOURCE: Read using the defined data policy
+    SOURCE-->>REPO: Return data or failure
+    REPO-->>USECASE: Return mapped domain outcome
+    USECASE-->>STATE: Return feature outcome
+    STATE->>STATE: Check request and account are still current
+    STATE-->>UI: Expose content, empty, or error state
+    Note over USECASE,REPO: Runtime calls use a contract with injected dependencies
 ```
 
 </MermaidZoom>
 
-This diagram explains responsibilities, not a universal execution order. The approved workflow defines test packaging, concurrency, assessment placement, triggers, and approvals. A new application's governed enrollment happens before its normal build workflows can be used.
+This diagram illustrates a snapshot-style read. A feature that observes live storage updates needs an explicit subscription and lifecycle design. Do not combine snapshot and stream behavior implicitly.
 
-## 3. Build with the supported application stacks
+### How these responsibilities map to each platform
 
-> **Preferred stack: React Native.** React Native with TypeScript and Redux Toolkit is our strongly preferred starting point for new mobile applications. Evaluate it first. Choose native Android or iOS when documented requirements and integration evidence justify that decision with the responsible team.
+| Responsibility | Android | iOS | React Native |
+| :--- | :--- | :--- | :--- |
+| **Render and collect actions** | Compose UI or the established View-based UI. | SwiftUI views or the established UIKit UI. | React Native components and typed event handlers. |
+| **Own feature state** | Lifecycle-aware ViewModel exposing UI state. | An appropriately isolated observable model or existing ViewModel. | Screen-local state where sufficient; Redux Toolkit slices and async coordination where shared feature state is needed. |
+| **Execute feature operations** | Kotlin use cases or domain services. | Swift use cases or domain services. | TypeScript use cases or domain services. |
+| **Describe data needs** | Domain-facing Kotlin interfaces. | Domain-facing Swift protocols. | Domain-facing TypeScript interfaces or function contracts. |
+| **Integrate data sources** | Concrete network and persistence adapters. | Concrete network and persistence adapters. | Concrete network and storage adapters, with native integration where required. |
+| **Wire dependencies** | The project's composition or dependency-injection mechanism. | Application composition with explicit dependency construction. | Application composition and the established injection approach, including thunk extra arguments when applicable. |
 
-For an existing app, follow its established stack unless a migration is explicitly agreed.
+These are responsibility mappings, not a requirement to introduce every listed abstraction into every feature. Preserve an existing project's supported conventions and explain any deliberate departure.
 
-| Stack | What developers work with | What to understand |
+### Apply the boundaries to one concrete feature
+
+For a balance-summary feature, divide the work as follows:
+
+| Requirement | Owner | Example verification |
 | :--- | :--- | :--- |
-| **React Native** | TypeScript, React Native components, Redux Toolkit where Redux state is needed, and native Android/iOS projects. | Shared feature code still requires platform-specific permissions, native dependencies, builds, and testing. |
-| **Native Android** | Kotlin and the project's established Android UI and data technologies. | Android lifecycle, device integration, supported OS behavior, and native build configuration. |
-| **Native iOS** | Swift and the project's established Apple UI and data technologies. | Apple lifecycle, concurrency, device capabilities, and native build configuration. |
+| Show a loading indicator and a retry action. | Presentation and its state owner. | A state test and a UI assertion verify the expected transition. |
+| Determine whether a summary is eligible to display under the feature's rules. | Domain logic. | A unit test supplies synthetic inputs without a real API. |
+| Fetch and map the server response. | Data adapter behind a repository contract. | Adapter tests verify mapping and safe failure classification. |
+| Keep cached results within the current account. | Data policy and session integration. | A test verifies that account A's records are unavailable to account B. |
+| Ignore a response from an obsolete request. | State owner, with session safeguards at the necessary boundaries. | A controlled test completes requests out of order. |
+| Record a safe load-failure event. | Observability adapter at the chosen integration boundary. | A test checks approved attributes and absence of sensitive values. |
 
-### Make a new stack decision with evidence
+The next page develops the contracts and dependency structure. Complete platform feature implementations belong in Platforms & SDKs, and the testing section explains their full verification workflow.
 
-Confirm target devices, OS versions, native SDK compatibility, accessibility, performance, team skills, and supported delivery templates. Prototype uncertain integrations on representative hardware.
+## 4. Make state and asynchronous work deliberate
 
-Hardware integration does not automatically exclude React Native. Likewise, shared code does not guarantee that every capability or UI behavior will be identical across platforms. Avoid fixed code-sharing percentages and unsupported speed or performance claims.
+The state owner differs by platform: a ViewModel, an observable state model, or the established React Native feature mechanism may coordinate a screen. Redux Toolkit is used where React Native features require Redux state.
 
-Record the chosen stack, reasons, alternatives, constraints, integration evidence, and reviewers in the team's decision record.
+For each operation, answer:
 
-## 4. Reuse application foundations
+- **Ownership:** is it screen-owned, feature-owned, or application-owned?
+- **Lifetime:** when should it start, stop, or survive navigation?
+- **Cancellation:** how is cancellation propagated, and how is it distinguished from failure?
+- **Freshness:** can an older result overwrite a newer request?
+- **Account scope:** what invalidates work and cached data after logout or account switching?
+- **Presentation:** which loading, empty, content, refresh, and error states can the user see?
 
-Shared foundations provide consistent behavior across features. Platforms & SDKs contains the platform-specific examples and supported contracts.
+Cancellation is cooperative. A server may already have processed a request when the client cancels. Protect state from outdated results and follow explicit write-reconciliation rules where needed.
 
-| Foundation | What developers should look for |
+Keep expensive work off the relevant UI execution path. An asynchronous declaration alone does not guarantee background execution.
+
+## 5. Define data and failure policies explicitly
+
+| Concern | Define before implementation |
 | :--- | :--- |
-| **Design system and theming** | Reusable visual tokens, supported components, light/dark behavior, and accessible presentation. |
-| **Authentication and session integration** | Approved sign-in, session handling, and account transitions. Confirm the supported integration for the assigned application. |
-| **Secure storage** | Appropriate handling of permitted credentials and sensitive local data through approved abstractions. |
-| **Localization** | Resource organization, locale selection, fallback, and platform behavior. |
-| **Notifications and navigation** | Registration, receipt handling, validated payloads, and authorized destination routing. |
-| **Branding** | Supported assets, application identity, and platform-specific branding behavior. |
-| **Resilience and configuration** | Documented timeouts, failure handling, circuit-breaker policy where appropriate, and safe feature-flag defaults. |
-| **Logout and cleanup** | Coordinated session invalidation, in-flight work, account-scoped storage, and cleanup verification. |
+| **Source of truth** | Whether the feature uses a server response, a local store, or a documented combination. |
+| **Freshness** | What stale means, when refresh occurs, and what the user sees. |
+| **Offline behavior** | Which reads are permitted offline and whether cached content is appropriate. |
+| **Writes** | Duplicate protection, idempotency support, unknown outcomes, and reconciliation. |
+| **Failure classification** | Validation, authentication, authorization, connectivity, server, and unexpected failures as applicable. |
+| **Retries** | Eligible operations, bounded attempts, timing, cancellation, and ownership. |
+| **Circuit breaking** | Protected dependency, counted failures, thresholds, probes, and fallback policy when the pattern is appropriate. |
 
-Confirm the actual SDK, package, version, and API before integrating. A capability described here is not a claim that one universal package implements it identically on all three stacks.
+Do not automatically retry every failure or stack independent retry loops across screens, repositories, and clients. A circuit breaker reduces repeated calls to a failing dependency; it does not supply offline support or guarantee crash prevention.
 
-**Your responsibility:** use established contracts, preserve lifecycle and account boundaries, and add tests for the behavior your feature depends on.
+## 6. Treat security and configuration as boundaries
 
-## 5. Author changes with approved tools
+- Enforce authorization on the backend. Feature flags and hidden UI controls do not grant access.
+- Keep privileged secrets off the client. Remote configuration and bundled environment files are not secret vaults.
+- Store permitted data through the approved storage abstractions, with account scope, retention, and deletion behavior defined.
+- Use safe defaults for missing or unavailable configuration. Remote kill switches depend on propagation and client refresh behavior.
+- Keep diagnostic attributes intentional. Do not expose raw credentials, sensitive payloads, or unapproved identifiers in telemetry.
+- Coordinate logout and cleanup with in-flight work and writers; changing the visible screen alone is insufficient.
 
-Use the IDE appropriate to the project and approved tooling for formatting, analysis, debugging, and source control. GenAI & Developer Tools provides maintained rules and safe authoring workflows.
+Use the approved SDK contracts where available. This overview does not define internal package names, methods, or configuration keys.
 
-AI can help draft code, tests, and explanations from approved context. Developers remain responsible for contract accuracy, security, test quality, and the final change.
+## 7. Design for verification
 
-The agreed testing boundary is explicit: **AI-assisted generation happens during authoring; CI executes committed, human-reviewed tests without calling an LLM to generate them during the run.** This boundary alone does not make a pipeline offline or hermetic.
+A feature should expose boundaries that allow meaningful tests without requiring a real device, live backend, or production credentials for every assertion.
 
-Do not provide secrets or unapproved company material to an assistant. Follow the company's approved tool and data-handling policy.
-
-## 6. Validate behavior with tests and Sauce Labs
-
-Testing starts locally, before a PR or release. Use focused tests for business logic, state transitions, adapters, and UI behavior, then broader integration and device checks where required.
-
-**Coverage requirement:** the documentation requires 100% within the explicitly defined coverage scope. Testing & Quality defines platform-specific metrics, reporting, and enforcement. Every production file must be accounted for; a percentage does not prove that every behavior is correct.
-
-### What Sauce Labs adds
-
-Sauce Labs supplies real-device execution for the supported framework and device configuration. The testing documentation covers Espresso, XCUITest, and Appium/WebdriverIO approaches as applicable to the project.
-
-| Developer need | Sauce Labs contribution |
+| Boundary | Evidence to expect |
 | :--- | :--- |
-| **Check target-device behavior** | Execute selected tests on the approved physical-device matrix. |
-| **Investigate a failing journey** | Review available job logs, screenshots, recordings, and framework reports. |
-| **Compare platform behavior** | Verify Android and iOS outcomes independently. |
-| **Provide review evidence** | Associate the source revision, app build, test suite, device configuration, and job outcome. |
+| **Business rules** | Tests for meaningful valid, invalid, empty, and boundary inputs. |
+| **State owner** | Tests for state transitions and relevant cancellation, concurrency, and account changes. |
+| **Repository and adapters** | Mapping, failure handling, cache, and persistence verification. |
+| **UI** | Tests for visible behavior, interaction, accessibility, and relevant platform differences. |
+| **Runtime integration** | Appropriate simulator, emulator, and real-device checks. |
+| **Diagnostics** | Verification that useful events are emitted without disclosing prohibited data. |
 
-Native test runners and Appium suites have different packaging and execution contracts. Upload identifiers, application references, and job IDs must not be treated as interchangeable.
+The required target is 100% within the defined coverage scope, with every production file accounted for. Testing & Quality defines metrics and enforcement. A percentage does not replace behavioral assertions or device evidence.
 
-**Your responsibility:** maintain meaningful assertions, stable locators, suitable synchronization, isolated test data, and reproducible failures. Device-cloud access does not eliminate flaky tests or replace unit tests.
+AI-assisted code and tests must follow the same contracts and review requirements. The agreed CI boundary is execution of committed, reviewed tests without LLM-based generation during the run.
 
-Detailed Sauce Labs setup and troubleshooting live in Testing & Quality. CI/CD explains the approved invocation and how results block or permit progression.
+## 8. Record decisions at the right level
 
-## 7. Automate builds and delivery with Bitrise
+Use the team's approved decision-record format when a choice materially affects maintainability, security, compatibility, or operation. Examples include a new data policy, native integration, cross-feature dependency, or change to the established stack.
 
-Bitrise runs the approved mobile workflows. Depending on the route and policy, these workflows resolve dependencies, run checks, build native artifacts, integrate testing and assessment, and deliver eligible outputs.
+A useful record captures:
 
-### Enroll once, then use the established app
+1. The problem and relevant constraints.
+2. Options considered and supporting evidence.
+3. The selected approach and dependency boundaries.
+4. Trade-offs, failure behavior, and unresolved risks.
+5. Verification, ownership, and migration needs.
 
-For a new application, developers submit a **secret-free declarative enrollment request** to the platform configuration repository. Validation and review precede protected promotion. Authorized platform automation performs the live provisioning.
+Small changes should follow existing decisions without creating unnecessary paperwork. If the documentation and implementation disagree, establish the intended behavior with the owner rather than silently adopting either one.
 
-Developers do not manually create Bitrise apps or paste production signing credentials into the web UI as an onboarding shortcut. Existing applications reuse their enrolled resources.
+### A small decision record
 
-### Understand the governed route names
+Use this outline when a material decision needs to be recorded:
 
-| Route | Intended purpose |
+```markdown
+# Decision: [specific architectural choice]
+
+- Status and decision date:
+- Responsible owner and reviewers:
+- Problem and constraints:
+- Options considered:
+- Decision and reasons:
+- Dependency and data-flow implications:
+- Failure, security, and account-boundary behavior:
+- Verification evidence:
+- Trade-offs and unresolved risks:
+- Migration or follow-up work:
+```
+
+## 9. Recognize common boundary mistakes
+
+| Mistake | Better direction |
 | :--- | :--- |
-| `qa_android` | Android build and private QA delivery through its configured destination. |
-| `qa_ios` | iOS build and private QA delivery through its configured destination. |
-| `uat_android` | Android build and delivery for the approved UAT audience. |
-| `uat_ios` | iOS build and delivery for the approved UAT audience. |
+| A screen parses transport responses and queries the database. | Move concrete data integration behind the feature's data contract. |
+| Domain code imports UI state or a concrete HTTP SDK. | Express business inputs, outputs, and required capabilities without those framework dependencies. |
+| Every screen creates a new authentication-refresh loop. | Use the established session owner and renewal contract. |
+| A global store retains account data after sign-out. | Define invalidation and cleanup with the session boundary, including in-flight work. |
+| UI flags are treated as permission checks. | Enforce access on the server and use flags only for intended configuration behavior. |
+| Tests mock every internal method but never assert the feature result. | Verify observable behavior at meaningful boundaries using controlled dependencies. |
+| A new abstraction is added for every function. | Add a boundary when it isolates a responsibility, policy, framework, or independently testable behavior. |
 
-The approved platform template determines route applicability. Native-only apps must not report unsupported routes as successful. Each applicable route needs its own evidence.
+## 10. Architecture review checklist
 
-PR validation is separate from these delivery routes. Passing QA does not establish UAT publication, and these route names do not imply public production-store release.
+Use the relevant items during feature design and PR review:
 
-**Your responsibility:** identify the exact workflow and source revision, inspect failed stages, and report outcomes accurately. Never repeat enrollment or an external write blindly after an unknown result; follow the safe-recovery process.
+- [ ] Responsibilities and code dependency direction are clear.
+- [ ] Business rules do not require concrete UI, network, or database implementations.
+- [ ] State ownership, lifecycle, cancellation, and stale-result handling are defined.
+- [ ] Account scope, cache freshness, and logout behavior are explicit.
+- [ ] Failure, retry, offline, and write-reconciliation behavior match the operation.
+- [ ] Feature configuration has safe defaults and is separate from authorization.
+- [ ] Tests verify meaningful behavior and meet the defined coverage requirements.
+- [ ] Telemetry and storage follow the permitted data policy.
+- [ ] Platform-specific behavior and integration risks have appropriate evidence.
+- [ ] Material decisions and unresolved risks have a clear owner.
 
-## 8. Understand PR and security gates
+**Next: [Clean Architecture & Dependency Boundaries](/mobile/02-architecture/mobile-architecture/)** — map these principles to modules, contracts, and feature implementations.
 
-### Danger.js: review conventions
 
-Danger.js provides automated feedback on the configured PR rules, such as description quality, assignees, requested reviewers, and draft/WIP markers. Actual rules and blocking behavior depend on the repository configuration and branch protection.
 
-Danger does not inherently execute lint, measure coverage, assess security, or prove functional correctness. Those checks need their own configured tools and required statuses.
 
-### NowSecure: artifact security assessment
 
-NowSecure provides mobile security assessment and reports for supported artifacts and configured tests. Submission, completed assessment, and gate evaluation are separate outcomes.
 
-Security policy defines blocking severity, assessment completeness, and approved exceptions. A passing assessment does not certify the app free of vulnerabilities. Assessment is not automatic binary hardening, and findings are not limited to CVEs.
+-------------------------------
 
-**Your responsibility:** inspect actionable findings, coordinate remediation with the appropriate owner, and preserve evidence. Do not bypass a security gate or change a threshold to obtain a passing build.
 
-## 9. Observe application behavior with Datadog
 
-Datadog helps teams understand what happens after an app runs on a device. Instrumentation must be configured, verified, and associated with the correct environment and release.
 
-| Capability | What it helps answer |
-| :--- | :--- |
-| **Real User Monitoring (RUM)** | Which views, actions, resources, and errors are associated with a user journey? |
-| **Crash reporting** | Where did the app fail, and is the release's symbol or mapping information available to interpret the stack? |
-| **Performance monitoring** | Which supported measurements show slow startup, interaction, rendering, or resource access? |
-| **Backend correlation** | Can an instrumented mobile request be linked to backend traces through the configured propagation and sampling policy? |
-| **Dashboards and alerts** | Is a release showing a regression, and which team needs to investigate? |
+---
+title: Clean Architecture & Dependency Boundaries
+description: Organize mobile features around testable business contracts, explicit state ownership, and replaceable data adapters.
+sidebar:
+  label: Clean Architecture
+  order: 2
+---
 
-Correlation depends on client and backend instrumentation, allowed hosts, propagation, and sampling. It does not guarantee that every session includes a complete backend trace.
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
 
-Observability contains separate Android, iOS, and React Native integration instructions, official Datadog references, symbol-upload requirements, verification, and troubleshooting. Session Replay requires its own approval and privacy design; it is not assumed enabled by installing RUM.
+# Clean Architecture & Dependency Boundaries
 
-**Your responsibility:** emit approved, useful attributes and verify collection without disclosing sensitive data. Sampling is not masking, and hashed identifiers are not automatically anonymous.
+Keep business decisions independent of the frameworks that display, transport, and store data. A feature should be understandable without reading its HTTP library, database schema, or screen implementation first.
 
-## 10. Deliver to the intended audience
+This page defines the shared dependency model and demonstrates it with a **read-only account balance** operation. The code tabs provide small, self-contained contracts, adapters, and composition examples. They are architectural teaching examples, not complete screens, production authentication clients, or persistence implementations.
 
-App Store & Distribution explains destination access, application records, signing requirements, test audiences, submission, review, and release verification. CI/CD explains how approved automation interacts with those destinations.
+**React Native with TypeScript and Redux Toolkit is our preferred starting point for new apps.** The same boundaries apply to Android and iOS. Follow an existing application's established structure unless a change is agreed.
 
-| Destination | What to distinguish |
-| :--- | :--- |
-| **Enterprise App Management** | Artifact ingestion, applicable distribution signing, version enablement, audience assignment, and exact-version visibility. |
-| **Google Play** | Internal testing and other approved tracks versus public production release. |
-| **App Store Connect and TestFlight** | Upload, processing, tester availability, App Review, and public release are distinct states. |
+> **Confidential — internal use only.** Examples use synthetic data. Keep actual service contracts, credentials, identifiers, and architecture evidence in approved company systems.
 
-A binary can build successfully and still fail downstream signing, processing, assignment, or publication. Confirm the intended version and audience at the destination rather than inferring success from CI compilation.
+## 1. The dependency rule
 
-## 11. Know which source and configuration to change
+Code dependencies point toward the feature's stable contracts and rules:
 
-| Repository or resource | Purpose |
-| :--- | :--- |
-| **Application source** | Feature code, tests, dependency locks, and application configuration. |
-| **Approved application template** | Generates a new application. The template root is not the generated app. |
-| **Platform configuration** | Declarative enrollment requests and their review history. |
-| **Provisioning engine** | Validation and live-apply implementation maintained by the responsible platform owners. |
-| **Workflow catalog** | Approved workflow definitions and versions. |
-| **Shared SDK source** | Reusable implementations and integration contracts. |
+| Code area | May depend on | Keep out |
+| :--- | :--- | :--- |
+| **Domain** | Language types, domain models, required capability contracts. | Screens, navigation, concrete HTTP clients, database entities, Redux, Android UI, and Apple UI frameworks. |
+| **Presentation** | Domain operations and models, UI frameworks, presentation helpers. | Concrete repository construction, SQL, transport parsing, and privileged credentials. |
+| **Data** | Domain contracts, network/storage libraries, DTOs, and mappers. | UI components and navigation decisions. |
+| **Composition** | Concrete implementations and their contracts. | Feature business rules hidden in startup wiring. |
 
-A source commit identifies the app code; a configuration merge commit identifies a configuration change. Record the relevant identities separately when investigating an enrollment or build.
+The data implementation imports and implements a domain-facing contract. Domain code does not import that implementation. At runtime, an injected implementation receives the call through its contract.
 
-Historical workshop requests, template versions, and successful routes are examples of one execution—not reusable enrollment requests or proof of current platform health.
+A repository is not an extra mandatory layer between two identical abstractions. Its contract describes the feature's data capability; its implementation owns the agreed data-access policy.
 
-## 12. Follow the complete developer journey
+## 2. Follow a feature through the boundaries
 
-<MermaidZoom title="Developer journey: prepare, implement, verify, deliver, and support">
+<MermaidZoom title="Balance read: runtime calls through an injected domain contract">
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor DEV as Developer
-    participant TEAM as Application Team
-    participant LOCAL as Local Workstation
-    participant REVIEW as Review and CI
-    participant RELEASE as Release Process
-    participant OPS as Support and Observability
+    participant ROOT as Application Composition
+    participant STATE as Feature State Owner
+    participant USECASE as Load Balance
+    participant REPO as Balance Repository Adapter
+    participant API as Balance API Adapter
 
-    DEV->>TEAM: Confirm app, owner, stack, and first task
-    DEV->>LOCAL: Prepare access and supported toolchain
-    DEV->>LOCAL: Run app and implement focused change
-    DEV->>LOCAL: Add tests and privacy-safe instrumentation
-    DEV->>REVIEW: Submit source and verification evidence
-    REVIEW-->>DEV: Return feedback and current-revision results
-    DEV->>REVIEW: Address feedback and satisfy required checks
-    REVIEW->>RELEASE: Provide eligible revision and artifacts
-    Note over REVIEW,RELEASE: Delivery follows applicable gates and authorization
-    RELEASE->>RELEASE: Verify destination, version, and intended audience
-    RELEASE->>OPS: Associate release with monitoring and evidence
-    OPS-->>TEAM: Report issues for investigation and follow-up
+    ROOT->>API: Construct configured transport adapter
+    ROOT->>REPO: Inject API capability
+    ROOT->>USECASE: Inject repository contract implementation
+    ROOT->>STATE: Inject feature operation
+    STATE->>USECASE: Load for current account
+    USECASE->>REPO: Read through repository contract
+    REPO->>API: Fetch account response
+    API-->>REPO: Return DTO or transport failure
+    REPO->>REPO: Validate and map the response
+    REPO-->>USECASE: Return domain outcome
+    USECASE-->>STATE: Return domain outcome
+    Note over STATE: Publish only if request and session remain current
 ```
 
 </MermaidZoom>
 
-For a new app, complete governed enrollment before relying on its build routes. For an existing app, use its established setup and delivery configuration.
+The diagram shows runtime interaction and construction. It is not an import graph. Domain contracts remain independent of the concrete adapters even though calls reach those adapters at runtime.
 
-## 13. Find the detailed instructions
+## 3. Define behavior before choosing libraries
 
-| Section | Your next questions |
+For this example:
+
+- The caller supplies a non-empty account ID from the active session context.
+- The operation returns a balance, no balance, or a typed failure.
+- The amount is represented as integer **minor units**, not floating-point currency.
+- The illustrative API returns an account ID, amount, and currency code.
+- A response for a different account or an invalid representation is rejected.
+- The adapter performs one read. It adds no cache, retry, circuit breaker, telemetry, or background queue implicitly.
+- Cancellation propagates instead of becoming a normal failure.
+
+Production integration must additionally enforce server authorization, session invalidation, permitted currencies and amount ranges, transport timeouts, and safe diagnostics. Comparing account IDs is a mapping safeguard, not an authorization mechanism.
+
+**Result semantics:** `empty` means the data source explicitly returned no record. It does not mean a request failed. A zero balance is valid content.
+
+## 4. Organize by feature and responsibility
+
+The following structures are logical examples. A folder does not enforce dependency direction; module visibility, imports, review, and automated rules do.
+
+<Tabs>
+<TabItem label="Android">
+
+```text
+balance/
+  domain/
+    Balance.kt
+    BalanceResult.kt
+    BalanceRepository.kt
+    LoadBalance.kt
+  data/
+    BalanceApi.kt
+    RemoteBalanceRepository.kt
+  presentation/
+    BalanceViewModel.kt
+    BalanceScreen.kt
+app/
+  composition/
+    BalanceDependencies.kt
+```
+
+Domain Kotlin code stays free of Android UI and concrete transport/storage dependencies. Follow the project's established DI framework rather than introducing one for this example.
+
+</TabItem>
+<TabItem label="iOS">
+
+```text
+Features/Balance/
+  Domain/
+    Balance.swift
+    BalanceResult.swift
+    BalanceRepository.swift
+    LoadBalance.swift
+  Data/
+    BalanceAPI.swift
+    RemoteBalanceRepository.swift
+  Presentation/
+    BalanceViewModel.swift
+    BalanceView.swift
+App/
+  Composition/
+    BalanceDependencies.swift
+```
+
+Use targets or packages when they provide meaningful enforcement. Folders alone do not provide Swift access isolation. Keep UI-facing mutation on the appropriate actor and define concurrency contracts for shared dependencies.
+
+</TabItem>
+<TabItem label="React Native">
+
+```text
+src/
+  features/balance/
+    domain/
+      balance.ts
+      balanceRepository.ts
+      loadBalance.ts
+    data/
+      balanceApi.ts
+      remoteBalanceRepository.ts
+    presentation/
+      balanceSlice.ts
+      balanceThunks.ts
+      BalanceScreen.tsx
+  app/
+    composition/
+      dependencies.ts
+    store.ts
+```
+
+Redux Toolkit belongs to presentation/application coordination. The domain does not import the store, dispatch actions, or depend on Redux state shapes. Keep transient component state local when no shared owner is needed.
+
+</TabItem>
+</Tabs>
+
+## 5. Implement the same contract on each platform
+
+For readability, each example is grouped into one code block. Split the declarations into the corresponding files above. `BalanceApi` is an example-owned port, not an internal SDK or a complete HTTP implementation.
+
+<Tabs>
+<TabItem label="Android">
+
+### Domain, data adapter, and explicit composition
+
+```kotlin
+import kotlinx.coroutines.CancellationException
+
+// domain/Balance.kt
+ data class Balance(
+    val accountId: String,
+    val amountMinor: Long,
+    val currency: String,
+)
+
+// domain/BalanceResult.kt
+sealed interface BalanceResult {
+    data class Found(val balance: Balance) : BalanceResult
+    data object Empty : BalanceResult
+    data class Failed(val reason: BalanceFailure) : BalanceResult
+}
+
+enum class BalanceFailure { INVALID_ACCOUNT, INVALID_RESPONSE, UNAVAILABLE }
+
+// domain/BalanceRepository.kt
+interface BalanceRepository {
+    suspend fun read(accountId: String): BalanceResult
+}
+
+// domain/LoadBalance.kt
+class LoadBalance(private val repository: BalanceRepository) {
+    suspend operator fun invoke(accountId: String): BalanceResult {
+        if (accountId.isBlank()) {
+            return BalanceResult.Failed(BalanceFailure.INVALID_ACCOUNT)
+        }
+        return repository.read(accountId)
+    }
+}
+
+// data/BalanceApi.kt
+// Contract: null means an explicit no-record result, not a failed request.
+data class BalanceDto(
+    val accountId: String,
+    val amountMinor: Long,
+    val currency: String,
+)
+
+interface BalanceApi {
+    suspend fun fetch(accountId: String): BalanceDto?
+}
+
+// data/RemoteBalanceRepository.kt
+class RemoteBalanceRepository(
+    private val api: BalanceApi,
+) : BalanceRepository {
+    override suspend fun read(accountId: String): BalanceResult {
+        return try {
+            val dto = api.fetch(accountId) ?: return BalanceResult.Empty
+            if (dto.accountId != accountId ||
+                !Regex("[A-Z]{3}").matches(dto.currency)
+            ) {
+                BalanceResult.Failed(BalanceFailure.INVALID_RESPONSE)
+            } else {
+                BalanceResult.Found(
+                    Balance(dto.accountId, dto.amountMinor, dto.currency)
+                )
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // Simplified teaching policy. Production adapters must distinguish
+            // expected transport failures from defects and report safely.
+            BalanceResult.Failed(BalanceFailure.UNAVAILABLE)
+        }
+    }
+}
+
+// app/composition/BalanceDependencies.kt
+fun buildLoadBalance(api: BalanceApi): LoadBalance =
+    LoadBalance(RemoteBalanceRepository(api))
+```
+
+**Hint:** a `suspend` function does not guarantee that its implementation avoids blocking. The actual API and storage adapters must use appropriate non-blocking APIs or injected dispatchers. Do not wrap every layer in a new coroutine scope.
+
+</TabItem>
+<TabItem label="iOS">
+
+### Domain, data adapter, and explicit composition
+
+```swift
+import Foundation
+
+// Domain/Balance.swift
+struct Balance: Equatable, Sendable {
+    let accountID: String
+    let amountMinor: Int64
+    let currency: String
+}
+
+enum BalanceFailure: Equatable, Sendable {
+    case invalidAccount
+    case invalidResponse
+    case unavailable
+}
+
+enum BalanceResult: Equatable, Sendable {
+    case found(Balance)
+    case empty
+    case failed(BalanceFailure)
+}
+
+// Domain/BalanceRepository.swift
+protocol BalanceRepository: Sendable {
+    func read(accountID: String) async throws -> BalanceResult
+}
+
+// Domain/LoadBalance.swift
+struct LoadBalance: Sendable {
+    let repository: any BalanceRepository
+
+    func callAsFunction(accountID: String) async throws -> BalanceResult {
+        try Task.checkCancellation()
+        guard !accountID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return .failed(.invalidAccount)
+        }
+        return try await repository.read(accountID: accountID)
+    }
+}
+
+// Data/BalanceAPI.swift
+struct BalanceDTO: Sendable {
+    let accountID: String
+    let amountMinor: Int64
+    let currency: String
+}
+
+protocol BalanceAPI: Sendable {
+    // nil represents an explicit no-record response.
+    func fetch(accountID: String) async throws -> BalanceDTO?
+}
+
+// Data/RemoteBalanceRepository.swift
+struct RemoteBalanceRepository: BalanceRepository {
+    let api: any BalanceAPI
+
+    func read(accountID: String) async throws -> BalanceResult {
+        do {
+            try Task.checkCancellation()
+            let response = try await api.fetch(accountID: accountID)
+            try Task.checkCancellation()
+            guard let dto = response else { return .empty }
+            let isCurrencyShapeValid = dto.currency.utf8.count == 3 &&
+                dto.currency.utf8.allSatisfy { (65...90).contains($0) }
+            guard dto.accountID == accountID, isCurrencyShapeValid else {
+                return .failed(.invalidResponse)
+            }
+            return .found(Balance(
+                accountID: dto.accountID,
+                amountMinor: dto.amountMinor,
+                currency: dto.currency
+            ))
+        } catch {
+            if error is CancellationError || Task.isCancelled {
+                throw CancellationError()
+            }
+            // Simplified policy. Classify actual transport errors in production.
+            return .failed(.unavailable)
+        }
+    }
+}
+
+// App/Composition/BalanceDependencies.swift
+func buildLoadBalance(api: any BalanceAPI) -> LoadBalance {
+    LoadBalance(repository: RemoteBalanceRepository(api: api))
+}
+```
+
+**Hint:** `Sendable` defines a concurrency boundary; it does not move work to a background thread. Keep concrete dependencies safe under that boundary rather than adding unchecked conformance to silence diagnostics. Presentation owns its UI actor isolation.
+
+</TabItem>
+<TabItem label="React Native">
+
+### Domain, data adapter, and explicit composition
+
+```typescript
+// domain/balance.ts
+export type Balance = Readonly<{
+  accountId: string;
+  amountMinor: number;
+  currency: string;
+}>;
+
+export type BalanceFailure =
+  | 'invalidAccount'
+  | 'invalidResponse'
+  | 'unavailable';
+
+export type BalanceResult =
+  | { kind: 'found'; balance: Balance }
+  | { kind: 'empty' }
+  | { kind: 'failed'; reason: BalanceFailure };
+
+// domain/balanceRepository.ts
+export interface BalanceRepository {
+  read(accountId: string, signal: AbortSignal): Promise<BalanceResult>;
+}
+
+function checkCancellation(signal: AbortSignal): void {
+  if (signal.aborted) {
+    const error = new Error('Operation cancelled');
+    error.name = 'AbortError';
+    throw error;
+  }
+}
+
+// domain/loadBalance.ts
+export type LoadBalance = (
+  accountId: string,
+  signal: AbortSignal,
+) => Promise<BalanceResult>;
+
+export function buildLoadBalance(repository: BalanceRepository): LoadBalance {
+  return async (accountId, signal) => {
+    checkCancellation(signal);
+    if (accountId.trim().length === 0) {
+      return { kind: 'failed', reason: 'invalidAccount' };
+    }
+    return repository.read(accountId, signal);
+  };
+}
+
+// data/balanceApi.ts
+export type BalanceDto = Readonly<{
+  accountId: string;
+  amountMinor: number;
+  currency: string;
+}>;
+
+export interface BalanceApi {
+  // null represents an explicit no-record response.
+  // The transport adapter must validate untrusted JSON before returning a DTO.
+  fetch(accountId: string, signal: AbortSignal): Promise<BalanceDto | null>;
+}
+
+// data/remoteBalanceRepository.ts
+export function makeBalanceRepository(api: BalanceApi): BalanceRepository {
+  return {
+    async read(accountId, signal) {
+      checkCancellation(signal);
+      try {
+        const dto = await api.fetch(accountId, signal);
+        checkCancellation(signal);
+        if (dto === null) return { kind: 'empty' };
+        if (
+          dto.accountId !== accountId ||
+          !Number.isSafeInteger(dto.amountMinor) ||
+          !/^[A-Z]{3}$/.test(dto.currency)
+        ) {
+          return { kind: 'failed', reason: 'invalidResponse' };
+        }
+        return { kind: 'found', balance: { ...dto } };
+      } catch (error: unknown) {
+        checkCancellation(signal);
+        if (error instanceof Error && error.name === 'AbortError') throw error;
+        // Simplified policy. Classify actual transport errors in production.
+        return { kind: 'failed', reason: 'unavailable' };
+      }
+    },
+  };
+}
+
+// app/composition/dependencies.ts
+export function makeBalanceDependencies(api: BalanceApi) {
+  return { loadBalance: buildLoadBalance(makeBalanceRepository(api)) };
+}
+```
+
+**Hint:** JavaScript numbers cannot represent every 64-bit integer exactly. This example accepts only safe integers. If the API supports larger amounts, agree a string/decimal representation and conversion policy; do not silently coerce them to `number`.
+
+Inject `loadBalance` into the established Redux Toolkit async coordination, for example through typed thunk extra arguments. Keep service instances outside serializable Redux state. A thunk's cancellation signal must reach the operation, and reducers must guard request identity and account scope before accepting results. The full store, slice, thunk, hooks, and screen belong together in the React Native implementation guide.
+
+</TabItem>
+</Tabs>
+
+### Understand the example's limits
+
+The three examples share outcome semantics but use platform-appropriate numeric and cancellation types. A three-uppercase-letter currency check validates shape, not membership in an approved currency list. Negative amounts may be legitimate depending on product rules; the example does not invent a non-negative requirement.
+
+The broad error mapping is deliberately simplified. Production adapters should classify expected failures, preserve cancellation, and report unexpected defects through privacy-safe diagnostics. Do not label every defect a network outage.
+
+## 6. Define the presentation contract
+
+The state owner translates the result into UI state. It should not expose a DTO, database row, or exception directly to the screen.
+
+| Outcome | Presentation responsibility |
 | :--- | :--- |
-| **1. Onboarding** | How do I prepare my Mac, run the app, and submit a first contribution? |
-| **2. Architecture** | Where should logic live, and how should state, data, failures, and flags behave? |
-| **3. Platforms & SDKs** | What does the correct Android, iOS, or React Native implementation look like? |
-| **4. GenAI & Developer Tools** | Which tools and rule files should I use, and what context may I share? |
-| **5. Testing & Quality** | How do I test a complete feature, enforce coverage, and use Sauce Labs? |
-| **6. Observability** | How do I integrate and verify Datadog safely for each platform? |
-| **7. CI/CD** | How do enrollment, builds, gates, signing, delivery, and recovery work? |
-| **8. App Store & Distribution** | How do I prepare and verify enterprise or store publication? |
-| **9. Support & FAQ** | Where do I ask for help and find answers to recurring issues? |
+| **Found** | Format the amount with the correct currency rules and locale. |
+| **Empty** | Show the agreed no-record state. Do not display a failed request as a zero balance. |
+| **Failed** | Map the typed reason to a safe localized message and an appropriate action. |
+| **Cancelled** | End obsolete work without displaying a spurious error. |
+| **Obsolete result** | Ignore it when its request or session is no longer current. |
 
-The approved Teams support channel is the support entry point. When reporting a blocker, provide the failing step, platform, source revision, expected behavior, actual outcome, and sanitized evidence. Confirm application and platform ownership with your team rather than assuming every service has the same administrator.
+A feature that keeps cached content during refresh needs a state model that represents both content and refresh status. Avoid replacing a valid balance with a full-screen loader on every refresh unless that is the intended experience.
 
-## 14. Before you continue
+## 7. Keep cache and session behavior explicit
 
-- [ ] I know my application, owning team, established or approved stack, and source repository.
-- [ ] I understand how shared foundations support feature development.
-- [ ] I can distinguish local tests, PR checks, Bitrise workflows, Sauce Labs device tests, and NowSecure assessment.
-- [ ] I understand what Datadog helps investigate and why telemetry requires privacy controls.
-- [ ] I can distinguish enrollment, build success, and verified distribution.
-- [ ] I know where detailed implementation and support guidance belongs.
+Before adding persistence, define:
 
-**New to mobile?** Continue to [Mobile Foundations](/mobile/01-onboarding/non-mobile-engineer-guide/).
+1. Whether reads return a snapshot or observe a stream.
+2. Which source is authoritative and what freshness means.
+3. Whether offline display is permitted for this data classification.
+4. How records are keyed by account and invalidated.
+5. What logout does to subscriptions, requests, cache writers, and stored data.
+6. How a response arriving after logout is prevented from repopulating cleared storage.
 
-**Experienced mobile engineer?** Continue to [Machine Setup — macOS Apple Silicon](/mobile/01-onboarding/machine-setup-guide/).
+The balance adapters above do not provide these behaviors. Add them as a reviewed data policy, not as hidden side effects in a screen or mapper.
+
+## 8. Test the contract at meaningful boundaries
+
+Use this common test matrix on all platforms:
+
+| Case | Expected assertion |
+| :--- | :--- |
+| Blank account ID | Invalid-account result and repository not called. |
+| Valid record | Exact account, amount, and currency mapped correctly. |
+| Explicit no record | Empty outcome, distinct from failure and zero balance. |
+| Account mismatch | Invalid-response outcome. |
+| Invalid currency shape | Invalid-response outcome. |
+| Transport failure | Defined failure classification without sensitive message leakage. |
+| Cancellation | Cancellation propagates rather than becoming unavailable. |
+| Obsolete response | State owner rejects it after a newer request or session change. |
+| Large amount | Platform representation policy is enforced, including TypeScript safe-integer checks. |
+
+Use fakes at contracts for domain tests and controlled transport/storage doubles for adapter tests. Do not require live APIs or real credentials for these assertions. Verify concrete integration separately.
+
+Coverage must meet the defined 100% scope and metrics, with production files accounted for. The full Testing & Quality example supplies platform-specific test harnesses, commands, and report enforcement. This page's matrix is not a claim that those tests have been executed.
+
+## 9. Avoid unnecessary architectural machinery
+
+| Temptation | Prefer |
+| :--- | :--- |
+| One pass-through use case for every getter. | A use case when it names an application operation or owns meaningful coordination/policy. |
+| A generic repository exposing arbitrary CRUD for every entity. | Contracts expressing the feature's actual needs. |
+| A global service locator inside domain functions. | Explicit constructor or function dependencies. |
+| DTOs shared through every layer. | Domain models and deliberate boundary mapping. |
+| Separate modules for every small class. | Module boundaries that enforce useful ownership and dependency rules. |
+| Identical folders on every platform. | Equivalent responsibilities implemented with supported platform conventions. |
+
+## 10. Review before integration
+
+- [ ] Domain code depends on contracts rather than concrete UI, network, or storage frameworks.
+- [ ] Composition supplies concrete implementations outside feature business rules.
+- [ ] Transport data is validated and mapped before presentation.
+- [ ] Empty, zero, failure, and cancellation have distinct meanings.
+- [ ] Numeric and currency policies match the actual service contract.
+- [ ] State and session guards reject obsolete results.
+- [ ] Cache, offline, and cleanup behavior are explicit when present.
+- [ ] Tests cover contract outcomes and integration boundaries.
+- [ ] Actual SDK APIs and toolchain compatibility are confirmed in the platform guide.
+
+**Next: [Network Resilience & Circuit Breakers](/mobile/02-architecture/circuit-breaker-resilience/)** — define failure handling without unsafe retries or hidden work.
+
+
+
+
+
+------------------------------
+
+
+---
+title: Network Resilience & Circuit Breakers
+description: Define bounded network operations, safe retry decisions, circuit-breaker behavior, and verifiable fallback across mobile platforms.
+sidebar:
+  label: Network Resilience
+  order: 3
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+# Network Resilience & Circuit Breakers
+
+A mobile request can fail because of connectivity, authentication, server availability, cancellation, or an invalid response. Resilience means responding to each condition deliberately while protecting the user, device, and backend from unnecessary work.
+
+Use this page with [Clean Architecture](/mobile/02-architecture/mobile-architecture/). Put network policy behind the feature's data contract rather than duplicating it in screens.
+
+**Outcome:** every operation has a bounded execution policy, an explicit retry decision, appropriate circuit-breaker behavior where used, and a defined user-facing result.
+
+> **Confidential — internal use only.** Keep service configuration and operational evidence in approved systems. Do not include credentials, raw sensitive payloads, or private endpoints in failure messages or telemetry.
+
+## 1. Distinguish the mechanisms
+
+| Mechanism | Purpose | Limitation |
+| :--- | :--- | :--- |
+| **Timeout** | Bound a connection, read, or overall operation according to its contract. | A client timeout does not prove the server did not complete a write. |
+| **Cancellation** | Stop obsolete client work where the implementation supports it. | Cancellation does not undo a completed server action. |
+| **Retry** | Repeat an eligible attempt under a bounded policy. | Unsafe repetition can duplicate business actions. |
+| **Circuit breaker** | Temporarily stop calls to a dependency after qualifying failures. | It does not provide offline storage, authorization, or crash immunity. |
+| **Concurrency limit** | Bound in-flight work to avoid overload. | A circuit breaker alone is not a concurrency limit. |
+| **Cache or fallback** | Provide an explicitly permitted alternative result. | Stale data is not automatically safe or appropriate. |
+| **Reconciliation** | Read authoritative state after an uncertain write outcome. | A single absent result may be inconclusive in an eventually consistent system. |
+
+Connectivity checks may improve UI hints, but the attempted operation's actual result determines success. A device can be connected to Wi-Fi and still be unable to reach an API.
+
+## 2. Assign one owner to each policy
+
+| Responsibility | Expected owner |
+| :--- | :--- |
+| Connection and transport timeouts | Configured network adapter. |
+| Overall feature deadline | Agreed operation coordinator, covering attempts and delays. |
+| Session renewal | Established authentication/session integration. |
+| Retry scheduling | One agreed data or operation-level policy owner. |
+| Circuit state | Shared resilience instance scoped to the protected dependency. |
+| Cache selection and freshness | Repository/data policy. |
+| Loading, retry action, and stale-content presentation | Feature state owner and UI. |
+
+Avoid independent retries in the HTTP client, repository, use case, and screen. Three layers with three attempts each can multiply a single action into 27 network attempts.
+
+Do not construct a fresh breaker for every request: it would forget failure history. Do not use one global breaker for unrelated services: one failing dependency could block healthy features.
+
+## 3. Classify failures before deciding what happens next
+
+| Outcome | Retry direction | Circuit direction |
+| :--- | :--- | :--- |
+| **User cancellation or obsolete operation** | Stop. | Do not treat client cancellation as a backend failure. |
+| **Invalid user input** | Correct input. | Do not count as dependency unavailability. |
+| **Authentication expiry** | Use the approved bounded renewal flow if supported. | Do not trip an availability breaker simply for expired credentials. |
+| **Authorization denied** | Respect the denial. | Do not retry as an outage. |
+| **Rate limiting** | Follow the service contract and server delay when applicable. | Explicit policy required; do not assume it is a server outage. |
+| **Transient transport/server failure** | Retry only if operation semantics and remaining budget permit. | Count only failures configured as qualifying for that dependency. |
+| **Malformed or incompatible response** | Diagnose contract compatibility. | Do not hide it through indefinite retries. Counting rules require a deliberate policy. |
+| **Unknown write outcome** | Reconcile before another write. | Record uncertainty separately from the decision to open a circuit. |
+
+An HTTP status alone is not a complete retry policy. A transport error after sending a request can leave a write outcome unknown.
+
+## 4. Understand the circuit states
+
+<MermaidZoom title="Circuit lifecycle: admission, failure threshold, cooldown, and bounded probes">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CALLER as Repository
+    participant BREAKER as Shared Circuit Breaker
+    participant API as Protected Dependency
+
+    CALLER->>BREAKER: Request admission while closed
+    BREAKER->>API: Execute admitted attempt
+    API-->>BREAKER: Return qualifying failure
+    BREAKER->>BREAKER: Update failure window
+    Note over BREAKER: Open only when the configured threshold is reached
+    CALLER->>BREAKER: Request while open
+    BREAKER-->>CALLER: Reject without a network call
+    Note over BREAKER: After cooldown admit a bounded half-open probe
+    CALLER->>BREAKER: Request probe admission
+    BREAKER->>API: Execute permitted probe
+    alt Probe satisfies recovery policy
+        API-->>BREAKER: Successful outcome
+        BREAKER->>BREAKER: Close and reset according to policy
+    else Probe qualifies as failure
+        API-->>BREAKER: Failure
+        BREAKER->>BREAKER: Reopen and start cooldown
+    end
+```
+
+</MermaidZoom>
+
+| State | Admission behavior | Required definition |
+| :--- | :--- | :--- |
+| **Closed** | Allow requests subject to concurrency limits. | Which failures count, observation window, minimum sample, and threshold. |
+| **Open** | Fail fast without invoking the protected dependency. | Cooldown and whether an explicitly permitted fallback is available. |
+| **Half-open** | Allow a bounded number of recovery probes. | Probe concurrency, success criteria, cancellation handling, and reopening rules. |
+
+Thresholds and cooldowns are service-specific configuration, not universal constants. The earlier example of three failures and ten seconds must not be treated as an approved enterprise default.
+
+### Integration requirements for the approved implementation
+
+Before adopting an SDK, confirm its actual package, version, APIs, and behavior:
+
+- State updates and half-open admission are safe under concurrent calls.
+- Request cancellation does not leak probe permits or corrupt state.
+- Timing uses an appropriate monotonic clock for elapsed durations.
+- Failure classification can match the service policy.
+- Metrics distinguish circuit rejection, attempted failure, and fallback.
+- Retry placement relative to the breaker is documented: the breaker may count each attempt or the final logical operation, depending on the approved design.
+- State lifetime, app restart behavior, and account-sensitive scope are explicit.
+
+Do not implement a production breaker by copying this conceptual diagram into a few unprotected counters.
+
+## 5. Implement an executable circuit breaker
+
+The following reference implementations use the same deliberately small policy: **consecutive qualifying failures**, one half-open probe, and a monotonic cooldown. They execute an injected asynchronous operation; they do not import an invented enterprise SDK.
+
+### Policy and limits
+
+- Configure a positive failure threshold and cooldown per protected dependency. The examples do not prescribe production values.
+- Keep one instance per dependency and intended session scope, outside screen construction.
+- A successful admitted call resets the consecutive-failure count. A non-qualifying error breaks that streak.
+- An open circuit rejects without calling the operation. After cooldown, exactly one probe is admitted.
+- A probe success or non-qualifying response closes the circuit. A qualifying failure reopens it.
+- A cancelled probe reopens for a cooldown without recording a qualifying failure. This conservative policy releases the probe rather than leaving the circuit stuck.
+- Epoch tokens prevent late results from an earlier circuit generation changing newer state. They do not cancel those requests or protect presentation state.
+- These implementations make **one attempt**. Timeouts, retry scheduling, telemetry, cache policy, and session invalidation remain explicit integration responsibilities.
+
+Failures must be classified by the adapter. Transport APIs that return HTTP error responses as ordinary values must translate qualifying outcomes into typed errors before returning through the breaker.
+
+<Tabs>
+<TabItem label="Android">
+
+**File: `data/resilience/CircuitBreaker.kt`**
+
+Uses the project's existing `kotlinx-coroutines-core` dependency. State is mutex-protected; the network call runs outside the mutex. Non-cancellable finalization prevents a cancelled coroutine from stranding a half-open probe.
+
+```kotlin
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+
+class CircuitOpenException : Exception("Dependency temporarily unavailable")
+
+class CircuitBreaker(
+    private val failureThreshold: Int,
+    private val cooldownMillis: Long,
+    private val countsAsFailure: (Exception) -> Boolean,
+    private val nowMillis: () -> Long = { System.nanoTime() / 1_000_000 },
+) {
+    init {
+        require(failureThreshold > 0)
+        require(cooldownMillis > 0)
+    }
+
+    private enum class State { CLOSED, OPEN, HALF_OPEN }
+    private enum class Outcome { SUCCESS, FAILURE, IGNORED, CANCELLED }
+    private data class Ticket(val epoch: Long, val probe: Boolean)
+    private val mutex = Mutex()
+    private var state = State.CLOSED
+    private var failures = 0
+    private var openedAt = 0L
+    private var epoch = 0L
+
+    private suspend fun admit(): Ticket = mutex.withLock {
+        when (state) {
+            State.CLOSED -> Ticket(epoch, false)
+            State.HALF_OPEN -> throw CircuitOpenException()
+            State.OPEN -> {
+                if (nowMillis() - openedAt < cooldownMillis) {
+                    throw CircuitOpenException()
+                }
+                state = State.HALF_OPEN
+                epoch += 1
+                Ticket(epoch, true)
+            }
+        }
+    }
+
+    private fun open() {
+        state = State.OPEN
+        openedAt = nowMillis()
+        failures = 0
+        epoch += 1
+    }
+
+    private suspend fun finish(ticket: Ticket, outcome: Outcome) {
+        withContext(NonCancellable) {
+            mutex.withLock {
+                if (ticket.epoch != epoch) return@withLock
+                if (ticket.probe) {
+                    if (outcome == Outcome.FAILURE || outcome == Outcome.CANCELLED) {
+                        open()
+                    } else {
+                        state = State.CLOSED
+                        failures = 0
+                        epoch += 1
+                    }
+                } else when (outcome) {
+                    Outcome.SUCCESS, Outcome.IGNORED -> failures = 0
+                    Outcome.FAILURE -> {
+                        failures += 1
+                        if (failures >= failureThreshold) open()
+                    }
+                    Outcome.CANCELLED -> Unit
+                }
+            }
+        }
+    }
+
+    suspend fun <T> execute(operation: suspend () -> T): T {
+        currentCoroutineContext().ensureActive()
+        val ticket = admit()
+        val value: T
+        try {
+            currentCoroutineContext().ensureActive()
+            value = operation()
+            currentCoroutineContext().ensureActive()
+        } catch (error: Exception) {
+            val outcome = when {
+                error is CancellationException -> Outcome.CANCELLED
+                countsAsFailure(error) -> Outcome.FAILURE
+                else -> Outcome.IGNORED
+            }
+            finish(ticket, outcome)
+            throw error
+        }
+        finish(ticket, Outcome.SUCCESS)
+        return value
+    }
+}
+```
+
+**File: `data/BalanceRead.kt` — integration contract**
+
+```kotlin
+class TransientDependencyFailure : Exception()
+
+// Configure once in application composition and inject the same instance.
+suspend fun <T> readBalance(
+    breaker: CircuitBreaker,
+    fetch: suspend () -> T,
+): T = breaker.execute(fetch)
+```
+
+At construction, supply `countsAsFailure = { it is TransientDependencyFailure }` and approved threshold/cooldown values. The concrete API adapter must configure transport timeouts and produce typed failures. Caller cancellation propagates; timeout classification needs care because coroutine timeout exceptions are also cancellation exceptions. Do not use an enclosing coroutine deadline as evidence of backend failure automatically.
+
+</TabItem>
+<TabItem label="iOS">
+
+**File: `Data/Resilience/CircuitBreaker.swift`**
+
+An actor serializes state access. The operation runs across an `await`, so other callers can be admitted while the first is suspended. Epochs protect against stale completions during that reentrancy.
+
+```swift
+import Foundation
+
+struct CircuitOpenError: Error, Sendable {}
+
+actor CircuitBreaker {
+    private enum State { case closed, open, halfOpen }
+    private enum Outcome { case success, failure, ignored, cancelled }
+    private struct Ticket {
+        let epoch: UInt64
+        let probe: Bool
+    }
+
+    private let failureThreshold: Int
+    private let cooldown: TimeInterval
+    private let countsAsFailure: @Sendable (any Error) -> Bool
+    private let now: @Sendable () -> TimeInterval
+    private var state = State.closed
+    private var failures = 0
+    private var openedAt: TimeInterval = 0
+    private var epoch: UInt64 = 0
+
+    init(
+        failureThreshold: Int,
+        cooldown: TimeInterval,
+        countsAsFailure: @escaping @Sendable (any Error) -> Bool,
+        now: @escaping @Sendable () -> TimeInterval = {
+            ProcessInfo.processInfo.systemUptime
+        }
+    ) {
+        precondition(failureThreshold > 0)
+        precondition(cooldown.isFinite && cooldown > 0)
+        self.failureThreshold = failureThreshold
+        self.cooldown = cooldown
+        self.countsAsFailure = countsAsFailure
+        self.now = now
+    }
+
+    private func admit() throws -> Ticket {
+        switch state {
+        case .closed:
+            return Ticket(epoch: epoch, probe: false)
+        case .halfOpen:
+            throw CircuitOpenError()
+        case .open:
+            guard now() - openedAt >= cooldown else { throw CircuitOpenError() }
+            state = .halfOpen
+            epoch &+= 1
+            return Ticket(epoch: epoch, probe: true)
+        }
+    }
+
+    private func open() {
+        state = .open
+        openedAt = now()
+        failures = 0
+        epoch &+= 1
+    }
+
+    private func finish(_ ticket: Ticket, _ outcome: Outcome) {
+        guard ticket.epoch == epoch else { return }
+        if ticket.probe {
+            switch outcome {
+            case .failure, .cancelled:
+                open()
+            case .success, .ignored:
+                state = .closed
+                failures = 0
+                epoch &+= 1
+            }
+        } else {
+            switch outcome {
+            case .success, .ignored:
+                failures = 0
+            case .failure:
+                failures += 1
+                if failures >= failureThreshold { open() }
+            case .cancelled:
+                break
+            }
+        }
+    }
+
+    func execute<T: Sendable>(
+        _ operation: @Sendable () async throws -> T
+    ) async throws -> T {
+        try Task.checkCancellation()
+        let ticket = try admit()
+        let value: T
+        do {
+            try Task.checkCancellation()
+            value = try await operation()
+            try Task.checkCancellation()
+        } catch {
+            if error is CancellationError || Task.isCancelled {
+                finish(ticket, .cancelled)
+                throw CancellationError()
+            }
+            finish(ticket, countsAsFailure(error) ? .failure : .ignored)
+            throw error
+        }
+        finish(ticket, .success)
+        return value
+    }
+}
+```
+
+**File: `Data/BalanceRead.swift` — integration contract**
+
+```swift
+struct TransientDependencyFailure: Error, Sendable {}
+
+func readBalance<T: Sendable>(
+    breaker: CircuitBreaker,
+    fetch: @Sendable () async throws -> T
+) async throws -> T {
+    try await breaker.execute(fetch)
+}
+```
+
+Construct once with `countsAsFailure: { $0 is TransientDependencyFailure }` and reviewed configuration. Configure URLSession and operation deadlines in the concrete adapter. Keep `Sendable` requirements real; do not use unchecked conformance to pass mutable UI objects into the operation. Cancellation-aware transport must cooperate with task cancellation.
+
+</TabItem>
+<TabItem label="React Native">
+
+**File: `data/resilience/circuitBreaker.ts`**
+
+Admission and completion transitions are synchronous on the owning JavaScript runtime. No network operation is executed while updating state. Do not share this mutable instance across independent JS runtimes.
+
+```typescript
+export class CircuitOpenError extends Error {
+  constructor() {
+    super('Dependency temporarily unavailable');
+    this.name = 'CircuitOpenError';
+  }
+}
+
+type Outcome = 'success' | 'failure' | 'ignored' | 'cancelled';
+type Ticket = Readonly<{ epoch: number; probe: boolean }>;
+
+export class CircuitBreaker {
+  private state: 'closed' | 'open' | 'halfOpen' = 'closed';
+  private failures = 0;
+  private openedAt = 0;
+  private epoch = 0;
+
+  constructor(
+    private readonly failureThreshold: number,
+    private readonly cooldownMs: number,
+    private readonly countsAsFailure: (error: unknown) => boolean,
+    private readonly now: () => number,
+  ) {
+    if (!Number.isSafeInteger(failureThreshold) || failureThreshold < 1) {
+      throw new Error('failureThreshold must be a positive safe integer');
+    }
+    if (!Number.isFinite(cooldownMs) || cooldownMs <= 0) {
+      throw new Error('cooldownMs must be positive and finite');
+    }
+  }
+
+  private admit(): Ticket {
+    if (this.state === 'halfOpen') throw new CircuitOpenError();
+    if (this.state === 'open') {
+      if (this.now() - this.openedAt < this.cooldownMs) {
+        throw new CircuitOpenError();
+      }
+      this.state = 'halfOpen';
+      this.epoch += 1;
+      return { epoch: this.epoch, probe: true };
+    }
+    return { epoch: this.epoch, probe: false };
+  }
+
+  private open(): void {
+    this.state = 'open';
+    this.openedAt = this.now();
+    this.failures = 0;
+    this.epoch += 1;
+  }
+
+  private finish(ticket: Ticket, outcome: Outcome): void {
+    if (ticket.epoch !== this.epoch) return;
+    if (ticket.probe) {
+      if (outcome === 'failure' || outcome === 'cancelled') this.open();
+      else {
+        this.state = 'closed';
+        this.failures = 0;
+        this.epoch += 1;
+      }
+    } else if (outcome === 'failure') {
+      this.failures += 1;
+      if (this.failures >= this.failureThreshold) this.open();
+    } else if (outcome !== 'cancelled') {
+      this.failures = 0;
+    }
+  }
+
+  async execute<T>(
+    signal: AbortSignal,
+    operation: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
+    const checkCancellation = (): void => {
+      if (signal.aborted) {
+        const error = new Error('Operation cancelled');
+        error.name = 'AbortError';
+        throw error;
+      }
+    };
+    checkCancellation();
+    const ticket = this.admit();
+    let value: T;
+    try {
+      checkCancellation();
+      value = await operation(signal);
+      checkCancellation();
+    } catch (error: unknown) {
+      const cancelled = signal.aborted ||
+        (error instanceof Error && error.name === 'AbortError');
+      this.finish(ticket, cancelled ? 'cancelled' :
+        this.countsAsFailure(error) ? 'failure' : 'ignored');
+      throw error;
+    }
+    this.finish(ticket, 'success');
+    return value;
+  }
+}
+```
+
+**File: `data/balanceRead.ts` — integration contract**
+
+```typescript
+import { CircuitBreaker } from './resilience/circuitBreaker';
+
+export class TransientDependencyFailure extends Error {}
+
+export function createBalanceBreaker(
+  threshold: number,
+  cooldownMs: number,
+  monotonicNow: () => number,
+): CircuitBreaker {
+  return new CircuitBreaker(
+    threshold,
+    cooldownMs,
+    error => error instanceof TransientDependencyFailure,
+    monotonicNow,
+  );
+}
+```
+
+Inject a supported monotonic source such as `() => performance.now()` for the selected React Native runtime, or the project's clock adapter. Do not substitute wall-clock time without handling clock adjustments. The API adapter must pass `signal` to its actual request and enforce timeouts. Keep the breaker outside Redux state; inject it through the established service dependencies.
+
+</TabItem>
+</Tabs>
+
+### What callers must handle
+
+A circuit-open error is a fast rejection, not a new network failure. Convert it into the feature's agreed unavailable/fallback outcome. Do not swallow cancellation or display sensitive transport errors.
+
+Failure classifiers and clock providers must be deterministic, non-throwing, and safe for their execution context. Treat this small breaker as a reference for reviewed integration. If an approved internal resilience SDK exists, use its confirmed contract instead of maintaining a second breaker. Do not run both policies in series without an explicit design.
+
+## 5A. Keep retries separate from circuit state
+
+Add automatic retries only after classifying replay safety. A safe read or a server-guaranteed idempotent operation may be eligible; an unknown write outcome requires reconciliation. Configure maximum total attempts, backoff, jitter, cancellation, and the overall deadline explicitly.
+
+The reference breakers above make one attempt per `execute` call. An external retry coordinator must obtain fresh admission for each attempt. Do not report this implementation as providing retries or network timeouts by itself.
+
+
+## 6. Bound attempts, delays, and total execution
+
+A production coordinator needs more than an eligibility function:
+
+1. Check operation cancellation and remaining deadline.
+2. Obtain circuit admission when applicable.
+3. Execute an attempt with the appropriate transport timeout.
+4. Classify its actual outcome and update the approved circuit policy.
+5. Return immediately for success, cancellation, or non-retryable failure.
+6. For an eligible replay, compute a bounded backoff with jitter under the service policy.
+7. Respect a valid server retry delay; if it exceeds the remaining budget, stop rather than retry earlier.
+8. Wait cancellably, recheck budget and ownership, and obtain admission for the next attempt.
+
+Document which layer performs each step. Total latency includes connection time, response time, all attempts, and backoff. Do not offer an apparently immediate UI retry while a hidden automatic retry loop is still active.
+
+Circuit rejection should not cause an immediate retry loop. Use its documented cooldown signal and permitted fallback or show a recoverable unavailable state.
+
+## 7. Reconcile uncertain writes
+
+For payments, submissions, provisioning, uploads, and other mutations, a timeout may occur after the server committed the change.
+
+<MermaidZoom title="Unknown write outcome: preserve operation identity and reconcile before replay">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CLIENT as Operation Owner
+    participant SERVER as Authoritative Service
+    CLIENT->>SERVER: Submit operation with approved identity
+    Note over CLIENT,SERVER: Response is lost or times out
+    CLIENT->>CLIENT: Mark outcome unknown and prevent duplicate submission
+    CLIENT->>SERVER: Read operation status through supported contract
+    alt Completion confirmed
+        SERVER-->>CLIENT: Return committed result
+        CLIENT->>CLIENT: Present confirmed outcome
+    else Result remains inconclusive
+        SERVER-->>CLIENT: Return pending or insufficient evidence
+        CLIENT->>CLIENT: Preserve state and follow reviewed recovery
+    end
+```
+
+</MermaidZoom>
+
+Do not assume a negative read proves absence when indexing or replication may lag. The service contract determines when replay is safe. For governed CI/CD external writes, follow the one-write and read-only reconciliation process in CI/CD rather than applying the client read-retry policy.
+
+## 8. Define fallback and presentation
+
+| Situation | Appropriate behavior |
+| :--- | :--- |
+| First load fails and no permitted cache exists | Show a safe localized error and an appropriate recovery action. |
+| Refresh fails but permitted cached data exists | Retain content, indicate freshness when relevant, and show non-disruptive feedback. |
+| Circuit is open | Fail fast and use the agreed fallback or unavailable state. |
+| Account changes | Cancel/invalidate old work and prevent prior-account content or cache writes. |
+| Write outcome is unknown | Show a pending/verification state rather than claiming failure and inviting duplicate submission. |
+
+Never display stale data as authoritative without the feature's permission. Do not replace failed balance reads with a fabricated zero balance. Fallback must preserve the meaning of the operation.
+
+## 9. Make failures diagnosable without leaking data
+
+Record approved attributes such as the operation name, environment, release, attempt number, duration, sanitized failure category, circuit transition, and fallback use.
+
+Distinguish:
+
+- Logical operation outcome from individual attempt outcomes.
+- Network failure from cancellation or circuit rejection.
+- Fresh success from cached fallback.
+- Confirmed write failure from unknown outcome.
+
+Do not attach authorization headers, raw response bodies, full sensitive URLs, or user-entered values. Observability defines Datadog integration and approved event conventions; this page does not invent a telemetry schema.
+
+## 10. Verify the policy
+
+| Test | Expected result |
+| :--- | :--- |
+| Retry coordinator: transient safe read with budget and attempts available | Eligible only under the external retry policy. |
+| Current attempt equals maximum | No further attempt. |
+| Invalid attempt counts | Fail closed: no retry. |
+| Cancellation before request or during backoff | No additional network call; cancellation propagates. |
+| Non-transient failure or exhausted deadline | No retry. |
+| Write without approved replay semantics | No automatic replay. |
+| Open circuit | Protected API is not called. |
+| Cooldown completes with competing callers | Probe admission stays within the configured limit. |
+| Probe fails or succeeds | Correct policy-defined transition occurs. |
+| Cancelled probe | Permit and state follow the documented cancellation policy. |
+| Unrelated dependency fails | Healthy dependency is not blocked by accidental shared scope. |
+| Cached fallback after account switch | Previous-account data is not exposed. |
+| Timed-out write later confirmed | Original result is recovered without duplicate mutation. |
+
+Inject a controllable clock, random source, and scripted adapter for coordinator tests. Do not depend on real sleeps or a live outage. Use integration and device tests to verify the actual SDK and transport cancellation behavior.
+
+The coverage requirement applies to the defined production scope. Tests of happy-path execution alone do not establish correctness of a retry coordinator or circuit breaker. The snippets here have no implied platform build or device-test certification.
+
+### Add a regression test before integration
+
+The following tests verify that opening the circuit prevents an additional operation from being called. They complement the broader matrix above; they do not establish full coverage.
+
+<Tabs>
+<TabItem label="Android">
+
+**File: `src/test/.../CircuitBreakerTest.kt`** — uses the project's JUnit and coroutine test dependencies.
+
+```kotlin
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
+import org.junit.Test
+
+class CircuitBreakerTest {
+    @Test
+    fun openCircuitDoesNotInvokeOperation() = runTest {
+        val breaker = CircuitBreaker(1, 100, { true }, { 0L })
+        try {
+            breaker.execute<Unit> { throw IllegalStateException("synthetic") }
+            fail("Expected original failure")
+        } catch (_: IllegalStateException) {
+            // Qualifying failure opens the circuit.
+        }
+        var calls = 0
+        try {
+            breaker.execute { calls += 1 }
+            fail("Expected open-circuit rejection")
+        } catch (_: CircuitOpenException) {
+            assertEquals(0, calls)
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem label="iOS">
+
+**File: test target `CircuitBreakerTests.swift`** — add the app/package's actual testable module import.
+
+```swift
+import XCTest
+
+final class CircuitBreakerTests: XCTestCase {
+    private struct SyntheticFailure: Error {}
+
+    func testOpenCircuitRejectsWithoutCallingOperation() async throws {
+        let breaker = CircuitBreaker(
+            failureThreshold: 1,
+            cooldown: 100,
+            countsAsFailure: { $0 is SyntheticFailure },
+            now: { 0 }
+        )
+        do {
+            let _: Int = try await breaker.execute { throw SyntheticFailure() }
+            XCTFail("Expected original failure")
+        } catch is SyntheticFailure {
+            // Expected.
+        }
+        do {
+            let _: Int = try await breaker.execute {
+                XCTFail("Open circuit must not invoke the operation")
+                return 1
+            }
+            XCTFail("Expected circuit rejection")
+        } catch is CircuitOpenError {
+            // Expected.
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem label="React Native">
+
+**File: `data/resilience/circuitBreaker.test.ts`** — uses the project's Jest configuration.
+
+```typescript
+import { CircuitBreaker, CircuitOpenError } from './circuitBreaker';
+
+it('rejects an open circuit without invoking the operation', async () => {
+  const breaker = new CircuitBreaker(1, 100, () => true, () => 0);
+  const signal = new AbortController().signal;
+  const failure = new Error('synthetic');
+  await expect(breaker.execute(signal, async () => {
+    throw failure;
+  })).rejects.toBe(failure);
+
+  const operation = jest.fn(async () => 1);
+  await expect(breaker.execute(signal, operation))
+    .rejects.toBeInstanceOf(CircuitOpenError);
+  expect(operation).not.toHaveBeenCalled();
+});
+```
+
+</TabItem>
+</Tabs>
+
+### Reference verification status
+
+The TypeScript core passed strict type checking and 10 standalone behavior checks covering constructor validation, successful execution, open rejection, recovery, single-probe admission, cancelled probes, non-qualifying outcomes, stale completion, pre-cancellation, and failed probes. The Swift core passed Swift 6 strict-concurrency type checking. Kotlin and the platform test-target snippets have not been compiled or executed here. These checks do not certify production transport, device, or SDK integration.
+
+
+## 11. Integration checklist
+
+- [ ] Every operation has explicit timeouts and an overall execution budget.
+- [ ] One owner coordinates retries and session renewal follows the existing contract.
+- [ ] Replay eligibility is based on operation semantics, not only status codes.
+- [ ] Cancellation propagates through request execution and waiting.
+- [ ] Breaker scope, concurrency, failure classification, cooldown, and probes are documented.
+- [ ] The approved SDK's actual API and version are confirmed before integration.
+- [ ] Cache, freshness, and unknown-write states have intentional presentation.
+- [ ] Tests cover transitions, concurrency, cancellation, and session changes.
+- [ ] Diagnostics distinguish outcomes and contain only permitted attributes.
+
+**Next: [Feature Flags & Remote Configuration](/mobile/02-architecture/feature-flags/)** — control feature behavior with safe defaults and verifiable rollout.
+
+
+
+
+
+---------------------
+
+
+---
+title: Feature Flags & Remote Configuration
+description: Introduce features safely with typed defaults, validated remote values, explicit freshness, and account-aware evaluation.
+sidebar:
+  label: Feature Flags
+  order: 4
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+# Feature Flags & Remote Configuration
+
+Feature flags select between supported application behaviors without requiring a new binary for every configuration change. Remote configuration supplies those values through an approved service.
+
+A flag can enable a feature already present in the installed app. It cannot add missing native code, replace server authorization, or guarantee an immediate change on an offline device.
+
+**Outcome:** a feature behaves predictably with valid, missing, malformed, stale, or unavailable configuration, and its rollout can be verified and reversed through an owned process.
+
+> **Confidential — internal use only.** Keep real flag inventories, targeting rules, service configuration, and rollout evidence in approved systems. Remote configuration is client-accessible data, not a secret store. Examples below are illustrative contracts, not internal SDK APIs.
+
+## 1. Choose the right kind of control
+
+| Control | Purpose | Example |
+| :--- | :--- | :--- |
+| **Release flag** | Expose an implemented feature to an approved audience. | Enable the redesigned balance screen. |
+| **Operational flag** | Disable an optional path or reduce dependency load. | Stop optional background refresh. |
+| **Experiment assignment** | Compare supported variants with stable assignment and agreed measurement. | Compare two approved onboarding layouts. |
+| **Configuration value** | Supply a bounded parameter. | A refresh interval within an approved range. |
+| **Server authorization** | Decide whether an operation or resource is permitted. | Check that an authenticated user may access an account. |
+
+Authorization belongs on the server even when a flag hides the corresponding UI. Never deliver credentials, signing material, privileged API keys, or confidential business rules as supposedly hidden configuration.
+
+## 2. Define a flag contract before integration
+
+For each flag, document:
+
+| Field | Required decision |
+| :--- | :--- |
+| **Name and meaning** | What does true/false or each variant actually select? |
+| **Owner** | Who approves changes, monitors rollout, and removes the flag? |
+| **Local default** | What happens before any usable remote snapshot exists? |
+| **Supported app versions** | Which installed versions understand the value and behavior? |
+| **Validation** | Expected type, allowed values, ranges, and compatible schema. |
+| **Scope** | Environment, app, platform, tenant, account, or experiment as applicable. |
+| **Freshness** | Cache lifetime and whether last-known-good values remain usable when stale. |
+| **Activation** | When fetched values may affect an active journey. |
+| **Recovery** | How to roll back and what to do when refresh is unavailable. |
+| **Removal** | When the temporary flag and obsolete implementation can be deleted. |
+
+Defaults are feature-specific. Disabling a new optional screen may be safe; disabling a required security control is not. Do not define a universal rule that all flags default to false without considering their meaning.
+
+## 3. Separate fetch, validation, activation, and evaluation
+
+<MermaidZoom title="Configuration lifecycle: usable defaults before approved remote activation">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant APP as Application Startup
+    participant STORE as Configuration Owner
+    participant CACHE as Scoped Cache
+    participant REMOTE as Approved Config Service
+    participant FEATURE as Feature
+
+    APP->>STORE: Initialize typed local defaults
+    STORE->>CACHE: Read snapshot for current scope
+    CACHE-->>STORE: Return cached snapshot or none
+    STORE->>STORE: Validate scope, schema, and freshness
+    FEATURE->>STORE: Read active feature decision
+    STORE-->>FEATURE: Return usable current decision
+    STORE->>REMOTE: Refresh through approved adapter
+    alt Valid response for current scope
+        REMOTE-->>STORE: Return candidate snapshot
+        STORE->>STORE: Validate and activate at a safe boundary
+        STORE->>CACHE: Persist permitted validated snapshot
+    else Unavailable or invalid response
+        REMOTE-->>STORE: Return failure or invalid candidate
+        STORE->>STORE: Keep permitted current state or use defaults
+    end
+```
+
+</MermaidZoom>
+
+Fetching does not automatically mean activation. A change during checkout, form submission, or another stateful journey may need to wait until that journey ends. Define the activation boundary rather than allowing a background refresh to switch behavior unexpectedly.
+
+Do not block every startup indefinitely on a configuration fetch. If a feature requires fresh configuration, bound the wait and define a safe unavailable state.
+
+## 4. Centralize the configuration owner
+
+| Responsibility | Owner |
+| :--- | :--- |
+| Fetching, authentication integration, and cancellation | Approved service adapter and configuration coordinator. |
+| Schema/type validation | Boundary decoder or mapper. |
+| Scope, version compatibility, cache age, and activation | Configuration owner. |
+| Resolving a feature decision | Typed evaluator using the active snapshot. |
+| Rendering or starting the selected path | Feature state owner and UI. |
+| Permission enforcement | Backend authorization. |
+
+Screens should consume typed decisions instead of fetching arbitrary keys independently. Use one established configuration lifecycle rather than a new fetch loop in each screen.
+
+A practical decision can carry internal provenance: default, cache, or fresh remote value, together with its revision and scope generation. Keep diagnostic metadata separate from sensitive targeting attributes.
+
+## 5. Integrate Unleash with the correct mobile SDK
+
+The shared package link, [`unleash-client`](https://www.npmjs.com/package/unleash-client), is the **Node.js backend SDK**. It evaluates server-side configuration and uses backend credentials. Do not install it into a React Native application or place a backend token in a mobile binary. See the [official Node SDK reference](https://docs.getunleash.io/sdks/node).
+
+Mobile clients use the Frontend API or Unleash Edge with a **frontend token**. Evaluation occurs at that service boundary; the mobile SDK consumes evaluated flags for its context. See the [SDK architecture overview](https://docs.getunleash.io/sdks).
+
+| Platform | Mobile integration | Setup requirement |
+| :--- | :--- | :--- |
+| Android | `io.getunleash:unleash-android` | Pin a reviewed version in the project's dependency catalog. |
+| iOS | `Unleash/unleash-ios-sdk`, module `UnleashProxyClientSwift` | Pin a reviewed SPM release and commit resolution according to project policy. |
+| React Native | `@unleash/unleash-react-native-sdk` with `unleash-proxy-client` | Confirm compatibility before adopting the dedicated SDK. Current upstream documentation specifies React Native 0.81+ and React 18+. |
+
+A frontend token is client-distributed configuration, not a privileged backend secret. Scope it to the approved project/environment and obtain it through the platform owner. Do not create tokens or change provider permissions without the required access.
+
+### Before writing code
+
+Confirm the endpoint ending in `/api/frontend`, frontend token binding, app name, supported SDK version, environment/project scope, allowed context fields, and rollout owner. Define `balance_redesign` in the intended environment through the approved configuration process. It is an illustrative flag name, not an assertion that this flag exists internally.
+
+**Attach screenshot — Unleash flag configuration and environment selection, with tokens and targeting identifiers redacted.**
+
+The minimal integrations below demonstrate **non-sensitive, application-wide configuration without account targeting**. They do not implement authenticated cache isolation. Account-targeted use must satisfy Section 6 before it is enabled.
+
+<Tabs>
+<TabItem label="Android">
+
+### A. Add the reviewed dependency
+
+**File: application module `build.gradle.kts`**
+
+```kotlin
+dependencies {
+    // Define this version in gradle.properties or your approved version catalog.
+    val unleashVersion = providers.gradleProperty("unleashVersion").get()
+    implementation("io.getunleash:unleash-android:$unleashVersion")
+}
+```
+
+**File: `src/main/AndroidManifest.xml`**, directly inside the manifest element:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+```
+
+### B. Construct once and start from composition
+
+**File: `configuration/UnleashFactory.kt`**
+
+```kotlin
+import android.content.Context
+import io.getunleash.android.DefaultUnleash
+import io.getunleash.android.UnleashConfig
+
+fun createUnleash(
+    context: Context,
+    frontendUrl: String,
+    frontendToken: String,
+    appName: String,
+): DefaultUnleash {
+    require(frontendUrl.startsWith("https://"))
+    require(frontendToken.isNotBlank() && appName.isNotBlank())
+    return DefaultUnleash(
+        androidContext = context.applicationContext,
+        unleashConfig = UnleashConfig.newBuilder(appName = appName)
+            .proxyUrl(frontendUrl)
+            .clientKey(frontendToken)
+            .build(),
+    )
+}
+```
+
+Supply approved non-secret app configuration at the application composition boundary, retain the resulting instance, and call `start()` once there. Do not construct a client on each screen or poll readiness with `Thread.sleep`.
+
+### C. Evaluate at a deliberate journey boundary
+
+**File: `configuration/BalanceFeaturePolicy.kt`**
+
+```kotlin
+import io.getunleash.android.Unleash
+
+fun selectBalanceRedesign(
+    client: Unleash,
+    appSupportsRedesign: Boolean,
+    accessAllowed: Boolean,
+): Boolean = appSupportsRedesign && accessAllowed &&
+    client.isEnabled("balance_redesign")
+```
+
+Call from the feature state owner when starting the journey and retain that decision for the journey. A later visit can evaluate updated configuration. If the feature needs live changes, use the SDK's state listener and lifecycle-owned collection rather than assuming `isEnabled` observes updates itself.
+
+Unknown flags are disabled by default. Initial reads can precede a remote response; do not interpret false as proof of a successful fetch. Retain one application-scoped client to avoid cache contention. See the [Android SDK setup and events](https://docs.getunleash.io/sdks/android) and [official sample imports](https://github.com/Unleash/unleash-android-sdk/blob/main/app/src/main/java/io/getunleash/unleashandroid/TestApplication.kt).
+
+</TabItem>
+<TabItem label="iOS">
+
+### A. Add the reviewed Swift package
+
+In Xcode, add `https://github.com/Unleash/unleash-ios-sdk.git` using the approved release constraint. Import `UnleashProxyClientSwift`. Do not copy the upstream placeholder `0.0.0` as a production version.
+
+### B. Construct the client at the application boundary
+
+**File: `Configuration/UnleashFactory.swift`**
+
+```swift
+import UnleashProxyClientSwift
+
+@MainActor
+func createUnleash(
+    frontendURL: String,
+    frontendToken: String,
+    appName: String
+) -> UnleashClient {
+    precondition(frontendURL.hasPrefix("https://"))
+    precondition(!frontendToken.isEmpty && !appName.isEmpty)
+    return UnleashClient(
+        unleashUrl: frontendURL,
+        clientKey: frontendToken,
+        appName: appName
+    )
+}
+```
+
+Retain the returned client in application composition and invoke `start()` once according to the selected SDK release's API. Do not start a new client from each SwiftUI view initializer.
+
+### C. Read the decision for a new journey
+
+**File: `Configuration/BalanceFeaturePolicy.swift`**
+
+```swift
+import UnleashProxyClientSwift
+
+@MainActor
+func selectBalanceRedesign(
+    client: UnleashClient,
+    appSupportsRedesign: Bool,
+    accessAllowed: Bool
+) -> Bool {
+    appSupportsRedesign && accessAllowed &&
+        client.isEnabled(name: "balance_redesign")
+}
+```
+
+The state owner captures this decision when beginning the journey. If configuration arrives later, use it for the next journey or implement an explicit safe activation boundary. Do not imply that this synchronous read subscribes to updates.
+
+For live configuration, connect the documented `ready`/`update` events to the app's state owner, marshal UI mutation to its actor, and manage subscription ownership. Validate callback behavior against the pinned release. See the [iOS SDK reference](https://docs.getunleash.io/sdks/ios).
+
+</TabItem>
+<TabItem label="React Native">
+
+### A. Add compatible packages through the repository workflow
+
+Use the project package manager and reviewed exact versions, then commit the lockfile. The package names are:
+
+```text
+@unleash/unleash-react-native-sdk
+unleash-proxy-client
+```
+
+Follow their peer-dependency and native setup requirements. Do not install the backend `unleash-client` package as a substitute. Older React Native apps require a separate compatibility review; do not upgrade the framework solely to copy this example.
+
+### B. Provide one stable configuration
+
+**File: `configuration/FeatureFlagProvider.tsx`**
+
+```tsx
+import React, { type ComponentProps, type ReactNode } from 'react';
+import { FlagProvider } from '@unleash/unleash-react-native-sdk';
+
+type Config = NonNullable<ComponentProps<typeof FlagProvider>['config']>;
+
+type Props = Readonly<{
+  config: Config;
+  children: ReactNode;
+}>;
+
+export function FeatureFlagProvider({ config, children }: Props) {
+  return <FlagProvider config={config}>{children}</FlagProvider>;
+}
+```
+
+Construct `config` once in application composition using approved `url`, `clientKey`, and `appName` values, then mount the provider around the part of the app consuming flags. Keep the object stable across renders. It is ordinary client configuration, not a backend credential binding.
+
+### C. Consume the flag without duplicating it in Redux
+
+**File: `features/balance/BalanceExperience.tsx`**
+
+```tsx
+import React, { type ReactNode } from 'react';
+import { useFlag } from '@unleash/unleash-react-native-sdk';
+
+type Props = Readonly<{
+  appSupportsRedesign: boolean;
+  accessAllowed: boolean;
+  redesigned: ReactNode;
+  legacy: ReactNode;
+}>;
+
+export function BalanceExperience(props: Props) {
+  const enabled = useFlag('balance_redesign');
+  const showNew = enabled && props.appSupportsRedesign && props.accessAllowed;
+  return <>{showNew ? props.redesigned : props.legacy}</>;
+}
+```
+
+This example intentionally reacts to SDK updates and is suitable only where switching presentation is safe. Freeze a decision in the feature state owner for a stateful journey that must not change midway.
+
+Keep Redux Toolkit for the established application/session state. Consume the SDK flag directly rather than maintaining a second polling loop and mirrored flag store. Provider-owned remote state and Redux-owned business state have different owners.
+
+The hook can return false before flag data arrives and may later use cached values. `flagsReady` is not proof of perpetual freshness. Avoid blocking the whole application indefinitely on readiness. The dedicated SDK uses AsyncStorage-backed caching; it is not encrypted secret storage. See the [React Native SDK guide](https://docs.getunleash.io/sdks/react-native).
+
+</TabItem>
+</Tabs>
+
+### Boundary to preserve
+
+The frontend service evaluates the targeting context; the application adds its supported-capability and permission checks. Backend authorization still applies. The configuration examples are minimal SDK integration, not a complete authenticated configuration coordinator or a claim of a verified company deployment.
+
+
+## 6. Handle caching and account transitions
+
+**Do not enable account targeting with the minimal examples unchanged.** SDK cache and context-update behavior must be reviewed for the pinned release. Hide account-targeted features while changing context, serialize changes, reject obsolete completions, and verify the refreshed scope before exposing the new decision. Use the provider’s supported cache partition/clear mechanisms where required; merely remounting a provider or changing a cache prefix does not establish complete isolation.
+
+
+| Event | Required behavior |
+| :--- | :--- |
+| First launch with no cache | Use explicit defaults or the feature's defined unavailable state. |
+| Valid matching cache | Use only under the agreed age and compatibility policy. |
+| Expired cache | Apply the documented stale policy; never assume indefinite reuse. |
+| Malformed remote response | Reject according to the candidate policy and preserve a permitted prior state or defaults. |
+| Account or tenant switch | Invalidate old targeting context and prevent late responses from activating for the new scope. |
+| Logout | Clear or replace account-specific state and prevent stale in-flight work from restoring it. |
+| App upgrade | Revalidate stored schema and feature compatibility before reuse. |
+
+Tie refresh results to a scope generation or equivalent ownership token. Cancellation helps but is not enough: a result that completes late must be rejected if its scope is obsolete.
+
+Do not persist sensitive targeting attributes unless approved. A cache key is not an authorization boundary. Use a monotonic clock for in-process elapsed intervals where appropriate; persisted age across restarts requires an explicitly designed timestamp policy.
+
+## 7. Roll out and roll back deliberately
+
+1. Confirm that each targeted app version contains both the intended behavior and a safe alternative.
+2. Verify disabled, enabled, missing, malformed, and stale scenarios locally.
+3. Publish through the approved configuration change process with a recorded revision and owner.
+4. Start with the approved test audience and verify the actual evaluated decision.
+5. Expand exposure according to the agreed rollout plan and monitor defined signals.
+6. Roll back when the agreed criteria are met, then verify client behavior and propagation.
+7. Remove temporary flags and obsolete paths after the supported-version and rollback needs are resolved.
+
+Do not invent percentage steps or universal performance thresholds. For percentage rollout or experiments, use the approved provider's stable assignment and scope rules. Do not randomize a user's variant on each render.
+
+A UI rollback may not undo writes, migrations, or side effects already performed. Those changes need a compatible recovery design beyond the flag.
+
+## 8. Understand kill-switch limits
+
+A remote switch takes effect only after the app obtains and activates the new configuration. Offline clients, throttled fetches, cache policies, background restrictions, and installed app capabilities affect response time.
+
+For high-risk operations, use server-side enforcement where required. A remote client flag alone is insufficient to guarantee immediate shutdown.
+
+| Risk | Design response |
+| :--- | :--- |
+| Client cannot refresh | Safe local behavior and a documented freshness policy. |
+| Existing journey is in progress | Defined interruption or completion semantics. |
+| Old app lacks the switch | Version-aware rollout and another control where required. |
+| A write already occurred | Reconciliation or business recovery, not merely hiding the UI. |
+| Remote config service fails | Bounded fetch and explicitly permitted fallback. |
+
+## 9. Test the complete lifecycle
+
+| Test case | Expected result |
+| :--- | :--- |
+| Default snapshot | Optional redesign remains disabled. |
+| Valid true plus supported capability and allowed access | Redesign is selected. |
+| Any eligibility input is false | Redesign is not selected. |
+| String, numeric, missing, or null boolean | Boundary policy rejects or falls back without coercion. |
+| Valid remote false | False remains a legitimate value, not a missing-value signal. |
+| Fresh matching cache | Decision follows the approved cache policy. |
+| Expired or wrong-scope cache | Values are not reused outside policy. |
+| Fetch fails or times out | Feature remains usable under its defined fallback. |
+| Old-account fetch finishes after switch | Snapshot is not activated or persisted for the new account. |
+| Refresh during a stateful journey | Activation follows the defined safe boundary. |
+| Rollback | Both evaluated decision and observable behavior match the intended revision. |
+| Logout and restart | Account-specific values do not leak across sessions. |
+
+Test policy functions with plain values. Test the coordinator with a controlled service, cache, and clock. Test both feature paths at the UI level, then verify provider integration and target-device behavior separately.
+
+Meet the defined 100% coverage requirement without excluding an inconvenient flag branch. A passing decision-function test does not prove fetch, cache, targeting, or activation correctness.
+
+## 10. Observe decisions safely
+
+Use approved diagnostics to distinguish configuration fetch success, validation rejection, fallback, activation, and feature exposure. Attach the permitted configuration revision and app release when useful.
+
+An exposure event should mean the user actually encountered the selected behavior, not simply that the app downloaded a true flag. Avoid duplicate exposure events on every render.
+
+Do not log complete payloads, targeting profiles, credentials, or sensitive identifiers. Observability defines the actual Datadog attributes and reporting conventions; this guide does not invent them.
+
+### SDK integration acceptance checks
+
+Before publication as a project-specific integration, run the pinned SDK on the assigned app:
+
+1. Start without usable remote configuration and verify the intended default.
+2. Fetch the disabled flag, then enable it in the approved test environment and observe the documented activation behavior.
+3. Simulate unavailable service and inspect actual cache/readiness behavior without exposing credentials.
+4. Restart the app and verify the persisted-state policy.
+5. Test account transitions before adding any account-targeted flags.
+6. Confirm rollback on each supported platform and record the SDK version and configuration revision.
+
+**Attach screenshot — disabled and enabled feature behavior with the corresponding sanitized configuration evidence.**
+
+The SDK calls were checked against official documentation. SDK packages were not installed, platform integrations were not built, and no live Unleash environment was contacted. Company endpoint, version approval, and authenticated cache policy remain project-specific requirements.
+
+## 11. Integration checklist
+
+- [ ] Flag meaning, owner, local default, scope, and removal plan are documented.
+- [ ] Actual provider/SDK version and configuration contract are confirmed.
+- [ ] Values are decoded and validated before activation.
+- [ ] Missing and invalid values are distinct from valid false or zero values.
+- [ ] Cache freshness and account/session invalidation are explicit.
+- [ ] Old refresh results cannot activate after a scope change.
+- [ ] Activation cannot unexpectedly corrupt an in-progress journey.
+- [ ] Server authorization and privileged secrets remain separate from flags.
+- [ ] Both paths, fallback, rollback, and propagation limits have evidence.
+- [ ] Diagnostic events contain only permitted data.
+
+**Next: [Branching & Pull Request Conventions](/mobile/02-architecture/branching-prs/)** — prepare focused changes and review them with current-revision evidence.
+
+
+
+
+
+
+
+
+_________________
+
+---
+title: Branching & Pull Request Conventions
+description: Prepare focused application changes, submit reviewable pull requests, and integrate only with current checks and required approval.
+sidebar:
+  label: Branching & PRs
+  order: 5
+---
+
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+# Branching & Pull Request Conventions
+
+A pull request should let another engineer understand the problem, assess the implementation, and verify the resulting behavior. Branches and commits support that review; repository protection enforces the integration requirements.
+
+Use this page for **application source changes**. First-time contributors can follow the practical walkthrough in [Complete Your First Contribution](/mobile/01-onboarding/new-engineer-onboarding/).
+
+**Outcome:** a focused change reaches its intended integration branch with an accurate description, meaningful evidence, required review, and passing checks for the current revision.
+
+> **Confidential — internal use only.** Keep source and review evidence in approved repositories. Do not include credentials, production data, private download URLs, or sensitive screenshots in commits, PR text, comments, or AI prompts.
+
+## 1. Confirm the repository rules
+
+The supplied **Branching Guidelines & PR Conventions** defines the application contribution rules below. Follow these rules together with the repository's PR template and ownership instructions.
+
+| Required convention | Source-defined rule |
+| :--- | :--- |
+| **Feature branch** | `feature/JIRA-123-description` |
+| **Fix branch** | `fix/JIRA-456-description` |
+| **Commit format** | Conventional Commits, such as `feat(auth): add Enterprise SSO login handler`. |
+| **PR approvals** | **Two peer approvals.** |
+| **Automation** | **Passing Danger PR check and passing Bitrise build.** |
+| **Integration target** | **`main`.** |
+
+These are documented requirements, not optional examples. The repository's protection settings must enforce the required checks and approvals.
+
+| Confirm | Why it matters |
+| :--- | :--- |
+| **Integration branch** | Application feature/fix PRs target `main` under the supplied policy. Configuration-repository promotion is separate. |
+| **Task and branch naming** | Use the repository's issue identifier and naming convention. |
+| **Required reviewers** | Obtain two peer approvals and include the required owners for the affected code. |
+| **Required checks** | Test, coverage, security, build, and metadata checks must be configured and enforced. |
+| **Merge method** | Use the approved merge, squash, or rebase policy. |
+| **Branch update policy** | Determine whether a merge queue, fresh base, or other update mechanism is required. |
+| **Release process** | Integration and deployment are separate outcomes. |
+
+If repository settings disagree with the supplied policy, report the discrepancy to the owner. Do not silently weaken the documented requirements. Platform configuration promotion remains a separate process described in CI/CD.
+
+## 2. Separate application changes from platform promotion
+
+| Change | Follow |
+| :--- | :--- |
+| Application code, tests, and ordinary feature configuration | This page and the repository's contribution rules. |
+| New Bitrise enrollment request | CI/CD's secret-free request and validation process. |
+| Configuration promotion that authorizes live provisioning | CI/CD's protected promotion and authorized operator process. |
+| Shared workflow or SDK change | The owning repository's review and compatibility process. |
+| Store submission or production publication | App Store & Distribution and applicable release authorization. |
+
+Do not apply the configuration repository's `develop` → protected `main` promotion sequence to every application by default. Do not interpret merging an application PR as authorization to create external resources or publish a public release.
+
+## 3. Keep the change focused
+
+Choose one coherent outcome per PR. Include the source, tests, resources, and documentation needed to understand that outcome together.
+
+| Include when relevant | Keep separate unless required |
+| :--- | :--- |
+| Regression tests and behavior changes. | Unrelated dependency upgrades. |
+| Localized resources and accessibility adjustments. | Whole-repository formatting. |
+| Necessary contract or migration changes with compatibility evidence. | Opportunistic architecture rewrites. |
+| Updated operational instructions when behavior changes. | Signing, credential, or pipeline changes unrelated to the task. |
+
+A large change can be valid, but it should have a clear reason and review structure. Split independently reviewable changes when doing so preserves a usable, testable state.
+
+## 4. Create the branch safely
+
+The examples below assume the approved remote is `origin`. Replace the sample values and confirm a clean working tree before switching branches.
+
+```bash
+git status --short --branch
+git remote -v
+```
+
+Check remote output locally; redact sensitive URLs before sharing it. Do not reset existing work or embed access tokens in remote URLs.
+
+```bash
+MOBILE_BASE_BRANCH='main'
+MOBILE_WORK_BRANCH='REPLACE_WITH_APPROVED_TASK_BRANCH'
+git fetch origin
+git switch "$MOBILE_BASE_BRANCH"
+git merge --ff-only "origin/$MOBILE_BASE_BRANCH"
+git switch -c "$MOBILE_WORK_BRANCH"
+```
+
+This assumes the base branch already exists locally and tracks the intended source. If it does not, use the repository's tracking-branch instructions. If fast-forwarding fails, inspect the divergence; do not force-reset it.
+
+Source-defined branch naming patterns applied to sample tasks:
+
+```text
+feature/JIRA-123-balance-summary
+fix/JIRA-456-empty-balance-state
+```
+
+Do not add names, email addresses, confidential customer identifiers, or credentials to branch names. Branch names can appear in build logs and service integrations.
+
+## 5. Verify before committing
+
+Use the relevant platform guide and repository scripts. Capture exact commands, target configurations, and actual results.
+
+| Verification | What to check |
+| :--- | :--- |
+| **Architecture** | Dependency direction, state ownership, cancellation, and account scope. |
+| **Static checks** | Configured formatting, lint, type, and analysis checks. |
+| **Tests** | Relevant business, adapter, state, UI, and integration behavior. |
+| **Coverage** | The defined 100% scope and metrics, with production files accounted for and exclusions explicitly justified. |
+| **Platform builds** | Each affected native configuration, including shared React Native changes on both targets where relevant. |
+| **Device behavior** | Required emulator, Simulator, and real-device evidence for the change. |
+| **Privacy and security** | No prohibited data, unsafe configuration, or unintended credential handling. |
+
+Do not mark a check passed because a similar command passed on a different commit or platform. If blocked, record the limitation and owner. Required checks remain required unless an authorized exception process applies.
+
+## 6. Stage and commit intentionally
+
+Review unstaged changes first:
+
+```bash
+git diff --check
+git diff --stat
+git diff
+```
+
+Stage explicit reviewed paths, replacing the examples:
+
+```bash
+git add -- path/to/source-file path/to/test-file
+git diff --cached --check
+git diff --cached
+```
+
+Check for unintended configuration, build output, lockfile changes, and sensitive values. Ignore rules do not protect files already tracked by Git.
+
+Use the source-defined Conventional Commits format:
+
+```text
+type(scope): concise description
+```
+
+Examples:
+
+```text
+fix(balance): retain content when refresh fails
+test(balance): reject results after account switch
+docs(android): clarify development variant selection
+```
+
+Do not describe a defect fix as a feature merely to fit an example. Commit messages should describe the actual change; compatibility-breaking changes follow the repository's explicit convention and release process.
+
+```bash
+git commit -m "fix(balance): retain content when refresh fails"
+git push --set-upstream origin HEAD
+```
+
+The message is illustrative. Use the message that accurately describes your task.
+
+## 7. Write the PR for a reviewer
+
+Use the repository template. Explain the resulting behavior early and keep supporting evidence close to the relevant claim.
+
+```markdown
+## Problem
+When balance refresh fails, the current screen discards usable content.
+
+## Change
+Retain the existing balance and show a localized refresh failure message.
+The initial-load failure still uses the full error state.
+
+## Verification
+- Automated checks: exact commands, revision, and outcomes.
+- Coverage: scope, metrics, threshold result, and approved report link.
+- Manual checks: platform, configuration, target, and observed behavior.
+- Not run or blocked: limitation, reason, and follow-up owner.
+
+## Evidence
+Approved report links and redacted before/after screenshots when useful.
+
+## Risk and follow-up
+Relevant compatibility, migration, rollout, or unresolved concerns.
+```
+
+This is a description example, not evidence that these tests were executed. Replace every verification entry with your actual results.
+
+Before requesting review:
+
+- Choose the correct target branch and link the task.
+- Add the required assignee, reviewers, and code owners.
+- Explain non-obvious decisions and any coordinated API or configuration dependency.
+- Keep draft/WIP status while the change is incomplete; switch to ready only when the repository's conditions are met.
+- Include screenshots for visible changes where useful, redacted and captured with synthetic data.
+
+**Attach screenshot — PR description, target branch, reviewers, and required status checks, with sensitive details redacted.**
+
+## 8. Understand the review and check flow
+
+<MermaidZoom title="Application contribution: current revision checks and required review before integration">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor AUTHOR as Author
+    participant PR as Pull Request
+    participant CHECKS as Required Automation
+    actor REVIEWER as Reviewer
+    participant BRANCH as Protected Integration Branch
+
+    AUTHOR->>PR: Submit focused source and verification evidence
+    PR->>CHECKS: Run configured checks for current revision
+    CHECKS-->>PR: Report metadata, test, build, and policy outcomes
+    REVIEWER->>PR: Review behavior, boundaries, and evidence
+    PR-->>AUTHOR: Return feedback or failed checks
+    AUTHOR->>PR: Push reviewed corrections
+    PR->>CHECKS: Evaluate updated revision
+    REVIEWER->>PR: Complete required current review
+    Note over PR,BRANCH: Repository protection and merge policy determine eligibility
+    PR->>BRANCH: Integrate through approved method
+    Note over PR,BRANCH: Integration does not prove deployment or user availability
+```
+
+</MermaidZoom>
+
+| Check or review | What it establishes | What it does not establish |
+| :--- | :--- | :--- |
+| **Danger.js** | Configured PR metadata and convention rules. | Automatic proof of coverage, security, or functional correctness. |
+| **Lint/type/static analysis** | Configured rules pass for the checked source scope. | Correct runtime behavior in every situation. |
+| **Tests and coverage** | Executed assertions pass and configured coverage evaluation succeeds. | Absence of defects or complete device compatibility. |
+| **Build** | Selected configuration compiles and packages. | Downstream signing, store processing, or distribution success. |
+| **Security assessment** | The configured assessment and policy result. | A guarantee that the application is vulnerability-free. |
+| **Peer review** | Required reviewers have assessed the submitted change. | Replacement for required automated checks. |
+
+Checks block integration only when branch protection or the approved merge process enforces them. Warning comments alone are not a hard gate. Pending, skipped, and missing results must be interpreted under the configured policy, not counted as passing by default.
+
+Danger and CI implementations belong in CI/CD. Bots must follow the approved execution boundary; untrusted PR code must not gain privileged credentials simply to produce feedback.
+
+## 9. Respond to feedback and update safely
+
+1. Read each comment and clarify the underlying requirement where needed.
+2. Make focused corrections and explain the resulting behavior.
+3. Update the PR description if scope or implementation decisions changed.
+4. Rerun affected local checks and obtain required CI results for the new revision.
+5. Resolve discussions according to team practice and request renewed review where required.
+
+Keep reviewers informed of material updates. An approval on an earlier revision may not satisfy current branch rules after code changes.
+
+### Updating from the integration branch
+
+Use the repository's merge queue or documented branch-update method. If the team explicitly uses merging the current integration branch into a working branch, a common sequence is:
+
+```bash
+MOBILE_BASE_BRANCH='REPLACE_WITH_ASSIGNED_INTEGRATION_BRANCH'
+git status --short --branch
+git fetch origin
+git merge "origin/$MOBILE_BASE_BRANCH"
+```
+
+Run while on the intended working branch with a clean working tree. Resolve conflicts by preserving intended behavior, then rerun relevant checks. A conflict-free merge does not prove semantic compatibility.
+
+If a merge is in progress and you need to abandon that merge attempt before committing, use:
+
+```bash
+git merge --abort
+```
+
+Prefer a clean starting tree so abort can restore the pre-merge state predictably. If the team uses rebase instead, follow its history and push rules. Do not force-push a shared branch or bypass repository protection as a routine update step.
+
+## 10. Integrate and record the outcome
+
+Before merge or authorized handoff, confirm:
+
+- The target branch and final diff are correct.
+- Required discussions and ownership review are complete, **two peer approvals** are recorded, and the **Danger PR check and Bitrise build pass** for the revision being integrated.
+- Relevant integration-branch updates or merge-queue checks are complete.
+- Follow-up risks have an owner and are not hidden in unresolved comments.
+
+Merge using the approved method, or hand off to the authorized maintainer. Record the resulting integration commit and task status. Keep local or remote branch cleanup within repository policy and verify work is integrated before deletion.
+
+If post-merge checks fail, preserve the revision and evidence and follow the team's incident or revert process. Do not rewrite protected history to hide a failed change.
+
+A revert may undo source changes but does not automatically undo database migrations, remote configuration, published artifacts, or completed business writes. Coordinate those recovery actions explicitly.
+
+## 11. Handle exceptional situations accurately
+
+| Situation | Required response |
+| :--- | :--- |
+| **A credential is committed** | Stop exposure and follow the security incident process, including credential revocation/rotation and reviewed history remediation as appropriate. A later deletion alone is insufficient. |
+| **A required check is flaky** | Preserve failure evidence and follow the controlled rerun/investigation process. Do not keep rerunning until a desired result appears without investigation. |
+| **An external service is unavailable** | Record the blocker and owner. Use only an approved exception route if one exists. |
+| **Urgent production fix** | Follow the authorized emergency-change process. This page does not grant a bypass. |
+| **PR changes after approval** | Obtain the current-revision evidence and review required by protection rules. |
+| **Provisioning or upload outcome is unknown** | Follow CI/CD reconciliation guidance. Do not repeat external writes to make a PR status green. |
+
+## 12. Final PR checklist
+
+- [ ] The change solves one clear problem and targets the intended branch.
+- [ ] Architecture, lifecycle, account, and failure boundaries are preserved.
+- [ ] Tests assert the behavior and the defined coverage requirement is met.
+- [ ] Relevant platform and device checks have accurate results.
+- [ ] Staged changes contain no secrets or unintended files.
+- [ ] The description explains behavior, verification, and material limitations.
+- [ ] Required assignee, reviewers, and discussions are complete.
+- [ ] Two peer approvals are recorded, and the current Danger PR check and Bitrise build pass.
+- [ ] Integration follows repository protection and the approved merge method.
+- [ ] Merge/handoff status and any follow-up owner are recorded accurately.
+- [ ] Deployment or distribution is not claimed without its separate evidence.
+
+**Architecture section complete.** Continue to Platforms & SDKs for platform implementation details, and consult Testing & Quality and Observability while building a feature. Use CI/CD and App Store & Distribution for governed delivery.
+
+
+
