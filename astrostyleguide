@@ -1,361 +1,323 @@
 ---
-title: Mobile Architecture — Layers & Responsibilities
-description: Understand presentation, domain, repository, data adapters, and application composition through the chicken-order feature on Android, iOS, and React Native.
-sidebar:
-  label: Mobile Architecture
-  order: 2
+interface Props {
+  title?: string;
+  id?: string;
+}
+const { title = 'Architecture diagram', id } = Astro.props;
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
-import MermaidZoom from '../components/mermaid-zoom.astro';
-
-# Mobile Architecture — Layers & Responsibilities
-
-**A layer groups code with one responsibility.** A screen displays information; business rules decide what an operation means; data-access code communicates with services. Separating them lets developers change and test one responsibility without rewriting the others.
-
-Use this page to decide **where a file belongs, what it may call, and what it must not import**. The same boundaries apply to Android, iOS, and React Native. React Native is preferred for new applications; follow the assigned stack for an existing app.
-
-> **Confidential — internal use only.** Examples use synthetic chicken-order data. Keep enterprise endpoints, SDK contracts, credentials, personal data, and sensitive diagnostics in approved systems.
-
-## 1. See the layers first
-
-Our documented structure separates **UI, Domain, Repository, and Data**. Application composition connects their implementations. The repository includes a **contract in the domain** and an **implementation outside the domain**; it is not two network services.
-
-<MermaidZoom title="Mobile architecture — what each layer owns">
-
-```mermaid
-flowchart TB
-    subgraph PRESENTATION["PRESENTATION LAYER"]
-        VIEW["View<br/>Displays quantity, progress, and result"]
-        VM["ViewModel / State Owner<br/>Handles actions and publishes UI state"]
-        VIEW -->|User action| VM
-    end
-
-    subgraph DOMAIN["DOMAIN LAYER"]
-        USE["Use Case<br/>Validate and coordinate the order operation"]
-        CONTRACT["Repository Contract<br/>Defines required data operations and outcomes"]
-        USE --> CONTRACT
-    end
-
-    subgraph REPOSITORY["REPOSITORY IMPLEMENTATION"]
-        REPO["Coordinate data access<br/>Validate and map responses into domain outcomes"]
-    end
-
-    subgraph DATA["DATA ADAPTERS"]
-        API["API Adapter<br/>Concrete request and response integration"]
-        STORAGE["Optional Storage Adapter<br/>Only when approved persistence is required"]
-    end
-
-    SERVER["Backend Service<br/>Outside the mobile application"]
-    VM -->|Invoke use case| USE
-    CONTRACT -->|Injected implementation receives runtime call| REPO
-    REPO --> API --> SERVER
-    REPO -. "Only under an approved data policy" .-> STORAGE
-
-    classDef ui fill:#164e63,color:#ffffff,stroke:#67e8f9;
-    classDef domain fill:#312e81,color:#ffffff,stroke:#a5b4fc;
-    classDef repository fill:#1e3a8a,color:#ffffff,stroke:#93c5fd;
-    classDef optional fill:#334155,color:#ffffff,stroke:#cbd5e1;
-    class VIEW,VM ui;
-    class USE,CONTRACT domain;
-    class REPO,API repository;
-    class STORAGE,SERVER optional;
-```
-
-</MermaidZoom>
-
-**These arrows describe runtime calls, not imports.** The domain calls a repository contract; application composition supplies its implementation. The domain must not import that concrete implementation.
-
-## 2. Presentation layer — what the user sees
-
-**Purpose:** display the feature's state and translate user interaction into actions.
-
-| Part | Owns | Chicken-order example |
-|---|---|---|
-| **View** | Rendering, input controls, accessibility, and action callbacks. | Quantity input, Place Order button, progress, and confirmation. |
-| **ViewModel / state owner** | UI-facing state, submission admission, request ownership, and stale-result checks. | Publish submitting before starting work; block overlapping taps; display only the current owner's result. |
-
-**Keep out:** HTTP requests, raw response parsing, database queries, credential storage, and authoritative business decisions.
-
-The ViewModel invokes the use case. It does not construct an HTTP client or invent server failure meanings. View-only formatting and visibility belong here; reusable business validation belongs in the domain and is also enforced by the backend.
-
-| Android | iOS | React Native |
-|---|---|---|
-| Compose/View UI + ViewModel exposing read-only StateFlow. | SwiftUI/UIKit UI + appropriately isolated ViewModel. UI-facing mutation uses the main actor in the reference. | React Native components + Redux Toolkit slice/thunk for Redux-owned presentation state. |
-
-**React Native:** Redux Toolkit fulfils the ViewModel responsibility in the reference. Do not add another mutable ViewModel that mirrors its state. Keep temporary component values local when sharing is unnecessary.
-
-## 3. Domain layer — what the feature means
-
-**Purpose:** express business operations using application-independent types and contracts.
-
-| Domain file | What it means |
-|---|---|
-| `OrderRequest` | The inputs required for the example's intended order operation. |
-| `OrderOutcome` | Domain meanings such as confirmed, invalid, and unknown. |
-| `PlaceChickenOrder` | Validates the example request, then invokes the repository contract. |
-| `OrderRepository` | Describes the order operation needed by the use case without naming a concrete HTTP implementation. |
-
-**Keep out:** Compose, SwiftUI, React components, Redux store types, HTTP response objects, database rows, and concrete SDK clients.
-
-A repository contract is an interface/protocol/type contract. It is **not an extra HTTP hop**. A unit test can supply a fake implementation without a real backend.
-
-<Tabs>
-<TabItem label="Android">
-
-```kotlin
-// Domain contract excerpt. OrderRequest and OrderOutcome are domain types.
-interface OrderRepository {
-    suspend fun place(request: OrderRequest): OrderOutcome
-}
-```
-
-</TabItem>
-<TabItem label="iOS">
-
-```swift
-// Domain contract excerpt. Immutable domain values cross concurrency boundaries.
-protocol OrderRepository: Sendable {
-    func place(_ request: OrderRequest) async throws -> OrderOutcome
-}
-```
-
-</TabItem>
-<TabItem label="React Native">
-
-```typescript
-// Domain contract excerpt. No Redux or HTTP imports.
-export interface OrderRepository {
-  place(request: OrderRequest): Promise<OrderOutcome>;
-}
-```
-
-</TabItem>
-</Tabs>
-
-These excerpts explain the boundary; the platform guides provide the complete types and implementations.
-
-## 4. Repository implementation — how data access is coordinated
-
-**Purpose:** implement the domain contract using the required adapters and the approved data policy.
-
-For a chicken-order submission, it:
-
-1. Receives the validated domain request.
-2. Invokes the injected API adapter.
-3. Validates/maps the response into the domain outcome.
-4. Returns that outcome to the use case.
-
-| Belongs here | Does not belong here |
-|---|---|
-| Data-access coordination, response-to-domain mapping, and an explicitly approved cache/network policy. | Screen navigation, Compose/SwiftUI/React rendering, global UI state mutation, and hardcoded privileged credentials. |
-
-A repository does not automatically need a database, cache, or fallback. For the demo order, it makes one injected API call. Add persistence only when the actual feature requires it.
-
-**Do not convert every failure into “order rejected.”** A lost response may mean the backend created the order but the app cannot confirm it. Mapping must preserve that uncertainty.
-
-## 5. Data adapters — how the app talks to concrete systems
-
-**Purpose:** implement the actual integration with network or permitted local storage.
-
-| Adapter | Owns | Example |
-|---|---|---|
-| **Remote API adapter** | Approved endpoint/client integration, serialization, response decoding, transport configuration, and transport-level error details. | Send the order through the existing authenticated client. |
-| **Local storage adapter, when required** | Concrete storage access, stored representations, and platform-specific operations. | Persist only approved account-scoped data under a defined retention/recovery policy. |
-
-**Keep out:** navigation, screen rendering, and decisions that a local record proves backend acceptance.
-
-Transport objects stay at the data boundary; domain code receives domain results. The exact split between decoding and repository mapping must be explicit: the adapter decodes the response representation; the repository maps that validated representation into the feature's meaning.
-
-The backend remains outside the mobile app. It authorizes, validates, and processes authoritative orders. A fake API in the teaching example replaces transport; it does not simulate a production contract completely.
-
-## 6. Application composition — connect the parts
-
-**Purpose:** construct concrete dependencies and assign their lifetimes at the application boundary.
-
-```text
-API adapter
-    ↓ injected into
-Repository implementation
-    ↓ supplied through its domain contract to
-PlaceChickenOrder use case
-    ↓ injected into
-ViewModel / Redux thunk dependencies
-    ↓ observed by
-View
-```
-
-Composition may know about all these implementations. Domain code must not construct them itself. Use the existing Android Hilt/composition bindings, iOS application composition, or React Native store/dependency setup.
-
-Do not recreate a repository, breaker, SDK client, or store on every button tap or render. Scope each dependency deliberately: application, account, feature, or screen, according to its responsibility.
-
-## 7. Separate runtime flow from code dependencies
-
-The runtime call reaches the repository implementation, but **the implementation imports the domain contract—not the other way around**.
-
-<MermaidZoom title="Allowed code dependencies — arrows mean imports or referenced types">
-
-```mermaid
-flowchart LR
-    UI["Presentation"] --> DOMAIN["Domain<br/>Models · Use Cases<br/>Repository Contract"]
-    REPO["Repository Implementation"] --> DOMAIN
-    REPO --> DATA["Concrete Data Adapters"]
-    ROOT["Application Composition"] --> UI
-    ROOT --> REPO
-    ROOT --> DATA
-
-    classDef domain fill:#312e81,color:#ffffff,stroke:#a5b4fc;
-    classDef outer fill:#164e63,color:#ffffff,stroke:#67e8f9;
-    class DOMAIN domain;
-    class UI,REPO,DATA,ROOT outer;
-```
-
-</MermaidZoom>
-
-| Dependency | Allowed? |
-|---|---|
-| ViewModel → use case | Yes. |
-| Use case → repository contract | Yes. |
-| Concrete repository → domain contract | Yes. |
-| Concrete repository → API/storage adapter | Yes. |
-| Domain → Compose, SwiftUI, Redux, or concrete HTTP client | No. |
-| View → concrete API or database | No. |
-
-## 8. Organize the chicken-order feature
-
-The documented logical areas are `ui/`, `domain/`, `repository/`, and `data/`. Apply them within the project's approved feature/module structure. The names below are illustrative file names, not a requirement to rename existing modules.
-
-<Tabs>
-<TabItem label="Android">
-
-```text
-order/
-  ui/
-    ChickenOrderScreen.kt
-    OrderViewModel.kt
-  domain/
-    OrderRequest.kt
-    OrderOutcome.kt
-    OrderRepository.kt
-    PlaceChickenOrder.kt
-  repository/
-    RemoteOrderRepository.kt
-  data/
-    OrderApi.kt
-    ApprovedOrderApiAdapter.kt
-app/composition/
-  OrderBindings.kt
-```
-
-Keep domain free of Android UI dependencies. Use approved Hilt bindings or the existing composition mechanism; a sample filename does not define a new DI API.
-
-</TabItem>
-<TabItem label="iOS">
-
-```text
-Features/Order/
-  Presentation/
-    ChickenOrderView.swift
-    OrderViewModel.swift
-  Domain/
-    OrderRequest.swift
-    OrderOutcome.swift
-    OrderRepository.swift
-    PlaceChickenOrder.swift
-  Repository/
-    RemoteOrderRepository.swift
-  Data/
-    OrderAPI.swift
-    ApprovedOrderAPIAdapter.swift
-App/Composition/
-  OrderDependencies.swift
-```
-
-Use target/package visibility and concurrency configuration where enforcement is needed. Folders alone do not provide access or actor isolation.
-
-</TabItem>
-<TabItem label="React Native">
-
-```text
-src/features/order/
-  ui/
-    ChickenOrderScreen.tsx
-    orderSlice.ts
-    orderThunks.ts
-  domain/
-    orderRequest.ts
-    orderOutcome.ts
-    orderRepository.ts
-    placeChickenOrder.ts
-  repository/
-    remoteOrderRepository.ts
-  data/
-    orderApi.ts
-    approvedOrderApiAdapter.ts
-src/app/
-  store.ts
-  dependencies.ts
-```
-
-Keep Redux dependencies in presentation/application coordination. Inject the operation through the existing thunk dependency mechanism; domain code must not dispatch actions or read Redux state.
-
-</TabItem>
-</Tabs>
-
-## 9. Follow one order from tap to result
-
-<MermaidZoom title="Place a chicken order — request out, mapped result back">
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant VIEW as View
-    participant VM as ViewModel / Redux State Owner
-    participant USE as Domain Use Case
-    participant REPO as Repository Implementation
-    participant API as Data API Adapter
-    participant SERVER as Backend
-
-    VIEW->>VM: User taps Place Order
-    VM->>VM: Enter submitting and block overlapping taps
-    VM->>USE: Submit current account/request and quantity
-    USE->>USE: Validate input
-    Note over USE: Invalid input returns without an API call
-    USE->>REPO: Submit through OrderRepository contract
-    REPO->>API: Execute the approved request
-    API->>SERVER: Request order processing
-    SERVER-->>API: Return response when available
-    API-->>REPO: Decoded response or transport outcome
-    REPO->>REPO: Map into domain outcome
-    REPO-->>USE: Return outcome
-    USE-->>VM: Return result
-    VM->>VM: Reject stale account/request results
-    VM-->>VIEW: Publish current UI state
-```
-
-</MermaidZoom>
-
-| Situation | Primary owner | Expected behavior |
-|---|---|---|
-| Invalid quantity | Domain, with presentation feedback | No repository submission for that validation path. |
-| Repeated tap while pending | Presentation state owner | No overlapping submission through the retained owner. |
-| Confirmed response | Repository mapping and state owner | Show only a valid result for the current request/account. |
-| Lost response after dispatch | Data/repository classification and recovery owner | Preserve unknown outcome; reconcile before another write. |
-| Logout or account switch | Session/composition and state owner | Invalidate old UI work and coordinate unresolved operations. |
-| Process ends | Approved durable recovery design | In-memory guards are insufficient; do not assume the order failed. |
-
-Local validation and request IDs do not replace backend authorization or server idempotency. Example quantities 1–20 and fake order `order-001` are teaching values, not confirmed product/API requirements.
-
-## 10. Continue to implementation
-
-| Need | Guide |
-|---|---|
-| Complete Android MVVM feature | [Android Standards](../native-android-standards.mdx) |
-| Complete iOS MVVM feature | [iOS Standards](../native-ios-standards.mdx) |
-| Complete React Native feature with Redux Toolkit | [React Native Standards](../react-native-standards.mdx) |
-| All platform demo files together | [Chicken Order MVVM Reference](../chicken-order-mvvm-reference.mdx) |
-| Handle failures without duplicate orders | [Network Resilience](./circuit-breaker-resilience.mdx) |
-
-The platform demos group some declarations for copying. Split them along the boundaries above when integrating into the approved project structure. Use meaningful tests for domain rules, mapping, state transitions, session changes, and UI behavior; meet the production-code coverage metrics defined in Testing & Quality.
-
-**Next:** [Network Resilience & Circuit Breakers](./circuit-breaker-resilience.mdx).
+<mermaid-zoom-panel id={id}>
+  <div class="diagram-shell" data-shell>
+    <header class="diagram-header">
+      <div class="title-wrap">
+        <span class="diagram-badge" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5" /></svg>
+          Diagram
+        </span>
+        <strong class="diagram-title">{title}</strong>
+      </div>
+      <div class="toolbar" role="group" aria-label="Diagram controls" data-controls hidden>
+        <button type="button" data-action="out" aria-label="Zoom out" title="Zoom out">−</button>
+        <output class="zoom-value" data-zoom aria-live="polite" aria-label="Diagram zoom">100%</output>
+        <button type="button" data-action="in" aria-label="Zoom in" title="Zoom in">+</button>
+        <span class="divider" aria-hidden="true"></span>
+        <button type="button" data-action="fit" title="Fit the whole diagram">Fit</button>
+        <button type="button" data-action="actual" title="Show intrinsic diagram size">100%</button>
+        <button type="button" class="expand-button" data-action="expand">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
+          Expand
+        </button>
+      </div>
+    </header>
+
+    <div class="viewport" data-viewport tabindex="0" role="region" aria-label={`${title} — scrollable diagram`}>
+      <div class="diagram-sizer" data-sizer>
+        <div class="diagram-canvas" data-canvas><slot /></div>
+      </div>
+    </div>
+    <footer class="diagram-footer">
+      <span>Scroll to explore the diagram.</span>
+      <span data-hint hidden>Drag to pan · Ctrl/⌘ + wheel to zoom · Expand for more space</span>
+    </footer>
+  </div>
+
+  <dialog class="diagram-dialog" aria-label={`${title} — expanded view`} data-dialog>
+    <div class="dialog-bar">
+      <strong>{title}</strong>
+      <button type="button" data-close autofocus>Close <span aria-hidden="true">×</span></button>
+    </div>
+    <div class="dialog-content" data-dialog-content></div>
+  </dialog>
+</mermaid-zoom-panel>
+
+<script>
+  type Dimensions = { width: number; height: number };
+  type ViewState = { scale: number; left: number; top: number; fit: boolean };
+
+  class MermaidZoomPanel extends HTMLElement {
+    private events?: AbortController;
+    private mutation?: MutationObserver;
+    private resize?: ResizeObserver;
+    private frame = 0;
+    private restore?: () => void;
+
+    connectedCallback() {
+      if (this.events) return;
+      this.events = new AbortController();
+      const signal = this.events.signal;
+      const shell = this.querySelector<HTMLElement>('[data-shell]');
+      const viewport = this.querySelector<HTMLElement>('[data-viewport]');
+      const sizer = this.querySelector<HTMLElement>('[data-sizer]');
+      const canvas = this.querySelector<HTMLElement>('[data-canvas]');
+      const dialog = this.querySelector<HTMLDialogElement>('[data-dialog]');
+      const dialogContent = this.querySelector<HTMLElement>('[data-dialog-content]');
+      const controls = this.querySelector<HTMLElement>('[data-controls]');
+      const indicator = this.querySelector<HTMLOutputElement>('[data-zoom]');
+      const expand = this.querySelector<HTMLButtonElement>('[data-action="expand"]');
+      const hint = this.querySelector<HTMLElement>('[data-hint]');
+      if (!shell || !viewport || !sizer || !canvas || !dialog || !dialogContent || !controls || !indicator || !expand) return;
+
+      let svg: SVGSVGElement | null = null;
+      let originalStyle: string | null = null;
+      let dimensions: Dimensions | undefined;
+      let scale = 1;
+      let fitMode = true;
+      let inline: ViewState | undefined;
+      let home: Comment | undefined;
+      let drag: { pointer: number; x: number; y: number; left: number; top: number } | undefined;
+      let lastWidth = 0;
+      let lastHeight = 0;
+      const minScale = .02;
+      const maxScale = 6;
+
+      const readDimensions = (element: SVGSVGElement): Dimensions | undefined => {
+        const box = element.viewBox.baseVal;
+        if (box && Number.isFinite(box.width) && Number.isFinite(box.height) && box.width > 0 && box.height > 0) {
+          return { width: box.width, height: box.height };
+        }
+        // Percent widths are not intrinsic dimensions. Prefer viewBox where present.
+        const width = element.getAttribute('width') ?? '';
+        const height = element.getAttribute('height') ?? '';
+        const pixels = /^\d+(?:\.\d+)?(?:px)?$/;
+        if (pixels.test(width) && pixels.test(height)) {
+          const w = parseFloat(width), h = parseFloat(height);
+          if (w > 0 && h > 0) return { width: w, height: h };
+        }
+        return undefined;
+      };
+      const releaseSvg = () => {
+        if (!svg) return;
+        if (originalStyle === null) svg.removeAttribute('style');
+        else svg.setAttribute('style', originalStyle);
+      };
+      const render = () => {
+        if (!dimensions) return;
+        sizer.style.width = `${Math.ceil(dimensions.width * scale + 24)}px`;
+        sizer.style.height = `${Math.ceil(dimensions.height * scale + 24)}px`;
+        canvas.style.transform = `scale(${scale})`;
+        indicator.value = `${Math.round(scale * 100)}%`;
+        this.querySelector<HTMLButtonElement>('[data-action="out"]')!.disabled = scale <= minScale;
+        this.querySelector<HTMLButtonElement>('[data-action="in"]')!.disabled = scale >= maxScale;
+      };
+      const zoomAt = (next: number, x = viewport.clientWidth / 2, y = viewport.clientHeight / 2) => {
+        if (!dimensions) return;
+        const diagramX = (viewport.scrollLeft + x) / scale;
+        const diagramY = (viewport.scrollTop + y) / scale;
+        scale = Math.max(minScale, Math.min(maxScale, next));
+        render();
+        viewport.scrollLeft = diagramX * scale - x;
+        viewport.scrollTop = diagramY * scale - y;
+      };
+      const fit = () => {
+        if (!dimensions || viewport.clientWidth <= 0 || viewport.clientHeight <= 0) return;
+        fitMode = true;
+        scale = Math.max(minScale, Math.min(1,
+          (viewport.clientWidth - 24) / dimensions.width,
+          (viewport.clientHeight - 24) / dimensions.height));
+        render();
+        viewport.scrollLeft = 0;
+        viewport.scrollTop = 0;
+      };
+      const stopDrag = () => {
+        if (drag && viewport.hasPointerCapture(drag.pointer)) viewport.releasePointerCapture(drag.pointer);
+        drag = undefined;
+        viewport.classList.remove('is-dragging');
+      };
+      const schedule = () => {
+        cancelAnimationFrame(this.frame);
+        this.frame = requestAnimationFrame(() => {
+          const next = canvas.querySelector<SVGSVGElement>('svg');
+          if (next !== svg) {
+            releaseSvg(); svg = next;
+            originalStyle = svg?.getAttribute('style') ?? null;
+            dimensions = undefined;
+          }
+          const size = svg ? readDimensions(svg) : undefined;
+          if (!svg || !size) {
+            controls.hidden = true;
+            if (hint) hint.hidden = true;
+            canvas.classList.remove('is-measured');
+            canvas.style.removeProperty('transform');
+            sizer.style.removeProperty('width'); sizer.style.removeProperty('height');
+            return;
+          }
+          const changed = !dimensions || size.width !== dimensions.width || size.height !== dimensions.height;
+          dimensions = size;
+          svg.style.width = `${size.width}px`;
+          svg.style.height = `${size.height}px`;
+          svg.style.maxWidth = 'none'; svg.style.maxHeight = 'none';
+          svg.style.display = 'block'; svg.style.margin = '0';
+          canvas.classList.add('is-measured');
+          controls.hidden = false;
+          expand.disabled = typeof dialog.showModal !== 'function';
+          if (hint) hint.hidden = false;
+          if (fitMode || changed) fit(); else render();
+        });
+      };
+      const restoreInline = () => {
+        if (!home) return;
+        stopDrag();
+        home.parentNode?.insertBefore(shell, home);
+        home.remove(); home = undefined;
+        expand.hidden = false;
+        if (inline) {
+          scale = inline.scale; fitMode = inline.fit; render();
+          viewport.scrollLeft = inline.left; viewport.scrollTop = inline.top;
+          if (fitMode) fit();
+        }
+        inline = undefined;
+        if (this.isConnected) expand.focus({ preventScroll: true });
+      };
+      this.restore = () => {
+        if (dialog.open) dialog.close();
+        restoreInline(); releaseSvg();
+      };
+      controls.addEventListener('click', event => {
+        const button = (event.target as Element).closest<HTMLButtonElement>('button[data-action]');
+        if (!button || button.disabled) return;
+        switch (button.dataset.action) {
+          case 'in': fitMode = false; zoomAt(scale * 1.2); break;
+          case 'out': fitMode = false; zoomAt(scale / 1.2); break;
+          case 'fit': fit(); break;
+          case 'actual': fitMode = false; zoomAt(1); break;
+          case 'expand': {
+            if (dialog.open || !dimensions) return;
+            inline = { scale, left: viewport.scrollLeft, top: viewport.scrollTop, fit: fitMode };
+            home = document.createComment('diagram home');
+            shell.before(home); dialogContent.append(shell);
+            try { dialog.showModal(); }
+            catch { restoreInline(); return; }
+            expand.hidden = true;
+            fit();
+            this.querySelector<HTMLButtonElement>('[data-close]')?.focus();
+            break;
+          }
+        }
+      }, { signal });
+      this.querySelector('[data-close]')?.addEventListener('click', () => dialog.close(), { signal });
+      dialog.addEventListener('close', restoreInline, { signal });
+      // Native Escape handling is retained. No global keyboard interception.
+      viewport.addEventListener('keydown', event => {
+        if (event.target !== viewport || event.ctrlKey || event.metaKey || event.altKey) return;
+        if (event.key === '+' || event.key === '=') { event.preventDefault(); fitMode = false; zoomAt(scale * 1.2); }
+        else if (event.key === '-') { event.preventDefault(); fitMode = false; zoomAt(scale / 1.2); }
+        else if (event.key === '0') { event.preventDefault(); fit(); }
+        // Arrow/Page keys retain native scrolling.
+      }, { signal });
+      viewport.addEventListener('wheel', event => {
+        if ((!event.ctrlKey && !event.metaKey) || !dimensions) return;
+        event.preventDefault(); fitMode = false;
+        const rect = viewport.getBoundingClientRect();
+        const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientHeight : 1);
+        zoomAt(scale * Math.exp(-Math.max(-300, Math.min(300, delta)) * .002),
+          event.clientX - rect.left, event.clientY - rect.top);
+      }, { signal, passive: false });
+      viewport.addEventListener('pointerdown', event => {
+        if (event.pointerType !== 'mouse' || event.button !== 0 || !dimensions
+          || (event.target as Element).closest('a,button,input,textarea,select,[contenteditable]')) return;
+        drag = { pointer: event.pointerId, x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop };
+        viewport.setPointerCapture(event.pointerId);
+        viewport.classList.add('is-dragging'); event.preventDefault();
+      }, { signal });
+      viewport.addEventListener('pointermove', event => {
+        if (!drag || drag.pointer !== event.pointerId) return;
+        viewport.scrollLeft = drag.left - event.clientX + drag.x;
+        viewport.scrollTop = drag.top - event.clientY + drag.y;
+      }, { signal });
+      viewport.addEventListener('pointerup', stopDrag, { signal });
+      viewport.addEventListener('pointercancel', stopDrag, { signal });
+      viewport.addEventListener('lostpointercapture', () => { drag = undefined; viewport.classList.remove('is-dragging'); }, { signal });
+      this.mutation = new MutationObserver(schedule);
+      // Detect delayed Mermaid rendering, replacement, and viewBox updates.
+      // Deliberately exclude style mutations written by this wrapper.
+      this.mutation.observe(canvas, { childList: true, subtree: true, attributes: true, attributeFilter: ['viewBox', 'width', 'height'] });
+      this.resize = new ResizeObserver(() => {
+        const w = viewport.clientWidth, h = viewport.clientHeight;
+        if (w === lastWidth && h === lastHeight) return;
+        lastWidth = w; lastHeight = h;
+        if (fitMode) fit();
+      });
+      this.resize.observe(viewport);
+      schedule();
+      void document.fonts?.ready.then(() => { if (!signal.aborted) schedule(); });
+    }
+    disconnectedCallback() {
+      this.events?.abort(); this.events = undefined;
+      this.mutation?.disconnect(); this.resize?.disconnect();
+      cancelAnimationFrame(this.frame);
+      this.restore?.(); this.restore = undefined;
+    }
+  }
+  if (!customElements.get('mermaid-zoom-panel')) customElements.define('mermaid-zoom-panel', MermaidZoomPanel);
+</script>
+
+<style>
+  mermaid-zoom-panel {
+    display:block; margin:1.5rem 0; min-width:0;
+    --diagram-bg:var(--sl-color-bg,#1c2722);
+    --diagram-surface:var(--sl-color-bg-nav,#24322b);
+    --diagram-text:var(--sl-color-text,#f1f5f9);
+    --diagram-muted:var(--sl-color-gray-2,#cbd5e1);
+    --diagram-border:var(--sl-color-gray-5,#53635a);
+    --diagram-accent:var(--sl-color-text-accent,#a5b4fc);
+    color:var(--diagram-text);
+  }
+  :global([data-theme="light"]) mermaid-zoom-panel {
+    --diagram-bg:var(--sl-color-bg,#ffffff); --diagram-surface:var(--sl-color-bg-nav,#f3f5f8);
+    --diagram-text:var(--sl-color-text,#18212f); --diagram-muted:var(--sl-color-gray-2,#475569);
+    --diagram-border:var(--sl-color-gray-5,#cbd5e1); --diagram-accent:var(--sl-color-text-accent,#4338ca);
+  }
+  .diagram-shell { border:1px solid var(--diagram-border); border-radius:12px; overflow:hidden; background:var(--diagram-bg); }
+  .diagram-header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; padding:.8rem 1rem; border-bottom:1px solid var(--diagram-border); background:var(--diagram-surface); }
+  .title-wrap { display:flex; flex:1 1 15rem; align-items:center; gap:.65rem; min-width:0; }
+  .diagram-badge { display:inline-flex; gap:.35rem; align-items:center; flex-shrink:0; color:var(--diagram-accent); font-size:.7rem; font-weight:750; letter-spacing:.06em; text-transform:uppercase; }
+  .diagram-title { font-size:.95rem; line-height:1.5; overflow-wrap:anywhere; }
+  .toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:.25rem; }
+  [hidden] { display:none !important; }
+  button { display:inline-flex; justify-content:center; align-items:center; gap:.4rem; min-width:44px; min-height:44px; padding:.5rem .65rem; margin:0; border:1px solid transparent; border-radius:6px; font:inherit; font-size:.85rem; line-height:1.2; font-weight:650; color:var(--diagram-text); background:transparent; cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--diagram-border); background:color-mix(in srgb,var(--diagram-accent) 10%,var(--diagram-surface)); }
+  button:disabled { opacity:.45; cursor:default; }
+  .expand-button { border-color:var(--diagram-border); }
+  .zoom-value { min-width:3.4rem; font-size:.8rem; text-align:center; font-variant-numeric:tabular-nums; color:var(--diagram-muted); }
+  .divider { width:1px; height:20px; margin-inline:.25rem; background:var(--diagram-border); }
+  .viewport { position:relative; height:clamp(320px,55vh,560px); min-width:0; overflow:auto; overscroll-behavior:contain; cursor:grab; background-color:var(--diagram-bg); background-image:radial-gradient(color-mix(in srgb,var(--diagram-muted) 18%,transparent) .8px,transparent .8px); background-size:18px 18px; }
+  .viewport.is-dragging { cursor:grabbing; user-select:none; }
+  .diagram-sizer { position:relative; min-width:100%; min-height:100%; }
+  .diagram-canvas { padding:12px; }
+  .diagram-canvas.is-measured { position:absolute; top:12px; left:12px; padding:0; transform-origin:top left; }
+  .diagram-canvas :global(.mermaid), .diagram-canvas :global(pre) { margin:0; padding:0; background:transparent; border:0; }
+  .diagram-canvas :global(svg) { display:block; }
+  .diagram-footer { display:flex; flex-wrap:wrap; gap:.3rem 1rem; padding:.65rem 1rem; border-top:1px solid var(--diagram-border); font-size:.75rem; line-height:1.6; color:var(--diagram-muted); }
+  :is(button,.viewport):focus-visible { outline:3px solid var(--diagram-accent); outline-offset:-3px; }
+  .diagram-dialog { width:96vw; max-width:1600px; height:94vh; height:94dvh; max-height:96dvh; padding:0; border:1px solid var(--diagram-border); border-radius:14px; background:var(--diagram-bg); color:var(--diagram-text); }
+  .diagram-dialog[open] { display:flex; flex-direction:column; }
+  .diagram-dialog::backdrop { background:rgb(0 0 0 / .65); }
+  .dialog-bar { display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-shrink:0; padding:.6rem 1rem; background:var(--diagram-surface); border-bottom:1px solid var(--diagram-border); }
+  .dialog-bar strong { overflow-wrap:anywhere; font-size:.95rem; }
+  .dialog-bar button { border-color:var(--diagram-border); flex-shrink:0; }
+  .dialog-content { min-height:0; flex:1; display:flex; }
+  .dialog-content .diagram-shell { flex:1; min-width:0; min-height:0; display:flex; flex-direction:column; border:0; border-radius:0; }
+  .dialog-content .viewport { flex:1; min-height:0; height:auto; }
+  @media(max-width:40rem) { .diagram-header { padding:.65rem; } .diagram-title { font-size:.875rem; } .diagram-dialog { width:98vw; height:97dvh; max-height:98dvh; } }
+  @media(forced-colors:active) { button,.diagram-shell { border:1px solid CanvasText; } }
+</style>
