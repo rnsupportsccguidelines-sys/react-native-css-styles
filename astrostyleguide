@@ -1021,3 +1021,2346 @@ For missing events, include the Explorer filters and time range. For unreadable 
 Return to [Datadog Mobile Integration](./datadog-mobile-integration.mdx) for instrumentation changes or [Start Here](./index.mdx) for access and configuration ownership.
 
 
+
+
+
+
+
+
+
+----------------------------
+
+
+
+
+---
+title: "GenAI & Developer Tools — Setup Guide"
+description: "Configure GitHub Copilot or ChatGPT to use the mobile engineering rules, platform standards, and verified project context."
+sidebar:
+  label: Start Here
+  order: 1
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Use this section to configure **GitHub Copilot or ChatGPT** with the engineering rules for your mobile project. Start here, prepare the shared rules, then follow the setup page for your tool.
+
+**Outcome:** developers can supply consistent instructions covering architecture, platform code, testing, CI/CD, and observability, then verify how the assistant applies them.
+
+> **Confidential — Enterprise internal use only.** Use approved accounts, integrations, and permitted project content. Never provide secrets, production/customer data, signing credentials, or unapproved source code. Instruction files guide responses; they do not enable data protection, enforce permissions, or replace review and CI gates.
+
+## 1. Follow these four pages
+
+| Order | File | What you will do |
+| :--- | :--- | :--- |
+| 1 | `index.mdx` | Choose the tool, identify applicable documentation, and understand the setup and verification flow. |
+| 2 | `engineering-rules.mdx` | Copy the shared rules and applicable Android, iOS, or React Native additions. Bind them to the repository's real paths and commands. |
+| 3 | `github-copilot-setup.mdx` | Configure repository instructions, inspect their use, and run a controlled verification prompt. |
+| 4 | `chatgpt-setup.mdx` | Configure project instructions and permitted reference files, start a project chat, and verify the context used. |
+
+Follow page 2, then page 3 or 4. Complete both tool pages only if you use both tools. Detailed test-generation examples remain in [Testing & Quality](../testing-quality/ide-assisted-test-generation.mdx).
+
+## 2. Understand the rules and reference documents
+
+Keep shared engineering requirements separate from task-specific requests. Maintain one reviewed set of engineering requirements. Keep always-on tool instructions concise and provide detailed references for the task. Update each configured copy when its requirements change; do not paste the entire documentation into every prompt.
+
+| Layer | Include | Example |
+| :--- | :--- | :--- |
+| Shared rules | Requirements applicable to mobile engineering work. | Protect credentials; respect architecture boundaries; verify changes. |
+| Platform additions | Requirements for the actual stack. | Kotlin/Android, Swift/iOS, or React Native with Redux Toolkit. |
+| Project facts | Verified repository paths, commands, interfaces, and dependency versions. | Actual app module, Xcode scheme, test targets, and lockfile. |
+| Task context | The smallest permitted context needed for one change. | Order feature interface, fake gateway, acceptance behavior, existing tests. |
+
+A rule telling the assistant to “read the documentation” is insufficient when the tool cannot access those pages. Provide the permitted relevant content through the tool's supported context mechanism. Never assume a referenced private URL or local path has been read.
+
+### What the shared rules will cover
+
+| Documentation area | Requirement carried into the rules | Reference |
+| :--- | :--- | :--- |
+| Onboarding | Use the documented macOS/Apple silicon setup; discover real project commands rather than guessing. | [Onboarding](../onboarding/index.mdx). |
+| Architecture | Preserve dependency boundaries, feature responsibilities, and established resilience/feature-flag behavior. | [Architecture](../architecture/index.mdx). |
+| Platform standards | Follow the selected platform's architecture, state ownership, concurrency, and code conventions. | Platform tabs below. |
+| App foundations | Preserve established application initialization, authentication/session handling, and shared foundation contracts. | [App Foundations](../enterprise-app-foundations.mdx). |
+| Internal SDKs | Use documented SDK contracts; identify missing API information rather than fabricate it. | [SDK catalog](../master-sdk-catalog.mdx). |
+| Branching and PRs | Use the actual repository branch rules, required reviews, and checks; do not bypass them. | [Branching & PRs](../architecture/branching-prs.mdx). |
+| CI/CD | Preserve governed enrollment, protected credentials, approved workflows, and evidence-based delivery. Do not treat compilation as verified publication. | [CI/CD](../cicd/index.mdx). |
+| Testing & Quality | Add meaningful tests and apply the defined 100% production-code coverage requirement. Keep IDE generation separate from CI execution. | [Testing & Quality](../testing-quality/index.mdx). |
+| Observability | Use permitted telemetry fields, approved configuration and consent, and matching release symbols. | [Observability](../observability/index.mdx). |
+| Documentation | Write short, actionable steps; include real file locations, commands, replacement values, and expected results. | The applicable feature/setup page. |
+
+Add requirements for other areas only when their approved documentation is available. Do not infer App Store, notification, or deep-linking policies from a sample or an incomplete section.
+
+<Tabs>
+<TabItem label="Android">
+
+Use the shared rules plus [Android Standards](../native-android-standards.mdx).
+
+Provide the actual app module, package name, variants, existing Kotlin/test conventions, and local verification commands. Preserve the project's JUnit/Espresso test infrastructure and architecture boundaries.
+
+</TabItem>
+<TabItem label="iOS">
+
+Use the shared rules plus [iOS Standards](../native-ios-standards.mdx).
+
+Provide the actual workspace/project, scheme, targets, Swift/concurrency requirements, and existing unit/UI test setup. Do not invent provisioning settings, accessibility identifiers, or release configuration bindings.
+
+</TabItem>
+<TabItem label="React Native">
+
+Use the shared rules plus [React Native Standards](../react-native-standards.mdx).
+
+Preserve **Redux Toolkit** and the existing JavaScript test runner. Keep Android's JUnit-based native device tests distinct from JavaScript tests and JUnit XML reports. React Native is the preferred stack for new applications, subject to the documented stack-selection process; that preference is not permission to migrate an existing app.
+
+</TabItem>
+</Tabs>
+
+## 3. Choose how the tool receives instructions
+
+| Tool | Instruction location | Reference context |
+| :--- | :--- | :--- |
+| GitHub Copilot | Repository-wide instructions in `.github/copilot-instructions.md`, using the supported IDE configuration. | Permitted repository files and relevant documentation supplied to the interaction. |
+| ChatGPT | Instructions in the approved ChatGPT project. | Permitted project files or approved connected sources made available to that project. |
+
+Copilot's instruction support varies by IDE and feature. The dedicated setup page will use the repository-wide mechanism and identify any IDE-specific differences. [GitHub Copilot repository instructions](https://docs.github.com/en/copilot/how-tos/copilot-in-your-ide/customize-copilot/configure-custom-instructions/add-repository-instructions-in-your-ide).
+
+ChatGPT project instructions apply across its chats. A ChatGPT project does not automatically have access to a local repository folder; provide approved sources explicitly. [ChatGPT projects and instructions](https://learn.chatgpt.com/docs/projects?surface=app).
+
+**Suggested repository layout** — this is a proposed documentation convention, not a tool discovery standard:
+
+```text
+<repository>/
+├── .github/
+│   └── copilot-instructions.md    # Copilot's repository instruction file
+└── docs/
+    └── engineering-rules.md       # Reviewed shared rules and platform additions
+```
+
+The next page supplies the shared content. The Copilot setup page explains what to place in its instruction file. For ChatGPT, provide the approved rule content through project instructions/references; the repository filename above is not automatically loaded.
+
+## 4. Configure and verify in this order
+
+<MermaidZoom title="One shared engineering protocol, two supported tool setups">
+
+```mermaid
+flowchart TD
+    A["Read shared engineering requirements"] --> B["Add relevant platform rules and verified project facts"]
+    B --> C{"Which approved tool?"}
+    C -->|GitHub Copilot| D["Configure repository instructions in the supported IDE"]
+    C -->|ChatGPT| E["Configure project instructions and permitted references"]
+    D --> F["Run a controlled prompt with synthetic context"]
+    E --> F
+    F --> G["Inspect rules used, assumptions and proposed changes"]
+    G --> H{"Instructions and context applied correctly?"}
+    H -->|No| I["Correct configuration or missing context"]
+    I --> F
+    H -->|Yes| J["Implement, test, review and use normal CI"]
+    classDef setup fill:#172554,stroke:#93c5fd,color:#fff;
+    classDef tool fill:#4c1d95,stroke:#d8b4fe,color:#fff;
+    classDef decision fill:#713f12,stroke:#fde047,color:#fff;
+    classDef result fill:#064e3b,stroke:#6ee7b7,color:#fff;
+    class A,B setup;
+    class D,E,F,I tool;
+    class C,H decision;
+    class G,J result;
+```
+
+</MermaidZoom>
+
+1. Prepare the shared rules and platform additions from the next page.
+2. Select the relevant platform rules. A React Native repository also needs the applicable Android/iOS native integration rules; a monorepo needs clear scope for each app. Replace repository-specific markers with verified facts. If a fact is unavailable, record it as missing; do not invent a command or API.
+3. Configure the tool using its dedicated setup page. Preserve existing instructions and resolve contradictions through review.
+4. Start a controlled interaction with only permitted synthetic context.
+5. Inspect the proposed response and, where the tool exposes it, the instruction/reference information. A claim that rules were followed is not sufficient evidence.
+6. Run the actual applicable checks before submitting generated changes through the normal PR process.
+
+### Verification prompt
+
+```text
+Platform: REPLACE_WITH_ANDROID_IOS_OR_REACT_NATIVE
+Project references: REPLACE_WITH_THE_PERMITTED_FILES_ACTUALLY_PROVIDED
+
+Before proposing any changes, identify the supplied engineering instructions
+and project references available to this interaction. Distinguish content you
+can inspect from filenames or links you cannot access.
+
+Task: plan tests for placing a chicken order in My Chicken App.
+Use only the supplied synthetic feature contract and existing test setup.
+
+Explain the applicable architecture, platform/state rules, privacy rules,
+and test/coverage requirements. Identify missing selectors, interfaces,
+fixtures, or commands instead of inventing them.
+
+Do not edit files, add dependencies, contact a service, or deploy anything.
+Do not propose LLM generation inside CI.
+```
+
+Replace both markers before sending; supply the synthetic contract and test context named in the prompt.
+
+**Expected result:** the response uses the selected platform, preserves documented contracts, identifies missing information, and proposes no external action. Inspect its substance; one successful prompt does not guarantee compliance in every later response.
+
+If the tool names unavailable files as though it read them, omits the selected platform rules, or invents an interface, correct the supplied context and repeat this controlled verification before using it for implementation.
+
+**Attach screenshot — sanitized instruction configuration and verification response; hide private repository details.**
+
+## 5. Keep configured rules current
+
+When an engineering requirement changes, review the shared rules and update the configured Copilot/ChatGPT copies. A repository edit does not automatically refresh an uploaded ChatGPT file or project instruction.
+
+Record the documentation revision used in the shared rules, along with the project commit/revision used for repository-specific facts. Do not mark commands as verified unless they were actually run against that revision. Inspect the applicable instructions again after changing tool configuration or switching projects. Keep task requests consistent with the engineering requirements; surface conflicts rather than silently weakening them.
+
+**Next file:** `engineering-rules.mdx` — copyable shared requirements and platform-specific additions.
+
+
+
+
+
+==================================
+
+
+
+---
+title: "Shared Engineering Rules"
+description: "Copyable mobile engineering instructions for GitHub Copilot and ChatGPT, with Android, iOS, and React Native additions."
+sidebar:
+  label: Engineering Rules
+  order: 2
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Use these rules with **GitHub Copilot or ChatGPT**. Copy the shared block, add the applicable platform block, then complete the project facts. The tool-specific setup pages explain how to supply this content to each tool.
+
+**Destination:** `docs/engineering-rules.md` in the application repository, unless your team already maintains an equivalent reviewed document. This is a suggested repository convention, not an automatically discovered instruction file.
+
+> **Confidential — Enterprise internal use only.** Share these instructions and project references only through approved accounts and permitted context. Rules do not configure account privacy, grant access, or replace enforced CI controls.
+
+## 1. Assemble the rules for your repository
+
+1. Open the existing repository instructions and conventions. Preserve them; resolve conflicting requirements with the responsible owner before changing them.
+2. Copy the **shared rules** below into the reviewed engineering document.
+3. Append the relevant **platform additions**. For React Native, include native Android/iOS requirements where the task touches those integrations.
+4. Complete the **project facts** from actual files and commands. Keep unavailable values explicitly unknown.
+5. Review the assembled document through the normal PR process. Configure Copilot or ChatGPT using its separate setup page.
+
+Do not paste every platform standard into always-on instructions. Keep durable requirements concise and supply detailed permitted references for the task. A file path or private link alone does not make its contents available to an assistant.
+
+<MermaidZoom title="Assemble reviewed rules without inventing project facts">
+
+```mermaid
+flowchart LR
+    A["Shared engineering rules"] --> D["Review against existing repository conventions"]
+    B["Relevant platform additions"] --> D
+    C["Verified project facts and reference revisions"] --> D
+    D --> E["Reviewed engineering document"]
+    E --> F["GitHub Copilot instructions"]
+    E --> G["ChatGPT project instructions and references"]
+    classDef input fill:#172554,stroke:#93c5fd,color:#fff;
+    classDef review fill:#713f12,stroke:#fde047,color:#fff;
+    classDef rules fill:#4c1d95,stroke:#d8b4fe,color:#fff;
+    classDef tool fill:#064e3b,stroke:#6ee7b7,color:#fff;
+    class A,B,C input;
+    class D review;
+    class E rules;
+    class F,G tool;
+```
+
+</MermaidZoom>
+
+## 2. Copy the shared rules
+
+The following block is instruction content for `docs/engineering-rules.md`, not a script:
+
+```markdown
+# Mobile engineering rules
+
+## Evidence and scope
+- Follow the approved project documentation and existing repository conventions.
+- Inspect the relevant implementation, interfaces, dependency locks, tests, and
+  configuration before proposing a change. State which references are available.
+- Never invent internal SDK methods, endpoints, YAML fields, selectors, credentials,
+  test commands, or business rules. Identify missing contracts explicitly.
+- When references or repository settings disagree, explain the discrepancy and
+  obtain the owning team's decision. Do not silently weaken a requirement.
+- Implement the requested outcome with a focused diff. Preserve unrelated work.
+  Do not add dependencies, migrate frameworks, or reformat the repository unless
+  required by the agreed task.
+- Distinguish illustrative samples from production contracts. Do not turn a sample
+  price, receipt, hostname, or identifier into a product requirement.
+
+## Confidentiality and security
+- Use only Enterprise-approved GitHub Copilot or ChatGPT environments and permitted
+  project context. Do not transmit secrets, signing material, customer/production
+  data, private logs, or unapproved source code to AI services.
+- Never put passwords, access tokens, certificates, or private keys in source,
+  prompts, fixtures, logs, screenshots, PR text, or committed configuration.
+- Use the approved authentication and secure-storage contracts. Do not invent a
+  token lifecycle, credential store, or cryptographic scheme.
+- Validate external inputs at API, storage, notification, and navigation boundaries.
+  Enforce authorization before accessing protected data or destinations.
+
+## Architecture and application foundations
+- Preserve feature-oriented Clean Architecture and unidirectional data flow.
+  Presentation coordinates through domain/application contracts; domain code does
+  not depend on concrete UI, networking, or persistence implementations.
+- Construct concrete dependencies at the composition boundary. Keep business rules
+  testable through injected contracts and deterministic fixtures.
+- Define state ownership, task lifetime, cancellation, account scope, and stale-result
+  handling. Do not publish results for an obsolete request or account session.
+- Keep DTOs and persistence models inside their owning boundaries; validate and map
+  them to domain values before exposing them to presentation.
+- Reuse approved design tokens, localization, branding, authentication, notification
+  routing, and cleanup contracts. Do not create competing feature-local systems.
+- Keep account cleanup coordinated: gate access, stop writers, perform scoped
+  deletion, verify the outcome, and preserve a recoverable state on failure.
+- Use documented timeout, retry, circuit-breaker, and feature-flag behavior. A retry
+  must be safe for the operation; do not blindly repeat a purchase or external write.
+- Treat flags as runtime configuration, not authorization. Define safe defaults,
+  refresh/failure behavior, and tests without assuming immediate remote delivery.
+
+## Implementation
+- Use the project's approved toolchain, dependency versions, and lockfiles.
+  Verify API compatibility against the installed version before writing a snippet.
+- Prefer explicit types, immutable values, narrow responsibilities, and readable
+  error categories. Do not silence type or concurrency checks to make code compile.
+- Preserve cancellation and distinguish validation failure, known failure, and an
+  unknown external outcome. Do not report success before confirming the result.
+- Keep UI rendering free of uncontrolled side effects. Use the appropriate lifecycle
+  and synchronization instead of fixed sleeps or repeated render-triggered calls.
+- Follow the repository's accessibility, localization, and theme conventions.
+
+## Testing and quality
+- Add meaningful tests for changed behavior at the appropriate unit, integration,
+  and UI boundaries. Include relevant failure, cancellation, and duplicate-submit cases.
+- Use the approved fake services and synthetic fixtures. Never submit real orders
+  or payments while validating documentation examples or generated tests.
+- Account for every production file under the defined 100% coverage policy. Enforce
+  supported coverage metrics using the documented reports and gate configuration.
+  Never exclude executable production logic simply to reach the target.
+- Coverage does not prove correctness. Assert the required result and side effects;
+  where practical, demonstrate that the test detects the intended regression.
+- Preserve the existing test runner and synchronization. JUnit execution, JavaScript
+  tests, and JUnit XML reporting are distinct; do not substitute one for another.
+- AI generation happens at authoring time. CI executes committed, reviewed code;
+  do not add LLM test generation or automatic AI test repair to Bitrise.
+
+## CI/CD and external state
+- Keep enrollment requests secret-free and use the documented governed provisioning
+  process. Do not manually create duplicate Bitrise apps or upload credentials as a
+  developer workaround.
+- Preserve approved workflow templates and the separate qa_android, qa_ios,
+  uat_android, and uat_ios routes. Verify each route independently.
+- Distinguish local validation, PR validation, protected promotion, live apply,
+  compilation, testing, signing, uploading, and verified distribution.
+- Keep protected signing and service credentials in their approved bindings.
+  Do not expose them in YAML or diagnostic output.
+- For an uncertain external write or partial_failure, stop further mutation, preserve
+  existing resources, and use the documented read-only reconciliation/escalation.
+  Do not blindly rerun enrollment, upload, signing, or protected promotion.
+- Treat store/internal distribution as complete only with destination-specific
+  evidence. A successful build or upload does not prove user visibility or release.
+- Do not create cloud resources, run live deployments, publish artifacts, alter access,
+  or send messages merely because a task requests code or documentation examples.
+
+## Observability
+- Use the approved Datadog application, site, client token, environment, service,
+  release identity, consent, and sampling configuration.
+- Keep Datadog API keys in protected CI/tooling bindings, never in the app.
+- Send only permitted diagnostic attributes. Never dump request/response payloads,
+  authentication headers, arbitrary application state, or customer/order data.
+- Sampling is not redaction. Configure collection filters and replay privacy
+  separately; use only approved pseudonymous identity handling.
+- Emit confirmed outcomes only after validation. Match symbols/source maps to the
+  exact release and verify readable stacks and eligible trace correlation.
+
+## Contribution and reporting
+- Follow the documented application branch conventions, Conventional Commits,
+  two peer approvals, and required passing Danger and Bitrise checks.
+- Application integration targets main under the documented convention. Keep the
+  configuration repository's develop-to-protected-main promotion process separate.
+  Report a conflicting repository setting; never bypass branch protection.
+- Run the applicable documented checks. Report exactly what ran, its result, and
+  what remains unverified. Never claim a native build, device test, coverage target,
+  cloud execution, or deployment succeeded without evidence.
+- Write concise developer documentation with file locations, replacement values,
+  commands, expected results, and failure actions. Do not add checklists or filler.
+- For documentation diagrams, use the existing MermaidZoom component only. Use
+  clear flow/sequence diagrams, readable colors, and the existing expansion control.
+  Verify rendering and light/dark behavior before claiming those checks passed.
+```
+
+These requirements summarize the linked engineering sections. Detailed contracts and versioned examples remain in those pages; an assistant must have permitted access to the relevant content before relying on it.
+
+## 3. Append the platform additions
+
+<Tabs>
+<TabItem label="Android">
+
+```markdown
+## Android additions
+- Follow the established Kotlin, Compose, ViewModel, StateFlow, coroutine, Room,
+  Retrofit/approved HTTP, and Hilt conventions in the application.
+- Compose renders state and emits actions; ViewModels coordinate use cases and
+  expose read-only state. Do not access Retrofit or Room directly from UI code.
+- Keep domain models and repository contracts independent of Android UI and concrete
+  transport/storage APIs. Use suspend/lifecycle-aware operations and propagate
+  coroutine cancellation instead of converting it into an ordinary failure.
+- Keep account-scoped persistence, migrations, and session access checks explicit.
+- Preserve the approved JDK/Gradle/AGP/Kotlin/Compose compatibility set. Do not copy
+  a plugin version or API import from another project without checking compatibility.
+- Use the actual unit-test and JUnit/Espresso instrumentation targets. Reuse real
+  resource IDs, screen objects, idling resources, and the configured device matrix.
+- Use the repository's single-responsibility file conventions and approved SDK APIs.
+```
+
+Reference: [Android Standards](../native-android-standards.mdx).
+
+</TabItem>
+<TabItem label="iOS">
+
+```markdown
+## iOS additions
+- Follow the application's Swift, SwiftUI/UIKit, observable state, and repository
+  conventions. Keep UI state and its ViewModel appropriately main-actor isolated.
+- Keep domain values independent of SwiftUI/UIKit, concrete URLSession adapters,
+  and persistence implementations. Pass immutable Sendable values across actors.
+- Keep SwiftData contexts/models inside their owning isolation boundary. Return
+  domain snapshots rather than leaking persistence objects to presentation.
+- Distinguish compiler version, language mode, deployment target, and default actor
+  isolation. Do not copy the reference example's minimum OS into an existing app
+  or weaken concurrency checking without an approved compatibility decision.
+- Use structured task ownership and cancellation; guard against stale account or
+  request results after suspension. An actor alone does not prevent reentrancy bugs.
+- Preserve the actual unit/XCUITest targets, accessibility identifiers, and bounded
+  condition waits. Do not replace synchronization with sleeps.
+- Keep each class, struct, and protocol in its own single-responsibility file as
+  required by the platform convention. Preserve documented signing ownership.
+```
+
+Reference: [iOS Standards](../native-ios-standards.mdx).
+
+</TabItem>
+<TabItem label="React Native">
+
+```markdown
+## React Native additions
+- React Native is strongly preferred for new apps; preserve an existing app's
+  supported stack unless migration is explicitly agreed.
+- Use strict TypeScript and validate external values at runtime. Do not use any,
+  broad type assertions, or disabled checks to conceal an incompatible contract.
+- Use Redux Toolkit for shared application state. Keep reducers pure and state
+  serializable; inject clients and use cases outside Redux state.
+- Keep local UI state local when appropriate. Preserve the existing server-data
+  policy; do not duplicate the same data across RTK Query and a competing cache.
+- Views/hooks coordinate through feature contracts, not concrete HTTP or storage
+  instances. Handle cancellation, request identity, and account-session changes.
+- Preserve the approved native-module/toolchain compatibility and selected lockfile.
+  Rebuild native apps when native dependencies change; Metro reload is insufficient.
+- Keep JavaScript feature/store tests in the existing JS runner. Preserve the team's
+  Android JUnit native device-test path; do not replace it with Appium/WebdriverIO.
+  Use the approved iOS native UI test setup for iOS device coverage.
+- Follow declaration-named, single-responsibility file conventions. Preserve approved
+  credential storage, account-scoped persistence, and native integration boundaries.
+```
+
+Reference: [React Native Standards](../react-native-standards.mdx). Apply the relevant native additions when changing Android or iOS integrations.
+
+</TabItem>
+</Tabs>
+
+## 4. Record project facts without inventing them
+
+Append this block and replace the markers. It is a **human-maintained Markdown record**, not an executable tool configuration. Record command working directories as well as the commands themselves.
+
+```markdown
+## Project facts
+- Documentation revision: REPLACE_WITH_REVIEWED_REVISION
+- Repository revision used for facts: REPLACE_WITH_COMMIT
+- Applicable platforms: REPLACE_WITH_ACTUAL_PLATFORMS
+- Instruction/reference owner: REPLACE_WITH_RESPONSIBLE_TEAM
+
+### Paths and versions
+- Application/module/workspace: REPLACE_WITH_VERIFIED_PATHS
+- Source roots and production-file inventory: REPLACE_WITH_VERIFIED_SCOPE
+- Unit/UI test targets and fixture paths: REPLACE_WITH_VERIFIED_PATHS
+- Toolchain, dependency catalog, and lockfiles: REPLACE_WITH_VERIFIED_FILES
+- Existing authentication/foundation contracts: REPLACE_WITH_PERMITTED_REFERENCES
+- Approved CI template and route configuration: REPLACE_WITH_PERMITTED_REFERENCES
+
+### Local verification
+- Type/static checks: REPLACE_WITH_WORKING_DIRECTORY_AND_COMMAND
+- Unit/integration tests: REPLACE_WITH_WORKING_DIRECTORY_AND_COMMAND
+- Native UI/device tests: REPLACE_WITH_WORKING_DIRECTORY_AND_COMMAND_OR_CI_HANDOFF
+- Coverage report and gate: REPLACE_WITH_WORKING_DIRECTORY_COMMAND_AND_REPORT_PATH
+- Application build: REPLACE_WITH_WORKING_DIRECTORY_AND_COMMAND
+- Last verification: REPLACE_WITH_DATE_REVISION_AND_ACTUAL_RESULTS
+
+### Unresolved contracts
+- UNKNOWN: REPLACE_WITH_MISSING_FACT_AND_RESPONSIBLE_OWNER
+```
+
+Remove a marker only after verifying the value. Use `not applicable` with a reason for a genuinely inapplicable field. Unknown commands must remain unknown; do not paste placeholder commands into a terminal.
+
+If the source revision changes, recheck facts affected by the change. Do not attach secrets or private credentials to make this record “complete.”
+
+## 5. Review and configure the selected tool
+
+| Review question | Required outcome |
+| :--- | :--- |
+| Does a rule conflict with the project contract or approved documentation? | Surface the discrepancy and get the owning team's decision. |
+| Does an instruction refer to an inaccessible file? | Supply permitted content through the tool's supported context mechanism. |
+| Are a version, command, or SDK interface still unknown? | Keep the gap explicit; do not present the integration as ready to run. |
+| Are checks actually executed? | Record their real result and limitations. |
+| Did a rule change? | Review the change and update each configured tool copy. |
+
+**Expected result:** the reviewed rules contain shared requirements, relevant platform additions, verified project facts, and explicit unresolved items. They contain no secrets and make no unsupported claims about tests or deployments.
+
+**Next:** configure `github-copilot-setup.mdx` or `chatgpt-setup.mdx`. Merely saving `docs/engineering-rules.md` does not prove either tool has loaded it.
+
+## Reference pages
+
+| Area | Detailed instructions |
+| :--- | :--- |
+| Boundaries and runtime behavior | [Architecture](../architecture/index.mdx), [resilience](../architecture/circuit-breaker-resilience.mdx), [feature flags](../architecture/feature-flags.mdx). |
+| Shared application capabilities | [App Foundations](../enterprise-app-foundations.mdx), [SDK catalog](../master-sdk-catalog.mdx). |
+| Contribution and delivery | [Branching & PRs](../architecture/branching-prs.mdx), [CI/CD](../cicd/index.mdx). |
+| Test generation and evidence | [IDE test generation](../testing-quality/ide-assisted-test-generation.mdx), [coverage gates](../testing-quality/coverage-and-quality-gates.mdx), [Sauce Labs](../testing-quality/sauce-labs-real-device-testing.mdx). |
+| Runtime monitoring | [Observability](../observability/index.mdx). |
+
+
+
+
+-----------------------------------
+
+
+
+
+
+
+---
+title: "GitHub Copilot Setup"
+description: "Configure Copilot repository instructions in Android Studio, Xcode, or VS Code and verify the mobile engineering rules are available."
+sidebar:
+  label: GitHub Copilot Setup
+  order: 3
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Configure Copilot to use the [shared engineering rules](./engineering-rules.mdx) and the actual project contracts before requesting implementation changes.
+
+**You need:** an approved GitHub account with Copilot access, a supported IDE/plugin, and a repository containing the reviewed `docs/engineering-rules.md` assembled on the previous page.
+
+> **Confidential — Enterprise internal use only.** Use the approved account and integration. Only provide permitted repository context. Do not put credentials, customer/production data, signing material, or private logs into instructions or prompts. This setup does not change Enterprise privacy or access settings.
+
+## 1. Enable Copilot in your IDE
+
+Follow your platform tab. Reuse an existing approved installation; do not install a second assistant or extension from an unofficial publisher.
+
+<Tabs>
+<TabItem label="Android">
+
+**IDE: Android Studio.**
+
+1. Open **Settings → Plugins** and locate the official **GitHub Copilot** plugin through the approved installation process.
+2. Install/update the approved compatible version and restart the IDE if prompted.
+3. Open **Tools → GitHub Copilot → Login to GitHub** and complete authorization with the approved account.
+4. Open the application repository and Copilot Chat. Confirm that Copilot access is available before configuring project instructions.
+
+[GitHub's JetBrains/Android Studio installation guide](https://docs.github.com/en/copilot/how-tos/copilot-in-your-ide/set-up-copilot/install-copilot-extension?tool=jetbrains).
+
+</TabItem>
+<TabItem label="iOS">
+
+**IDE: Xcode.**
+
+1. Install the approved **GitHub Copilot for Xcode** application from the official distribution described by GitHub.
+2. Open the application and follow its setup flow. Enable the required Accessibility and Xcode Source Editor Extension permissions through macOS settings/the extension flow.
+3. Restart Xcode if required, then sign in through the Copilot application using the approved GitHub account.
+4. Open the actual app workspace/project and Copilot Chat.
+
+Use your approved compatible release; do not change the project's Xcode version merely to match an example. [GitHub's Xcode installation and permissions guide](https://docs.github.com/en/copilot/how-tos/copilot-in-your-ide/set-up-copilot/install-copilot-extension?tool=xcode).
+
+</TabItem>
+<TabItem label="React Native">
+
+**IDE: VS Code.**
+
+1. Open the application repository folder in VS Code.
+2. Use VS Code's Copilot setup/sign-in flow with the approved GitHub account. Follow the approved extension installation/update process.
+3. Open Copilot Chat and confirm access is available.
+4. Keep the existing React Native, TypeScript, and Redux Toolkit configuration. Copilot setup requires no application dependency or native build change.
+
+[GitHub's VS Code setup guidance](https://docs.github.com/en/copilot/how-tos/copilot-in-your-ide/set-up-copilot/install-copilot-extension?tool=vscode).
+
+</TabItem>
+</Tabs>
+
+If sign-in or entitlement fails, resolve it through the approved access/support process. Do not switch to a personal account to work around restrictions.
+
+**Attach screenshot — Copilot available in the IDE, with account and repository identifiers hidden.**
+
+## 2. Create the repository instruction file
+
+Use this layout at the **application repository root**, not inside only `android/`, `ios/`, or a feature directory:
+
+```text
+<repository>/
+├── .github/
+│   └── copilot-instructions.md
+├── docs/
+│   └── engineering-rules.md
+└── ...existing application files...
+```
+
+Repository-wide custom instructions use `.github/copilot-instructions.md`. An ordinary Markdown file in `docs/` is a reference, not automatically an instruction entry point. [Repository custom instructions](https://docs.github.com/en/copilot/how-tos/copilot-in-your-ide/customize-copilot/configure-custom-instructions/add-repository-instructions-in-your-ide).
+
+From the application repository, inspect existing files first:
+
+```bash
+# Run the complete block inside the intended application repository.
+# The subshell stops on failure without closing your terminal.
+(
+  set -eu
+  REPO_ROOT="$(git rev-parse --show-toplevel)"
+  cd "$REPO_ROOT"
+  git status --short
+
+  if [ -f .github/copilot-instructions.md ]; then
+    cat .github/copilot-instructions.md
+  fi
+
+  if [ ! -s docs/engineering-rules.md ]; then
+    echo 'Missing or empty docs/engineering-rules.md; complete Engineering Rules first.' >&2
+    exit 1
+  fi
+)
+```
+
+If the last command fails, return to [Engineering Rules](./engineering-rules.mdx) and assemble the shared block, platform additions, and project facts. If the instruction file already exists, merge the content below through review; do not overwrite it blindly.
+
+In the IDE, create a `.github` folder directly under the repository root if absent, then create/edit `copilot-instructions.md` inside it. Paste only the Markdown contents from the next section, not the enclosing code fences. No YAML frontmatter is required for this repository-wide Markdown file. [Creating repository-wide instructions](https://docs.github.com/en/copilot/how-tos/copilot-in-your-ide/customize-copilot/configure-custom-instructions/add-repository-instructions-in-your-ide).
+
+## 3. Copy the repository instructions
+
+Copy this complete block into `.github/copilot-instructions.md`, merging any existing compatible instructions:
+
+```markdown
+# Enterprise mobile repository instructions
+
+## Required context
+- Follow the reviewed shared rules, platform additions, and project facts in
+  [engineering rules](../docs/engineering-rules.md).
+- Before implementation, inspect the relevant rules and project contracts. If the
+  reference cannot be accessed, identify the missing context and request the
+  permitted content. Do not claim a linked document was read without inspecting it.
+- Select the platform rules for the files being changed. React Native work may also
+  require the native Android/iOS integration rules.
+- Resolve conflicting project/documentation requirements with the owning team.
+  Do not invent internal APIs, endpoints, YAML fields, selectors, or commands.
+
+## Always preserve
+- Protect confidential information. Never include secrets, signing material,
+  production/customer data, private logs, or unapproved context in AI interactions.
+- Preserve Clean Architecture, existing feature contracts, lifecycle/cancellation,
+  account scope, and the approved authentication/application foundations.
+- Preserve Redux Toolkit in React Native. Keep JavaScript tests, Android JUnit
+  native device tests, and JUnit XML reporting distinct. Do not switch test frameworks.
+- Use approved pinned dependencies and the existing build/test setup. Do not add
+  unrelated dependencies, migrations, or repository-wide formatting changes.
+- Add meaningful tests and apply the documented 100% production-code coverage scope
+  and supported metrics. Do not weaken assertions or exclude executable logic.
+- Generate code at authoring time only. Bitrise runs committed, reviewed code;
+  do not add LLM generation or automatic AI test repair to CI.
+- Keep enrollment secret-free and credentials protected. Preserve governed build
+  routes and review gates. An uncertain external write requires reconciliation,
+  not blind retry, duplicate provisioning, or deletion.
+- Keep telemetry attributes permitted and release identity accurate. Sampling does
+  not redact data. Never package a Datadog API key inside a mobile application.
+- Do not create cloud resources, publish, deploy, or change access merely to validate
+  a code/documentation example. Use the task's actual authorization and scope.
+
+## Work and report
+- Inspect the relevant existing code/tests before editing; keep changes focused.
+- Use the working directory and verification commands recorded in project facts.
+  If unavailable, inspect repository configuration or identify the missing command.
+- Report what changed, which checks actually ran, their result, and what remains
+  unverified. Never claim native/device/cloud execution or coverage without evidence.
+- Keep documentation short and actionable, with file locations, replacement values,
+  commands, expected results, and failure actions. Do not add checklists or filler.
+```
+
+The relative link assumes the proposed layout. Adjust it if your approved shared-rules location differs. A link does **not** prove that the referenced file was loaded: supply the permitted rules explicitly in Chat when necessary and verify the references used.
+
+**Expected result:** both files exist, the shared rules are complete for the selected platform, and the repository instruction file contains the entry-point guidance above. No application packages need to be installed for this configuration.
+
+## 4. Confirm custom instructions are enabled
+
+<Tabs>
+<TabItem label="Android">
+
+On macOS, open **Android Studio → Settings → Tools → GitHub Copilot → Customizations**. Under **Copilot Instructions**, select **Workspace** and inspect the repository instruction file. GitHub documents `.github/copilot-instructions.md` as the workspace instruction entry point for JetBrains IDEs. Open a fresh chat from the actual application project. Menu labels can differ by approved plugin version; do not look for a Visual Studio or VS Code setting in Android Studio.
+
+</TabItem>
+<TabItem label="iOS">
+
+Use the installed Copilot for Xcode version's custom-instruction support and open Chat with the intended project context. GitHub documents `.github/copilot-instructions.md` as the repository instruction file for Xcode. If the file is not discovered, supply it explicitly to the supported Chat context and investigate project-root discovery.
+
+</TabItem>
+<TabItem label="React Native">
+
+In VS Code, confirm repository custom instructions are enabled. Open Chat from the intended workspace folder; for a multi-root workspace, verify which repository provides the current context. This guide uses repository-wide instructions; path-specific instruction files are optional and are not required for the initial setup.
+
+</TabItem>
+</Tabs>
+
+IDE capabilities differ. Use the relevant IDE tab in [GitHub's custom-instruction guide](https://docs.github.com/en/copilot/how-tos/copilot-in-your-ide/customize-copilot/configure-custom-instructions/add-repository-instructions-in-your-ide). Do not assume a VS Code setting name or path-specific feature exists in Android Studio or Xcode.
+
+## 5. Verify the rules with a controlled prompt
+
+<MermaidZoom title="Verify instruction context before implementation">
+
+```mermaid
+flowchart TD
+    A["Save repository instructions and reviewed engineering rules"] --> B["Open fresh Copilot Chat in the intended repository"]
+    B --> C["Provide permitted rules and synthetic feature context"]
+    C --> D["Ask for a plan without edits or execution"]
+    D --> E["Inspect available references and response content"]
+    E --> F{"Correct platform, rules and missing-context handling?"}
+    F -->|No| G["Fix discovery, references or conflicting instructions"]
+    G --> B
+    F -->|Yes| H["Request a bounded implementation and verify its diff/tests"]
+    classDef setup fill:#172554,stroke:#93c5fd,color:#fff;
+    classDef inspect fill:#4c1d95,stroke:#d8b4fe,color:#fff;
+    classDef decision fill:#713f12,stroke:#fde047,color:#fff;
+    classDef result fill:#064e3b,stroke:#6ee7b7,color:#fff;
+    class A,B,C setup;
+    class D,E,G inspect;
+    class F decision;
+    class H result;
+```
+
+</MermaidZoom>
+
+1. Open a fresh Copilot Chat in the intended repository. Use a question/plan interaction; do not authorize tools or external actions for this verification.
+2. Make `docs/engineering-rules.md` and the permitted synthetic feature contract available through the IDE's supported context attachment mechanism.
+3. Replace the platform marker below and send the prompt.
+
+```text
+Platform: REPLACE_WITH_ANDROID_IOS_OR_REACT_NATIVE
+
+Inspect the supplied repository instructions and engineering rules.
+Name the project references actually available to this interaction.
+Do not claim access to files or private links you cannot inspect.
+
+Plan tests for placing a chicken order in My Chicken App using only the
+supplied synthetic feature contract and existing test infrastructure.
+Explain the architecture, platform/state rules, test runner, coverage
+requirements, privacy boundaries, and authoring-time-only AI workflow.
+Identify missing interfaces, fixtures, selectors, and commands.
+
+Do not edit files, run commands, add dependencies, contact services,
+create resources, or deploy anything. Return a short plan only.
+```
+
+4. Check **instruction discovery separately from attached context**: explicitly attaching a file makes its content available, but does not prove automatic repository-instruction discovery works. Inspect the Chat response's reference/context information where available. GitHub documents the repository instruction file appearing in the response references when used. Check the actual response too: a reference or a claim of compliance is not proof that every instruction was followed. [Custom instructions in use](https://docs.github.com/en/copilot/how-tos/copilot-in-your-ide/customize-copilot/configure-custom-instructions/add-repository-instructions-in-your-ide).
+5. Where the IDE exposes automatic instruction references, confirm the saved repository entry point is included without manually attaching that entry point. If you must attach it as a fallback, record that automatic discovery remains unresolved. Confirm the selected platform and existing runner are preserved, missing facts are acknowledged, and no unsupported API or command is proposed. Correct the configuration/context if they are not.
+
+**Expected result:** the shared rules are available, the response preserves the selected platform and existing contracts, and automatic discovery is either evidenced or explicitly unresolved. A successful plan does not verify a future implementation.
+
+**Attach screenshot — sanitized response references and the verification plan, with private identifiers hidden.**
+
+## 6. Troubleshoot setup before generating code
+
+| Problem | Action |
+| :--- | :--- |
+| Copilot unavailable | Check approved account entitlement, plugin status, and connectivity through the supported access process. |
+| Repository instructions absent | Check `.github/copilot-instructions.md` spelling/location, intended project root, saved content, and custom-instruction setting/support. |
+| Shared rules not read | Provide the permitted file explicitly; a link is not guaranteed retrieval. |
+| Wrong platform or conflicting guidance | Inspect personal, repository, and other applicable instructions. Resolve conflicts instead of adding contradictory prompts. |
+| Invented commands or test framework | Supply the actual project facts and test setup; request a corrected plan before implementation. |
+| Correct instructions referenced but poor code | Review the code and assertions. Instructions influence output; they do not replace compiler, tests, coverage, review, or CI. |
+
+## 7. Review and maintain the configuration
+
+Run the following commands from the application repository root. Inspect the diff before staging. Stage only the intended instruction files after confirming they contain no secrets or unapproved content:
+
+```bash
+git diff -- .github/copilot-instructions.md docs/engineering-rules.md
+
+# Also inspect new/untracked files in the IDE; git diff does not show them.
+git status --short
+
+# Run only after reviewing both files.
+git add -- .github/copilot-instructions.md docs/engineering-rules.md
+git diff --cached -- .github/copilot-instructions.md docs/engineering-rules.md
+```
+
+Submit the reviewed change through [Branching & PRs](../architecture/branching-prs.mdx). Do not include unrelated staged files. After updating rules, open a fresh interaction and repeat the controlled verification for affected behavior.
+
+**Next:** `chatgpt-setup.mdx` if your team also uses ChatGPT. Otherwise, use the configured Copilot workflow with normal code review, testing, and CI.
+
+
+
+
+____________________
+
+
+
+
+---
+title: "ChatGPT Setup"
+description: "Configure approved ChatGPT project instructions, provide permitted engineering references, and verify the context before requesting mobile code."
+sidebar:
+  label: ChatGPT Setup
+  order: 4
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Use an approved **ChatGPT project** to keep engineering instructions and permitted references together across related chats.
+
+**You need:** access to the approved ChatGPT account/workspace, permission to use the selected project content, and the reviewed `docs/engineering-rules.md` assembled in [Engineering Rules](./engineering-rules.mdx).
+
+**Outcome:** a project containing concise instructions, the applicable engineering rules, and enough verified context for a bounded development task.
+
+> **Confidential — Enterprise internal use only.** Use approved accounts and permitted content. Never upload credentials, signing files, customer/production data, private logs, or an unapproved repository archive. These instructions do not enable data protection, alter retention, authorize sharing, or replace workspace administration.
+
+**Scope:** this page configures a ChatGPT project with instructions and supplied references. It does not configure an IDE extension, repository agent, or local-computer access. No API key, npm package, or application dependency is needed for this setup.
+
+## 1. Open the approved ChatGPT environment
+
+1. Sign in through the Enterprise-approved account and access process. Confirm you are in the intended workspace before adding project content.
+2. Open **Projects** and create a project for the application, or select its existing approved project.
+3. Confirm the project's intended audience/access before adding references. Do not make a confidential project broadly accessible merely to simplify setup.
+4. Open the project's instruction editor. Menu labels vary by client; use the **project-level** instructions, not an ordinary message in a standalone chat.
+
+A project groups related chats, files, instructions, and sources. Project instructions apply across its chats. [Official ChatGPT project guidance](https://learn.chatgpt.com/docs/projects?surface=app).
+
+If projects/instructions are unavailable in the approved environment, ask the workspace owner to confirm the supported configuration. Do not switch to a personal account or an unapproved integration.
+
+**Attach screenshot — selected project and instruction editor, with account, workspace, and private project details hidden.**
+
+## 2. Prepare and add the reference content
+
+Use the following separation. The project and file names are suggested documentation conventions, not automatic configuration discovery rules.
+
+```text
+ChatGPT project: <approved application project>
+├── Project instructions         # Copy Section 3 into the instruction editor
+├── Project sources/references
+│   ├── engineering-rules.md     # Reviewed shared rules + relevant platform rules
+│   └── ...permitted standards and contracts for this project...
+└── Chats
+    ├── Rules verification       # Controlled planning prompt
+    └── <one bounded task>       # Relevant task-specific context
+```
+
+1. Review `docs/engineering-rules.md` locally. Complete verified project facts and keep unresolved contracts explicit.
+2. Add the permitted copy to the project's **Sources/files** area. Use an approved connected source only when its access and content are authorized.
+3. Add the applicable platform standard and architecture reference when needed. Include App Foundations and SDK contracts when the change uses them. Add CI/CD, testing, or observability references for tasks touching those areas.
+4. For one-off tasks, attach only the relevant permitted implementation, interface, fixture, and test files to that task's chat.
+5. Identify the revision of the provided references. Remove or clearly supersede stale uploaded project copies so the intended version is unambiguous; do not delete or modify original connected documents as part of this setup.
+
+Project sources can be available across project chats; a chat attachment may be specific to that interaction. A ChatGPT project does not automatically read a local repository folder. Providing a private URL also does not prove ChatGPT can retrieve its contents. [Project sources and chat context](https://learn.chatgpt.com/docs/projects?surface=app), [working with supplied context](https://learn.chatgpt.com/docs/use-chatgpt).
+
+Saving `.github/copilot-instructions.md` or `docs/engineering-rules.md` locally does not automatically configure this ChatGPT project. Save the project instructions and explicitly provide the permitted reference content.
+
+Do not upload all documentation or source files merely to make the project “complete.” Supply the permitted material relevant to the application and task. Do not add source connections solely because they are technically available.
+
+### Identify each reference revision
+
+Provide this record with the permitted files or in task context. Replace markers with verified values; report unavailable revisions as `unknown`.
+
+```text
+Engineering rules: engineering-rules.md — REPLACE_WITH_REVIEWED_REVISION
+Platform standard: REPLACE_WITH_PROVIDED_FILE_AND_REVISION
+Feature/test context: REPLACE_WITH_FILES_AND_REPOSITORY_COMMIT
+Unresolved contracts: REPLACE_WITH_KNOWN_GAPS_OR_NONE
+```
+
+## 3. Copy the project instructions
+
+Paste the following **Markdown contents**, without the enclosing code fences, into the project's instruction editor and save them. This is an instruction template, not an API request or executable configuration.
+
+```markdown
+# Enterprise mobile engineering instructions
+
+## Context and authority
+- Use the provided engineering-rules.md, applicable platform additions, and verified
+  project facts for this application. Inspect the relevant content before relying
+  on it; do not claim access to an unavailable file, private link, or local folder.
+- Distinguish approved project requirements from illustrative samples. Never invent
+  an internal SDK method, endpoint, YAML field, selector, command, or business rule.
+- Identify missing or conflicting contracts. Ask for the specific permitted context
+  or owning-team decision needed, while keeping independent work within scope.
+- Use the reference revision supplied for the task. Do not silently combine
+  contradictory requirements from old and current documents.
+
+## Engineering requirements
+- Preserve Clean Architecture, unidirectional data flow, lifecycle/cancellation,
+  account scope, and approved authentication/application foundation contracts.
+- Apply the platform rules for the files being changed. Preserve Redux Toolkit for
+  React Native; distinguish JavaScript tests from Android JUnit native device tests
+  and from JUnit XML reports. Do not replace the established test framework.
+- Use approved compatible dependencies and existing project commands. Keep changes
+  focused; do not add unrelated packages, migrations, or framework replacements.
+- Add meaningful assertions and the required failure cases. Apply the documented
+  100% production-code coverage scope and supported metrics without hiding logic.
+- AI drafts code at authoring time only. CI executes committed, reviewed code;
+  do not add an LLM generation or automatic AI repair step to Bitrise.
+- Preserve governed enrollment, protected credentials, release routes, and evidence
+  requirements. For uncertain external writes, follow read-only reconciliation;
+  do not prescribe blind retries, duplicate provisioning, or resource deletion.
+- Keep telemetry fields permitted. Sampling is not redaction. Never place a Datadog
+  API key in an application or expose credentials in diagnostic output.
+
+## Confidentiality and scope
+- Use only the permitted context. Never request or expose secrets, signing material,
+  production/customer data, private logs, or unapproved source code.
+- Do not infer authorization to connect services, create cloud resources, upload
+  artifacts, change access, send messages, or deploy from a request for code examples.
+- Use synthetic fixtures and approved fake services. Never submit real orders or
+  payments to validate a generated example.
+
+## Output and verification
+- Provide actual file locations, coherent code, required imports, replacement values,
+  integration points, and the applicable verification commands when known.
+- Identify partial snippets and host-provided interfaces explicitly. Do not label an
+  example as directly runnable when required bindings or contracts are missing.
+- State what was inspected, changed, and actually executed. If execution is unavailable,
+  label code as unverified; do not claim builds, tests, coverage, or deployment passed.
+- Keep explanations short and actionable. Do not add checklists, filler, invented
+  policies, or internal preparation/review commentary to published documentation.
+- For documentation diagrams, use the existing MermaidZoom component only. Do not
+  claim rendering, expansion, or light/dark verification without checking them.
+```
+
+After saving, reopen the project instructions to confirm the intended text is present.
+
+This compact entry point complements the full shared rules; it does not replace their platform-specific requirements. The filename `engineering-rules.md` must match the reference you actually provide. A file mention alone does not ensure its relevant contents were used in a response.
+
+**Expected result:** instructions are saved at project level and the intended reviewed rule document is present among the project's permitted references.
+
+## 4. Select the platform context
+
+<Tabs>
+<TabItem label="Android">
+
+Provide permitted excerpts from [Android Standards](../native-android-standards.mdx), the actual module/variant configuration, and the relevant Kotlin/domain/test files.
+
+```text
+Platform: Native Android
+Use the supplied Kotlin/Compose/ViewModel/StateFlow conventions and
+existing repository contracts. Preserve coroutine cancellation and account scope.
+For tests, use the actual unit target and JUnit/Espresso infrastructure.
+Identify any missing resource IDs, idling setup, variant, or Gradle task.
+```
+
+Keep the actual Gradle/JDK/AGP/Kotlin compatibility set. Do not let an unrelated online snippet choose new toolchain versions.
+
+</TabItem>
+<TabItem label="iOS">
+
+Provide permitted excerpts from [iOS Standards](../native-ios-standards.mdx), the actual workspace/scheme/targets, and relevant Swift/domain/test files.
+
+```text
+Platform: Native iOS
+Use the supplied Swift and SwiftUI/UIKit conventions and existing contracts.
+Preserve actor isolation, Sendable boundaries, task ownership, and cancellation.
+Use the actual unit and XCUITest targets and accessibility identifiers.
+Identify missing deployment, scheme, fixture, or test-command information.
+```
+
+The reference example's deployment target or concurrency settings must not silently replace the application's approved configuration.
+
+</TabItem>
+<TabItem label="React Native">
+
+Provide permitted excerpts from [React Native Standards](../react-native-standards.mdx), the actual package/lockfile configuration, Redux Toolkit feature, and relevant tests.
+
+```text
+Platform: React Native
+Use strict TypeScript, Redux Toolkit, and the supplied feature contracts.
+Preserve the existing JavaScript test runner and Android JUnit native device suite.
+Do not add Appium/WebdriverIO or replace the project's state library.
+Identify missing native bindings, accessibility mappings, fixtures, and commands.
+```
+
+Include Android/iOS context when changing native integrations. A JavaScript-only file set cannot establish the native build or device-test configuration.
+
+</TabItem>
+</Tabs>
+
+## 5. Verify the project before requesting implementation
+
+<MermaidZoom title="Verify instructions and references before using a generated change">
+
+```mermaid
+flowchart TD
+    A["Save project instructions"] --> B["Add permitted engineering rules and feature context"]
+    B --> C["Start a fresh chat inside this project"]
+    C --> D["Request a plan with no actions"]
+    D --> E["Inspect referenced content, platform and missing facts"]
+    E --> F{"Does the plan follow the supplied requirements?"}
+    F -->|No| G["Correct instructions, context or reference revision"]
+    G --> C
+    F -->|Yes| H["Request a bounded draft"]
+    H --> I["Developer inspects diff, runs checks and requests review"]
+    classDef setup fill:#172554,stroke:#93c5fd,color:#fff;
+    classDef draft fill:#4c1d95,stroke:#d8b4fe,color:#fff;
+    classDef decision fill:#713f12,stroke:#fde047,color:#fff;
+    classDef verified fill:#064e3b,stroke:#6ee7b7,color:#fff;
+    class A,B,C setup;
+    class D,E,G,H draft;
+    class F decision;
+    class I verified;
+```
+
+</MermaidZoom>
+
+Start a new chat **inside the configured project**. Replace the platform marker, supply the synthetic feature contract and existing test context, then send:
+
+```text
+Platform: REPLACE_WITH_ANDROID_IOS_OR_REACT_NATIVE
+
+Read the provided engineering rules and relevant project references.
+Name the reference files and revisions actually available to this interaction.
+If a revision is not supplied, report it as unknown; do not infer one.
+Do not claim access to local folders or private links you cannot inspect.
+
+Plan tests for placing a chicken order in My Chicken App.
+Use only the supplied synthetic feature contract, fake gateway, and existing
+platform test infrastructure. Explain the architecture, state ownership,
+test runner, coverage requirements, and privacy boundaries that apply.
+Identify missing interfaces, selectors, fixtures, or verification commands.
+
+Do not edit files, run commands, contact services, add dependencies, create
+resources, or deploy anything. Return a short plan only.
+```
+
+Compare the response with the provided rules and feature contract. Ask it to point to the relevant supplied sections where possible; inspect those sections yourself. A statement that the rules were read is not sufficient evidence of correct application.
+
+**Expected result:** the plan preserves the selected platform and existing runner, uses the supplied behavior, acknowledges missing facts, and proposes no LLM generation in CI or external action. If it invents a contract or ignores an instruction, correct the context and repeat the controlled prompt.
+
+**Attach screenshot — sanitized project references and verification response.**
+
+## 6. Request one bounded change
+
+Once verification is satisfactory, use a task prompt such as:
+
+```text
+Using the supplied rules and verified project context, draft the smallest
+change needed for the agreed chicken-order test case.
+
+Provide code grouped by its actual project file path and explain where each
+fragment belongs. Reuse existing fixtures, selectors, contracts, and dependencies.
+Identify missing information before generating code that depends on it.
+
+Include the known local verification commands and expected assertions.
+Label checks you did not execute. Return a draft for review; do not edit
+project files, run commands, contact live services, or deploy.
+```
+
+Inspect the generated code before applying it. Run the actual project checks in the appropriate development environment; a ChatGPT explanation or generated report is not a test result. Submit the reviewed change through [Branching & PRs](../architecture/branching-prs.mdx).
+
+This project setup is for engineering assistance. It does not grant local filesystem execution, automatically edit a repository, configure Bitrise, or authorize Sauce Labs/store actions. Those capabilities require their separately approved environments and workflows.
+
+## 7. Diagnose missing context and keep it current
+
+| Problem | Action |
+| :--- | :--- |
+| Response ignores project rules | Confirm the chat belongs to the intended project and the instructions were saved. Reprovide the relevant permitted rule section and verify again. |
+| A local path or private URL is treated as accessible | Ask for the specific content actually inspected. Provide the approved excerpt/file or authorized source; do not assume retrieval. |
+| Old rules or interfaces appear | Identify the intended revision and remove/supersede stale project copies. Start a fresh task interaction with the current references. |
+| Wrong platform or test runner | Supply the applicable platform additions and actual test configuration. Reject invented framework substitutions. |
+| Project files/settings are unavailable | Ask the workspace owner to confirm access and supported features. Do not use a personal-account workaround. |
+| Code is presented as tested without execution | Require the actual command/result evidence or a clear unverified label; run the checks in the proper development environment. |
+
+When engineering rules change, review and refresh the ChatGPT project instructions and affected uploaded references. A repository commit does not automatically update an uploaded copy. Keep the same reviewed requirements in the [Copilot setup](./github-copilot-setup.mdx) when both tools are used.
+
+Return to [Start Here](./index.mdx) for the section map or [Engineering Rules](./engineering-rules.mdx) for the shared copyable content.
+
+
+
+_________________
+
+
+
+
+---
+title: "App Stores & Distribution — Start Here"
+description: "Choose the Enterprise internal store or public store route, prepare the release handoff, and verify the exact version reaches its intended users."
+sidebar:
+  label: Start Here
+  order: 1
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Start here when you have a mobile application and need to distribute it to employees, business testers, or external users. Identify the audience first, then follow the approval and store-specific procedure. Automated build/upload configuration stays in [CI/CD](../cicd/index.mdx).
+
+**Outcome:** select the correct distribution route and prepare a release handoff that the release owner can validate.
+
+> **Confidential — Enterprise internal use only.** Keep internal store URLs, QR codes, reviewer credentials, signing material, artifacts, and administrative evidence in approved systems. Use redacted screenshots; never publish credentials or private artifact links in documentation.
+
+## 1. Choose the destination before preparing a release
+
+| Intended audience | Enterprise route | Required decision |
+| :--- | :--- | :--- |
+| Development and QA team | Internal QA store/catalog. | Correct environment, application, and test audience. |
+| Business users validating the app | Internal UAT store/catalog. | Business audience and required TGRC approval before UAT deployment. |
+| Employees using the production app | Internal production store/catalog. | Production audience, access rules, and required TGRC approval. |
+| Customers or other external users | Public Google Play / Apple App Store route. | Store account, application identity, country availability, review, and release authorization. |
+
+These are the documented Enterprise routes. The release/platform owner confirms the route for the application; a developer must not choose an incompatible signing or distribution mechanism as a shortcut.
+
+For iOS, Apple Developer Enterprise Program distribution is for eligible proprietary internal employee use. It is not the public App Store distribution path. [Apple Enterprise Program](https://developer.apple.com/programs/enterprise/).
+
+**Google Play internal testing and TestFlight are public-store platform testing channels. They are separate from the Enterprise internal QA/UAT/production catalog.** Do not infer one channel's publication or access from another channel's successful upload.
+
+## 2. Follow this section in order
+
+| Order | File | What it covers |
+| :--- | :--- | :--- |
+| 1 | `index.mdx` | Choose the audience/destination and understand the release journey. |
+| 2 | `signing-and-release-approval.mdx` | Application ID conventions, signing ownership, certificate requests, TGRC approval, deployment request form, spreadsheet attachment, and secure handoff. |
+| 3 | `enterprise-app-store.mdx` | QA/UAT/production stores, user access and entitlements, approved portal/QR installation, iOS trust guidance, and version visibility. |
+| 4 | `apple-app-store.mdx` | Listing fields, devices/languages, SKU, privacy, countries, screenshots/previews/icons, reviewer access/notes, signed IPA transfer, Transporter, upload processing, review, and release. |
+| 5 | `google-play.mdx` | APK/AAB and signing handoff, listing fields/assets/category/privacy, reviewer access, initial upload readiness, testing tracks, review, and release. |
+| 6 | `lost-device-data-wipe.mdx` | Administrator-only Digital.ai/Apperian procedure, exact user/device/application selection, policy evaluation, local-data scope, user notification, and outcome verification. |
+
+Read **Signing & Release Approval** next, then the page for your destination. Use **Lost-Device Data Wipe** only for the authorized administrator procedure.
+
+Store pages explain requirements, handoff, console actions, and verification. The approved deployment step YAML remains in [Delivery & Verification](../cicd/delivery-and-verification.mdx); protected workflow credential binding remains in [Signing & Credentials](../cicd/signing-and-credentials.mdx).
+
+## 3. Confirm ownership and approval
+
+| Responsibility | Required handoff |
+| :--- | :--- |
+| Developer | Correct app identity, tested source/build, supported devices, version/build, and requested release changes. |
+| Business/application owner | Intended audience, application content, country availability, and business access decisions. |
+| Release/platform owner | Approved signing, destination account, secure artifact handling, and release execution. |
+| TGRC/security approval owner | Required approval for deployment to UAT or production through the corporate process. |
+| Store/review owner | Complete store submission, review access, and destination-specific evidence. |
+
+Use the actual assigned owners. The table identifies responsibilities, not new permissions or a replacement approval workflow.
+
+Obtain formal **Technology Governance, Risk & Compliance (TGRC)** approval before deploying to UAT or production. Submit the deployment request through the approved Enterprise IT portal, complete the required request-template spreadsheet, and attach it to the request. The next page explains this handoff. A passing build or automated scan does not replace the approval.
+
+## 4. Identify your platform release inputs
+
+<Tabs>
+<TabItem label="Android">
+
+Record the package/application ID, version name, version code, source commit, and requested destination. Use the approved application ID naming convention, `com.enterprise.<app-name>`; confirm the exact identifier and environment mapping with the release owner. Preserve an existing registered application identity.
+
+For public Google Play delivery, confirm the app's **Play App Signing** configuration and the upload-key owner. The upload key and app signing key serve different purposes; do not assume an internal distribution key is the correct Play upload key. The release owner supplies the approved signing process. [Play App Signing](https://support.google.com/googleplay/android-developer/answer/9842756).
+
+If the release process accepts an unsigned build as an input, that is a secure handoff **to the authorized signer**, not a file ready to upload to Play. Follow [Signing & Credentials](../cicd/signing-and-credentials.mdx).
+
+</TabItem>
+<TabItem label="iOS">
+
+Record the bundle ID, app version, build number, source commit, supported devices, and destination. Confirm the exact approved `com.enterprise.<app-name>` identifier; do not rename an existing registered app merely to match a sample.
+
+Keep internal in-house signing separate from App Store signing. The release/platform owner binds the correct account, distribution identity, provisioning, and export configuration. Request required signing resources through the approved internal service process; do not share raw private keys or certificates in PRs or chats.
+
+App Store Connect accepts supported upload methods including Xcode and Transporter. Upload processing must finish before the build is available for the subsequent submission/testing steps. [Apple build uploads](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds).
+
+</TabItem>
+<TabItem label="React Native">
+
+Prepare **two native release identities** when delivering both platforms:
+
+| Android | iOS |
+| :--- | :--- |
+| Application ID, version name/code, approved signed artifact and destination. | Bundle ID, app version/build, approved archive/export and destination. |
+
+A JavaScript bundle or Metro build is not an Android/iOS store binary. Apply each platform's signing and store requirements independently. Preserve the exact JS bundle/source maps and native symbols associated with the shipped version for [crash investigation](../observability/monitoring-and-troubleshooting.mdx).
+
+</TabItem>
+</Tabs>
+
+## 5. Prepare the release request
+
+Use this short preparation record to gather the information needed by the release owner. It supplements the required request-template spreadsheet; it does not replace that form or define a deployment API. Use approved access-controlled references rather than passwords or private download URLs.
+
+```text
+Application: [Approved name]
+Audience and destination: [Internal QA/UAT/PROD or named public-store track/release]
+Platform: [Android / iOS; separate records when identities differ]
+Application ID / Bundle ID: [Actual identifier]
+Version and build/code: [Exact values]
+Source commit: [Exact commit]
+Artifact reference: [Approved access-controlled record]
+Artifact SHA-256: [Hash of the actual handoff artifact]
+Signing owner/status: [Authorized owner and verified status]
+Required approval: [TGRC/release record and state]
+Listing/content owner: [Responsible owner]
+Reviewer access: [Approved secure reference, if required; never the password]
+Requested countries/audience: [Approved scope]
+Test/release evidence: [Access-controlled records]
+Unresolved items: [Specific gaps and owners]
+```
+
+On macOS, compute a hash without uploading the artifact:
+
+```bash
+ARTIFACT_PATH='REPLACE_WITH_ACTUAL_HANDOFF_ARTIFACT_PATH'
+test -s "$ARTIFACT_PATH" && shasum -a 256 "$ARTIFACT_PATH"
+```
+
+Record the hash for the artifact at that stage. Signing, re-signing, or repackaging can change it; link subsequent artifacts to their own identities. A hash does not prove correct signing, approval, or store acceptance.
+
+**Attach screenshot — sanitized release handoff and approval state, with credentials/private links hidden.**
+
+## 6. Follow the release journey
+
+<MermaidZoom title="Build success and user-visible delivery are different milestones">
+
+```mermaid
+flowchart TD
+    A["Identify audience and store destination"] --> C["Prepare app identity, release information and signing handoff"]
+    C --> B["Complete required request and approvals before UAT / production deployment"]
+    B --> D["Upload through the authorized route"]
+    D --> E["Confirm processing and destination status"]
+    E --> F{"Internal or public store?"}
+    F -->|Internal| G["Verify signing, enabled version and assigned audience"]
+    F -->|Public| H["Complete required testing, review and release controls"]
+    G --> I["Verify exact version is available to the intended user"]
+    H --> I
+    classDef prepare fill:#172554,stroke:#93c5fd,color:#fff;
+    classDef delivery fill:#4c1d95,stroke:#d8b4fe,color:#fff;
+    classDef decision fill:#713f12,stroke:#fde047,color:#fff;
+    classDef verified fill:#064e3b,stroke:#6ee7b7,color:#fff;
+    class A,B,C prepare;
+    class D,E,G,H delivery;
+    class F decision;
+    class I verified;
+```
+
+</MermaidZoom>
+
+1. Confirm the audience, environment/store, exact application identifier, and release owner.
+2. Prepare the platform artifact handoff and the metadata/assets required by the selected store page.
+3. Complete the certificate/deployment requests and required approvals before deployment to UAT or production.
+4. The authorized release process uploads the identified candidate and completes destination processing.
+5. Verify the resulting version and intended user access at that destination.
+
+Confirm the exact application, version/build, environment/track, and intended audience at the destination. Internal distribution requires the correct enabled version and access assignment; public stores have their own processing, review, testing, and release states.
+
+If a result is missing or uncertain, record it as **unverified**. Do not infer public availability from TestFlight, Google Play internal testing, or a green Bitrise build. Preserve partial results and follow [Safe Recovery](../cicd/troubleshooting-and-recovery.mdx) rather than blindly repeating an external write.
+
+Review duration varies; plan using the actual submission status and current store guidance. Do not promise a fixed Apple or Google review completion date.
+
+**Expected result:** you know the destination, responsible owner, required approval route, and platform/store information to prepare. If any of those is unknown, resolve it with the responsible owner before requesting deployment.
+
+**Next file:** `signing-and-release-approval.mdx` — certificate requests, signing ownership, TGRC approval, and the release handoff.
+
+
+
+_________________________
+
+
+
+
+
+
+---
+title: "Signing & Release Approval"
+description: "Request the correct signing setup, complete the TGRC deployment request and spreadsheet, and hand the identified candidate to the authorized release owner."
+sidebar:
+  label: Signing & Release Approval
+  order: 2
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+**Starting point:** you know the application, target audience, environment, and destination from [Start Here](./index.mdx).
+
+**Outcome:** the release owner has the correct signing request, required deployment approval, completed request spreadsheet, and identified candidate for the selected destination.
+
+> **Confidential — Enterprise internal use only.** Keep internal request links, artifacts, credentials, and approval evidence in approved systems. Never attach private keys, keystore passwords, signing credentials, or reviewer passwords to source, PRs, screenshots, or AI prompts.
+
+## 1. Identify the destination and application
+
+Before raising a request, record:
+
+| Information | What to confirm |
+| :--- | :--- |
+| Audience | Employees, QA team, business UAT users, or external users. |
+| Environment/store | Internal QA/UAT/production, Google Play, or Apple App Store Connect. |
+| Application identity | Exact Android application ID or iOS bundle ID, including the approved environment mapping. |
+| Candidate | Source commit, app version, and platform build number/version code. |
+| Owner | The authorized release/platform owner handling signing and deployment. |
+
+The documented naming convention is `com.enterprise.<app-name>`. Confirm the exact registered identifier and permitted suffixes with the owner; do not rename an existing application or invent an environment mapping to fit an example.
+
+**Expected result:** the request identifies one application and a specific destination. If either is unknown, resolve it with the application/release owner before requesting a certificate.
+
+## 2. Confirm which signing setup is required
+
+<Tabs>
+<TabItem label="Android">
+
+Enterprise Android signing is centrally managed by the release/platform owner. Use the approved existing signing identity; developers must not generate a replacement release key as a setup workaround.
+
+| Destination | Owner must confirm |
+| :--- | :--- |
+| Internal store | Application ID, APK signing identity, and any App Management signing requirements. |
+| Google Play | Application ID, AAB/upload requirements, registered upload certificate, and Play App Signing configuration. |
+
+A centrally maintained distribution identity does not make the Play **upload key** and **app signing key** interchangeable. With Play App Signing, the upload key signs the submitted bundle and Google Play signs delivered APKs with the app signing key. Confirm the actual configuration for this app before using a key. [Play App Signing](https://support.google.com/googleplay/android-developer/answer/9842756).
+
+If the release manager requests an unsigned APK/build, transfer it through the approved secure handoff. That input still needs the destination's approved signing process; it is not a ready-to-upload Play candidate.
+
+</TabItem>
+<TabItem label="iOS">
+
+Choose the signing path by destination:
+
+| Destination | Owner must confirm |
+| :--- | :--- |
+| Internal in-house distribution | Enterprise account/team, compatible distribution certificate/profile, entitlements, and export method. |
+| Public App Store / TestFlight | Appropriate Apple Developer team, store-compatible distribution signing/profile configuration, entitlements, and export method. |
+
+A certificate alone is insufficient: the signing identity includes its private key, and the app/extension identifiers, team, entitlements, profiles, and distribution method must agree. The authorized owner manages these resources. [Apple certificate overview](https://developer.apple.com/help/account/certificates/certificates-overview/).
+
+An App Store Connect API key authorizes supported account/upload operations; it does not replace application code signing. Use the platform-owned credential integration described in [CI/CD App Signing](../cicd/signing-and-credentials.mdx).
+
+</TabItem>
+<TabItem label="React Native">
+
+Complete both native paths when releasing both platforms. React Native does not have one shared release certificate.
+
+```text
+One application source revision
+├── Android: application ID + version code + approved Android signing
+└── iOS: bundle ID + build number + approved Apple signing/export
+```
+
+Record results separately. A signed Android package does not establish that iOS signing is ready. Keep credentials out of JavaScript, Redux state, Metro configuration, and committed environment files.
+
+</TabItem>
+</Tabs>
+
+## 3. Request the certificate/signing setup
+
+**Developer or assigned request author:**
+
+1. Open the approved **Enterprise IT service portal** using the internal link supplied by the release/platform owner.
+2. Open the certificate request route designated for the application and deployment target.
+3. Provide the platform, exact application identifier, environment/destination, and responsible owner. Complete the actual required portal fields.
+4. Record the request reference and follow its status through the portal.
+5. Ask the authorized signing owner to confirm the resulting identity and protected build-workflow binding before selecting a release workflow.
+
+Do not invent a portal URL, form field, or request type from the examples. If the link/form is unavailable, obtain it from the responsible owner. The protected certificate-request link belongs in the approved internal portal/document configuration, not in a public example.
+
+**Expected result:** an owner-confirmed signing setup for the intended destination. A submitted request or a downloaded public certificate alone does not establish readiness.
+
+**Attach screenshot — certificate request route and sanitized request/status, with internal links and credential details hidden.**
+
+## 4. Obtain TGRC approval and submit the deployment request
+
+Every application requires formal **Technology Governance, Risk & Compliance (TGRC)** approval before deployment to **UAT or production**. Keep that approval distinct from code review, automated security results, and store review.
+
+1. Obtain the current deployment request-template spreadsheet through the approved Enterprise IT request process or responsible owner.
+2. Complete **all required fields in that actual template**. Use the same app identity, destination, and release details as the signing handoff.
+3. Open the deployment request in the Enterprise IT portal and complete its required form fields.
+4. Attach the completed spreadsheet directly to the request. Use approved references for binaries and test/release evidence; do not put secrets into the spreadsheet.
+5. Record the deployment request reference and the TGRC approval reference/state through the established process.
+6. Confirm formal approval covers the intended UAT/production deployment before the authorized release process proceeds. Resolve questions or requested corrections with the assigned owner.
+
+This guide does not define spreadsheet columns, portal routing, or TGRC evidence requirements beyond the actual supplied form. Use the current form; do not replace it with a homemade YAML file or the preparation record below.
+
+| State | What it means |
+| :--- | :--- |
+| Request submitted | A request exists; approval has not been established. |
+| Additional information requested | Complete the requested correction through the existing process. |
+| Required approval recorded | Confirm its scope matches the intended deployment before release. |
+| Approval missing, rejected, or unclear | Do not proceed to UAT/production deployment; resolve with the responsible owner. |
+
+**Attach screenshot — completed template structure and approval status, with sensitive fields and private links hidden.**
+
+## 5. Prepare the secure release handoff
+
+Use this copyable record to communicate with the authorized release owner. It **supplements the required spreadsheet**, not replaces it. Complete one platform record per native candidate where values differ.
+
+```text
+Application: [Approved app name]
+Platform: [Android / iOS]
+Application ID / Bundle ID: [Exact registered identifier]
+Audience and environment: [QA / UAT / production and intended users]
+Destination: [Internal store / Play track / App Store Connect route]
+Source commit: [Exact revision]
+Version and build/code: [Actual package values]
+Signing request: [Approved internal request reference]
+Signing readiness: [Owner-confirmed identity/status or unresolved]
+Deployment request: [Approved internal request reference]
+Request spreadsheet: [Completed template attachment reference]
+TGRC approval: [Approval reference, scope, and actual state]
+Artifact: [Approved secure transfer reference; no raw private download URL]
+Artifact SHA-256: [Hash of this exact handoff file]
+Test/security evidence: [Approved access-controlled references]
+Release owner: [Responsible owner]
+Unresolved items: [Specific gaps and owners]
+```
+
+Transfer binaries using the approved Enterprise file-transfer service, such as the approved Syncplicity route where applicable. Obtain the authorized destination and recipient from the release owner. Do not copy a private artifact URL or signing password into a PR to make the handoff easier.
+
+On macOS, identify the actual handoff file with:
+
+```bash
+# Replace the path before running. This only reads the local artifact.
+ARTIFACT_PATH='REPLACE_WITH_ACTUAL_HANDOFF_FILE_PATH'
+if [ -s "$ARTIFACT_PATH" ]; then
+  shasum -a 256 "$ARTIFACT_PATH"
+else
+  echo 'Handoff artifact is missing or empty.' >&2
+fi
+```
+
+A hash identifies file contents, not the signer, application identity, or approval state. Signing/re-signing changes the candidate; preserve the relationship between input and output and record the final artifact's own identity.
+
+## 6. Confirm readiness before delivery
+
+<MermaidZoom title="Requests, signing readiness and approval must match the deployment">
+
+```mermaid
+flowchart TD
+    A["Confirm application identity and destination"] --> B["Request owner-managed signing setup"]
+    A --> C["Complete deployment spreadsheet and portal request"]
+    B --> D["Owner confirms compatible signing and protected binding"]
+    C --> E["Record required TGRC approval before UAT / production"]
+    D --> F["Identify exact candidate and secure handoff"]
+    E --> F
+    F --> G{"Identity, signing and approvals match?"}
+    G -->|No or unknown| H["Resolve with the responsible owner"]
+    G -->|Yes| I["Authorized delivery and destination verification"]
+    classDef request fill:#172554,stroke:#93c5fd,color:#fff;
+    classDef readiness fill:#4c1d95,stroke:#d8b4fe,color:#fff;
+    classDef decision fill:#713f12,stroke:#fde047,color:#fff;
+    classDef done fill:#064e3b,stroke:#6ee7b7,color:#fff;
+    class A,B,C request;
+    class D,E,F readiness;
+    class G,H decision;
+    class I done;
+```
+
+</MermaidZoom>
+
+The release owner confirms that signing, approval scope, artifact, application identity, and destination agree. Developers use the approved workflow rather than uploading production signing credentials manually.
+
+| Need | Follow |
+| :--- | :--- |
+| Protected signing workflow YAML and output verification | [CI/CD App Signing](../cicd/signing-and-credentials.mdx). |
+| Automated upload steps and exact-version verification | [Delivery & Verification](../cicd/delivery-and-verification.mdx). |
+| Uncertain external write or partial release | [Troubleshooting & Safe Recovery](../cicd/troubleshooting-and-recovery.mdx). |
+
+Store review is a separate process after the applicable submission. Do not treat an internal approval as Apple/Google acceptance or promise a fixed review completion date. Apple uploads also require processing before they become available for subsequent steps. [Apple build processing](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds).
+
+**Expected result:** the authorized release owner has a complete, consistent handoff and the required approval before deployment. Missing approval, incompatible signing, or an uncertain artifact identity must be resolved before proceeding.
+
+**Next file:** `enterprise-app-store.mdx` — internal environments, entitlement access, installation, and application visibility.
+
+
+
+
+-----------------------
+
+
+
+---
+title: "Enterprise App Store"
+description: "Choose the internal QA, UAT, or production catalog, request business access, install the store client, and verify the intended application version."
+sidebar:
+  label: Enterprise App Store
+  order: 3
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Use the Enterprise App Store for **internal employee applications**. This page explains store access, client installation, and application visibility. It does not publish a build or create a new application.
+
+**Starting point:** the application owner has identified the environment and intended audience. UAT/production deployments follow [Signing & Release Approval](./signing-and-release-approval.mdx).
+
+**Outcome:** an intended user can open the correct catalog, find the approved application, and install/launch the intended version on a supported device.
+
+> **Confidential — Enterprise internal use only.** Obtain portal links and QR codes through approved internal channels. Keep user/device details, access records, and private download links protected. Redact screenshots before sharing them.
+
+## 1. Select the correct environment
+
+| Store | Intended audience | Where to obtain its link/QR |
+| :--- | :--- | :--- |
+| QA | Development and QA teams testing internal builds. | Approved QA store entry supplied by the platform/store owner. |
+| UAT | Business stakeholders validating a release candidate. | Approved UAT portal or its designated QR code. |
+| Production | Employees using released internal applications. | Approved production portal or its designated QR code. |
+
+1. Confirm the application name, environment, and intended version with the application/release owner.
+2. Obtain that environment's current approved portal link or QR code.
+3. Check the destination before opening/installing. Do not substitute a production link for a UAT link or reuse an unverified shortened URL.
+
+A visible application with the same display name in another environment is not proof that the intended candidate was distributed. The QA/UAT catalog is also separate from TestFlight and Google Play internal testing.
+
+**Attach screenshot — environment selection and approved portal entry, with private URLs and QR contents hidden in shared copies.**
+
+## 2. Request business-application access
+
+| Application access type | Process |
+| :--- | :--- |
+| Designated for all employees | No individual business-application entitlement group assignment is required under the documented general-access model. Other account/device/store requirements still apply. |
+| Restricted business application | Request the application's access through the Enterprise identity/access portal. The business application owner and Identity Management team maintain the appropriate groups and entitlements. |
+
+For a restricted application:
+
+1. Open the approved Enterprise identity/access portal.
+2. Select the actual application entitlement. If you cannot identify it, ask the business/application owner; do not choose a similarly named group.
+3. Complete the request using the portal's required fields and submit it through the established approval process.
+4. Follow the request status. Submission alone is not approval or proof that assignment has completed.
+5. After access is approved and provisioned, open the correct store with the intended user account and check application visibility.
+
+If the application is still absent, give the owner the approved request reference, environment, application identity, and observed result. The owner/Identity Management team must confirm the actual assignment and audience mapping. Do not grant yourself group membership as a workaround.
+
+**Expected result:** the authorized user's catalog shows the intended application. General employee access does not imply anonymous access or permission to distribute externally.
+
+**Attach screenshot — sanitized entitlement request/status and intended-user catalog entry.**
+
+## 3. Install the Enterprise App Store client
+
+Follow these steps on the **target mobile device**, not on your development Mac:
+
+1. Open the device's web browser.
+2. Enter the approved portal URL for the selected environment, or scan its designated QR code.
+3. Follow the approved sign-in prompts if presented. Confirm the portal/environment before continuing.
+4. Tap **Install** for the Enterprise App Store client and follow the platform's approved installation prompts.
+5. Return to the home screen and allow installation to complete. Do not treat an icon/download placeholder as a completed installation.
+6. Open the installed client. Confirm the environment and sign in with the intended Enterprise account where required.
+
+The client is the entry point to the catalog; installing it does not automatically install every application or grant business entitlements.
+
+If installation is blocked by device policy, certificate verification, or an unfamiliar permission prompt, record the message and contact the device/store owner. Do not disable device protection or install an unrelated profile to bypass the block.
+
+**Attach screenshot — approved Install action and completed store-client icon, with internal details hidden.**
+
+## 4. Complete platform-specific setup
+
+<Tabs>
+<TabItem label="Android">
+
+Use the approved Android device and portal installation process. If the browser or device-management policy blocks installation, follow the device owner's instructions for that exact application; do not enable unrestricted installation globally.
+
+After opening the catalog:
+
+1. Find the intended application in the selected environment.
+2. Inspect its displayed version/build where available, then use its install/update action.
+3. Launch the application and verify its identity and intended version through the app's available version information or approved release evidence.
+
+**Optional developer diagnostic — authorized device with ADB already configured:**
+
+```bash
+adb devices
+
+# Replace with the installed candidate's exact application ID.
+APP_PACKAGE='REPLACE_WITH_ACTUAL_APPLICATION_ID'
+adb shell dumpsys package "$APP_PACKAGE" \
+  | sed -n '/versionCode=/p; /versionName=/p'
+```
+
+Select the intended device with `adb -s SERIAL` when multiple devices are connected. This inspects local installed-package metadata; it does not prove catalog assignment, signing approval, or publication. No output is not proof of a successful install—check the selected device and package ID. Do not enable debugging on an employee device solely to follow this user installation guide.
+
+</TabItem>
+<TabItem label="iOS">
+
+### Trust a manually installed enterprise developer
+
+If the app was installed through an approved device-management route, trust may already be established. For a **manually installed** enterprise app displaying an untrusted-developer message:
+
+1. Close the warning and open **Settings → General → VPN & Device Management**.
+2. Under **Enterprise App**, select the expected developer identity confirmed by the store/device owner.
+3. Follow the trust prompt. On iOS/iPadOS 18 and later, this can require **Allow & Restart**, followed by the on-screen completion steps after restart.
+4. Keep the device connected to the network so Apple can verify the developer certificate, then reopen the app.
+
+Trust only the expected Enterprise identity. If verification fails or the identity differs, ask the store/device owner to investigate. [Apple enterprise-app installation and trust](https://support.apple.com/en-us/118254).
+
+### Do not confuse developer trust with root-certificate trust
+
+**Settings → General → About → Certificate Trust Settings** controls trust for installed root certificates used for SSL/TLS. It is not the enterprise-app developer-trust procedure above. Change root-certificate trust only when the authorized device administrator explicitly requires it for the approved profile. [Apple certificate-profile trust](https://support.apple.com/en-us/102390).
+
+Once the catalog and application open, verify the intended environment and application version. A trusted developer does not establish business access or prove the correct build was installed.
+
+**Attach screenshot — expected developer entry and trust flow, with private identity details hidden.**
+
+</TabItem>
+<TabItem label="React Native">
+
+The user installs the platform-native application, not a Metro session or standalone JavaScript bundle.
+
+| Device | Apply |
+| :--- | :--- |
+| Android | Android catalog installation, device policy, application ID, and version-code verification. |
+| iPhone/iPad | iOS installation/trust requirements, bundle identity, and version/build verification. |
+
+Verify Android and iOS independently when both are distributed. The same product name or source commit does not prove both platform routes published successfully. No npm package or React Native code change is needed merely to install an already published app from the catalog.
+
+</TabItem>
+</Tabs>
+
+## 5. Verify visibility, installation, and launch separately
+
+<MermaidZoom title="An intended user must receive the intended version">
+
+```mermaid
+flowchart TD
+    A["Select QA / UAT / production"] --> B["Use approved portal and intended account"]
+    B --> C["Install and open the store client"]
+    C --> D{"Application visible?"}
+    D -->|No| E["Check environment, entitlement and audience assignment"]
+    D -->|Yes| F["Inspect intended application and version"]
+    F --> G["Install / update through the approved route"]
+    G --> H["Complete platform trust or device requirements"]
+    H --> I["Launch and verify exact version"]
+    classDef setup fill:#172554,stroke:#93c5fd,color:#fff;
+    classDef catalog fill:#4c1d95,stroke:#d8b4fe,color:#fff;
+    classDef decision fill:#713f12,stroke:#fde047,color:#fff;
+    classDef done fill:#064e3b,stroke:#6ee7b7,color:#fff;
+    class A,B,C setup;
+    class F,G,H catalog;
+    class D,E decision;
+    class I done;
+```
+
+</MermaidZoom>
+
+Record what you actually observed:
+
+```text
+Application: [Approved name and actual application identifier]
+Store environment: [QA / UAT / production]
+Platform: [Android / iOS]
+Expected version/build: [Release-owner-confirmed values]
+Catalog visibility: [Visible / absent / unverified]
+Installed version/build: [Observed values or unverified]
+Launch result: [Observed result]
+Business entitlement: [Approved reference if required; no group dumps]
+Observed time: [Time and time zone]
+Evidence: [Approved access-controlled record]
+Unresolved issue: [Message/category and responsible owner]
+```
+
+A catalog entry proves visibility, not successful installation. Launching an old installed version does not prove the new candidate reached the device. Use the [CI/CD delivery evidence](../cicd/delivery-and-verification.mdx) to reconcile the exact version with the release owner.
+
+**Attach screenshot — sanitized catalog version and installed-app version/launch evidence.**
+
+## 6. Resolve access and installation problems
+
+| Observation | Inspect / responsible owner |
+| :--- | :--- |
+| Portal or QR route is unknown/unavailable | Obtain the approved current environment entry from the platform/store owner. |
+| Store client installs but the app is absent | Check environment/account, entitlement provisioning, audience assignment, and version enablement with the application/identity/store owners. |
+| Access request approved but app still absent | Have Identity Management confirm assignment and the application owner confirm the mapping; approval alone does not prove provisioning. |
+| App visible but install fails | Capture the sanitized message and device/OS details for the store/device owner. Do not delete the app and its data as an assumed fix. |
+| iOS reports untrusted/not verified developer | Check the expected developer identity, approved trust flow, and network verification with the device/store owner. |
+| Installed app opens at an older version | Compare the actual build with the intended published version and the update route; do not infer success from the display name. |
+| Wrong audience receives a build | Report it to the application/platform owner through the approved process. Do not broaden access to solve another user's visibility issue. |
+
+Lost/stolen-device handling belongs in `lost-device-data-wipe.mdx`. Users and developers do not execute an administrator's Clear Data operation as an installation troubleshooting step.
+
+**Next file:** `apple-app-store.mdx` — public Apple listing requirements, secure IPA handoff, upload, review, and release verification.
+
+
+
+
+-------------------------
+
+
+---
+title: "Apple App Store"
+description: "Prepare Apple listing information and assets, hand over the signed IPA, upload with Transporter, and verify review and release separately."
+sidebar:
+  label: Apple App Store
+  order: 4
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Use this page for the **public Apple App Store** route. TestFlight testing and public release are separate outcomes. Internal in-house applications follow [Enterprise App Store](./enterprise-app-store.mdx).
+
+**Before starting:** confirm the app identity, authorized release owner, and required approvals in [Signing & Release Approval](./signing-and-release-approval.mdx).
+
+**Outcome:** complete listing/review information is associated with the correct processed build, then the approved version is released and verified in its intended storefronts.
+
+> **Confidential — Enterprise internal use only.** Transfer the signed IPA through approved secure channels. Keep signing credentials and reviewer passwords out of source, documentation, PRs, screenshots, and ordinary handoff text. The authorized submission owner enters required reviewer credentials into the appropriate restricted review fields.
+
+## 1. Identify the application and store record
+
+1. Confirm the exact bundle ID, app version, build number, supported devices, and source revision with the release owner.
+2. Open the intended Enterprise team/provider in **App Store Connect** and locate the existing application.
+3. For a new app, the authorized owner creates the app record with the approved platform, name, primary language, bundle ID, and unique SKU. Do not create a duplicate record for an update.
+4. Match the record's bundle ID to the candidate. The documented identifier convention is `com.enterprise.<app-name>`; preserve the actual registered identity.
+
+A **SKU** is the app's internal tracking identifier, not its bundle ID or Apple-generated numeric app ID. Confirm a unique approved SKU; do not reuse one shared default across different app records. It cannot be edited after the app record is saved. [Create an app record](https://developer.apple.com/help/app-store-connect/create-an-app-record/add-a-new-app/), [Apple SKU definition](https://developer.apple.com/help/glossary/sku/).
+
+**Attach screenshot — intended provider/app record and sanitized application identity.**
+
+## 2. Prepare product-page information
+
+Complete the actual App Store Connect fields for each supported localization. The business/content owner approves public text; developers verify that it describes the shipped functionality.
+
+| Information | What to prepare |
+| :--- | :--- |
+| App name / store display name | Exact approved public name; Apple's limit is 2–30 characters. |
+| Subtitle | Short summary, up to 30 characters. |
+| Keywords | Relevant search terms; Apple's version-information reference allows up to 100 bytes. Do not treat bytes as characters for every language. |
+| Description | Plain-text feature/functionality description, up to 4,000 characters. |
+| Primary language/localizations | Approved primary language and translated listing content. |
+| Supported devices | Actual iPhone/iPad support declared by the application, matching its listing assets. |
+| Privacy policy URL | Live, publicly accessible approved policy applicable to the app. |
+| Support URL | Working support page with actual contact information, as required by Apple. |
+| Countries/regions | Explicit approved availability; do not select every storefront by default. |
+| Copyright | Approved year and legal entity name. |
+
+[App information and field limits](https://developer.apple.com/help/app-store-connect/reference/app-information/app-information/), [version metadata and keywords](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information).
+
+Use this **preparation record**, not an executable upload schema:
+
+```text
+App Store name: [Approved exact display name]
+Subtitle: [Approved localized text]
+Keywords: [Approved localized search terms]
+Description: [Approved localized feature description]
+Primary language: [Actual locale]
+Additional listing languages: [Approved locales]
+Supported devices: [iPhone / iPad / both, matching the binary]
+SKU: [Approved unique value; existing value for updates]
+Privacy policy URL: [Approved live public policy]
+Support URL: [Approved live public support page]
+Countries/regions: [Approved availability]
+Copyright: [Year and legal entity]
+Content owner: [Responsible owner]
+```
+
+**Expected result:** the release owner has all listing content and knows who approved it. Unfilled fields remain unresolved; sample text must not be submitted as production metadata.
+
+## 3. Prepare screenshots, previews, and icons
+
+### Screenshots and app previews
+
+1. Review the current [Apple screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications) for the app's supported device families and required display sizes.
+2. Capture the actual candidate's representative screens with synthetic data. Include the required device/localization variants.
+3. Prepare **at least four screenshots per target device family** for the Enterprise release handoff. This is the documented internal preparation requirement; Apple's general minimum is one and its maximum is ten screenshots per device size.
+4. Use accepted JPEG/JPG/PNG dimensions and formats without transparency, and provide the intended display order. Check required display sizes in the current specification rather than scaling an arbitrary image to fit.
+5. If providing optional previews, prepare up to **three per supported device size and language**, following Apple's video specifications.
+6. The authorized owner uploads assets into the matching device-size/localization sections of the selected version.
+
+[Upload and order screenshots/previews](https://developer.apple.com/help/app-store-connect/manage-app-information/upload-app-previews-and-screenshots/), [preview specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/app-preview-specifications).
+
+On macOS, inspect an image before handoff:
+
+```bash
+SCREENSHOT_PATH='REPLACE_WITH_ACTUAL_SCREENSHOT_PATH'
+sips -g pixelWidth -g pixelHeight -g format -g hasAlpha "$SCREENSHOT_PATH"
+```
+
+Compare the output to the required Apple specification for that image's device-size slot. This command inspects properties; it does not certify visual quality, privacy, or App Store acceptance.
+
+### App icons and interface quality
+
+Use the approved icon assets and the current platform/toolchain asset workflow. Do not bake in an extra rounded mask or submit a screenshot as an app icon. Check appearances, safe content placement, and target requirements against [Apple app icon guidance](https://developer.apple.com/design/human-interface-guidelines/app-icons).
+
+Review the application's navigation, layout, and accessibility against [Apple Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/). Listing images must accurately represent the submitted app.
+
+Suggested secure handoff organization—these are documentation folders, not a required upload format:
+
+```text
+<approved-release-handoff>/
+├── listing/                  # Approved localized text and release notes
+├── screenshots/<locale>/    # Device-size groups and display order
+├── previews/<locale>/       # Optional videos
+├── icon-reference/          # Approved asset/design reference
+└── release-record.txt       # Identity, approvals, secure artifact reference
+```
+
+Keep the IPA in the approved artifact-transfer location. Do not add credentials or private keys to this handoff directory.
+
+**Attach screenshot — sanitized localized product-page preview, device-size assets, and display order.**
+
+## 4. Complete privacy and reviewer information
+
+### Privacy information
+
+1. Confirm the app's actual data collection/use with the application and privacy owners, including integrated third-party SDKs.
+2. Enter the approved **App Privacy** answers in App Store Connect and confirm the policy URL is accessible.
+3. Verify relevant permission-purpose strings, privacy manifests/SDK requirements, and tracking declarations against the app's behavior and current Apple requirements. Do not declare “no data collected” solely because custom app logs are empty.
+
+Privacy labels, privacy manifests, permission prompts, and tracking permission are different requirements; one does not automatically satisfy all the others. [Apple App Privacy Details](https://developer.apple.com/app-store/app-privacy-details/), [manage privacy answers](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/).
+
+### Review access and notes
+
+1. Provide a dedicated, active, unlocked test account when sign-in is required for review. Use approved test data and access sufficient to inspect the submitted functionality.
+2. Verify the account works against the submitted build and review environment. Explain any special access steps or configuration in review notes.
+3. Give the authorized submission owner the credentials through the approved secure channel. Enter them in the appropriate App Review sign-in fields, not in a public listing or screenshot.
+4. Provide a short feature walkthrough and any reviewer instructions needed to reach the relevant screens.
+
+[Apple App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/), [review information fields](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information).
+
+**Attach screenshot — sanitized privacy/review sections, with all credentials hidden.**
+
+## 5. Verify and transfer the signed IPA
+
+<Tabs>
+<TabItem label="Android">
+
+An Android APK/AAB cannot be uploaded as an iOS build. Follow the Google Play page for that platform. Apple listing preparation applies only when the product also has a separately built iOS application.
+
+</TabItem>
+<TabItem label="iOS">
+
+Use the approved device archive/export and signing process. Preserve the exact bundle ID, version/build, signing evidence, symbols, source commit, and approval references.
+
+If you have the actual archived `.app` locally, inspect its identifiers on macOS:
+
+```bash
+APP_BUNDLE='REPLACE_WITH_ACTUAL_ARCHIVED_APP_BUNDLE_PATH'
+/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_BUNDLE/Info.plist"
+/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_BUNDLE/Info.plist"
+/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_BUNDLE/Info.plist"
+```
+
+Match these values to the exported IPA's release evidence. Inspecting one archive does not prove a different IPA came from it. Use [CI/CD App Signing](../cicd/signing-and-credentials.mdx) for signing verification.
+
+</TabItem>
+<TabItem label="React Native">
+
+Use the **iOS native archive/export** from the approved workflow. A Metro bundle, Android build, or successful TypeScript check does not establish iOS signing or upload readiness.
+
+Apply the iOS identity verification above. Retain matching JavaScript source maps and native dSYMs for the shipped iOS version. Use [Datadog symbol guidance](../observability/datadog-mobile-integration.mdx) for the protected upload integration.
+
+</TabItem>
+</Tabs>
+
+Transfer the identified signed IPA to the release team using the approved Syncplicity route or other authorized Enterprise file-transfer service. Include the completed listing/assets, release/approval record, and secure reviewer-access reference. Do not create an unrestricted public download link.
+
+## 6. Upload using Transporter or the approved automation
+
+The authorized owner selects **one approved upload route** for this candidate. Do not manually upload a duplicate merely because an automated upload has an uncertain result.
+
+### Transporter on macOS
+
+1. Install/open Apple's **Transporter** application from the Mac App Store through the approved workstation process.
+2. Sign in with the authorized account and confirm the intended provider/team where applicable.
+3. Add the identified signed IPA using Transporter's file-add flow.
+4. Review validation messages. Resolve the actual signing, package, or metadata error rather than suppressing it.
+5. Use the delivery action to upload. Record the delivery status and inspect errors/warnings.
+6. Open the intended app in App Store Connect and wait for processing to complete. Match the processed build to the bundle ID, version, and build number.
+
+Transporter supports IPA delivery; Apple also supports Xcode and other documented upload methods. [Apple upload methods and processing](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds), [Transporter submission guide](https://support.apple.com/en-in/guide/transporter-app/apdac1c9a477/mac).
+
+### Existing Bitrise upload
+
+Use the approved App Store Connect credential binding and deployment workflow from [CI/CD Delivery & Verification](../cicd/delivery-and-verification.mdx). That page owns the deployment YAML; do not introduce another credential-upload procedure here.
+
+An upload configured to skip metadata/screenshots still needs complete store metadata/assets through the approved submission process. Disabling automatic review submission does not automatically assign testers or publish the app.
+
+**Attach screenshot — sanitized delivery result and matching processed build in App Store Connect.**
+
+## 7. Submit for review and verify release
+
+<MermaidZoom title="A processed build must still complete review and release">
+
+```mermaid
+flowchart TD
+    A["Approved identity, signing and release handoff"] --> B["Complete listing, assets, privacy and review access"]
+    B --> C["Upload IPA through the approved route"]
+    C --> D["Confirm exact processed build"]
+    D --> E["Select build and approved release option"]
+    E --> F["Add for Review, then Submit for Review"]
+    F --> G["Monitor review and address the actual feedback"]
+    G --> H["Complete approved release control"]
+    H --> I["Verify intended version and countries / audience"]
+    classDef prepare fill:#172554,stroke:#93c5fd,color:#fff;
+    classDef upload fill:#4c1d95,stroke:#d8b4fe,color:#fff;
+    classDef review fill:#713f12,stroke:#fde047,color:#fff;
+    classDef done fill:#064e3b,stroke:#6ee7b7,color:#fff;
+    class A,B prepare;
+    class C,D upload;
+    class E,F,G review;
+    class H,I done;
+```
+
+</MermaidZoom>
+
+1. The authorized submission owner selects the app/version and the correct processed build.
+2. Complete the remaining required App Store Connect sections, including any applicable compliance and availability information. Resolve validation issues using the real form requirements.
+3. Choose the approved version-release option, such as manual release when required by the release plan. Do not enable immediate public release without the applicable authorization.
+4. Select **Add for Review**, inspect the submission, then select **Submit for Review**. Adding an item to a draft submission alone does not send it to Apple review.
+5. Monitor the actual submission status and respond to review feedback. Do not promise a fixed review duration.
+6. After acceptance, complete the configured release action and verify the public product page and intended version in the selected countries/regions. Confirm install/launch where required by acceptance.
+
+[Submit an app](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-app/), [version release options](https://developer.apple.com/help/app-store-connect/manage-your-apps-availability/select-an-app-store-version-release-option/).
+
+| Observed state | What remains |
+| :--- | :--- |
+| Transporter/CI upload succeeded | Confirm processing and exact build association. |
+| Build available in TestFlight | Configure/verify intended tester access; public release is still separate. |
+| Added for Review | Complete the actual submission action. |
+| Review accepted | Complete the selected release control if still pending. |
+| Public product page visible | Verify version, countries/audience, and required installation/launch evidence. |
+
+**Attach screenshot — sanitized submission/release status and intended storefront version.**
+
+**Expected result:** the approved version is available through the intended Apple route, with its actual processing, review, release, and visibility evidence recorded separately.
+
+**Next file:** `google-play.mdx` — Android listing requirements, signing handoff, upload, review, and release verification.
+
+
+
+
+-------------------------
+
+
+
+---
+title: "Google Play"
+description: "Prepare an Android listing and signed release, configure reviewer/tester access, and verify the approved Play track and version."
+sidebar:
+  label: Google Play
+  order: 5
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Use this page for Android distribution through **Google Play**. Internal testing on Play is separate from the [Enterprise App Store](./enterprise-app-store.mdx).
+
+**Before starting:** confirm the application ID, destination track, authorized release owner, and required approvals in [Signing & Release Approval](./signing-and-release-approval.mdx).
+
+**Outcome:** the approved Android version reaches its intended Play testers or production audience, with signing, review, rollout, and visibility verified separately.
+
+> **Confidential — Enterprise internal use only.** Keep release keys, service-account JSON, reviewer passwords, tester lists, binaries, and private access links in approved systems. Redact screenshots. Enter required review credentials only through the approved secure handoff and restricted Play review fields.
+
+## 1. Identify the app and intended track
+
+1. Open the approved **Play Console** account and locate the existing app. For a new application, the authorized owner creates its record and completes the required setup tasks.
+2. Confirm the exact Android application ID, version name, version code, source commit, and release owner.
+3. Select the intended destination with that owner:
+
+| Track | Intended use |
+| :--- | :--- |
+| Internal testing | Restricted initial testing with an approved tester audience. |
+| Closed testing | Testing by configured groups on the selected closed track. |
+| Open testing | Broader opt-in testing; requires readiness for that visibility. |
+| Production | Approved public release in the selected countries/regions. |
+
+Do not create a duplicate app record for an update. Keep the approved `com.enterprise.<app-name>` identity and actual environment mapping. A visible internal-test release does not establish a production release. [App setup](https://support.google.com/googleplay/android-developer/answer/9859152?hl=en), [testing tracks](https://support.google.com/googleplay/android-developer/answer/9845334?hl=en).
+
+**Attach screenshot — intended app and selected track, with private account/tester details hidden.**
+
+## 2. Prepare the listing information
+
+Open the app's **Store listings** area and complete the approved default/localized listing content. Follow the actual console navigation if its labels differ.
+
+| Field | Required preparation |
+| :--- | :--- |
+| App name | Approved public name, **up to 30 characters**. |
+| Short description | Summary, **up to 80 characters**. |
+| Full description | Feature/functionality description, **up to 4,000 characters**. |
+| Languages | Approved primary/default listing language and localized content. |
+| Category | The appropriate category available in Play Console, approved by the application/content owner. |
+| Privacy policy | Live public policy URL applicable to the app. |
+| Support/contact details | Actual approved user-support information required by the listing. |
+| Countries/regions | Approved availability for the selected distribution route. |
+
+Use relevant search terms naturally in accurate listing text. Do not invent a separate Apple-style keyword field for Play, or use repetitive keyword stuffing. [Play listing fields and limits](https://support.google.com/googleplay/android-developer/answer/9859152?hl=en).
+
+Copyable preparation record—not an API/upload schema:
+
+```text
+Application ID: [Exact registered package]
+Public app name: [Approved localized text; maximum 30 characters]
+Short description: [Approved localized text; maximum 80 characters]
+Full description: [Approved localized text; maximum 4,000 characters]
+Listing languages: [Approved locales]
+App category: [Actual Play Console selection]
+Privacy policy URL: [Approved live public policy]
+Support/contact information: [Approved public details]
+Track and countries/audience: [Explicit approved scope]
+Content owner: [Responsible owner]
+```
+
+## 3. Prepare graphics and screenshots
+
+| Asset | Specification |
+| :--- | :--- |
+| High-resolution store icon | **512 × 512 px**, 32-bit PNG with alpha; maximum **1,024 KB**. |
+| Feature graphic | **1,024 × 500 px**, JPEG or 24-bit PNG without alpha. |
+| Standard phone/tablet screenshots | JPEG or 24-bit PNG without alpha; minimum dimension **320 px**, maximum **3,840 px**; larger dimension no more than twice the smaller. |
+
+Prepare at least **two screenshots** under Play's applicable listing requirements and include the required assets for each supported form factor. Additional form-factor requirements and recommendations can differ; use the current specification for the actual device categories. Supply intended order and approved localized assets. [Google Play preview-asset specifications](https://support.google.com/googleplay/android-developer/answer/9866151?hl=en).
+
+1. Capture representative screens of the actual candidate using synthetic data.
+2. Check dimensions, format, transparency, and supported form factor.
+3. Review the images for customer data, account identifiers, private endpoints, and misleading functionality claims.
+4. Upload to the corresponding listing asset sections and inspect the resulting preview.
+
+On macOS, inspect a local asset before handoff:
+
+```bash
+ASSET_PATH='REPLACE_WITH_ACTUAL_ASSET_PATH'
+sips -g pixelWidth -g pixelHeight -g format -g hasAlpha "$ASSET_PATH"
+stat -f '%z bytes' "$ASSET_PATH"
+```
+
+Compare the output with that asset's requirements. These commands do not validate image bit depth, visual quality, policy compliance, or console acceptance.
+
+Suggested secure handoff folders:
+
+```text
+<approved-release-handoff>/
+├── listing/<locale>/       # Approved app name and descriptions
+├── graphics/              # Store icon and feature graphic
+├── screenshots/<locale>/  # Supported form factors and intended order
+└── release-record.txt     # Identity, approvals, secure artifact reference
+```
+
+**Attach screenshot — sanitized store listing preview and ordered graphic assets.**
+
+## 4. Complete reviewer access and app-content requirements
+
+### Reviewer sign-in
+
+1. Verify a dedicated test account works with the actual candidate and review environment. Keep it active and unlocked, with sufficient access to review the submitted features.
+2. Open the app's **App content** area and its sign-in/access instructions section. Use the current console label.
+3. The authorized owner enters the required access details and explains any extra login steps, restricted screens, or special setup.
+4. Save the instructions. For updated review information, confirm the changes are included in the actual review submission; saving alone may not send them for review.
+
+Do not use a real employee/customer account or place passwords in a public listing. [Prepare the app for review and provide access](https://support.google.com/googleplay/android-developer/answer/9859455?hl=en).
+
+### Privacy and policy declarations
+
+Complete the console's applicable content-rating, audience, ads, permissions, privacy, and other required declarations with the responsible owners. Base answers on the shipped app, not a generic template.
+
+For public production and applicable testing routes, complete **Data safety** using actual app and third-party SDK behavior. Apps exclusively active on the internal-testing track have a documented Data safety exemption; that does not remove Enterprise privacy or security obligations. [Data safety requirements and scope](https://support.google.com/googleplay/android-developer/answer/10787469?hl=en).
+
+Check required setup tasks and any account-specific production testing requirements in the app dashboard. Do not assume eligibility to publish production because a bundle was accepted on an internal track. [Play testing setup](https://support.google.com/googleplay/android-developer/answer/9845334?hl=en).
+
+**Attach screenshot — sanitized App content/access status, with reviewer credentials hidden.**
+
+## 5. Confirm the artifact and signing handoff
+
+<Tabs>
+<TabItem label="Android">
+
+For new Play releases, use the approved **Android App Bundle (AAB)** route. APK support for applicable existing apps depends on the app's established Play configuration; do not select APK merely because an internal-store build produced one. [Play release preparation](https://support.google.com/googleplay/android-developer/answer/9859348?hl=en).
+
+If the release manager requests an unsigned artifact, provide it through the approved secure route for signing. Before Play upload, the candidate must use the registered upload-signing identity and match the intended package/version code. The release owner maintains the actual key configuration. [Play App Signing](https://support.google.com/googleplay/android-developer/answer/9842756).
+
+Follow [CI/CD App Signing](../cicd/signing-and-credentials.mdx) for protected credential bindings and signed-output verification. Do not generate a replacement production key, re-sign a candidate, or upload raw keystore credentials as a developer workaround.
+
+</TabItem>
+<TabItem label="iOS">
+
+An iOS IPA cannot be uploaded to Google Play. Follow [Apple App Store](./apple-app-store.mdx) for the iOS application. Shared product branding does not make the platform release identities interchangeable.
+
+</TabItem>
+<TabItem label="React Native">
+
+Use the Android native AAB built by the approved React Native workflow. A JavaScript bundle, Metro session, or successful iOS archive is not a Play artifact.
+
+Confirm the final Android application ID, version name/code, source revision, upload-signing result, and native build configuration. Retain matching JS source maps and applicable Android mappings for [crash investigation](../observability/monitoring-and-troubleshooting.mdx).
+
+</TabItem>
+</Tabs>
+
+Provide the secure candidate reference, exact identity, signing evidence, and required approval records to the release owner. The spreadsheet/request process remains in [Signing & Release Approval](./signing-and-release-approval.mdx).
+
+## 6. Prepare the first upload and subsequent automation
+
+### Initial Play preparation
+
+1. The authorized owner confirms the app record, Play App Signing setup, initial dashboard requirements, and intended track.
+2. For the established Bitrise deployment path, confirm the required initial console upload has been completed before subsequent automated deployments.
+3. In the selected track, create the release and add the identified signed candidate through the approved upload route.
+4. Inspect the parsed package/version information and validation results. Correct actual signing, version-code, SDK, policy, or device-compatibility errors before continuing.
+5. Add accurate release notes and complete the required review/rollout steps for that track.
+
+The initial-console-upload prerequisite belongs to the approved deployment integration. Do not generalize it into a claim that every Google API workflow requires the same bootstrap steps. [Play release flow](https://support.google.com/googleplay/android-developer/answer/9859348?hl=en).
+
+### Existing Bitrise deployment
+
+Use [CI/CD Delivery & Verification](../cicd/delivery-and-verification.mdx) for the reviewed deployment YAML, protected service-account binding, signed AAB input, and destination checks. This page does not duplicate that credential provisioning or pipeline configuration.
+
+A successful `google-play-deploy` step does not by itself establish that reviewers approved the app or that testers can install the candidate. If an upload outcome is uncertain, preserve the build evidence and reconcile the destination before repeating a write.
+
+**Attach screenshot — sanitized uploaded candidate, version code, and track/release state.**
+
+## 7. Configure access, review, and release
+
+<MermaidZoom title="Verify track access and release state independently">
+
+```mermaid
+flowchart TD
+    A["Approved listing, candidate and signing"] --> B["Complete required app-content and access information"]
+    B --> C["Upload to the selected Play track"]
+    C --> D["Inspect exact package, version code and validation"]
+    D --> E{"Approved destination"}
+    E -->|Testing| F["Configure tester audience and opt-in access"]
+    E -->|Production| G["Complete applicable review and publishing controls"]
+    F --> H["Verify intended account can install the intended version"]
+    G --> H
+    classDef prepare fill:#172554,stroke:#93c5fd,color:#fff;
+    classDef release fill:#4c1d95,stroke:#d8b4fe,color:#fff;
+    classDef decision fill:#713f12,stroke:#fde047,color:#fff;
+    classDef done fill:#064e3b,stroke:#6ee7b7,color:#fff;
+    class A,B prepare;
+    class C,D,F,G release;
+    class E decision;
+    class H done;
+```
+
+</MermaidZoom>
+
+### Testing track
+
+1. Open the selected testing track and configure its approved tester list/group and feedback contact through the authorized owner.
+2. Save the selected audience and obtain the track's opt-in link.
+3. Have an intended tester open that link using the eligible Google account and complete the opt-in process.
+4. Install/update from the resulting Play route and verify the expected version/code on the device. Account eligibility, track membership, and device compatibility must match.
+
+Keep opt-in links and tester identities in approved channels. A link alone does not establish tester eligibility. [Testing tracks and access](https://support.google.com/googleplay/android-developer/answer/9845334?hl=en).
+
+### Production release
+
+1. The authorized owner confirms required approvals, destination countries, release notes, and readiness for public availability.
+2. Inspect **Publishing overview** and the pending changes. Send the intended changes for review using the actual console action.
+3. Monitor the real review state and resolve feedback. Do not promise a fixed one-week completion date.
+4. Follow the approved publishing configuration. With managed publishing, approved changes can require a separate publish action; without it, eligible changes may publish after approval. Do not assume every change is held by managed publishing.
+5. Verify the intended public version, rollout scope, country availability, and required install/launch evidence. A staged rollout need not make the update available to every eligible user immediately.
+
+[Publishing controls](https://support.google.com/googleplay/android-developer/answer/9859654?hl=en), [release and rollout](https://support.google.com/googleplay/android-developer/answer/9859348?hl=en).
+
+| Observed result | What remains |
+| :--- | :--- |
+| Bundle accepted | Complete the selected track's validation, access, and release steps. |
+| Internal tester can install | Production is still a separate release outcome. |
+| Changes saved | Confirm whether they have actually been sent for review. |
+| Review approved | Complete any applicable publishing control and verify availability. |
+| Public listing visible | Verify the intended version/code, audience/countries, and rollout state. |
+
+**Attach screenshot — sanitized tester access or production release/rollout status and installed-version evidence.**
+
+**Expected result:** the intended audience can access the identified Android version through the approved Play route. Record unresolved review, access, processing, or rollout states separately instead of reporting upload success as a completed release.
+
+**Next file:** `lost-device-data-wipe.mdx` — administrator-only handling of local application data on a reported lost/stolen device.
+
+____________________________
+
+
+
+---
+title: "Lost-Device Data Wipe"
+description: "Authorized administrator procedure for selecting a lost/stolen device, requesting application data removal, and recording the verified outcome in Digital.ai App Management."
+sidebar:
+  label: Lost-Device Data Wipe
+  order: 6
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Use this procedure when a reported lost, stolen, or decommissioned device requires removal of an Enterprise application's local data through **Digital.ai App Management (Apperian)**.
+
+**Operator:** an authorized administrator with access to the correct environment and user/device/application records. Ordinary developers and end users report the issue; they do not execute this operation as an installation fix.
+
+**Outcome:** request removal for the exact target application/device and record whether completion is confirmed, pending, or unknown.
+
+> **Confidential — Enterprise internal use only.** Protect incident details, user/device identifiers, console links, and administrative evidence. This operation deletes application data. Use the actual incident authorization and target scope; do not run it on a real employee device merely to test this documentation.
+
+## 1. Confirm scope and prerequisites
+
+| Confirm before acting | Why |
+| :--- | :--- |
+| Reported user and exact device | A user can have multiple registered devices. |
+| Correct QA/UAT/production environment | Similar names can exist in different stores. |
+| Exact target application(s) | The request applies to selected apps, not automatically every app on the device. |
+| Administrator's authorization | Console access alone is not the incident's target/scope decision. |
+| Data Wipe policy on the installed app | The policy must be effective for the targeted managed application. |
+
+Have the application/platform owner confirm policy readiness. If applying/changing a policy requires re-signing and distributing a new version, an already installed older build must not be assumed protected. Do not attempt to retrofit a lost device by changing a release without owner review. [Policy prerequisites](https://docs.digital.ai/app-management/docs/delete-application-data-from-a-device).
+
+If the user/device cannot be identified reliably, stop target selection and resolve the ambiguity through the responsible incident/device owner.
+
+## 2. Understand what the operation removes
+
+The Data Wipe policy removes the selected managed application's supported local data and quits the application when the wipe executes. It is **not a whole-device factory reset** and does not delete backend/server records.
+
+<Tabs>
+<TabItem label="Android">
+
+The vendor documents removal of the application's directory contents, associated shared preferences, databases, and cache. Quitting clears the application's active in-memory process state.
+
+External storage, such as an SD card, is outside the documented wipe scope. NDK linkage files are also excluded. Do not report those locations as cleared without a separately verified mechanism.
+
+</TabItem>
+<TabItem label="iOS">
+
+The vendor documents removal of app-associated user defaults, Keychain items, HTTP cookies, Documents contents, and cache. Quitting clears active in-memory process state.
+
+Do not extend this claim to every shared Keychain group, another app's storage, backups, or remote services. Verify the actual managed application's policy/integration rather than assuming all account data everywhere is gone.
+
+</TabItem>
+<TabItem label="React Native">
+
+The managed Android/iOS package and its effective policy determine the wipe behavior. React Native does not introduce a separate universal remote-wipe operation.
+
+Identify the actual platform package and its registered device. Confirm the app's storage inventory with the application owner, including native-backed storage and any data outside the documented policy scope. Do not replace this administrative operation with a JavaScript Redux reset or an assumed storage API call.
+
+</TabItem>
+</Tabs>
+
+[Digital.ai Data Wipe scope](https://docs.digital.ai/app-management/docs/data-wipe). Application-level account cleanup has its own contracts in [App Foundations](../enterprise-app-foundations.mdx); it is not evidence that this remote operation completed.
+
+## 3. Request Clear Data in the administrator console
+
+**Where:** the approved Apperian/Digital.ai administration console for the selected environment.
+
+1. Sign in using the authorized administrator account and select **QA**, **UAT**, or **production** as required by the incident.
+2. Open **Users** and locate the reported user. Open their details.
+3. In the registered-device list, select the **exact reported device**. Compare its available device details with the incident record; do not select by a similar display name alone.
+4. Open that device's application list and select only the authorized target application(s).
+5. Inspect the selection again. Do not select the App Catalog client itself.
+6. Click **Clear Data**. Read the confirmation and confirm only when the user, device, environment, and app selection match the authorized scope.
+7. Inspect and record the resulting application **Data Status**, time, and selected target. Do not assume the request completed when the dialog closes.
+
+If **Clear Data** is disabled, investigate policy eligibility and selection with the platform owner; do not broaden the selection or change access controls to enable the button. [Administrator console procedure](https://docs.digital.ai/app-management/docs/delete-application-data-from-a-device).
+
+**Attach screenshot — sanitized environment, selected device/application, confirmation, and resulting Data Status. Never expose another user's device details.**
+
+## 4. Distinguish request submission from execution
+
+The policy is evaluated when the user:
+
+1. Opens the application.
+2. Brings it from the background to the foreground.
+3. Returns to it from the device's lock screen.
+
+The wipe occurs when the managed app processes the applicable policy, not necessarily at the instant the administrator clicks the button. These triggers do not establish a guaranteed completion time for a powered-off, offline, unreachable, or never-reopened device. [Policy evaluation and user experience](https://docs.digital.ai/app-management/docs/data-wipe).
+
+When the documented wipe executes, the application displays:
+
+```text
+The data for this application has been wiped,quitting...
+```
+
+The application quits. A later launch can open it again without the previously retained data covered by the wipe policy. A wipe is not a permanent app-access revocation; any required account/device/session containment remains a separate owner-managed process.
+
+| Console observation | Report |
+| :--- | :--- |
+| **Marked for Clear Data** | Request recorded; completion remains pending. |
+| **Clear Data Successful** | Console reports completion for the selected app/device; retain its evidence and time. |
+| Timeout, unexpected response, or no reliable status | Outcome unknown; inspect the existing record and escalate. |
+
+These status names are documented by Digital.ai. Use the actual installed console's state and supporting record; do not invent an acknowledgement or map an unfamiliar state to success. [Data Status transitions](https://docs.digital.ai/app-management/docs/delete-application-data-from-a-device).
+
+## 5. Verify and record the outcome
+
+<MermaidZoom title="A requested wipe is pending until its outcome is evidenced">
+
+```mermaid
+flowchart TD
+    A["Authorized incident and exact target"] --> B["Confirm environment, device, app and effective policy"]
+    B --> C["Submit Clear Data and confirm selection"]
+    C --> D["Read existing Data Status"]
+    D --> E{"Observed outcome"}
+    E -->|Marked for Clear Data| F["Record pending; monitor policy execution"]
+    E -->|Clear Data Successful| G["Record console completion evidence"]
+    E -->|Unknown| H["Preserve records; reconcile read-only with owner"]
+    F --> D
+    G --> I["Report verified scope and remaining limits"]
+    classDef prepare fill:#172554,stroke:#93c5fd,color:#fff;
+    classDef operation fill:#4c1d95,stroke:#d8b4fe,color:#fff;
+    classDef state fill:#713f12,stroke:#fde047,color:#fff;
+    classDef evidence fill:#064e3b,stroke:#6ee7b7,color:#fff;
+    class A,B prepare;
+    class C,D operation;
+    class E,F,H state;
+    class G,I evidence;
+```
+
+</MermaidZoom>
+
+1. Reopen/read the selected device/application record and inspect the current status.
+2. Record the actual status and observation time. If completion is not evidenced, retain **pending** or **unknown** rather than “wiped.”
+3. For a controlled test on an authorized test device, verify the documented local-data outcome with the application owner. A signed-out screen or a successful relaunch alone does not prove every storage category was cleared.
+4. Report the confirmed scope and exclusions through the approved incident/support route. A stolen device may not be available for local inspection; distinguish console-reported completion from a physical-device verification.
+
+Copyable evidence record—not an API payload:
+
+```text
+Incident/reference: [Approved record]
+Authorized operator: [Responsible administrator]
+Environment: [QA / UAT / production]
+Target user/device: [Approved internal identifiers; restrict access]
+Target application/package: [Exact managed application]
+Policy readiness: [Owner-confirmed state or unresolved]
+Request time: [Time and time zone]
+Observed Data Status: [Exact console value]
+Observation time: [Time and time zone]
+Completion evidence: [Approved console/audit reference or unavailable]
+Device inspection: [Performed on authorized test device / unavailable]
+Remaining scope/limitations: [External storage, server data, unknowns]
+Responsible follow-up owner: [Assigned owner]
+```
+
+No API, shell deletion command, or application-side force-quit code is supplied here: the documented operation is the authorized console policy workflow. Do not implement a new wipe endpoint or use local test cleanup as a substitute.
+
+## 6. Handle blocked or uncertain results
+
+| Observation | Action |
+| :--- | :--- |
+| User/device match is uncertain | Stop and resolve the exact target before selecting an app. |
+| Clear Data disabled | Have the owner confirm the effective policy and selected app eligibility. |
+| Request remains marked/pending | Record pending and investigate device/policy evaluation with the platform/device owner. Do not promise instant deletion. |
+| Network timeout after confirmation | Inspect the existing target's status read-only before any further mutation; do not repeatedly click Clear Data. |
+| Console reports success but an authorized test still finds scoped data | Preserve the evidence and escalate the discrepancy. Do not broaden deletion to other apps or storage as an assumed fix. |
+| Server records or external storage remain | They are outside this operation's stated scope; route the requirement to the responsible owner. |
+
+Do not delete the application/user/device record, uninstall the app, revoke signing material, or rerun provisioning to force a desired status. Follow the assigned incident process and [Safe Recovery](../cicd/troubleshooting-and-recovery.mdx) for uncertain external outcomes.
+
+Return to [Enterprise App Store](./enterprise-app-store.mdx) for installation/access or [Start Here](./index.mdx) for the distribution section map.
+
+
+------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
