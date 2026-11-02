@@ -1,73 +1,3063 @@
 ---
-import type { MarkdownInstance } from 'astro';
-
-type FAQ = MarkdownInstance<{
-  title?: string;
-  order?: number;
-}>;
-
-// Replace this glob with the relative path to your Markdown FAQ files.
-const modules = import.meta.glob<FAQ>('./faqcontent/*.md', { eager: true });
-
-const faqs = Object.entries(modules)
-  .map(([path, module]) => ({
-    Content: module.Content,
-    title: module.frontmatter.title?.trim()
-      || path.split('/').pop()!.replace(/\.md$/, ''),
-    order: Number.isFinite(module.frontmatter.order)
-      ? module.frontmatter.order!
-      : Number.MAX_SAFE_INTEGER,
-    path,
-  }))
-  .sort((a, b) => a.order - b.order || a.path.localeCompare(b.path));
+title: "Push Notifications & Deep Linking — Start Here"
+description: "Understand device registration, AWS SNS endpoints and topics, FCM/APNs delivery, and the Java or PushJS backend integration path."
+sidebar:
+  label: Start Here
+  order: 1
 ---
 
-{faqs.map(({ Content, title }) => (
-  <details>
-    <summary>{title}</summary>
-    <Content />
-  </details>
-))}
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Start here to add push notifications to a mobile app and connect it to the correct sending backend. Choose the delivery method already approved for the application: **FCM**, **direct APNs**, or an **AWS SNS-backed integration**. FCM mobile setup, direct APNs setup, and backend publishing have separate procedures.
+
+**Outcome:** choose a matching mobile/provider/backend path, identify its prerequisites, and follow the setup pages in order. Notification-tap routing uses the application’s approved deep-link and authentication contracts.
+
+> **Confidential — Enterprise internal use only.** Keep device tokens, endpoint/subscription identifiers, user mappings, provider credentials, and internal package access protected. Never put credentials or customer/order payloads in notification bodies, logs, screenshots, or AI prompts.
+
+## 1. Understand the delivery flow
+
+| Component | Responsibility |
+| :--- | :--- |
+| Mobile application | Registers with its notification provider, obtains the current token, and handles received notifications according to platform/app state. |
+| Application backend | Associates the token/endpoint with the authorized user and application, applies notification preferences, and requests delivery. |
+| AWS SNS | Maintains platform endpoints, supports direct publishing and topic subscriptions, and forwards messages to the configured provider. |
+| FCM | Cross-platform messaging service; Apple delivery still uses APNs underneath. Its registration token is distinct from an APNs token. |
+| APNs | Apple push provider, used directly by the APNs path or underneath FCM on Apple devices. |
+| Device OS/application | Determines presentation and handling according to permissions, payload type, app state, and platform constraints. |
+
+Match the sender to the chosen token/provider path. Direct APNs and FCM-on-iOS are separate integrations; do not submit their tokens interchangeably or initialize duplicate notification handlers for the same path. [SNS mobile endpoints](https://docs.aws.amazon.com/sns/latest/dg/mobile-platform-endpoint.html), [FCM overview](https://firebase.google.com/docs/cloud-messaging).
+
+<MermaidZoom title="Registration creates a target; publishing requests delivery">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant APP as Mobile App
+    participant PROVIDER as FCM or APNs
+    participant API as Application Backend
+    participant SNS as AWS SNS
+    participant DB as Backend Storage
+    APP->>PROVIDER: Register through the configured mobile integration
+    PROVIDER-->>APP: Current provider token
+    APP->>API: Supply token through the approved authenticated contract
+    API->>SNS: Create or reconcile endpoint under the platform application
+    SNS-->>API: Endpoint ARN
+    API->>DB: Store authorized user, app and endpoint association
+    Note over API,SNS: Optional topic subscription uses a separate Topic ARN
+    API->>SNS: Publish to endpoint or approved topic
+    SNS-->>API: Publish result
+    SNS->>PROVIDER: Forward platform-specific message
+    PROVIDER-->>APP: Deliver when provider/device conditions permit
+    Note over APP,API: Acceptance by SNS is not proof of display, tap or business completion
+```
+
+</MermaidZoom>
+
+A notification is a delivery hint, not confirmation that an order succeeded. The application must obtain protected business information through its authorized API. Do not treat a successful SNS publish result as device receipt or user acknowledgement.
+
+## 2. Keep the identifiers separate
+
+| Value | Meaning | Used for |
+| :--- | :--- | :--- |
+| Provider token | Current FCM/APNs token for the app installation/provider configuration. | Registering/updating the SNS endpoint. |
+| Platform Application ARN | SNS object configured for a provider/application. | Creating a platform endpoint. |
+| Endpoint ARN / PushJS `deviceArn` | SNS destination representing the registered app/device endpoint. | Direct publishing or subscribing that endpoint to a topic. |
+| Topic ARN | SNS topic representing an approved broadcast/segment destination. | Subscribing endpoints and publishing to the topic. |
+| Subscription ARN | Association between an endpoint and a topic. | Unsubscribing that specific association. |
+
+**A Platform Application ARN is not a Topic ARN.** Confirm the resource type before using configuration values in `subscribe` or topic `publish` calls. Do not infer the type from an environment variable's name. [SNS mobile API actions](https://docs.aws.amazon.com/sns/latest/dg/mobile-push-api.html).
+
+Store `deviceArn` and subscription identifiers separately. The Node.js integration documents user lookup by Enterprise email; that lookup must remain protected backend data, not notification content or a substitute for request authorization.
+
+Tokens can change and endpoints can become disabled. Registration needs an owner-defined update/reconciliation lifecycle; repeatedly creating an endpoint from a permanently cached token is insufficient. [SNS endpoint lifecycle](https://docs.aws.amazon.com/sns/latest/dg/mobile-platform-endpoint.html).
+
+## 3. Obtain configuration before writing code
+
+Ask the backend/platform owner for these values through approved channels:
+
+| Required information | What to confirm |
+| :--- | :--- |
+| AWS environment and Region | Correct account/environment and configured SNS Region; do not copy a sample Region without confirmation. |
+| Platform applications | Separate approved FCM/APNs Platform Application ARNs, matching the actual mobile configurations. |
+| Optional topics | Actual Topic ARNs, authorized audiences, and subscription policy. |
+| Backend authentication | Approved runtime AWS credential/role binding and permitted SNS operations. No embedded access keys. |
+| Registration contract | Actual authenticated mobile-to-backend API, token/provider type, ownership validation, and update/logout handling. |
+| Storage | Existing user/device/endpoint/subscription persistence contracts. |
+| Node.js package access | Approved registry, PushJS version, and protected CI package-authentication mechanism. |
+
+Confirm the mobile SDK/configuration method separately for each app. The backend material does not define the mobile registration endpoint schema, token-refresh API, logout cleanup contract, or deep-link route format. Obtain those contracts from the application owner before implementing them. Do not invent a `/register-device` API or route schema from this overview.
+
+**Expected result:** you can distinguish the configured platform applications from topics and identify the existing registration/persistence boundaries. If a binding is missing, resolve it before executing registration or sending a message.
+
+## 4. Choose the mobile delivery method
+
+| Method | Mobile registration | Backend destination | Setup page |
+| :--- | :--- | :--- | :--- |
+| FCM — Android | FCM registration token. | Approved FCM sender or SNS FCM platform endpoint. | `fcm-mobile-setup.mdx`, Android tab. |
+| FCM — iOS | FCM registration token, with APNs configured beneath Firebase. | Approved FCM sender or SNS FCM platform endpoint; not the direct APNs endpoint. | `fcm-mobile-setup.mdx`, iOS tab. |
+| Direct APNs — iOS | APNs device token matching the app/provider environment. | Approved APNs sender or SNS APNs platform endpoint. | `apns-ios-setup.mdx`. |
+| React Native | The selected Android/iOS native integration and its provider token. | The matching approved backend path above. | `fcm-mobile-setup.mdx`, React Native tab; native APNs integration where selected. |
+
+Choose one coherent registration/handling path per application configuration. Supporting multiple methods across Enterprise apps does not mean every app must initialize all methods.
+
+<Tabs>
+<TabItem label="Android">
+
+Follow FCM mobile setup: Firebase app registration, approved dependency/configuration, permission/channel handling, token lifecycle, foreground/background receipt, and notification taps.
+
+The page will provide `FcmService.kt` and `NotificationService.kt` templates with their manifest and application integration points. Backend registration and authenticated routing remain explicit host-provided contracts.
+
+</TabItem>
+<TabItem label="iOS">
+
+Choose **FCM through APNs** or **direct APNs** before configuring the app. Both require the appropriate Apple capabilities/provider setup; their backend tokens differ.
+
+The FCM page will provide `FcmService.swift` and `NotificationService.swift`. The direct APNs page will provide its separate registration/notification templates. Preserve the existing application and notification delegate ownership instead of registering competing delegates.
+
+</TabItem>
+<TabItem label="React Native">
+
+Use the FCM page's platform-specific native setup plus `FcmService.ts` and `NotificationService.ts`, the background entry point, and root/listener wiring. Keep existing Redux Toolkit state ownership.
+
+Android and iOS permission, token, background, and cold-start behavior must be verified separately. Tokens and backend credentials do not belong in Redux state or telemetry. A direct APNs integration is a separate native path, not an assumed option of an unspecified JavaScript package.
+
+</TabItem>
+</Tabs>
+
+### Choose the backend implementation
+
+| Backend | Procedure |
+| :--- | :--- |
+| Java with SNS | `java-backend.mdx`: configured platform applications, endpoint registration/reconciliation, topic subscriptions, platform payloads, and publishing. |
+| Node.js with PushJS | `nodejs-pushjs-backend.mdx`: approved package access, device registration, direct/topic publishing, subscription lifecycle, and persistence contracts. |
+
+Use the existing backend stack. Sending credentials and provider publishing operations stay on the trusted backend; the mobile service templates must not embed them.
+
+Notification foundation responsibilities are described in [App Foundations](../enterprise-app-foundations.mdx). Its illustrative adapters are not a versioned internal SDK installation contract.
+
+## 5. Prepare one safe test notification
+
+Use a dedicated non-production app installation and synthetic content. Agree the recipient, provider, and expected app-state behavior before any live send.
+
+This is a **test-planning record**, not a provider payload, backend API schema, or ready-to-run send command:
+
+```text
+Application/environment: [Approved non-production app]
+Platform/provider: [Android FCM / iOS APNs, matching actual configuration]
+Backend implementation: [Java SNS / Node.js PushJS]
+Recipient: [Approved test record; do not paste a token into documentation]
+Delivery path: [Direct endpoint / authorized topic]
+Title: My Chicken App
+Body: An update is available. Open the app to view it.
+App state: [Foreground / background / opened from notification]
+Expected behavior: [Approved platform-specific presentation/handling]
+Evidence: [Backend result and observed device behavior, recorded separately]
+```
+
+Do not put a real order ID, customer name, address, price, or payment detail into a lock-screen message. If routing requires an identifier, its approved schema and authorization behavior must be defined separately.
+
+Keep payloads small. Firebase documents a **4,096-byte maximum for notification and data message payloads**, with a separate composer limit; do not apply a universal 2 KB notification-message limit. Topic-specific and other provider/envelope constraints still apply; see [Notification Guidelines](./notification-guidelines.mdx) before choosing a size limit. [FCM message types and size limits](https://firebase.google.com/docs/cloud-messaging/customize-messages/set-message-type).
+
+**Attach screenshot — sanitized test notification and separate backend/device results, with tokens and identifiers hidden.**
+
+## 6. Continue in order
+
+| Order | File | Developer work |
+| :--- | :--- | :--- |
+| 1 | `index.mdx` | Choose the mobile delivery method and matching backend; understand identifiers and prerequisites. |
+| 2 | [Notification Guidelines](./notification-guidelines.mdx) | Payload limits, preferences, privacy, delivery behavior, testing, and troubleshooting. |
+| 3 | `fcm-mobile-setup.mdx` | From-scratch Android/iOS/React Native setup; full FcmService and NotificationService templates, file placement, native configuration, app wiring, and verification. |
+| 4 | `apns-ios-setup.mdx` | Direct APNs registration and notification handling, Apple configuration, app wiring, and verification, separate from FCM. |
+| 5 | `java-backend.mdx` | Java/SNS client, endpoint/topic/subscription lifecycle, payload construction, publishing, and failures. |
+| 6 | `nodejs-pushjs-backend.mdx` | PushJS package/CI setup, registration, publishing, subscriptions/unsubscription, and persisted identifiers. |
+| 7 | `deep-linking.mdx` | Approved link formats, Android/iOS/React Native configuration, validated routing, authentication, cold/warm starts, and tests. |
+
+Read Notification Guidelines first, then the page for your mobile delivery method and the relevant backend. Complete deep-link integration only against the app's approved domain/scheme, route allowlist, identity/ownership checks, and startup behavior.
+
+**Copyable service templates:** each mobile setup page separates complete helper files from required configuration and app lifecycle fragments. A two-file template still requires platform registration/configuration, permission handling, background entry points, and host backend/navigation bindings; it is not a substitute for those setup steps.
+
+**Expected result:** the selected provider token, backend platform application, app identity/environment, and routing owner agree. Resolve missing registration or link contracts before implementing dependent code.
+
+**Next:** [Notification Guidelines](./notification-guidelines.mdx).
 
 
 
------------
+
+
+
+--------------------
+
 
 
 ---
-title: "FAQ"
+title: "Notification Guidelines"
+description: "Design small, private notification payloads, respect user preferences, and verify provider acceptance separately from device behavior."
+sidebar:
+  label: Notification Guidelines
+  order: 2
 ---
 
-import FAQList from './faq-list.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
 
-<FAQList />
+Read [Start Here](./index.mdx) first. Apply these rules before configuring FCM/direct APNs mobile services, implementing the Java or Node.js backend, or sending a non-production test.
+
+**Outcome:** a small, permitted message sent to the authorized audience, with delivery and device behavior recorded separately.
+
+> **Confidential — Enterprise internal use only.** Notification content can appear on a locked screen. Keep customer/order details, credentials, private identifiers, and backend payloads out of message text and diagnostic logs.
+
+## Service responsibilities
+
+Keep the mobile templates focused on two responsibilities. Platform configuration, application startup, background entry points, and host-provided backend/navigation contracts remain separate integration steps.
+
+| Template | Owns | Must not do |
+| :--- | :--- | :--- |
+| `FcmService` | FCM registration/token refresh, message callback wiring, and listener lifecycle for the selected platform. | Embed sender credentials, invent registration endpoints, or authorize a business operation from push data. |
+| `NotificationService` | Permission/presentation coordination, Android channels where applicable, payload validation, and safe handling of user-open events. | Display the same system notification twice, navigate before startup/authentication, or trust an arbitrary supplied URL. |
+| Direct APNs registration service | APNs token registration and native callback integration, separate from the FCM path. | Label an APNs token as an FCM token or initialize competing delegates. |
+
+Receiving, displaying, and opening a message are separate events. If the SDK/OS already displays a notification, application code must not post a second local copy for the same event. Confirm the exact SDK/server payload behavior instead of assuming every message reaches the same callback.
+
+## 1. Decide whether to send
+
+| Decision | Required behavior |
+| :--- | :--- |
+| Relevance | Send only information useful to the intended recipient. Avoid repeated, spammy, or unrelated messages. |
+| Audience | Use the authorized user/device association or approved topic membership. A supplied endpoint ARN alone is not authorization to message that recipient. |
+| Preferences | Respect notification categories, opt-in/opt-out choices, and frequency preferences through the established backend contract. |
+| Timing | Consider the recipient's time zone and agreed scheduling rules. Do not copy a fixed server time as the user's local time. |
+| Personalization | Use permitted preference/segment information without exposing sensitive content or expanding data collection. |
+| Feedback | Provide the app's established feedback/preferences route and investigate messages users find excessive or irrelevant. |
+
+A marketing opt-in and an operating-system notification permission are different controls. A provider token is neither proof of opt-in nor permission to add a user to every topic.
+
+For Apple applications, notifications must not be required for the app to function, must not expose sensitive/confidential information, and marketing messages require explicit opt-in plus an opt-out mechanism. Do not monetize the system notification capability or use it for unsolicited/spam content. [Apple App Review Guidelines, sections 3.2.2 and 4.5](https://developer.apple.com/app-store/review/guidelines/).
+
+## 2. Keep payloads small and provider-specific
+
+| Constraint | How to apply it |
+| :--- | :--- |
+| FCM notification/data messages | Firebase's message-type guide states a 4,096-byte maximum for both types. It separately documents the Firebase console's 1,000-character composer limit. |
+| FCM topic-specific limits | The error-code reference documents 2,048 bytes for messages sent to topics. Check the actual provider API/path; this is not a universal limit for every notification message. |
+| APNs ordinary remote notifications | Maximum JSON payload is 4,096 bytes. The larger VoIP limit is not applicable to ordinary order-update notifications. |
+| SNS envelope | SNS publishing format and provider limits are separate validations. Measure the decoded provider payload as well as validating the outer SNS request. |
+
+[FCM message types](https://firebase.google.com/docs/cloud-messaging/customize-messages/set-message-type), [FCM size errors](https://firebase.google.com/docs/cloud-messaging/error-codes), [APNs payload requirements](https://developer.apple.com/documentation/usernotifications/generating-a-remote-notification).
+
+An **SNS topic** fans out to subscribed platform endpoints. It is not an **FCM topic**, so do not infer provider routing or limits merely from the backend method name `sendMessageToTopic`.
+
+Do not split a large business record into multiple notifications: arrival and order are not guaranteed. Send a minimal update hint; retrieve current protected content through the authenticated application API.
+
+### Safe content example
+
+This JSON illustrates message content only. It is **not** a complete SNS envelope, HTTP v1 request, PushJS schema, or deep-link contract:
+
+```json
+{
+  "title": "My Chicken App",
+  "body": "An update is available. Open the app to view it."
+}
+```
+
+Do not add a customer's name, address, payment details, order payload, or real order ID to this example. Additional data fields require a defined application contract and privacy review.
+
+### Inspect UTF-8 size locally
+
+Save the actual serialized provider JSON—not an SNS JSON string wrapper—to a local test file. From that file's directory:
+
+```bash
+PAYLOAD_PATH='REPLACE_WITH_PROVIDER_PAYLOAD_JSON_PATH'
+node - "$PAYLOAD_PATH" <<'JS'
+const fs = require('node:fs');
+const input = fs.readFileSync(process.argv[2], 'utf8');
+const value = JSON.parse(input);
+if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+  throw new Error('Expected a provider JSON object');
+}
+const serialized = JSON.stringify(value);
+console.log(`Compact provider JSON: ${Buffer.byteLength(serialized, 'utf8')} bytes`);
+JS
+```
+
+This validates JSON syntax and measures compact serialization without printing payload contents or sending it. Compare with the actual API's accounting rules; the sending library must use the same serialization for this measurement to apply. A byte count does not validate provider schema, reserved keys, audience, or permission.
+
+## 3. Configure expiry and delivery expectations
+
+| Behavior | Developer implication |
+| :--- | :--- |
+| Delivery can be delayed or fail | Keep the app usable without receiving the push; load current state through the normal API. |
+| Messages may arrive out of order | Do not use arrival order to determine the latest order status or apply irreversible business transitions. |
+| Collapsing can replace pending updates | Choose collapse behavior only when an older update can be safely replaced. |
+| Expiry can discard an undelivered message | Set lifetime according to usefulness; do not display obsolete business information as current. |
+| Backend receives a publish result | Record acceptance separately from device receipt, display, tap, and business outcome. |
+
+For Android FCM, TTL can range from zero to 28 days; zero discards messages that cannot be delivered immediately. APNs expiration has its own provider header. Do not add an invented `ttl` field to the private PushJS call: first confirm how its actual version exposes provider options. [FCM lifetime](https://firebase.google.com/docs/cloud-messaging/customize-messages/setting-message-lifespan), [FCM ordering/collapse](https://firebase.google.com/docs/cloud-messaging/customize-messages/collapsible-message-types), [APNs delivery](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns).
+
+No fixed “real-time” delivery deadline is promised here. An offline or restricted device can miss an update even when the backend accepted the send.
+
+## 4. Respect platform permission and app state
+
+<Tabs>
+<TabItem label="Android">
+
+For non-exempt notification presentation, Android 13/API 33 and later use `POST_NOTIFICATIONS` runtime permission. The configured target SDK, existing installation state, and user choice affect the flow. Permission denial must not break ordinary order functionality. [Android notification permission](https://developer.android.com/develop/ui/compose/notifications/notification-permission).
+
+Confirm the existing notification channels, current app permission, actual FCM integration, and compatible device/provider services. Device compatibility is not simply a matter of a phone being “low-end.” Use the selected SDK's documented requirements. [FCM Android prerequisites](https://firebase.google.com/docs/cloud-messaging/android/get-started).
+
+Test foreground and background behavior separately. Notification-plus-data and data-only messages do not have identical handling paths. [FCM message behavior](https://firebase.google.com/docs/cloud-messaging/customize-messages/set-message-type).
+
+</TabItem>
+<TabItem label="iOS">
+
+Request alert/sound/badge authorization in the application's appropriate user context and inspect current settings; users can change them later. Follow the app's approved authorization flow rather than repeatedly forcing a prompt. [Apple notification authorization](https://developer.apple.com/documentation/usernotifications/asking-permission-to-use-notifications).
+
+For **direct APNs**, register the APNs token with the matching APNs backend configuration. For **FCM on iOS**, send the FCM registration token to the FCM-configured backend; Firebase must also have the correct APNs setup. Do not interchange these tokens.
+
+Verify the APNs environment and actual signing/entitlement configuration for the installed build. A development token and production platform application must not be treated as interchangeable. Background execution or notification display is not guaranteed merely because APNs accepted a message.
+
+</TabItem>
+<TabItem label="React Native">
+
+Apply Android and iOS rules independently through the existing approved native notification integration. Do not install a new package or replace callbacks solely to match an example.
+
+Distinguish permission, provider token, backend endpoint association, message receipt, presentation, and user tap. Background handlers must not assume the navigation tree is mounted. A notification tap must wait for the app's established startup/authentication flow and validate the destination using the real route contract.
+
+Bind the services to the actual registration API, notification library, and route schema. Keep unavailable contracts explicit rather than inventing a backend endpoint or route. Do not store tokens or credentials in Redux state or emit them into telemetry.
+
+</TabItem>
+</Tabs>
+
+## 5. Maintain registration and recipient ownership
+
+1. Use the current token from the actual mobile provider integration, not a token copied into a fixture or source file.
+2. Register/reconcile it through the application's authenticated backend contract and store the resulting endpoint association.
+3. Keep the **Endpoint ARN**, **Topic ARN**, and **Subscription ARN** distinct. Topic subscription uses protocol `application` with the endpoint as the subscriber.
+4. Handle token changes, disabled/invalid endpoints, account changes, and opt-out through the owner-defined lifecycle. Do not invent token-refresh/logout endpoints from these instructions.
+5. Persist and use the correct subscription identifier for unsubscription. Do not substitute a device endpoint ARN for it.
+
+Do not expose an unauthenticated “send to arbitrary ARN” interface. Resolve recipients using authorized backend records, and avoid logging raw tokens, email mappings, ARNs, or provider responses containing sensitive details. [SNS endpoint lifecycle](https://docs.aws.amazon.com/sns/latest/dg/mobile-platform-endpoint.html), [SNS API identifiers](https://docs.aws.amazon.com/sns/latest/dg/mobile-push-api.html).
+
+## 6. Verify a controlled journey
+
+<MermaidZoom title="Test preferences, backend acceptance and device behavior separately">
+
+```mermaid
+flowchart TD
+    A["Select authorized non-production app and recipient"] --> B["Confirm preferences, permission and provider mapping"]
+    B --> C["Validate minimal payload and actual provider limits"]
+    C --> D["Send through the approved backend implementation"]
+    D --> E["Record backend/provider acceptance or error"]
+    E --> F["Observe device receipt and presentation separately"]
+    F --> G["Open notification and verify authorized current app state"]
+    G --> H["Record result without tokens or sensitive payloads"]
+    classDef setup fill:#172554,stroke:#93c5fd,color:#fff;
+    classDef send fill:#4c1d95,stroke:#d8b4fe,color:#fff;
+    classDef observe fill:#713f12,stroke:#fde047,color:#fff;
+    classDef result fill:#064e3b,stroke:#6ee7b7,color:#fff;
+    class A,B,C setup;
+    class D,E send;
+    class F,G observe;
+    class H result;
+```
+
+</MermaidZoom>
+
+Use dedicated synthetic test users/devices. Actual sending is a separate authorized test action, not something a developer performs merely by reading this page.
+
+| Scenario | Expected verification |
+| :--- | :--- |
+| Foreground | Behavior matches the approved payload/handler configuration; no unintended duplicate UI. |
+| Background | Platform presentation/data handling matches the configured message type. |
+| Open from notification — already running | Handle the user-open event once and validate the current account/destination. |
+| Open from notification — cold start | Retain the pending intent until startup/authentication/navigation are ready, then validate it; do not assume mounting alone proves readiness. |
+| Permission denied or category opted out | Core app functionality remains usable and documented preferences are respected. |
+| Device temporarily offline | Record eventual delivery or expiry; do not infer immediate failure/success from the send response. |
+| Invalid/stale token | Error is classified and endpoint lifecycle is reconciled without a retry storm. |
+| Registration refresh or repeated startup | Current token is associated with the correct installation/account, listeners are not duplicated, and failed registration is not reported as success. |
+| Different accounts on the same device | Recipient ownership is correct; a notification cannot expose the prior account's data. |
+| Multiple OS/device configurations | Verify actual supported configurations and native paths, not just one simulator. |
+
+Record only the necessary evidence:
+
+```text
+Application/environment: [Approved non-production identity]
+Platform/provider and build: [Actual values]
+Test scenario and app state: [Foreground/background/open/denied/offline]
+Preferences and permission: [Observed state; no personal payload]
+Target record: [Access-controlled reference, not a raw token]
+Backend result/time: [Accepted / classified failure / unknown]
+Device result/time: [Observed receipt/display/open or unverified]
+Expected versus actual: [Specific behavior]
+Unresolved contract/owner: [If applicable]
+```
+
+**Attach screenshot — sanitized device result and backend status, with recipient identifiers and message payloads protected.**
+
+## 7. Investigate the failing layer
+
+| Observation | Inspect / next action |
+| :--- | :--- |
+| Send fails before publishing | Validate configuration, provider schema/size, runtime credentials, and target resource type. |
+| Publish accepted but no visible alert | Check device connectivity, permission/channel settings, app state, payload type, expiry, and actual provider mapping. |
+| Endpoint disabled/invalid | Follow the verified token-update and endpoint reconciliation process; do not repeatedly publish unchanged requests. |
+| Wrong user receives an update | Stop the affected test/send path and investigate account ownership and subscription mapping with the owner. |
+| Duplicate/out-of-order update | Inspect repeat sends, retry behavior, collapse policy, and app handling; fetch authoritative business state. |
+| Topic operation rejects an ARN | Verify it is an SNS Topic ARN, not a Platform Application ARN or Endpoint ARN. |
+| Timeout leaves the send outcome unknown | Reconcile available evidence before retrying; another send can create duplicate notifications. |
+
+Use error-specific provider guidance rather than swallowing errors and returning success. [FCM error reference](https://firebase.google.com/docs/cloud-messaging/error-codes).
+
+FCM is listed as a no-cost Firebase product; backend compute, AWS SNS, storage, logging, network, and other services can still incur charges. Do not assume the notification architecture is free or requires a particular Firebase plan without checking its actual service use. [Firebase pricing](https://firebase.google.com/pricing).
+
+For contributions, use the appropriate repository's issue process. For help, use the [Teams support page](../support/support.mdx).
+
+**Next file:** `fcm-mobile-setup.mdx` — from-scratch Android, iOS, and React Native setup with full `FcmService` and `NotificationService` templates, native configuration, application wiring, and verification. Direct APNs uses its separate `apns-ios-setup.mdx` procedure.
 
 
 
 
----------------
+--------------------
+
 
 ---
-title: "Support"
+title: "FCM Mobile Setup"
+description: "Set up Firebase Cloud Messaging on Android, iOS, and React Native with FcmService and NotificationService templates and explicit application bindings."
+sidebar:
+  label: FCM Mobile Setup
+  order: 3
 ---
 
-import { Card, LinkButton } from '@astrojs/starlight/components';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
 
-<Card title="Developer Support">
-  <details open>
-    <summary>Microsoft Teams channel</summary>
+Use this page for **FCM on Android and FCM on iOS through APNs**, including React Native. Direct APNs uses a separate setup page. Read [Notification Guidelines](./notification-guidelines.mdx) first.
 
-    <p>
-      <LinkButton
-        href="https://example.invalid/replace-with-teams-channel-link"
-        variant="primary"
-        icon="external"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Open Teams support
-      </LinkButton>
-    </p>
-  </details>
-</Card>
+**Outcome:** register the current FCM token, process messages, and handle an open event through the application's authorized startup flow.
+
+> **Confidential — Enterprise internal use only.** Use approved non-production Firebase projects/devices for initial verification. Never put Firebase Admin/service-account keys, APNs private keys, backend credentials, tokens, or customer/order payloads in mobile source, screenshots, logs, or AI prompts.
+
+## 1. Choose the implementation and prepare the bindings
+
+The two helper files are reusable templates, **not a replacement for native configuration or the host application's backend and navigation**. Replace their package names, resources, and required bindings before compiling.
+
+| Helper | Responsibility |
+| :--- | :--- |
+| `FcmService` | Messaging callbacks, current token/refresh, and handoff to the app's registration/refresh worker. |
+| `NotificationService` | Presentation permission, native presentation policy, notification-open capture, and deferred consumption after app readiness. |
+
+The baseline uses ordinary notification/notification-plus-data messages, generic “open updates” behavior, and no payload-supplied URLs. Android uses the documented HTTP v1/`onMessageReceived` callback path; newer AndroidConfigV2 callbacks require the matching SDK/server integration. Do not mix that migration into this template without validating the actual versions. [Firebase message reception](https://firebase.google.com/docs/cloud-messaging/android/receive-messages), [Android callback migration](https://firebase.google.com/docs/cloud-messaging/send/v2-api).
+
+### Required application bindings
+
+| Binding | Host application supplies |
+| :--- | :--- |
+| Token synchronization | Durable enqueue and authenticated backend registration/update using the **current account at execution**; report actual success/failure. |
+| Content refresh | Bounded/background-safe enqueue to reload authorized current data. Receiving a push must never place an order or mark one successful. |
+| Open action | A synchronous acceptance function returning `true` only when startup, authentication, navigation, and current-user access are ready. |
+| Account change/opt-out | Server association/subscription cleanup and cancellation/reconciliation of pending work according to the real API. |
+| Safe diagnostics | Fixed error categories without token, payload, raw provider errors, or personal data. |
+
+These are **template callbacks**, not additional Enterprise SDK APIs. Callbacks used synchronously must be non-throwing and fast; use a durable worker for network work and report enqueue failures safely. No registration endpoint, deep-link scheme, order ID schema, or logout API is invented here. A backend outage must not be treated as successful registration.
+
+## 2. Register the application in Firebase
+
+1. Obtain the approved Firebase project/environment from the platform owner. Have the authorized owner create one only if needed; do not create a duplicate personal project.
+2. Register the **exact Android application ID and/or Apple bundle ID** for the candidate. Each environment/identifier needs the matching Firebase app configuration.
+3. Download the matching client configuration: `google-services.json` for Android and `GoogleService-Info.plist` for Apple.
+4. Follow the platform tab below to place the file and add the compatible SDK. Use approved exact versions and commit locks through normal review.
+5. For iOS, the authorized owner configures APNs credentials in the Firebase project's Cloud Messaging Apple-app settings and confirms the Apple team, key, and app identity. An FCM iOS token still depends on working APNs configuration.
+
+Firebase client configuration contains project/app identifiers and is not an Admin service-account credential. Handle it under Enterprise configuration policy; never replace it with a service-account JSON. [Android registration/configuration](https://firebase.google.com/docs/android/setup), [Apple registration/configuration](https://firebase.google.com/docs/ios/setup), [FCM Apple provider setup](https://firebase.google.com/docs/cloud-messaging/ios/get-started).
+
+**Attach screenshot — matching Firebase app/environment and APNs configuration status, with identifiers/private credentials hidden.**
+
+## 3. Follow your platform tab
+
+<Tabs>
+<TabItem label="Android">
+
+### A. Folder preview
+
+```text
+<android-project>/
+├── build.gradle.kts                       # Existing root plugins/catalog
+└── app/
+    ├── build.gradle.kts
+    ├── google-services.json                # Exact application/environment
+    └── src/main/
+        ├── AndroidManifest.xml
+        ├── java/com/example/mychicken/notifications/
+        │   ├── FcmService.kt
+        │   └── NotificationService.kt
+        └── res/
+            ├── drawable/ic_stat_notification.xml
+            └── values/strings.xml
+```
+
+Replace `com.example.mychicken` with your actual code namespace. It need not equal a variant's application ID. Retain the existing Application and launcher Activity.
+
+### B. Configure Gradle and resources
+
+In the existing **root** plugin declaration/catalog, add the approved Google Services plugin if absent:
+
+```kotlin
+// Root build.gradle.kts — merge into existing plugins.
+plugins {
+    id("com.google.gms.google-services") version "REPLACE_WITH_APPROVED_PLUGIN_VERSION" apply false
+}
+```
+
+In the **app module**:
+
+```kotlin
+// app/build.gradle.kts — merge; do not replace Android/Kotlin plugins.
+plugins { id("com.google.gms.google-services") }
+
+dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:REPLACE_WITH_APPROVED_BOM_VERSION"))
+    implementation("com.google.firebase:firebase-messaging")
+    // NotificationCompat/ContextCompat: retain your existing compatible AndroidX Core dependency.
+    implementation("androidx.core:core-ktx:REPLACE_WITH_APPROVED_CORE_VERSION")
+}
+```
+
+Do not add a separate version to `firebase-messaging` when using the BoM. Reuse existing catalog entries/compatible dependencies. Variant-specific config files must match the final application ID. [Firebase Gradle setup](https://firebase.google.com/docs/android/setup), [configuration-file placement](https://firebase.google.com/docs/android/google-services-plugin-and-file).
+
+Merge into `AndroidManifest.xml`; adjust the service package:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <application>
+        <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
+        <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id"
+                   android:value="app_updates" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon"
+                   android:resource="@drawable/ic_stat_notification" />
+        <service android:name="com.example.mychicken.notifications.FcmService"
+                 android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>
+```
+
+This is a merge fragment, not a replacement manifest. The collection settings prevent enabling messaging automatically through this configuration; the approved app flow explicitly starts token registration. They do not override a previously persisted auto-init choice on existing installations or disable every Firebase product. Review the installed app's actual settings. [FCM Android setup/auto-initialization](https://firebase.google.com/docs/cloud-messaging/android/get-started).
+
+Merge localizable strings into `res/values/strings.xml`:
+
+```xml
+<resources>
+    <string name="push_channel_name">App updates</string>
+    <string name="push_title">My Chicken App</string>
+    <string name="push_body">An update is available. Open the app to view it.</string>
+</resources>
+```
+
+Create an approved monochrome notification small icon with Android Studio **New → Image Asset → Notification Icons**, named `ic_stat_notification`. Do not substitute a launcher/adaptive icon for the notification small icon.
+
+### C. Copy `FcmService.kt`
+
+```kotlin
+package com.example.mychicken.notifications
+
+import android.content.Context
+import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+
+class FcmService : FirebaseMessagingService() {
+    override fun onNewToken(token: String) {
+        // Host binding must enqueue work durably, not perform network I/O here.
+        if (token.isNotBlank()) hooks?.enqueueTokenSync?.invoke(token)
+    }
+
+    override fun onMessageReceived(message: RemoteMessage) {
+        // Only callbacks delivered here are app-handled. Background notification
+        // payloads may already have been displayed by the SDK/OS.
+        if (message.notification != null) {
+            if (hooks?.allowLocalPresentation?.invoke() == true) {
+                NotificationService.showUpdate(applicationContext, message.messageId)
+            }
+        } else {
+            // A data message is only a hint to reconcile authorized current state.
+            // The host schedules bounded work; raw payload is not trusted/routed.
+            hooks?.enqueueContentRefresh?.invoke()
+        }
+    }
+
+    override fun onDeletedMessages() {
+        hooks?.enqueueContentRefresh?.invoke()
+    }
+
+    data class Hooks(
+        val enqueueTokenSync: (String) -> Unit,
+        val enqueueContentRefresh: () -> Unit,
+        val allowLocalPresentation: () -> Boolean,
+        val onRegistrationFailure: () -> Unit,
+    )
+
+    companion object {
+        @Volatile private var hooks: Hooks? = null
+
+        // Call from Application.onCreate, including background process startup.
+        // Bindings must be thread-safe and non-blocking; scope sync to the
+        // current authenticated account at execution, not to a captured user.
+        fun initialize(context: Context, bindings: Hooks) {
+            hooks = bindings
+            NotificationService.createChannel(context.applicationContext)
+        }
+
+        // Call after sign-in and whenever account/preferences require reconciliation.
+        // Successful token fetch is not successful backend registration.
+        fun refreshRegistration() {
+            val bindings = checkNotNull(hooks) { "Initialize FcmService first" }
+            FirebaseMessaging.getInstance().isAutoInitEnabled = true
+            FirebaseMessaging.getInstance().token
+                .addOnSuccessListener { token ->
+                    if (token.isNotBlank()) bindings.enqueueTokenSync(token)
+                    else bindings.onRegistrationFailure()
+                }
+                .addOnFailureListener { bindings.onRegistrationFailure() }
+        }
+    }
+}
+```
+
+### D. Copy `NotificationService.kt`
+
+```kotlin
+package com.example.mychicken.notifications
+
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import com.example.mychicken.R
+
+object NotificationService {
+    const val CHANNEL_ID = "app_updates"
+    private const val OPEN_EXTRA = "mychicken.notification_open"
+    private var pendingOpen = false // Access only on the main thread.
+
+    fun createChannel(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID, context.getString(R.string.push_channel_name),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            )
+            context.getSystemService(NotificationManager::class.java)
+                .createNotificationChannel(channel)
+        }
+    }
+
+    fun canPost(context: Context): Boolean {
+        val runtimeAllowed = Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        return runtimeAllowed && NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+
+    fun showUpdate(context: Context, messageId: String?) {
+        if (!canPost(context)) return
+        createChannel(context)
+        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
+        launch.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        launch.putExtra(OPEN_EXTRA, true)
+        val pendingIntent = PendingIntent.getActivity(
+            context, 0, launch, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_notification)
+            .setContentTitle(context.getString(R.string.push_title))
+            .setContentText(context.getString(R.string.push_body))
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+        try {
+            // Same provider ID replaces the matching local notification. This is
+            // not an exactly-once guarantee or business-operation deduplication.
+            NotificationManagerCompat.from(context)
+                .notify(messageId ?: "generic-update", 1, notification)
+        } catch (_: SecurityException) {
+            // Permission may change between checking and posting. Do not retry/spam.
+        }
+    }
+
+    // Call on main thread from the existing Activity.onCreate/onNewIntent.
+    fun captureOpen(intent: Intent?) {
+        if (intent == null) return
+        val fromNotification = intent.getBooleanExtra(OPEN_EXTRA, false) ||
+            intent.hasExtra("google.message_id")
+        if (fromNotification) {
+            pendingOpen = true
+            intent.removeExtra(OPEN_EXTRA)
+            intent.removeExtra("google.message_id")
+        }
+    }
+
+    // Host calls after startup, authentication, and navigation are ready.
+    // Return true only after accepting a generic, authorized "open updates" action.
+    fun consumeOpenIfReady(openAuthorizedUpdates: () -> Boolean) {
+        if (pendingOpen && openAuthorizedUpdates()) pendingOpen = false
+    }
+
+    // Host calls on logout/account replacement to avoid carrying an old intent.
+    fun clearPendingOpen() { pendingOpen = false }
+}
+```
+
+The channel ID is shared with the manifest. The app cannot override a user's blocked channel. Set `allowLocalPresentation` from the actual thread-safe preference policy; it defaults to a non-presenting host example. The helper posts generic local text only for notification messages actually delivered to its service; it does not post data-only messages or duplicate background alerts already displayed by FCM. [Android receive behavior](https://firebase.google.com/docs/cloud-messaging/android/receive-messages).
+
+### E. Wire the existing Application and Activity
+
+Inside the existing `Application.onCreate()`, after `super.onCreate()`, call:
+
+```kotlin
+FcmService.initialize(
+    this,
+    FcmService.Hooks(
+        enqueueTokenSync = { token -> /* Bind to existing durable, account-safe sync worker. */ },
+        enqueueContentRefresh = { /* Bind to existing background-safe refresh worker. */ },
+        allowLocalPresentation = { false /* Replace with thread-safe approved preference. */ },
+        onRegistrationFailure = { /* Record a fixed safe category; no token/error dump. */ },
+    ),
+)
+```
+
+**The callback bodies above are required host integration points. Empty bodies do not register a token or refresh data.** Initialize them on every process start, including background startup; keep them thread-safe and non-blocking. Do not perform a long HTTP call in `onNewToken` or `onMessageReceived`.
+
+From an appropriate Activity user action, request presentation permission using the existing Activity Result setup:
+
+```kotlin
+// Activity class members. Imports: android.Manifest, android.os.Build,
+// androidx.activity.result.contract.ActivityResultContracts.
+private val requestPushPermission = registerForActivityResult(
+    ActivityResultContracts.RequestPermission(),
+) { granted ->
+    // Update the real preference UI. Denial must not block ordering.
+}
+
+private fun askForPushPermission() {
+    if (Build.VERSION.SDK_INT >= 33) {
+        requestPushPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+}
+```
+
+After the app's approved opt-in/account flow, call `FcmService.refreshRegistration()`. Permission to display, business opt-in, token retrieval, and backend registration remain separate states. Re-run synchronization when the authenticated account/preferences change, not only when a new token is issued.
+
+Merge into the existing launcher Activity callbacks:
+
+```kotlin
+// In existing onCreate, after super.onCreate(savedInstanceState):
+NotificationService.captureOpen(intent)
+
+// Merge into existing Activity override; import android.content.Intent.
+override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    NotificationService.captureOpen(intent)
+}
+
+// At the application's actual startup/authentication/navigation-ready boundary:
+NotificationService.consumeOpenIfReady {
+    // Call the real authorized updates navigation action; true only if accepted.
+    false // Replace with the real result. false keeps the intent pending.
+}
+```
+
+Call consumption again when readiness changes. This template recognizes its local marker or an ordinary FCM notification launch; it does not parse a custom `click_action`/deep link. Pending opens are in-memory and can be lost on process death; add approved account-scoped persistence only if the product requires it. Clear pending opens on logout/account replacement and reconcile server associations through the real backend contract.
+
+### F. Build and verify
+
+```bash
+# From the directory containing gradlew; replace module/variant tasks if different.
+./gradlew :app:assembleDebug :app:testDebugUnitTest
+```
+
+Install/run the approved debug variant from Android Studio. Verify the correct merged service/channel/configuration and use the test procedure in Section 4. A build pass is not notification-delivery evidence.
+
+</TabItem>
+<TabItem label="iOS">
+
+### A. Folder preview and native configuration
+
+```text
+<ios-project>/
+├── <application-target>/
+│   ├── GoogleService-Info.plist
+│   ├── AppDelegate.swift                    # Existing lifecycle; merge callbacks
+│   └── Notifications/
+│       ├── FcmService.swift
+│       └── NotificationService.swift
+└── ...existing workspace/project and package resolution...
+```
+
+1. Add the matching `GoogleService-Info.plist` to the application target's resources. Confirm the correct file for the build configuration and bundle ID; avoid packaging two files with the same destination name.
+2. In Xcode **File → Add Package Dependencies**, add `https://github.com/firebase/firebase-ios-sdk` at the approved compatible version. Link **FirebaseMessaging** and its required FirebaseCore dependency to the app target. Reuse an existing dependency-manager strategy; do not install Firebase twice through SPM and CocoaPods.
+3. Under **Signing & Capabilities**, enable **Push Notifications** for the actual application target. Confirm signing profiles/entitlements with the authorized owner.
+4. Confirm APNs authentication in the Firebase project's Apple Cloud Messaging settings. Never bundle the `.p8` key in the app.
+5. This native template uses **explicit delegate forwarding**, not swizzling. Merge these keys into the application's actual `Info.plist`, not `GoogleService-Info.plist`:
+
+```xml
+<key>FirebaseAppDelegateProxyEnabled</key>
+<false/>
+<key>FirebaseMessagingAutoInitEnabled</key>
+<false/>
+<key>FIREBASE_ANALYTICS_COLLECTION_ENABLED</key>
+<false/>
+```
+
+Changing proxy behavior affects existing Firebase integrations. Reconcile their delegate forwarding before adopting this strategy. Do not use these settings blindly in the React Native tab, which has its own SDK integration. The baseline does not request background execution for silent content updates. Add **Background Modes → Remote notifications** only when implementing and testing an approved background-data flow. [Firebase Apple setup](https://firebase.google.com/docs/ios/setup), [FCM Apple setup](https://firebase.google.com/docs/cloud-messaging/ios/get-started), [manual forwarding](https://firebase.google.com/docs/cloud-messaging/ios/receive-messages).
+
+### B. Copy `FcmService.swift`
+
+```swift
+import Foundation
+import FirebaseCore
+@preconcurrency import FirebaseMessaging
+
+@MainActor
+final class FcmService: NSObject, MessagingDelegate {
+    static let shared = FcmService()
+    private var started = false
+    private var apnsReady = false
+    private var enqueueTokenSync: ((String) -> Void)?
+    private var onFailure: (() -> Void)?
+    private override init() { super.init() }
+
+    // Call during application startup, before registering for APNs.
+    func start(
+        enqueueTokenSync: @escaping (String) -> Void,
+        onFailure: @escaping () -> Void
+    ) {
+        self.enqueueTokenSync = enqueueTokenSync
+        self.onFailure = onFailure
+        guard !started else { return }
+        if FirebaseApp.app() == nil { FirebaseApp.configure() }
+        Messaging.messaging().delegate = self
+        started = true
+    }
+
+    // AppDelegate forwards the APNs token; backend receives the FCM token instead.
+    func acceptAPNsToken(_ token: Data) {
+        Messaging.messaging().apnsToken = token
+        Messaging.messaging().isAutoInitEnabled = true
+        apnsReady = true
+        refreshRegistration()
+    }
+
+    // Invoke again after sign-in/account/preference changes as appropriate.
+    func refreshRegistration() {
+        guard started, apnsReady else { return }
+        Messaging.messaging().token { token, error in
+            let failed = error != nil
+            Task { @MainActor in
+                if !failed, let token, !token.isEmpty {
+                    self.enqueueTokenSync?(token)
+                } else {
+                    self.onFailure?()
+                }
+            }
+        }
+    }
+
+    nonisolated func messaging(
+        _ messaging: Messaging,
+        didReceiveRegistrationToken fcmToken: String?
+    ) {
+        guard let token = fcmToken, !token.isEmpty else { return }
+        Task { @MainActor in self.enqueueTokenSync?(token) }
+    }
+}
+```
+
+### C. Copy `NotificationService.swift`
+
+```swift
+import UIKit
+@preconcurrency import UserNotifications
+
+// Ordinary application coordinator, NOT a UNNotificationServiceExtension.
+@MainActor
+final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationService()
+    private var pendingOpen = false
+    // Configure from approved foreground preference. false prevents banners/sounds.
+    var presentInForeground = false
+    private override init() { super.init() }
+
+    func installDelegate() {
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    func requestPresentationPermission() async throws -> Bool {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        if settings.authorizationStatus == .notDetermined {
+            return try await center.requestAuthorization(options: [.alert, .sound, .badge])
+        }
+        return settings.authorizationStatus == .authorized ||
+            settings.authorizationStatus == .provisional ||
+            settings.authorizationStatus == .ephemeral
+    }
+
+    // Registration and presentation permission are distinct. Call through the
+    // app's approved opt-in flow; OS registration may succeed without visible alerts.
+    func registerForRemoteNotifications() {
+        UIApplication.shared.registerForRemoteNotifications()
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        await MainActor.run {
+            self.presentInForeground ? [.banner, .list, .sound] : []
+        }
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else { return }
+        // No URL/identifier from the payload is executed or passed to navigation.
+        await MainActor.run { self.pendingOpen = true }
+    }
+
+    func consumeOpenIfReady(openAuthorizedUpdates: () -> Bool) {
+        if pendingOpen && openAuthorizedUpdates() { pendingOpen = false }
+    }
+
+    func clearPendingOpen() { pendingOpen = false }
+}
+```
+
+`NotificationService` is an ordinary app coordinator, **not** Apple's similarly named notification-service-extension template. Rich-media modification/extensions are outside this baseline. Foreground presentation uses the original approved sender content; a client callback cannot sanitize an alert already displayed by the OS in the background.
+
+### D. Merge into the existing app lifecycle
+
+In `AppDelegate.application(_:didFinishLaunchingWithOptions:)`, start the services before notification registration:
+
+```swift
+// Existing AppDelegate startup fragment; keep other app initialization.
+FcmService.shared.start(
+    enqueueTokenSync: { token in
+        // Required: enqueue authenticated, account-safe token sync durably.
+    },
+    onFailure: {
+        // Required: report fixed registration-failure category; no token/error dump.
+    }
+)
+NotificationService.shared.installDelegate()
+// Set presentInForeground from the approved app preference, if appropriate.
+```
+
+The callback bodies are **required host bindings**. Keep the singleton strongly retained and reconcile existing UNUserNotificationCenter/Messaging delegates—there can be only one effective delegate owner for each.
+
+Merge APNs callbacks into the existing AppDelegate:
+
+```swift
+import UIKit
+
+func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+) {
+    FcmService.shared.acceptAPNsToken(deviceToken)
+}
+
+func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+) {
+    // Required: safe fixed registration-failure reporting; do not print error/token.
+}
+```
+
+From the app's approved user opt-in flow:
+
+```swift
+// Main-actor UI flow. Handle errors in the existing preference UI.
+Task { @MainActor in
+    do {
+        let allowed = try await NotificationService.shared.requestPresentationPermission()
+        // Update the real permission UI using allowed; denial does not block ordering.
+        // Register only when approved by the app's opt-in policy.
+        NotificationService.shared.registerForRemoteNotifications()
+    } catch {
+        // Report a safe permission-request failure, not permission granted/denied.
+    }
+}
+```
+
+The APNs success callback binds the APNs token to Firebase and retrieves/synchronizes the **FCM token**. Do not forward the APNs token to the FCM backend. Permission denial does not itself define the app's business opt-in policy; bind the registration decision to the actual policy.
+
+At startup/authentication/navigation readiness, call:
+
+```swift
+NotificationService.shared.consumeOpenIfReady {
+    // Invoke the existing authorized updates action and return its acceptance result.
+    false // Required replacement; retains pending intent until ready.
+}
+```
+
+For SwiftUI apps, connect the existing AppDelegate using `@UIApplicationDelegateAdaptor` if appropriate; do not add a second app entry point. Pending opens are in-memory, coalesced to one generic updates action, and cleared by `clearPendingOpen()` on logout/account replacement. Longer-lived persistence needs the app's approved account-scoped design.
+
+The template handles visible notifications and default taps. Silent background refresh, custom action categories, rich media, and analytics callbacks require additional explicit integrations; do not report them as enabled. [Firebase Apple reception](https://firebase.google.com/docs/cloud-messaging/ios/receive-messages).
+
+### E. Run and verify
+
+Select the actual application scheme and supported device in Xcode, build, and run. Use an authorized physical test device for end-to-end verification of the real signing/APNs environment; a simulated notification is not proof of FCM delivery.
+
+**Attach screenshot — sanitized capabilities, target membership, and APNs/FCM registration status; hide token values.**
+
+</TabItem>
+<TabItem label="React Native">
+
+### A. Register both native applications and install compatible packages
+
+These instructions target an existing **bare React Native native project**. Expo/prebuild has its own configuration/plugin workflow; do not apply manual native edits to a generated project without the approved integration.
+
+This template uses **React Native Firebase's modular API**, with no Notifee or separate local-notification package. It is a documented implementation option; confirm approval and compatibility with the existing app before adding it.
+
+```text
+<react-native-project>/
+├── firebase.json
+├── index.js                         # Early background-handler registration
+├── App.tsx                          # Existing providers/lifecycle; merge
+├── src/notifications/
+│   ├── FcmService.ts
+│   └── NotificationService.ts
+├── android/app/google-services.json
+└── ios/<application>/GoogleService-Info.plist
+```
+
+From the repository root, using the selected package manager (Yarn example):
+
+```bash
+RN_FIREBASE_VERSION='REPLACE_WITH_APPROVED_COMPATIBLE_VERSION'
+yarn add --exact "@react-native-firebase/app@$RN_FIREBASE_VERSION" \
+  "@react-native-firebase/messaging@$RN_FIREBASE_VERSION"
+```
+
+Use matching approved module versions; preserve the selected JS lockfile. This is developer setup instruction, not a command already executed for this documentation.
+
+**Android:** register the actual Android app ID, place `google-services.json` in `android/app/`, and apply the Google Services plugin through the existing Gradle/version-catalog configuration. Add `POST_NOTIFICATIONS` to the merged manifest. Do **not** register the native Android tab's custom `FcmService` as well; React Native Firebase supplies its native service integration.
+
+**iOS:** register the actual bundle ID, add the matching plist to the app target, enable Push Notifications, and bind APNs credentials in Firebase. Follow the installed RN Firebase version's startup integration for the actual Swift/Objective-C AppDelegate and supported Podfile linkage. The Swift startup typically calls `FirebaseApp.configure()` before the existing RN bootstrap; merge it once, not into a second delegate.
+
+For a CocoaPods project, merge the required linkage into its existing `Podfile` when required by the selected version:
+
+```ruby
+# Within the existing target/configuration as required by the installed RNFB version:
+use_frameworks! :linkage => :static
+$RNFirebaseAsStaticFramework = true
+```
+
+Review compatibility with other pods and existing linkage before applying. Then:
+
+```bash
+# Repository root, if Bundler manages the existing CocoaPods installation:
+(cd ios && bundle exec pod install)
+```
+
+Use the project's documented pod command when not using Bundler. Do not add native Firebase again through SPM to this CocoaPods integration. Rebuild both apps after native changes. [RN Firebase installation](https://rnfirebase.io/), [iOS messaging setup](https://rnfirebase.io/messaging/usage/ios-setup).
+
+Merge `firebase.json` at the repository root:
+
+```json
+{
+  "react-native": {
+    "messaging_auto_init_enabled": false,
+    "analytics_auto_collection_enabled": false
+  }
+}
+```
+
+Reconcile existing settings; do not overwrite other Firebase configuration. Runtime auto-init choices can persist across launches; the static setting is not a universal opt-out reset. The approved flow below explicitly enables messaging. [RN Firebase JSON configuration](https://rnfirebase.io/app/json-config), [messaging initialization API](https://reference.rnfirebase.io/_react-native-firebase/messaging/index/setAutoInitEnabled.html).
+
+### B. Configure Android's default channel
+
+For SDK-displayed Android background notifications, add the default-channel metadata inside the existing application manifest:
+
+```xml
+<meta-data android:name="com.google.firebase.messaging.default_notification_channel_id"
+           android:value="app_updates" />
+```
+
+Create that channel during the existing Android `MainApplication.onCreate()`, after `super.onCreate()`; import `android.app.NotificationChannel`, `android.app.NotificationManager`, and `android.os.Build`:
+
+```kotlin
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+    val channel = NotificationChannel(
+        "app_updates", getString(R.string.push_channel_name),
+        NotificationManager.IMPORTANCE_DEFAULT,
+    )
+    getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+}
+```
+
+Add a localized `push_channel_name` string to `android/app/src/main/res/values/strings.xml`. Configure an approved small icon using the manifest/resource pattern in the native Android tab. These are native setup fragments, not additional JavaScript service files.
+
+### C. Copy `FcmService.ts`
+
+```typescript
+import {
+  getMessaging, getToken, onMessage, onTokenRefresh,
+  onNotificationOpenedApp, getInitialNotification, setBackgroundMessageHandler,
+  registerDeviceForRemoteMessages, setAutoInitEnabled,
+} from '@react-native-firebase/messaging';
+import { Platform } from 'react-native';
+import { notificationService } from './NotificationService';
+
+export type FcmBindings = {
+  // Resolve only after durable enqueue; the worker validates current account ownership.
+  enqueueTokenSync(token: string): Promise<void>;
+  enqueueContentRefresh(): Promise<void>;
+  // Fixed categories only. Do not attach error objects, tokens, or payloads.
+  reportFailure(category: 'registration' | 'message' | 'initial-open'): void;
+};
+
+export class FcmService {
+  private stopListeners: Array<() => void> = [];
+  private generation = 0;
+
+  start(bindings: FcmBindings): () => void {
+    this.stop();
+    const generation = this.generation;
+    const active = () => generation === this.generation;
+    const run = (task: () => Promise<void>, category: Parameters<FcmBindings['reportFailure']>[0]) => {
+      void Promise.resolve().then(() => active() ? task() : undefined)
+        .catch(() => { if (active()) bindings.reportFailure(category); });
+    };
+    const messaging = getMessaging();
+    this.stopListeners = [
+      onTokenRefresh(messaging, token => {
+        if (token) run(() => bindings.enqueueTokenSync(token), 'registration');
+      }),
+      onMessage(messaging, () => {
+        // FCM-only template uses app-controlled foreground refresh, not a second local alert.
+        run(() => bindings.enqueueContentRefresh(), 'message');
+      }),
+      onNotificationOpenedApp(messaging, () => {
+        if (active()) notificationService.captureOpen();
+      }),
+    ];
+    void getInitialNotification(messaging).then(message => {
+      if (active() && message) notificationService.captureOpen();
+    }).catch(() => { if (active()) bindings.reportFailure('initial-open'); });
+    run(async () => {
+      await setAutoInitEnabled(messaging, true);
+      // iOS requires completed APNs registration before fetching the FCM token.
+      if (Platform.OS === 'ios' && !messaging.isDeviceRegisteredForRemoteMessages) {
+        await registerDeviceForRemoteMessages(messaging);
+      }
+      const token = await getToken(messaging);
+      if (active() && token) await bindings.enqueueTokenSync(token);
+    }, 'registration');
+    return () => { if (active()) this.stop(); };
+  }
+
+  stop(): void {
+    this.generation += 1;
+    this.stopListeners.forEach(stop => stop());
+    this.stopListeners = [];
+  }
+
+  // Call once in index.js, before AppRegistry.registerComponent. No UI/navigation.
+  static installBackgroundHandler(enqueueRefresh: () => Promise<void>): void {
+    setBackgroundMessageHandler(getMessaging(), async () => {
+      // Reject on failure rather than falsely claiming a refresh completed.
+      // Caller supplies safe reporting/durable handling in this background-safe binding.
+      await enqueueRefresh();
+    });
+  }
+}
+
+export const fcmService = new FcmService();
+```
+
+### D. Copy `NotificationService.ts`
+
+```typescript
+import { PermissionsAndroid, Platform } from 'react-native';
+import { AuthorizationStatus, getMessaging, requestPermission } from '@react-native-firebase/messaging';
+
+type OpenHandler = () => boolean;
+
+export class NotificationService {
+  private pendingOpen = false;
+  private handler: OpenHandler | undefined;
+
+  async requestPresentationPermission(): Promise<boolean> {
+    if (Platform.OS === 'android') {
+      if (Number(Platform.Version) < 33) return true;
+      const result = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+      );
+      return result === PermissionsAndroid.RESULTS.GRANTED;
+    }
+    if (Platform.OS === 'ios') {
+      const status = await requestPermission(getMessaging());
+      return status === AuthorizationStatus.AUTHORIZED || status === AuthorizationStatus.PROVISIONAL;
+    }
+    return false;
+  }
+
+  captureOpen(): void {
+    this.pendingOpen = true;
+    this.consumeOpenIfReady();
+  }
+
+  // Bind only when startup/authentication/navigation are ready; handler validates
+  // current account/access and returns true after accepting the generic updates action.
+  setOpenHandler(handler: OpenHandler): () => void {
+    this.handler = handler;
+    this.consumeOpenIfReady();
+    return () => { if (this.handler === handler) this.handler = undefined; };
+  }
+
+  consumeOpenIfReady(): void {
+    if (this.pendingOpen && this.handler?.()) this.pendingOpen = false;
+  }
+
+  clearPendingOpen(): void { this.pendingOpen = false; }
+}
+
+export const notificationService = new NotificationService();
+```
+
+For Android before API 33, the permission method's `true` means **no runtime request is needed**, not that app/channel settings are enabled. Check presentation on the real device. For iOS, use the library's authorization flow without replacing its native notification delegate with the Swift coordinator in another tab.
+
+This template performs **in-app refresh for foreground receipt**, while the configured system notification handles ordinary background alert presentation. It does not create a foreground local banner in JavaScript. If your approved app requires local display, supply its actual notification-library contract rather than assuming one.
+
+Notifee v7+ can own open events instead of React Native Firebase's `onNotificationOpenedApp`/`getInitialNotification`. Do not combine this template unchanged with that integration. [RN Firebase handlers and open-event caveat](https://rnfirebase.io/messaging/usage).
+
+### E. Install the background entry point and app bindings
+
+In the existing `index.js`, before `AppRegistry.registerComponent`:
+
+```javascript
+import { FcmService } from './src/notifications/FcmService';
+
+FcmService.installBackgroundHandler(async () => {
+  // REQUIRED: invoke the existing background-safe durable refresh enqueue.
+  // No navigation, UI updates, order submission, or raw payload logging.
+});
+```
+
+The empty body is a **required integration point**, not a completed refresh implementation. Background execution is bounded and not guaranteed. Do not import an interactive auth/navigation flow into this handler. For headless iOS launches, use the installed RNFB version's headless-prop integration/guard so a background start does not run the interactive app tree. Enable Remote notifications background capability only for the approved background-data flow. [Background handling and headless starts](https://rnfirebase.io/messaging/usage).
+
+In the existing React root/session coordinator, start the listeners **only after the approved opt-in/account state**; preserve Redux Toolkit and all existing providers:
+
+```tsx
+import { useEffect } from 'react';
+import { fcmService } from './src/notifications/FcmService';
+import { notificationService } from './src/notifications/NotificationService';
+
+// Inside the existing root/session component. These are host-supplied values:
+// pushEnabled: boolean, accountRevision: stable primitive,
+// bindings: stable FcmBindings object with real implementations.
+useEffect(() => {
+  if (!pushEnabled) return;
+  return fcmService.start(bindings);
+}, [pushEnabled, accountRevision, bindings]);
+
+// Separate readiness-boundary effect. openAuthorizedUpdates must be stable and
+// verify current authentication/account/access before accepting the action.
+useEffect(() => {
+  if (!navigationAndAuthReady) return;
+  return notificationService.setOpenHandler(openAuthorizedUpdates);
+}, [navigationAndAuthReady, accountRevision, openAuthorizedUpdates]);
+```
+
+Request presentation permission from the appropriate user-facing preference action:
+
+```typescript
+try {
+  const allowed = await notificationService.requestPresentationPermission();
+  // Update the actual preference UI. Do not treat allowed as backend registration.
+} catch {
+  // Record a safe permission-request error; do not misreport it as granted/denied.
+}
+```
+
+On logout/account replacement, clear the open handler/readiness, stop listeners, clear the pending open, and invoke the real backend disassociation/cancellation contract. Generation guards stop obsolete callback delivery but **do not undo a registration already in flight**; the backend worker must enforce current account ownership. Stopping listeners does not delete a token, revoke permission, disable messaging, or remove a backend association.
+
+The helpers coalesce opens into one in-memory generic intent; they do not preserve a durable queue of individual notification links. Add account-scoped persistence only against the approved product contract.
+
+### F. Rebuild and run
+
+Run your actual repository Android/iOS commands or launch from Android Studio/Xcode after the native changes. Do not assume the repo has an `npm run android` script unless `package.json` defines one. Verify both platforms independently; a Metro reload cannot install native modules.
+
+</TabItem>
+</Tabs>
+
+## 4. Verify from registration to a notification open
+
+<MermaidZoom title="Token registration and user-open handling have separate readiness gates">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as App Startup / Preferences
+    participant FCM as FcmService
+    participant BACKEND as Host Registration Worker
+    participant N as NotificationService
+    participant ROUTER as Authenticated App Navigation
+    UI->>FCM: Initialize bindings and activate approved registration
+    FCM->>BACKEND: Enqueue current / refreshed FCM token
+    BACKEND-->>UI: Actual registration outcome through host state
+    Note over FCM,N: SDK or app presents according to payload, state and permissions
+    UI->>N: Capture notification open
+    N->>N: Retain generic pending updates intent
+    UI->>N: Startup, account and navigation ready
+    N->>ROUTER: Request authorized generic updates action
+    ROUTER-->>N: Accepted or not ready
+    Note over N,ROUTER: No payload-supplied URL or order operation is executed
+```
+
+</MermaidZoom>
+
+1. Run a known non-production candidate on the intended device. Confirm Firebase project, app identity, platform environment, and permission/preferences.
+2. Observe token retrieval and the **host worker's real registration result** using protected diagnostics. Do not print the token to logs. For an approved provider-console test, use a protected debug-only inspection mechanism and handle its token under the same rules.
+3. Have the authorized test sender send a minimal synthetic notification to that installation's **FCM token**. Do not put service-account credentials in the app or run an unauthenticated arbitrary-recipient send API.
+4. Test foreground, background, warm open, cold open, denied permission, token refresh, and account replacement. Confirm no duplicate alert/open and no registration under the previous account.
+5. Delay app authentication/navigation readiness and confirm the open is consumed only after the authorized host action accepts it.
+6. Test registration failure and pending sync recovery through the real worker. A successful token fetch alone must not report “registered.”
+
+[Firebase Android test setup](https://firebase.google.com/docs/cloud-messaging/android/get-started), [Firebase Apple setup/test](https://firebase.google.com/docs/cloud-messaging/ios/get-started).
+
+| Symptom | Inspect |
+| :--- | :--- |
+| No FCM token | Correct native config, SDK initialization/auto-init decision, iOS APNs registration, connectivity, and actual SDK compatibility. |
+| Token exists but no send reaches the app | Matched Firebase project/sender, backend endpoint provider type, APNs credentials/environment, permission/channel settings, payload type, expiry and app/device state. |
+| Opens fail only on cold start | Delegate/listener startup order, initial-notification retrieval, pending intent, and actual readiness binding. |
+| Duplicate alerts | SDK display plus app local display, competing services/delegates, or repeated sends. |
+| Stale account association | Host registration/disassociation worker and server ownership checks; listener cleanup alone is insufficient. |
+| Expected background refresh absent | Platform execution limits, actual capabilities/payload type, and background-safe handler setup; a displayed alert does not prove a refresh ran. |
+
+**Attach screenshot — sanitized permission state, generic notification, registration status, and authorized post-open screen.**
+
+## 5. What to extend only with an approved contract
+
+| Capability | Required additional integration |
+| :--- | :--- |
+| Order-specific links/actions | Allowed payload/schema, route identifiers, authentication/authorization, and account-scoped pending-intent design. |
+| Topic subscriptions/preferences | Approved audience policy and backend endpoint/subscription lifecycle. Do not expose arbitrary topic joins from the UI. |
+| Rich media or actionable categories | Platform extension/action configuration and actual library APIs; not enabled by naming a class NotificationService. |
+| Silent background synchronization | Appropriate provider payload/capabilities and bounded durable-work integration; delivery is not guaranteed. |
+| Opt-out/token deletion | Server disassociation, current-account ownership, in-flight work handling, and selected SDK lifecycle; token deletion alone is not a global user opt-out. |
+
+**Next file:** `apns-ios-setup.mdx` — direct APNs registration/notification handling, separate from this FCM provider route.
+
+
+
+----------------------------
+
+
+
+---
+title: "Direct APNs Setup — iOS"
+description: "Configure direct Apple Push Notification service registration with ApnsService and NotificationService templates, native lifecycle wiring, and separate backend integration."
+sidebar:
+  label: Direct APNs Setup
+  order: 4
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Use this path when the iOS backend sends **directly through APNs**, including an SNS **APNs** platform application. It does not use Firebase Messaging or an FCM registration token. For FCM on Apple devices, follow [FCM Mobile Setup](./fcm-mobile-setup.mdx) instead.
+
+**Outcome:** obtain the current APNs token, pass it to the application's authorized registration flow, present permitted notifications, and handle default taps after app readiness.
+
+> **Confidential — Enterprise internal use only.** Provider keys/certificates remain with the authorized backend/platform owner. Never bundle `.p8` private keys, provider JWTs, server credentials, or raw test tokens in source, logs, screenshots, or AI prompts.
+
+## 1. Confirm the path and required bindings
+
+| Item | Confirm with the responsible owner |
+| :--- | :--- |
+| App identity | Exact bundle ID, Apple team, signing profile, and Push Notifications capability. |
+| Provider environment | Development/sandbox or production, matching the installed build's signed entitlement. |
+| Backend destination | Actual direct APNs provider or SNS APNs platform application; not an SNS FCM application. |
+| Registration contract | Authenticated backend registration/update, user/device ownership, opt-out, and account replacement. |
+| Navigation | Existing authorized generic updates destination and startup/authentication readiness. |
+
+An **APNs device token** addresses an app installation. A provider **authentication token/JWT** authorizes the server connection. Neither is an FCM registration token. The APNs provider topic is normally the app bundle ID; it is not an SNS Topic ARN. [Apple APNs registration](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns), [provider authentication](https://developer.apple.com/documentation/usernotifications/establishing-a-token-based-connection-to-apns).
+
+No custom registration API or deep-link schema is introduced here. The template callback names below are local integration points that your app must implement.
+
+## 2. Configure Apple signing and the provider
+
+1. Have the authorized Apple account owner confirm the registered App ID has push notifications enabled.
+2. In Xcode, select the actual application target and enable **Signing & Capabilities → Push Notifications**. Confirm the entitlement/profile through [Signing & Release Approval](../app-store-and-distribution/signing-and-release-approval.mdx).
+3. Confirm the selected build uses the intended provisioning/team/environment. Do not hand-edit an entitlement to work around an incompatible signing profile.
+4. The authorized provider owner configures its approved APNs authentication—token-based key/team/key identifier or the established certificate method. Store private material through the approved backend secret mechanism.
+5. For SNS, the owner confirms the matching APNs platform application and credentials. An optional SNS broadcast topic is a separate resource.
+6. Do not add Firebase SDKs, Firebase configuration files, or an FCM service merely to implement this direct APNs path.
+
+Apple supports provider authentication using the appropriate APNs credentials; an App Store Connect API key is not automatically an APNs key. [Apple provider-key guidance](https://developer.apple.com/help/account/capabilities/communicate-with-apns-using-authentication-tokens/), [SNS prerequisites](https://docs.aws.amazon.com/sns/latest/dg/sns-prerequisites-for-mobile-push-notifications.html).
+
+This baseline handles visible alerts/default taps. Do not add **Background Modes → Remote notifications** unless implementing an approved silent-background-update flow; enabling a capability does not guarantee background execution.
+
+**Attach screenshot — sanitized target capability, signed environment, and provider configuration status, with credentials hidden.**
+
+## 3. Add the two service files
+
+```text
+<ios-application-target>/
+├── AppDelegate.swift                  # Existing lifecycle; merge callbacks
+└── Notifications/
+    ├── ApnsService.swift
+    └── NotificationService.swift
+```
+
+Add both files to the actual app target. The examples use Swift concurrency/UIKit notification APIs; check the application's supported deployment/compiler configuration before integration. Do not lower concurrency checking or create a second app entry point to make a snippet fit.
+
+### `ApnsService.swift`
+
+```swift
+import UIKit
+
+@MainActor
+final class ApnsService {
+    static let shared = ApnsService()
+    private var enqueueTokenSync: ((String) -> Void)?
+    private var reportFailure: (() -> Void)?
+    private var registrationEnabled = false
+    private init() {}
+
+    func configure(
+        enqueueTokenSync: @escaping (String) -> Void,
+        reportFailure: @escaping () -> Void
+    ) {
+        self.enqueueTokenSync = enqueueTokenSync
+        self.reportFailure = reportFailure
+    }
+
+    // Call on each approved app launch and after relevant account changes.
+    // This requests the current token from APNs; it does not use a local token cache.
+    func activateRegistration() {
+        guard enqueueTokenSync != nil else { return }
+        registrationEnabled = true
+        UIApplication.shared.registerForRemoteNotifications()
+    }
+
+    // Existing AppDelegate forwards the system callback here.
+    func didRegister(deviceToken: Data) {
+        guard registrationEnabled else { return }
+        guard !deviceToken.isEmpty else {
+            reportFailure?()
+            return
+        }
+        let token = deviceToken.map { String(format: "%02x", $0) }.joined()
+        // Backend binding resolves the current account and matching APNs environment.
+        // Fast, non-throwing handoff; actual network/ownership handling belongs to host.
+        enqueueTokenSync?(token)
+    }
+
+    func didFailRegistration() {
+        guard registrationEnabled else { return }
+        reportFailure?()
+    }
+
+    // Prevents new callback forwarding; it is NOT backend unsubscription or a
+    // guarantee that already queued registration work has been cancelled.
+    func deactivateRegistration() {
+        registrationEnabled = false
+    }
+}
+```
+
+Register with APNs on each eligible launch to obtain the current token; do not persist a token locally as the authority for future registrations. Store the association securely on the backend. The callback may change after restore/reinstall or other lifecycle events. [Token lifecycle and forwarding](https://developer.apple.com/documentation/usernotifications/registering-your-app-with-apns).
+
+The host handoff must implement reliable registration, safe failure reporting, and account ownership. If it enqueues work, use the approved protected worker design; do not introduce a permanent plain-text token cache or claim enqueue acceptance is completed backend registration.
+
+### `NotificationService.swift`
+
+```swift
+import UIKit
+@preconcurrency import UserNotifications
+
+// Ordinary application coordinator, NOT a UNNotificationServiceExtension.
+@MainActor
+final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationService()
+    private var pendingOpen = false
+    // Configure from approved foreground preference. false prevents banners/sounds.
+    var presentInForeground = false
+    private override init() { super.init() }
+
+    func installDelegate() {
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    func requestPresentationPermission() async throws -> Bool {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        if settings.authorizationStatus == .notDetermined {
+            return try await center.requestAuthorization(options: [.alert, .sound, .badge])
+        }
+        return settings.authorizationStatus == .authorized ||
+            settings.authorizationStatus == .provisional ||
+            settings.authorizationStatus == .ephemeral
+    }
+
+    // Registration and presentation permission are distinct. Call through the
+    // app's approved opt-in flow; OS registration may succeed without visible alerts.
+    func registerForRemoteNotifications() {
+        UIApplication.shared.registerForRemoteNotifications()
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        await MainActor.run {
+            self.presentInForeground ? [.banner, .list, .sound] : []
+        }
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else { return }
+        // No URL/identifier from the payload is executed or passed to navigation.
+        await MainActor.run { self.pendingOpen = true }
+    }
+
+    func consumeOpenIfReady(openAuthorizedUpdates: () -> Bool) {
+        if pendingOpen && openAuthorizedUpdates() { pendingOpen = false }
+    }
+
+    func clearPendingOpen() { pendingOpen = false }
+}
+```
+
+This is an app coordinator, **not** a `UNNotificationServiceExtension`. It uses native presentation rather than posting a second local copy. The default action opens generic updates only after the host accepts it; custom actions, arbitrary payload routes, and rich-media extensions are not enabled.
+
+Permission to present, registration with APNs, and business notification preferences are distinct. A `true` permission result does not prove that every presentation setting is enabled or that the backend can send. [Apple authorization/settings](https://developer.apple.com/documentation/usernotifications/asking-permission-to-use-notifications).
+
+## 4. Wire the existing lifecycle
+
+<Tabs>
+<TabItem label="Android">
+
+Direct APNs is an Apple-platform path. Do not use an APNs token/key in Android. Follow the Android tab in [FCM Mobile Setup](./fcm-mobile-setup.mdx).
+
+</TabItem>
+<TabItem label="iOS">
+
+### A. Configure during startup
+
+Merge into the existing `AppDelegate.application(_:didFinishLaunchingWithOptions:)`, before notifications can be processed:
+
+```swift
+ApnsService.shared.configure(
+    enqueueTokenSync: { token in
+        // REQUIRED: bind to real authenticated, account-safe token registration.
+        // Do not log the token or assume a captured account is still current.
+    },
+    reportFailure: {
+        // REQUIRED: fixed safe failure category, without error/token dumps.
+    }
+)
+NotificationService.shared.installDelegate()
+// Set presentInForeground from the approved app preference if appropriate.
+```
+
+The callback bodies are required integration points. Empty bodies are not a working backend implementation. Keep callbacks fast/non-throwing and handle actual registration completion/failure in the host's existing state flow.
+
+There is one `UNUserNotificationCenter` delegate. Reconcile any existing delegate and preserve its behavior; do not silently replace another notification SDK's delegate. Install the delegate before returning from application launch. [Notification response handling](https://developer.apple.com/documentation/usernotifications/handling-notifications-and-notification-related-actions).
+
+### B. Forward APNs registration callbacks
+
+Merge with existing AppDelegate implementations:
+
+```swift
+import UIKit
+
+func application(
+    _ application: UIApplication,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+) {
+    ApnsService.shared.didRegister(deviceToken: deviceToken)
+}
+
+func application(
+    _ application: UIApplication,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+) {
+    ApnsService.shared.didFailRegistration()
+}
+```
+
+Do not convert the token using `Data.description` or assume its length. The helper generates hexadecimal bytes for the host backend contract. If the actual API uses a different representation, adapt its boundary deliberately.
+
+### C. Request presentation permission and activate registration
+
+In the appropriate **main-actor user preference flow**:
+
+```swift
+Task { @MainActor in
+    do {
+        let allowed = try await NotificationService.shared.requestPresentationPermission()
+        // Update the real UI from allowed. Denial must not block ordering.
+        // After the app's separate approved opt-in/account decision:
+        ApnsService.shared.activateRegistration()
+    } catch {
+        // Report a safe permission-request error; do not mark registration successful.
+    }
+}
+```
+
+Bind activation to the real business opt-in policy rather than blindly activating for every user. After an approved opt-in has already been established, register again on eligible launches/account reconciliation; repeatedly requesting OS authorization will not repeatedly show the system prompt.
+
+### D. Consume an open after readiness
+
+At the actual startup/authentication/navigation-ready boundary:
+
+```swift
+NotificationService.shared.consumeOpenIfReady {
+    // Invoke the existing authorized generic updates action.
+    false // REQUIRED replacement: return true only after the host accepts it.
+}
+```
+
+Call again when readiness changes. The pending flag is in memory and coalesces opens to a single generic intent; it is not a durable per-notification queue. On logout/account replacement, clear pending state, deactivate forwarding, and apply the backend's actual disassociation/cancellation contract. Already queued/in-flight work requires current-account enforcement; deactivation cannot undo a server mutation.
+
+For SwiftUI, use the existing `@UIApplicationDelegateAdaptor` integration when needed. Preserve the actual app entry point, account-session lifecycle, and navigation owner.
+
+</TabItem>
+<TabItem label="React Native">
+
+A React Native app can have a direct APNs native integration, but the Swift coordinator alone does not provide a JavaScript API or integrate with its notification library.
+
+Use the existing approved bridge/library and actual delegate ownership. Do not install Firebase to obtain an APNs token for this path, or paste these services alongside an SDK that already owns the same delegate without reconciliation. A copyable JavaScript bridge needs the app's confirmed native-module and event contract; it is not invented here.
+
+If the selected implementation is React Native Firebase, use its [FCM setup](./fcm-mobile-setup.mdx) and matching token/backend configuration instead.
+
+</TabItem>
+</Tabs>
+
+## 5. Match the backend and payload
+
+The provider receives the current APNs token through the actual authenticated registration API. For SNS, endpoint registration uses the correct **APNs Platform Application ARN**; direct publishing targets its **Endpoint ARN**. An SNS topic fan-out uses its separate **Topic ARN**. [SNS mobile identifiers](https://docs.aws.amazon.com/sns/latest/dg/mobile-push-api.html).
+
+Example **ordinary APNs payload** with synthetic content:
+
+```json
+{
+  "aps": {
+    "alert": {
+      "title": "My Chicken App",
+      "body": "An update is available. Open the app to view it."
+    },
+    "sound": "default"
+  }
+}
+```
+
+This JSON is the APNs payload, not a complete HTTP request or SNS envelope. Sender authentication, device token/path, `apns-topic`, push type, priority, expiration, and environment belong in the approved provider integration. Do not place an `aps` dictionary inside itself or embed credentials in the payload. Ordinary APNs payloads have a 4,096-byte limit. [Apple payload and request guidance](https://developer.apple.com/documentation/usernotifications/generating-a-remote-notification), [sending requests](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns).
+
+No live send command is provided: the authorized sender must use the actual backend/provider contract. Do not duplicate a send after a timeout without reconciling the unknown outcome.
+
+## 6. Verify registration, presentation, and opening
+
+<MermaidZoom title="Direct APNs registration does not pass through Firebase">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant APP as iOS App / AppDelegate
+    participant APNS as APNs
+    participant SERVICE as ApnsService
+    participant BACKEND as Authorized Backend / SNS
+    participant UI as NotificationService / App Navigation
+    APP->>APNS: Register after approved activation
+    APNS-->>APP: Current device token or registration failure
+    APP->>SERVICE: Forward native callback
+    SERVICE->>BACKEND: Host binding registers token and current ownership
+    Note over BACKEND,APNS: Provider credentials remain server-side
+    BACKEND->>APNS: Send approved alert to matching token/topic/environment
+    APNS-->>APP: Best-effort device delivery
+    APP->>UI: Presentation callback or user-open response
+    UI->>UI: Wait for authorized startup/navigation readiness
+    Note over APP,UI: Receipt, display, user open and backend acceptance are separate evidence
+```
+
+</MermaidZoom>
+
+1. Build/run the actual non-production scheme on an authorized physical test device. Confirm the signed app identity/environment and provider configuration.
+2. Use the approved preference flow and confirm the APNs callback plus **actual backend registration result**, without logging a raw token.
+3. Have the authorized backend sender send the synthetic ordinary alert to that installation.
+4. Test foreground presentation, background presentation, a warm tap, and a tap that launches a terminated app. Confirm no duplicate local notification.
+5. Delay authentication/navigation readiness and confirm the generic open remains pending until accepted.
+6. Test denied permission, registration failure, account replacement, and repeated eligible registration. Confirm no stale-account association or false success.
+
+| Observation | Investigate |
+| :--- | :--- |
+| No registration callback/success | Entitlement/profile, network/device state, and actual activation/lifecycle wiring. |
+| Token registered but provider rejects it | APNs topic/bundle ID, environment, token representation, credentials, and classified provider response. |
+| Provider accepts but no visible alert | Permission/presentation settings, device state, payload, expiry, and delivery behavior. |
+| Foreground alert absent | The template defaults `presentInForeground` to false; inspect the approved preference and delegate callback. |
+| Tap does not navigate | Delegate ownership, startup order, pending flag, and the actual acceptance/readiness binding. |
+| Previous account remains associated | Host backend lifecycle and in-flight ownership checks; resetting the UI is insufficient. |
+
+APNs is best-effort and may delay, discard, or reorder notifications. Server acceptance does not prove device display or user acknowledgement. [Apple delivery semantics](https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns).
+
+**Attach screenshot — sanitized registration outcome, generic test alert, permission state, and authorized post-open screen.**
+
+**Expected result:** the APNs token is associated with the intended application/account/environment, permitted alerts behave as configured, and default opens are consumed only through authorized app readiness. Record missing evidence as unverified.
+
+**Next file:** `java-backend.mdx` — Java/AWS SNS endpoint registration, topic/subscription handling, payload construction, and publishing.
+
+
+
+
+
+-----------------------
+
+
+
+---
+title: "Java Push Backend — AWS SNS"
+description: "Configure the Java SNS client, register and reconcile platform endpoints, manage topic subscriptions, and publish correctly encoded mobile payloads."
+sidebar:
+  label: Java Backend
+  order: 5
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Use this page when the application's **Java backend sends notifications through AWS SNS**. Mobile registration uses [FCM Mobile Setup](./fcm-mobile-setup.mdx) or [Direct APNs Setup](./apns-ios-setup.mdx).
+
+**Outcome:** implement a configured SNS adapter with explicit endpoint, subscription, and publish outcomes, then connect it to the application's authenticated API and storage.
+
+> **Confidential — Enterprise internal use only.** Keep AWS/provider credentials in the approved backend bindings. Do not log device tokens, user/email mappings, payloads, private ARNs, or raw SDK exceptions. No live registration, subscription, or send is required simply to copy this template.
+
+## 1. Confirm the supported SDK and configuration
+
+**Compatibility:** older integrations use `com.amazonaws:aws-java-sdk-sns` and `AmazonSNSClient`. AWS SDK for Java **1.x reached end of support on December 31, 2025**. The new template below uses **2.x** (`software.amazon.awssdk`) and Java 17-compatible source. Do not paste it into a 1.x client or silently upgrade an existing backend without its compatibility review. [AWS Java migration guidance](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/migration.html), [1.x support status](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/migration-find-apps-using-v1.html).
+
+Ask the backend/platform owner for:
+
+| Configuration | Meaning |
+| :--- | :--- |
+| AWS Region and workload identity | Approved account/Region and runtime role/credential binding. The sample Region is not an Enterprise-wide default. |
+| `MOBILE_PUSH_NOTIFICATION_FCM_PLATFORM_APP_ARN` | Existing SNS platform application for FCM tokens. SNS commonly labels this provider `GCM`. |
+| `MOBILE_PUSH_NOTIFICATION_APNS_PLATFORM_APP_ARN` | Existing direct APNs platform application, matching the Apple environment. |
+| Approved SNS Topic ARNs | Separate resources for authorized audiences. Do not reuse either platform-application variable as a topic. |
+| Authenticated registration/send contracts | Actual user/device ownership, input validation, preferences, and permission to send. |
+| Durable persistence/operation coordination | Endpoint associations, subscriptions, current-account checks, concurrency, and unknown-outcome reconciliation. |
+
+SNS platform applications/provider credentials are owner-managed prerequisites. This adapter does not create them, request permissions, or define a new REST endpoint.
+
+## 2. Add dependencies and application files
+
+Merge into the existing **Gradle Groovy** dependency configuration (adapt to the approved version catalog/Kotlin DSL if used):
+
+```groovy
+dependencies {
+    implementation platform('software.amazon.awssdk:bom:REPLACE_WITH_APPROVED_AWS_2X_VERSION')
+    implementation 'software.amazon.awssdk:sns'
+    implementation 'software.amazon.awssdk:url-connection-client'
+    // This template uses Jackson 2's com.fasterxml.jackson APIs.
+    implementation 'com.fasterxml.jackson.core:jackson-databind:REPLACE_WITH_APPROVED_JACKSON_2X_VERSION'
+}
+```
+
+Reuse an existing compatible Jackson/BOM configuration rather than overriding framework-managed versions blindly. Replace version markers before resolving dependencies. AWS 1.x/2.x imports and dependency coordinates are different. [AWS SDK 2.x setup](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/setup-project-gradle.html).
+
+```text
+<java-backend>/
+├── build.gradle
+└── src/main/java/<your-package>/push/
+    ├── SnsClientFactory.java
+    ├── PushPayloads.java
+    └── SnsPushService.java
+```
+
+Replace the example package consistently. These are backend files, not Android application files. Existing controllers, authorization, workers, database adapters, and dependency injection remain application responsibilities.
+
+## 3. Copy the configured client factory
+
+**File: `SnsClientFactory.java`**
+
+```java
+package com.example.mychicken.push;
+
+import java.time.Duration;
+import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.sns.SnsClient;
+
+public final class SnsClientFactory {
+    private SnsClientFactory() {}
+
+    public static SnsClient create(String region) {
+        if (region == null || region.isBlank()) {
+            throw new IllegalArgumentException("SNS Region is required");
+        }
+        return SnsClient.builder()
+            .region(Region.of(region))
+            // Default credential provider chain: bind the approved workload role.
+            // No embedded access keys. No hidden SDK retries for uncertain writes.
+            .overrideConfiguration(c -> c
+                .retryPolicy(RetryPolicy.none())
+                .apiCallTimeout(Duration.ofSeconds(30))
+                .apiCallAttemptTimeout(Duration.ofSeconds(15)))
+            .build();
+    }
+}
+```
+
+Create one shared client for the appropriate Region and inject it into the adapter; close it at application shutdown. In an existing Spring application, expose it through the established configuration/bean mechanism rather than field-injecting a cast `AmazonSNSClient`.
+
+The template disables SDK retries to avoid hidden repeats of uncertain writes. It does not guarantee exactly-once delivery. The timeout values are illustrative and require operational approval; read-only recovery and any explicitly safe retries belong to the operation coordinator. Runtime credentials come from the approved provider chain/role, not strings in source. [AWS credential provider chain](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html).
+
+## 4. Copy the payload builder
+
+**File: `PushPayloads.java`**
+
+```java
+package com.example.mychicken.push;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+
+public final class PushPayloads {
+    private static final String TITLE = "My Chicken App";
+    private static final String BODY = "An update is available. Open the app to view it.";
+    private final ObjectMapper json;
+
+    public PushPayloads(ObjectMapper json) {
+        this.json = java.util.Objects.requireNonNull(json);
+    }
+
+    // Generic synthetic alert only. Business-specific data requires a reviewed contract.
+    public String genericUpdate() {
+        String fcm = encode(Map.of("fcmV1Message", Map.of("message", Map.of(
+            "notification", Map.of("title", TITLE, "body", BODY)
+        ))));
+        String apns = encode(Map.of("aps", Map.of(
+            "alert", Map.of("title", TITLE, "body", BODY), "sound", "default"
+        )));
+        requireWithin(fcm, 4096);
+        requireWithin(apns, 4096);
+        // SNS requires each platform-specific JSON value to be a JSON-encoded string.
+        // GCM is SNS's wire key for the FCM provider; it is not a request to use legacy FCM.
+        String envelope = encode(Map.of(
+            "default", BODY, "GCM", fcm, "APNS", apns, "APNS_SANDBOX", apns
+        ));
+        // Conservative template guard for this small alert, not a universal SNS limit.
+        requireWithin(envelope, 8192);
+        return envelope;
+    }
+
+    private String encode(Object value) {
+        try {
+            return json.writeValueAsString(value);
+        } catch (JsonProcessingException failure) {
+            throw new IllegalStateException("Push serialization failed");
+        }
+    }
+
+    private static void requireWithin(String value, int bytes) {
+        if (value.getBytes(StandardCharsets.UTF_8).length > bytes) {
+            throw new IllegalArgumentException("Push payload exceeds template size limit");
+        }
+    }
+}
+```
+
+This builder intentionally sends only a generic synthetic update. It does not accept arbitrary order/customer data. Replace the public text through the approved content/localization design before production use.
+
+The structure is:
+
+```text
+SNS MessageStructure = json
+└── Message JSON
+    ├── default: plain fallback text
+    ├── GCM: JSON STRING containing fcmV1Message → message → notification
+    ├── APNS: JSON STRING containing aps → alert/sound
+    └── APNS_SANDBOX: JSON STRING containing aps → alert/sound
+```
+
+`aps` contains a separate alert object; it must not reference itself. SNS platform values are encoded **strings**, not nested objects in the outer SNS envelope. The `GCM` wire key can carry the supported FCM HTTP v1 structure. [SNS FCM v1 payload](https://docs.aws.amazon.com/sns/latest/dg/sns-fcm-v1-payloads.html), [platform-specific JSON publishing](https://docs.aws.amazon.com/sns/latest/api/API_Publish.html).
+
+Size checks here cover this small template's serialized provider/envelope strings; they are not a complete validator for every provider option or topic policy. For routes such as FCM topics, apply the route-specific rules from [Notification Guidelines](./notification-guidelines.mdx).
+
+## 5. Copy the SNS adapter
+
+**File: `SnsPushService.java`**
+
+```java
+package com.example.mychicken.push;
+
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sns.model.*;
+
+public final class SnsPushService {
+    private static final Pattern PLATFORM = Pattern.compile(
+        "^(arn:(?:aws|aws-us-gov|aws-cn):sns:[a-z0-9-]+:[0-9]{12}:)app/(GCM|APNS|APNS_SANDBOX)/([A-Za-z0-9_.-]+)$"
+    );
+    private final SnsClient sns;
+    private final String platformApplicationArn;
+    private final String endpointPrefix;
+    private final Set<String> allowedTopics;
+    private final PushPayloads payloads;
+
+    // Construct one configured service per actual platform application/environment.
+    public SnsPushService(
+        SnsClient sns, String platformApplicationArn,
+        Set<String> allowedTopics, PushPayloads payloads
+    ) {
+        this.sns = Objects.requireNonNull(sns);
+        this.payloads = Objects.requireNonNull(payloads);
+        Matcher match = PLATFORM.matcher(Objects.requireNonNull(platformApplicationArn));
+        if (!match.matches()) throw new IllegalArgumentException("Invalid platform application ARN");
+        this.platformApplicationArn = platformApplicationArn;
+        this.endpointPrefix = match.group(1) + "endpoint/" + match.group(2) + "/" + match.group(3) + "/";
+        this.allowedTopics = Set.copyOf(allowedTopics);
+        for (String topic : this.allowedTopics) {
+            if (!topic.startsWith(match.group(1)) ||
+                !topic.substring(match.group(1).length()).matches("[A-Za-z0-9_-]{1,256}")) {
+                throw new IllegalArgumentException("Expected same-account/Region standard topic ARN");
+            }
+        }
+    }
+
+    public String registerCurrentToken(String currentToken, String storedEndpointArn) {
+        requireText(currentToken, "Current provider token is required");
+        String endpoint = storedEndpointArn;
+        if (endpoint == null || endpoint.isBlank()) {
+            // Persist the returned ARN BEFORE proceeding, through the host coordinator.
+            // This method returns creation only; call verifyEndpoint after that commit.
+            return createEndpoint(currentToken);
+        }
+        requireEndpoint(endpoint);
+        // No automatic replacement creation on NotFound/conflict; owner reconciles it.
+        verifyEndpoint(endpoint, currentToken);
+        return endpoint;
+    }
+
+    private String createEndpoint(String token) {
+        try {
+            String arn = sns.createPlatformEndpoint(CreatePlatformEndpointRequest.builder()
+                .platformApplicationArn(platformApplicationArn).token(token).build()).endpointArn();
+            if (arn == null || !arn.startsWith(endpointPrefix) || arn.length() == endpointPrefix.length()) {
+                throw new UnknownWriteOutcome("Endpoint creation response not verified; reconcile before retry");
+            }
+            return arn;
+        } catch (SnsException failure) {
+            if (failure.statusCode() >= 500) {
+                throw new UnknownWriteOutcome("SNS write failed with uncertain outcome; reconcile before retry");
+            }
+            throw failure;
+        } catch (SdkClientException failure) {
+            throw new UnknownWriteOutcome("Endpoint creation outcome unknown; reconcile before retry");
+        }
+        // SNS service rejections propagate. Do not parse an exception message for an ARN.
+    }
+
+    public void verifyEndpoint(String endpointArn, String currentToken) {
+        requireEndpoint(endpointArn);
+        requireText(currentToken, "Current provider token is required");
+        Map<String, String> attributes = sns.getEndpointAttributes(
+            GetEndpointAttributesRequest.builder().endpointArn(endpointArn).build()).attributes();
+        if (!currentToken.equals(attributes.get("Token")) ||
+            !"true".equalsIgnoreCase(attributes.get("Enabled"))) {
+            try {
+                sns.setEndpointAttributes(SetEndpointAttributesRequest.builder()
+                    .endpointArn(endpointArn)
+                    .attributes(Map.of("Token", currentToken, "Enabled", "true")).build());
+            } catch (SnsException failure) {
+                if (failure.statusCode() >= 500) {
+                    throw new UnknownWriteOutcome("SNS update outcome uncertain; reconcile before retry");
+                }
+                throw failure;
+            } catch (SdkClientException failure) {
+                throw new UnknownWriteOutcome("Endpoint update outcome unknown; reconcile before retry");
+            }
+            Map<String, String> updated = sns.getEndpointAttributes(
+                GetEndpointAttributesRequest.builder().endpointArn(endpointArn).build()).attributes();
+            if (!currentToken.equals(updated.get("Token")) ||
+                !"true".equalsIgnoreCase(updated.get("Enabled"))) {
+                throw new IllegalStateException("Endpoint state not verified");
+            }
+        }
+    }
+
+    public String subscribe(String topicArn, String endpointArn) {
+        requireTopic(topicArn);
+        requireEndpoint(endpointArn);
+        try {
+            String subscription = sns.subscribe(SubscribeRequest.builder()
+                .topicArn(topicArn).protocol("application").endpoint(endpointArn)
+                .returnSubscriptionArn(true).build()).subscriptionArn();
+            if (subscription == null || allowedTopics.stream().noneMatch(topic ->
+                subscription.startsWith(topic + ":") && subscription.length() > topic.length() + 1)) {
+                throw new UnknownWriteOutcome("Subscription response not verified; reconcile before retry");
+            }
+            return subscription;
+        } catch (SnsException failure) {
+            if (failure.statusCode() >= 500) {
+                throw new UnknownWriteOutcome("SNS write failed with uncertain outcome; reconcile before retry");
+            }
+            throw failure;
+        } catch (SdkClientException failure) {
+            throw new UnknownWriteOutcome("Subscription outcome unknown; reconcile before retry");
+        }
+    }
+
+    public void unsubscribe(String storedSubscriptionArn) {
+        requireSubscription(storedSubscriptionArn);
+        try {
+            sns.unsubscribe(UnsubscribeRequest.builder()
+                .subscriptionArn(storedSubscriptionArn).build());
+        } catch (SnsException failure) {
+            if (failure.statusCode() >= 500) {
+                throw new UnknownWriteOutcome("SNS write failed with uncertain outcome; reconcile before retry");
+            }
+            throw failure;
+        } catch (SdkClientException failure) {
+            throw new UnknownWriteOutcome("Unsubscription outcome unknown; reconcile before retry");
+        }
+    }
+
+    public String publishToEndpoint(String authorizedEndpointArn) {
+        requireEndpoint(authorizedEndpointArn);
+        return publish(PublishRequest.builder().targetArn(authorizedEndpointArn)
+            .messageStructure("json").message(payloads.genericUpdate()).build());
+    }
+
+    public String publishToTopic(String authorizedTopicArn) {
+        requireTopic(authorizedTopicArn);
+        return publish(PublishRequest.builder().topicArn(authorizedTopicArn)
+            .messageStructure("json").message(payloads.genericUpdate()).build());
+    }
+
+    private String publish(PublishRequest request) {
+        try {
+            String id = sns.publish(request).messageId();
+            if (id == null || id.isBlank()) {
+                throw new UnknownWriteOutcome("Publish response has no message ID; reconcile before retry");
+            }
+            return id; // SNS acceptance only, not device receipt/display.
+        } catch (SnsException failure) {
+            if (failure.statusCode() >= 500) {
+                throw new UnknownWriteOutcome("SNS write failed with uncertain outcome; reconcile before retry");
+            }
+            throw failure;
+        } catch (SdkClientException failure) {
+            throw new UnknownWriteOutcome("Publish outcome unknown; reconcile before retry");
+        }
+    }
+
+    private void requireTopic(String arn) {
+        if (!allowedTopics.contains(arn)) throw new IllegalArgumentException("Topic is not approved");
+    }
+
+    private void requireEndpoint(String arn) {
+        if (arn == null || !arn.startsWith(endpointPrefix) || arn.length() == endpointPrefix.length()) {
+            throw new IllegalArgumentException("Endpoint does not match configured platform application");
+        }
+    }
+
+    private void requireSubscription(String arn) {
+        if (arn == null || allowedTopics.stream().noneMatch(topic ->
+            arn.startsWith(topic + ":") && arn.length() > topic.length() + 1)) {
+            throw new IllegalArgumentException("Subscription does not match approved topics");
+        }
+    }
+
+    private static void requireText(String value, String message) {
+        if (value == null || value.isBlank()) throw new IllegalArgumentException(message);
+    }
+
+    public static final class UnknownWriteOutcome extends RuntimeException {
+        public UnknownWriteOutcome(String safeMessage) { super(safeMessage); }
+    }
+}
+```
+
+### Construct one adapter per configured platform application
+
+Use the approved Region, platform-application ARN, and set of authorized **standard SNS topic** ARNs:
+
+```java
+// Composition fragment; configuration values come from the approved environment.
+SnsClient sns = SnsClientFactory.create(approvedRegion);
+PushPayloads payloads = new PushPayloads(existingConfiguredObjectMapper);
+SnsPushService push = new SnsPushService(
+    sns, approvedPlatformApplicationArn, approvedTopicArns, payloads
+);
+```
+
+`approvedRegion`, `existingConfiguredObjectMapper`, `approvedPlatformApplicationArn`, and `approvedTopicArns` are **host-provided values**, not library exports. This adapter intentionally limits topics to the same Region/account and standard topic names. Expand cross-account/FIFO behavior only with a reviewed contract.
+
+ARN validation prevents obvious resource-type/provider mix-ups; it does **not** authorize a user. Before calling the adapter, the application must resolve the endpoint/subscription from its protected current-user records and confirm recipient/topic entitlement. Do not accept an arbitrary caller-supplied ARN as authorization.
+
+## 6. Register, persist, and verify in separate steps
+
+The host registration coordinator must serialize work for the application/installation/account association and reconcile stale or overlapping requests.
+
+1. Authenticate the registration request and validate the current installation/account/provider mapping.
+2. Obtain the current provider token and read the stored endpoint association from the real database.
+3. Call `registerCurrentToken(currentToken, storedEndpointArn)` with that stored association.
+4. If no endpoint was stored, the method returns the created/existing SNS ARN **without claiming readiness**. Persist the returned association durably before further mutations. If persistence fails, preserve the unresolved operation evidence and reconcile; do not create another endpoint blindly.
+5. Call `verifyEndpoint(endpointArn, currentToken)` after the association is persisted. It reads SNS state and updates the current token/enabled flag only when necessary, then verifies the result.
+6. Report registration complete only after the correct association is stored and endpoint readiness is verified. A returned creation ARN alone is insufficient.
+
+For a stored endpoint, `registerCurrentToken` already verifies it; a final read-only verification can still be used by the coordinator. Invalid/missing/deleted endpoint errors are not silently converted into another creation. Resolve those outcomes against stored operation evidence and current SNS state before deciding the next authorized action. [AWS endpoint lifecycle](https://docs.aws.amazon.com/sns/latest/dg/mobile-platform-endpoint.html).
+
+The API can return an existing matching endpoint or reject a token/settings conflict. Do not extract an ARN by regular-expression parsing of the exception message and then assume ownership. [CreatePlatformEndpoint contract](https://docs.aws.amazon.com/sns/latest/api/API_CreatePlatformEndpoint.html).
+
+### Platform selection
+
+<Tabs>
+<TabItem label="Android">
+
+Use the current **FCM token** and the configured SNS **FCM/GCM** platform application. Preserve the actual Android environment/application mapping.
+
+</TabItem>
+<TabItem label="iOS">
+
+Choose the application's configured route:
+
+| Mobile integration | Backend platform application |
+| :--- | :--- |
+| Direct APNs | Matching APNs/APNs sandbox application and current APNs token. |
+| FCM on iOS through APNs | FCM/GCM platform application and current FCM token. Firebase owns the APNs mapping underneath. |
+
+Do not use a fallback of “anything except ios means Android.” Reject unknown provider/platform values at the actual application API boundary.
+
+</TabItem>
+<TabItem label="React Native">
+
+Resolve the native platform and configured notification method explicitly. FCM tokens from Android/iOS go to the matching FCM backend; a separate direct APNs integration supplies an APNs token instead.
+
+Backend credentials and SNS publishing remain server-side. Redux state or the device's claimed email address is not authority to send to another user's endpoint.
+
+</TabItem>
+</Tabs>
+
+## 7. Subscribe, publish, and unsubscribe
+
+| Operation | Call | Required host behavior |
+| :--- | :--- | :--- |
+| Subscribe | `subscribe(topicArn, endpointArn)` | Validate audience/current preferences, coordinate the operation, and persist the returned Subscription ARN separately. |
+| Direct send | `publishToEndpoint(endpointArn)` | Resolve an authorized endpoint from backend records; record acceptance for the actual operation. |
+| Topic send | `publishToTopic(topicArn)` | Authorize the broadcast and inspect its configured audience before sending. |
+| Unsubscribe | `unsubscribe(subscriptionArn)` | Use the stored authorized subscription, reconcile the resulting state, and update persistence. |
+
+The SNS protocol for a mobile endpoint subscription is **`application`**. A Platform Application ARN cannot substitute for a Topic ARN, and an Endpoint ARN cannot substitute for a Subscription ARN. [Subscribe contract](https://docs.aws.amazon.com/sns/latest/api/API_Subscribe.html).
+
+For multiple topics, run separately coordinated operations and store each actual result. A failure on topic two does not roll back a successful subscription/send on topic one. Do not return one boolean that hides partial results or rerun the entire list after a timeout.
+
+A publish message ID means **SNS acceptance**, not device display, user acknowledgement, or order success. Standard mobile push publishing does not gain exactly-once behavior from a locally generated operation ID.
+
+## 8. Handle failures without false success
+
+| Result | Host coordinator action |
+| :--- | :--- |
+| Local input/serialization rejection | Correct the input/configuration; no send should be attempted. |
+| Classified SNS rejection such as authorization/invalid parameter | Preserve a sanitized category and AWS request reference where permitted; investigate the actual cause. |
+| `UnknownWriteOutcome`, transport timeout, or server-side 5xx | Mark outcome unknown and reconcile existing state before another write. |
+| Endpoint creation returned, database save failed | Preserve the returned association/operation evidence and reconcile persistence; do not pretend registration completed. |
+| Endpoint verify read fails after an update | Readiness remains unverified; preserve the update's possible side effect. |
+| Invalid/disabled provider endpoint | Obtain the current token and follow the approved reconciliation lifecycle; do not repeatedly enable a known-stale token. |
+
+The adapter classifies transport failures and 5xx responses on its write calls conservatively. Reads can still throw SDK errors; the coordinator must retain prior step outcomes. Do not log a raw propagated SDK exception at a controller/global-handler boundary, since its message/context can contain protected identifiers. Use the approved sanitized error mapping.
+
+## 9. Verify before a live send
+
+<MermaidZoom title="Persist registration evidence before continuing to optional subscriptions">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant API as Authenticated Backend Coordinator
+    participant DB as Protected Association Store
+    participant SNS as AWS SNS
+    API->>DB: Read current account/installation association
+    alt No stored endpoint
+        API->>SNS: CreatePlatformEndpoint with current provider token
+        SNS-->>API: Endpoint ARN or classified outcome
+        API->>DB: Persist association before further writes
+    end
+    API->>SNS: Read endpoint attributes
+    opt Token/enabled state requires a verified change
+        API->>SNS: SetEndpointAttributes
+        API->>SNS: Read back endpoint state
+    end
+    API->>DB: Record registration readiness
+    opt Authorized topic membership
+        API->>SNS: Subscribe with Topic ARN + application Endpoint ARN
+        API->>DB: Persist separate Subscription ARN
+    end
+    Note over API,SNS: Unknown writes stop the sequence for reconciliation
+```
+
+</MermaidZoom>
+
+Run the actual backend build/unit-test tasks from its Gradle root; the following assumes a conventional existing Java Gradle project:
+
+```bash
+./gradlew test build
+```
+
+Adapt to the actual multi-module tasks. Do not let a normal build/test task send notifications: mock the SNS client or use the approved fake boundary in unit tests. Add tests that verify:
+
+| Case | Required assertion |
+| :--- | :--- |
+| Payload shape | Outer platform values are strings; nested FCM/APNs JSON parses; `aps` is not recursive. |
+| Unknown provider/resource | Platform/endpoint/topic mismatch is rejected before a write. |
+| New endpoint | Returned ARN is persisted before verification/subscription; no false readiness. |
+| Current endpoint | No update when token matches and enabled is true. |
+| Stale/disabled endpoint | Only the required update occurs and read-back confirms state. |
+| Create/publish timeout or 5xx | No automatic second write; operation remains unknown. |
+| Multi-topic partial failure | Previous successes are retained and not blindly repeated. |
+| Account change | Stale worker cannot associate or send under the previous account. |
+
+Apply the defined [coverage gate](../testing-quality/coverage-and-quality-gates.mdx) to the real backend's supported tooling/scope; do not claim coverage from reviewing snippets.
+
+For an authorized non-production integration test, use one dedicated installation, generic synthetic content, and the chosen provider path. Verify backend persistence, SNS acceptance, and device behavior separately. No Java SDK compilation or AWS operation is implied by this documentation.
+
+**Attach screenshot — sanitized registration/subscription outcomes and independent test-device result, with tokens, ARNs, and credentials hidden.**
+
+**Next file:** `nodejs-pushjs-backend.mdx` — internal PushJS installation, protected package access, registration, publishing, subscriptions, and persistence boundaries.
+
+
+
+
+--------------------
+
+---
+title: "Node.js PushJS Backend"
+description: "Configure protected access to the internal PushJS package, use its documented registration and messaging methods, and preserve verified endpoint/subscription outcomes."
+sidebar:
+  label: Node.js PushJS Backend
+  order: 6
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+Use this page for the **existing internal PushJS backend library**. It covers private-package access, runtime configuration, registration, direct/topic publishing, subscriptions, and stored identifiers.
+
+**Outcome:** understand the actual library calls and required integration contracts before wiring them into the application's authorized backend.
+
+> **Confidential — Enterprise internal use only.** Protect GitHub package tokens, runtime AWS credentials, device tokens, user/email mappings, endpoint/subscription records, and notification payloads. Keep them out of image layers, source, logs, screenshots, and PR text.
+
+## 1. Confirm the library version and runtime contract
+
+The documented package is `@mobilearch/enterprise-pushjs`; its examples pass the **AWS SDK for JavaScript v2 `AWS` object** to library methods. This package identifier is a dependency contract, not permission to download it outside the approved registry/account.
+
+AWS SDK v2 reached end of support on **September 8, 2025**. Do not replace `AWS` with an SDK v3 `SNSClient` unless the PushJS owner confirms compatibility for an approved release. New production adoption needs an owner-approved supported-library/migration decision. [AWS v2 support status](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/file.README.html).
+
+Confirm these items with the package/platform owner before executing the calls:
+
+| Contract | Required answer |
+| :--- | :--- |
+| Package/runtime compatibility | Exact approved PushJS version, Node version, dependency/peer versions, and AWS SDK support. |
+| Method completion | Does each method return a Promise, SDK Request, synchronous value, or fire-and-forget result? How are errors surfaced? |
+| Registration output | How is the returned `deviceArn` represented and how are existing/disabled/stale endpoints reconciled? |
+| Subscription output | How are single/multiple Subscription ARNs and partial failures returned? |
+| Publish outcome | What response proves provider acceptance, and where is the operation/message reference? |
+| Retry behavior | Which writes can be retried internally, and how are unknown outcomes reconciled? |
+| Payload construction | Supported provider formats, safe `extras`, size limits, and APNs/FCM configuration. |
+
+Only `registerDevice` is shown awaited in the supplied usage contract. The other examples do not establish completion/error return types. Do not add `.promise()`, assume that `await undefined` waits for delivery, or invent response properties to make a wrapper appear complete.
+
+## 2. Prepare backend configuration and package access
+
+| Item | Configuration owner provides |
+| :--- | :--- |
+| `GIT_TOKEN` | Protected package-read credential bound through the approved Vela secret mechanism. |
+| Registry/scope | Exact private package registry and authorized scope/account. |
+| AWS Region/role | Approved runtime Region and workload credential binding. |
+| Platform Application ARN | Correct SNS provider/application for the current registration token. |
+| Topic ARNs | Separate approved SNS topics and recipient policies. |
+| Database/API | Authenticated user/device ownership, token update, preference/logout handling, and persistence contracts. |
+
+Package-fetch credentials and AWS runtime credentials have different purposes. Do not forward `GIT_TOKEN` to mobile apps or package it into the backend runtime image.
+
+Suggested application layout:
+
+```text
+<node-backend>/
+├── package.json
+├── package-lock.json              # Or the repository's selected lockfile
+├── .npmrc                         # Registry mapping + variable reference only, if used
+├── .dockerignore
+├── Dockerfile
+├── vela.yml                       # Existing workflow, approved plugin contract
+└── src/push/
+    └── ...existing backend adapter, coordinator and persistence integration...
+```
+
+## 3. Configure the private dependency
+
+### A. Registry authentication outside Docker
+
+If the approved registry is GitHub Packages, a project `.npmrc` can contain **a variable reference**, not an actual token:
+
+```ini
+@mobilearch:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GIT_TOKEN}
+```
+
+The protected environment supplies `GIT_TOKEN` only to the authorized package-install step. Do not print the file after a tool has expanded credentials, or publish it as a build artifact. Use the actual registry if different. [npm private-package CI authentication](https://docs.npmjs.com/private-modules/ci-server-config/).
+
+The dependency entry is a `package.json` **fragment**; merge it with existing dependencies:
+
+```json
+{
+  "dependencies": {
+    "@mobilearch/enterprise-pushjs": "REPLACE_WITH_EXACT_APPROVED_VERSION"
+  }
+}
+```
+
+The historical `^1.0.0` example is not a confirmed current pin. Confirm the AWS dependency/peer contract before adding a separate SDK version. Keep the selected lockfile and existing Node/CommonJS/ESM configuration.
+
+### B. Vela package configuration
+
+The documented Vela integration generates `.npmrc` before the build. This is a **private-plugin template fragment**, not an independently verified executable pipeline. Obtain its approved image, parameters, secret binding, and output contract from the owning team:
+
+```yaml
+- name: generate-npmrc-file
+  image: REPLACE_WITH_APPROVED_NPM_PLUGIN_IMAGE
+  ruleset:
+    if:
+      event: [push]
+      branch: [REPLACE_WITH_APPROVED_BRANCH]
+  parameters:
+    create_npmrc: true
+    cgl_org: [REPLACE_WITH_APPROVED_ORGANIZATION_VALUE]
+    cgl_user: [REPLACE_WITH_APPROVED_ACCOUNT_VALUE]
+```
+
+`create_npmrc`, `cgl_org`, and `cgl_user` are the supplied plugin's parameter names; do not rename schema keys while replacing their values. The exact way that plugin receives `GIT_TOKEN` and exposes its result still requires its actual contract. Do not assume the file is safe to include in artifacts or Docker context.
+
+The later build-step contract includes:
+
+```yaml
+# Partial existing step configuration: image/plugin/build-secret transport still required.
+- name: build-step
+  image: REPLACE_WITH_APPROVED_BUILD_PLUGIN_IMAGE
+  secrets: [GIT_TOKEN]
+  ruleset:
+    if:
+      branch: [REPLACE_WITH_APPROVED_BRANCH]
+      event: [push]
+```
+
+This fragment identifies the protected input; it does **not** implement a BuildKit secret mount. Have the owning team bind the secret through the build plugin's supported mechanism. Do not reintroduce `build_args: GIT_TOKEN=...` as a shortcut.
+
+## 4. Keep credentials out of Docker layers
+
+Do not append a real token into `/root/.npmrc` using a Dockerfile `RUN`, or pass it as a Docker `ARG`/`ENV`. Build metadata, layers, caches, or later files can expose it. Use an approved secret mount. [Docker build secrets](https://docs.docker.com/build/building/secrets/).
+
+A **BuildKit build-stage fragment** for an npm-locked backend:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM REPLACE_WITH_APPROVED_NODE_IMAGE AS dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+# npmrc is a short-lived secret file supplied by the approved CI build adapter.
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc,required=true npm ci
+```
+
+This is not a complete production Dockerfile. Use the actual build/runtime stages and least-privileged image configuration. Only trusted lockfiles/install scripts may run with package credentials present. Never copy the mounted file into a later stage.
+
+When an approved build environment already provides a protected npmrc file, the equivalent BuildKit command is:
+
+```bash
+# CI-only example. Bind to the approved short-lived secret file; do not print it.
+: "${PRIVATE_NPMRC_PATH:?Approved protected npmrc file is required}"
+test -s "$PRIVATE_NPMRC_PATH" && \
+  docker build --secret "id=npmrc,src=$PRIVATE_NPMRC_PATH" \
+    --target dependencies -t push-dependencies-check .
+```
+
+The file path above is an **example-owned binding**, not a Vela plugin output. The build command requires BuildKit and a real approved base image. It builds dependencies only; it is not a publish/deploy command.
+
+Merge into `.dockerignore` to keep incidental local credentials out of the build context:
+
+```text
+.npmrc
+.env
+.env.*
+node_modules
+.git
+```
+
+Review against existing build needs; `.dockerignore` does not protect credentials explicitly copied/generated elsewhere. Generated secret files need the approved CI cleanup/access lifecycle.
+
+## 5. Configure the documented library usage
+
+The following examples are **library-call reference fragments** for a compatible existing PushJS release. They do not define an authenticated HTTP API, a database adapter, or a verified completion wrapper.
+
+### Runtime initialization
+
+```javascript
+const AWS = require('aws-sdk');
+const PUSHJS = require('@mobilearch/enterprise-pushjs');
+
+const region = process.env.AWS_REGION;
+if (!region) throw new Error('AWS Region is required');
+AWS.config.update({ region });
+
+// Runtime AWS credentials come from the approved workload binding, not literals.
+```
+
+Use this v2-shaped object **only with the corresponding approved library**. Changing global SDK settings is application-wide; coordinate them with the existing backend. Do not assume library retries are disabled just because no retry loop is visible here.
+
+### Register a device
+
+Inside the existing authorized asynchronous registration flow:
+
+```javascript
+const platformApplicationArn = process.env.MOBILE_PUSH_NOTIFICATION_FCM_PLATFORM_APP_ARN;
+if (!platformApplicationArn) throw new Error('FCM platform application is required');
+
+// token: current provider token validated by the existing registration boundary.
+// email: current authenticated user's approved lookup value, not an untrusted body field.
+const deviceArn = await PUSHJS.registerDevice(AWS, platformApplicationArn, token, email);
+```
+
+Validate the actual returned endpoint identity and persist its association before reporting registration complete or beginning subscriptions. Repeated registration/token refresh and disabled endpoints need the library's verified reconciliation contract; the method name alone does not establish that behavior.
+
+Do not create a single global `deviceArn` for all users. Resolve the current account, application, installation/provider, and permitted environment through the actual storage model.
+
+### Match the mobile provider
+
+<Tabs>
+<TabItem label="Android">
+
+Use the current Android **FCM token** with the configured FCM/GCM SNS platform application. A topic ARN is not a platform application ARN.
+
+</TabItem>
+<TabItem label="iOS">
+
+For FCM on iOS, use the **FCM token** and matching FCM/GCM platform application. For direct APNs, confirm PushJS support for the relevant APNs platform application/environment and token representation before using the same method. The supplied Node example demonstrates FCM registration; it does not prove every APNs variant is supported.
+
+</TabItem>
+<TabItem label="React Native">
+
+Resolve the actual native platform/provider method. React Native does not introduce a third provider token type. Keep registration and publishing on the backend, with current-account ownership and the matching native configuration.
+
+</TabItem>
+</Tabs>
+
+## 6. Use the documented send and subscription methods
+
+All fragments below assume the approved `AWS` and `PUSHJS` objects, authorized stored identifiers, and a confirmed method completion contract. The statements preserve the documented call signatures; **return/error semantics still require verification before production wiring**.
+
+### Direct notification
+
+```javascript
+// Resolve deviceArn from authorized backend records.
+const message = 'An update is available. Open the app to view it.';
+const title = 'My Chicken App';
+const extras = {}; // No invented route schema, real order ID, or customer payload.
+
+PUSHJS.sendNotification(AWS, deviceArn, message, title, extras);
+```
+
+### Subscribe to one topic
+
+```javascript
+// topicArn: approved SNS Topic ARN; deviceArn: registered Endpoint ARN.
+PUSHJS.subscribeToTopic(AWS, topicArn, deviceArn);
+```
+
+### Subscribe to multiple topics
+
+```javascript
+// topicArnList: approved topic ARNs, after audience/preference authorization.
+PUSHJS.subscribeToMultipleTopics(AWS, topicArnList, deviceArn);
+```
+
+### Publish to a topic
+
+```javascript
+// Authorize the broadcast and audience before invoking this method.
+PUSHJS.sendMessageToTopic(AWS, topicArn, message, title, extras);
+```
+
+### Unsubscribe from one topic
+
+```javascript
+// The stored Subscription ARN is distinct from the device Endpoint ARN.
+PUSHJS.unsubscribeToTopic(AWS, subscriptionArn);
+```
+
+### Unsubscribe from multiple topics
+
+```javascript
+// Persisted subscription identifiers for the authorized account/installation.
+PUSHJS.unsubscribeToMultipleTopics(AWS, subscriptionArnList);
+```
+
+Do not return HTTP success merely because these statements did not throw synchronously. If a method is confirmed Promise-based, await its verified result/error. If it returns an AWS Request, use only the owner-confirmed completion mechanism. If it is fire-and-forget without usable completion, obtain an updated library/adapter contract rather than inventing delivery evidence.
+
+Bulk operations need per-item results and partial-failure handling. A repeat of an entire list after a timeout can duplicate successful operations or notifications. Apply [Notification Guidelines](./notification-guidelines.mdx) and the actual library retry policy.
+
+## 7. Persist identifiers and verify outcomes
+
+Use the existing protected database and authenticated service boundaries. This is a **logical record description**, not a new Enterprise database schema:
+
+| Information | Purpose |
+| :--- | :--- |
+| Authenticated user lookup | The documented implementation looks up the user's records using Enterprise email. Keep that value protected and derive ownership from authentication. |
+| App/environment/provider/installation association | Distinguish multiple devices and provider configurations for the same user. |
+| `deviceArn` | SNS endpoint used for direct send and topic subscription. |
+| Topic + `subscriptionArn` associations | Preserve the actual returned membership identifiers for correct unsubscription. |
+| Actual operation state/evidence | Distinguish requested, accepted/verified, rejected, partial, and unknown results under the application contract. |
+
+Do not confuse the endpoint returned by registration with a Subscription ARN returned by subscription. If the library does not expose the subscription result, that is an unresolved contract—not permission to invent an ARN or mark membership persisted.
+
+<MermaidZoom title="Private-library completion and persistence are explicit integration boundaries">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant API as Authorized Backend Coordinator
+    participant LIB as Approved PushJS Version
+    participant SNS as AWS SNS
+    participant DB as Protected Association Store
+    API->>LIB: Register current token and authorized user association
+    LIB->>SNS: Platform endpoint operation
+    LIB-->>API: Verified registration result per actual contract
+    API->>DB: Persist endpoint association
+    opt Approved topic membership
+        API->>LIB: Subscribe endpoint to approved topic
+        LIB->>SNS: Subscription operation
+        LIB-->>API: Per-item completion / subscription identifier
+        API->>DB: Persist actual subscription association
+    end
+    Note over API,LIB: Missing completion contract blocks a success claim
+    API->>LIB: Authorized direct or topic send
+    LIB->>SNS: Publish through configured provider
+    Note over API,SNS: Acceptance is not device display - unknown writes require reconciliation
+```
+
+</MermaidZoom>
+
+The sequence describes the required host integration, not verified internals of the private package. Preserve endpoint/subscription persistence failures and partial bulk results; do not collapse them into a green status.
+
+## 8. Verify without sending to real users
+
+1. Confirm the approved package and its actual types/implementation or maintainer contract for every method used.
+2. Validate `.npmrc`/CI/Docker handling without printing the credential or publishing a secret-bearing artifact.
+3. Use the existing test runner with a mocked PushJS boundary to verify authorized recipient resolution, exact call arguments, and protected identifier storage.
+4. Test rejection, asynchronous failure, unknown send outcome, registration persistence failure, and partial multi-topic results through the confirmed completion adapter.
+5. Test token/account replacement and opt-out against the actual host contract. A stopped mobile listener does not remove a backend subscription.
+6. Only through an approved non-production integration test, register one dedicated installation, send generic synthetic content, and record backend acceptance and device behavior separately.
+
+For an npm-locked existing backend, these commands inspect the installed dependencies and run its declared test script:
+
+```bash
+npm ls @mobilearch/enterprise-pushjs aws-sdk --depth=0
+# Run only if package.json defines the actual test script:
+npm test
+```
+
+Use the repository's selected package manager/tasks. A missing dependency is not permission to install an arbitrary version, and `npm test` is not guaranteed to be the project's complete verification gate.
+
+| Observation | Next action |
+| :--- | :--- |
+| Private package cannot be fetched | Check approved scope/registry, protected token binding, package access, and supported plugin configuration. |
+| SDK v3 client rejected by PushJS | Confirm the package's supported SDK contract; do not improvise a v2-compatible object. |
+| Registration returns no usable endpoint | Preserve the actual failure/unknown result and obtain the verified return contract. |
+| Subscription identifier unavailable | Resolve the completion/output contract before claiming durable membership. |
+| Bulk call partially fails | Retain per-item evidence and reconcile; do not blindly repeat successful writes. |
+| Send returns without a delivery result | Distinguish invocation from actual provider acceptance and device evidence. |
+
+**Attach screenshot — sanitized package/configuration status, registration/subscription evidence, and independent non-production device result.**
+
+**Next file:** `deep-linking.mdx` — link configuration and validated routing once the application's approved domains/schemes, route schema, authentication, and native-library contracts are supplied.
+
+
+
+______________________________
+
+
+
+---
+title: "Deep Linking — Integration Template"
+description: "Configure verified HTTPS links and route only allowlisted destinations through authenticated application readiness on Android, iOS, and React Native."
+sidebar:
+  label: Deep Linking
+  order: 7
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+A deep link asks the app to open a destination. It does not prove the sender's identity or authorize access to an order/account.
+
+**Status:** the application's production domains, schemes, route schema, and notification link fields still require owner confirmation. This page provides a **vendor-backed integration template**, using one deliberately narrow teaching URL:
+
+```text
+https://links.example.invalid/updates
+```
+
+`example.invalid` is a placeholder. It will not verify or route as a production domain. Replace it consistently only after the domain, app identities, route, and security requirements are approved.
+
+> **Confidential — Enterprise internal use only.** Keep private domains, signing fingerprints, association details, account data, and diagnostic evidence in approved systems. Do not put credentials, customer/order payloads, or authorization tokens in a link or log its complete raw contents.
+
+## 1. Confirm the link contract before implementation
+
+| Required decision | Owner-confirmed value |
+| :--- | :--- |
+| Domain and website owner | Actual HTTPS host, association-file hosting, and browser fallback. |
+| Android identity | Final application ID and installed-app signing certificate fingerprint for each approved environment. |
+| Apple identity | App identifier prefix plus bundle ID, team/capability, and matching signed entitlement. |
+| Routes/parameters | Allowed destinations and exact schema, validation, and authorization behavior. |
+| Startup/account policy | How to retain/discard an open before authentication or after an account switch. |
+| Notification integration | Whether a payload includes a link and which existing component owns tap handling. |
+| Custom schemes, if any | Exact approved scheme and collision/fallback handling; not assumed by this template. |
+
+Prefer an owner-approved verified HTTPS App Link/Universal Link route where appropriate. Custom schemes do not establish verified website ownership and need a separate explicit decision. This template registers no custom scheme.
+
+Do not add an `orderId`, `deepLink`, or arbitrary `url` payload property just because another app uses it. The current notification templates intentionally open a generic authorized updates destination; they do not yet define a payload-to-route contract.
+
+## 2. Keep validation separate from authorization
+
+| Stage | Required behavior |
+| :--- | :--- |
+| Receive | Capture the initial URL or later open event once through the actual app lifecycle. |
+| Validate | Accept only the approved scheme/host/path and permitted parameters. Unknown or malformed input does not navigate. |
+| Wait | Retain an allowed pending intent until startup, current authentication, and navigation are ready. |
+| Authorize | Confirm access using current account/server state, not an identifier in the link. |
+| Consume | Open the allowed destination after the host accepts it. Do not run a purchase, payment, deletion, or other business write from a link. |
+| Account transition | Clear/revalidate pending intents and cancel obsolete work through the session owner. |
+
+The sample helper uses exact equality to accept only `/updates`, with no parameters, alternative encodings, trailing slash, or fragment. It is deliberately stricter than a general URL parser. Expanding accepted syntax requires matching parser tests and a reviewed route contract.
+
+## 3. Configure the selected platform
+
+<Tabs>
+<TabItem label="Android">
+
+### A. Configure verified App Links
+
+Merge into the **existing destination Activity** in `AndroidManifest.xml`; do not create multiple Activities handling the same link unintentionally:
+
+```xml
+<intent-filter android:autoVerify="true">
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="https"
+          android:host="links.example.invalid"
+          android:path="/updates" />
+</intent-filter>
+```
+
+The Activity receiving external links needs the appropriate `android:exported` configuration. Preserve existing launcher flags/task/launch-mode decisions; do not change launch mode globally merely to match a snippet. Runtime validation is still required even with an intent filter.
+
+The website owner hosts this **template** at `https://<approved-host>/.well-known/assetlinks.json`:
+
+```json
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "REPLACE_WITH_FINAL_APPLICATION_ID",
+      "sha256_cert_fingerprints": ["REPLACE_WITH_INSTALLED_APP_SIGNING_CERT_SHA256"]
+    }
+  }
+]
+```
+
+Use the signing certificate of the installed app. For Play App Signing, distinguish the delivered app-signing fingerprint from the local upload-key fingerprint. Serve the actual association securely without a redirect and verify the precise app/environment. [Android App Links](https://developer.android.com/training/app-links/about), [association verification](https://developer.android.com/training/app-links/verify-applinks).
+
+### B. Copy the helper
+
+**Suggested file:** `app/src/main/java/<your-package>/links/DeepLinkService.kt`.
+
+```kotlin
+package com.example.mychicken.links
+
+// Main-thread, per-application/scene coordinator. Teaching URL is not production config.
+class DeepLinkService {
+    private var pending = false
+    private var draining = false
+
+    fun accept(raw: String?): Boolean {
+        if (raw != "https://links.example.invalid/updates") return false
+        pending = true
+        return true
+    }
+
+    fun consumeIfReady(openAuthorizedUpdates: () -> Boolean) {
+        if (!pending || draining) return
+        draining = true
+        pending = false
+        try {
+            if (!openAuthorizedUpdates()) pending = true
+        } catch (failure: Exception) {
+            pending = true
+            throw failure
+        } finally {
+            draining = false
+        }
+    }
+
+    fun clear() { pending = false }
+}
+```
+
+### C. Merge lifecycle callbacks
+
+Keep one coordinator instance at the established app/session owner; do not recreate it on recomposition. Merge these fragments into the existing Activity:
+
+```kotlin
+// In existing onCreate, after super.onCreate(savedInstanceState):
+if (intent.action == Intent.ACTION_VIEW) {
+    links.accept(intent.dataString)
+    intent.data = null // Avoid reconsuming the stored intent after handling.
+}
+
+// Merge with any existing notification onNewIntent handler; do not declare it twice.
+override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    if (intent.action == Intent.ACTION_VIEW) {
+        links.accept(intent.dataString)
+        intent.data = null
+    }
+}
+
+// At the real startup/authentication/navigation-ready boundary:
+links.consumeIfReady {
+    false // Replace with the existing authorized updates action's acceptance result.
+}
+```
+
+Import `android.content.Intent`; `links` is the host-owned `DeepLinkService` instance. Trigger consumption after new input and whenever readiness changes. A rejected link should follow the app's safe non-sensitive fallback, not be forwarded to arbitrary navigation.
+
+### D. Test on an authorized development device
+
+```bash
+APP_PACKAGE='REPLACE_WITH_FINAL_APPLICATION_ID'
+LINK_URL='https://REPLACE_WITH_APPROVED_HOST/updates'
+
+# Android 12+ verification inspection:
+adb shell pm get-app-links "$APP_PACKAGE"
+
+# Targeted dispatch test; specifying a package does not prove domain verification.
+adb shell am start -W -a android.intent.action.VIEW \
+  -c android.intent.category.BROWSABLE -d "$LINK_URL" "$APP_PACKAGE"
+```
+
+Also test an ordinary link tap **without forcing the package** and inspect verification/user defaults. Targeted dispatch can work while actual verified-link routing remains broken. [Android link testing](https://developer.android.com/training/app-links/test-applinks).
+
+</TabItem>
+<TabItem label="iOS">
+
+### A. Configure associated domains
+
+In the existing application target, enable **Associated Domains** and add the actual approved value:
+
+```text
+applinks:links.example.invalid
+```
+
+The website owner hosts `apple-app-site-association` **without a file extension**, using the actual identifier and approved paths:
+
+```json
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["REPLACE_WITH_APP_IDENTIFIER_PREFIX.REPLACE_WITH_BUNDLE_ID"],
+        "components": [
+          { "/": "/updates" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+App identifier prefix commonly matches Team ID but must be confirmed for the actual app. Configure the entitlement/profile and each domain separately. The association file must be reachable through the appropriate Apple verification path; a file in the mobile repository alone does nothing. [Apple associated domains](https://developer.apple.com/documentation/xcode/supporting-associated-domains).
+
+### B. Copy the helper
+
+**Suggested file:** `Notifications/DeepLinkService.swift` or the existing routing feature directory.
+
+```swift
+import Foundation
+
+// Instantiate once for the appropriate application/scene owner.
+@MainActor
+final class DeepLinkService {
+    private var pending = false
+    private var draining = false
+
+    @discardableResult
+    func accept(_ raw: String) -> Bool {
+        guard raw == "https://links.example.invalid/updates" else { return false }
+        pending = true
+        return true
+    }
+
+    func consumeIfReady(openAuthorizedUpdates: () -> Bool) {
+        guard pending, !draining else { return }
+        draining = true
+        pending = false
+        defer { draining = false }
+        if !openAuthorizedUpdates() { pending = true }
+    }
+
+    func clear() { pending = false }
+}
+```
+
+### C. Select the existing application lifecycle
+
+For a SwiftUI app, merge into the existing root scene/view:
+
+```swift
+// links is the retained main-actor DeepLinkService owned by the app/scene.
+.onOpenURL { url in
+    links.accept(url.absoluteString)
+    // Ask the established readiness coordinator to attempt consumption.
+}
+```
+
+SwiftUI delivers Universal Links through `onOpenURL`. Do not add a competing UIKit link delegate solely for the same SwiftUI route. [SwiftUI URL handling](https://developer.apple.com/documentation/swiftui/view/onopenurl%28perform%3A%29).
+
+For an existing **UIKit scene-based** app, merge these into its actual SceneDelegate instead:
+
+```swift
+import UIKit
+
+// In existing scene(_:willConnectTo:options:), preserve window setup:
+for activity in connectionOptions.userActivities
+where activity.activityType == NSUserActivityTypeBrowsingWeb {
+    if let url = activity.webpageURL { links.accept(url.absoluteString) }
+}
+
+// Existing SceneDelegate class-body override/callback:
+func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+    guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+          let url = userActivity.webpageURL else { return }
+    links.accept(url.absoluteString)
+}
+```
+
+Non-scene UIKit apps use their corresponding AppDelegate continuation callback; do not paste all lifecycle variants together. For multi-window apps, use the scene/account ownership contract rather than one global route that can open the wrong window. [Scene connection activities](https://developer.apple.com/documentation/uikit/uiscene/connectionoptions/useractivities).
+
+At the actual readiness boundary:
+
+```swift
+links.consumeIfReady {
+    false // Required host binding: true only after authorized navigation accepts it.
+}
+```
+
+Verify with a link tapped from another app/approved test surface on the actual signed candidate. Same-domain Safari navigation can intentionally remain in Safari; that alone is not a failed Universal Link. [Apple Universal Links behavior](https://developer.apple.com/documentation/xcode/allowing-apps-and-websites-to-link-to-your-content), [debugging guidance](https://developer.apple.com/documentation/technotes/tn3155-debugging-universal-links).
+
+</TabItem>
+<TabItem label="React Native">
+
+### A. Configure both native platforms
+
+Apply the Android manifest/website association and Apple associated-domain/website association setup above. Use the final Android application ID/signing identity and iOS identifier for the same chosen environment.
+
+React Native's native host must forward link events to `Linking` using the integration for the **installed RN version and actual AppDelegate/scene architecture**. Verify warm continuation and cold-start bootstrap: scene-based iOS hosts may need connection options forwarded so `getInitialURL()` receives the initial link. Do not add an outdated Objective-C delegate method to an unrelated Swift bootstrap. [React Native Linking setup](https://reactnative.dev/docs/linking).
+
+### B. Copy the helper
+
+**File:** `src/links/DeepLinkService.ts`.
+
+```typescript
+// Teaching contract only: replace through an approved application routing decision.
+export const UPDATE_URL = 'https://links.example.invalid/updates';
+
+export class DeepLinkService {
+  private pending = false;
+  private draining = false;
+
+  accept(raw: string): boolean {
+    // Strict equality deliberately rejects query strings, fragments, extra paths,
+    // credentials, alternate ports, whitespace, encodings and lookalike hosts.
+    if (raw !== UPDATE_URL) return false;
+    this.pending = true;
+    return true;
+  }
+
+  consumeIfReady(openAuthorizedUpdates: () => boolean): void {
+    if (!this.pending || this.draining) return;
+    this.draining = true;
+    this.pending = false;
+    try {
+      if (!openAuthorizedUpdates()) this.pending = true;
+    } catch {
+      this.pending = true;
+      throw new Error('Authorized link handling failed');
+    } finally {
+      this.draining = false;
+    }
+  }
+
+  clear(): void { this.pending = false; }
+}
+
+export const deepLinkService = new DeepLinkService();
+```
+
+### C. Wire initial and subsequent URLs
+
+Merge this into the existing stable root/session coordinator. It owns link receipt; do not also enable an independent navigation-library linking configuration for the same URLs:
+
+```tsx
+import { useEffect } from 'react';
+import { Linking } from 'react-native';
+import { deepLinkService } from './src/links/DeepLinkService';
+
+// Inside the existing component. attemptOpen and reportLinkFailure are stable,
+// host-provided functions; attemptOpen applies readiness/auth/account checks.
+useEffect(() => {
+  let active = true;
+  let receivedLiveURL = false;
+  const receive = (url: string) => {
+    if (deepLinkService.accept(url)) attemptOpen();
+  };
+  const subscription = Linking.addEventListener('url', ({ url }) => {
+    receivedLiveURL = true;
+    receive(url);
+  });
+  void Linking.getInitialURL().then(url => {
+    // Do not let a late initial URL overwrite a newer live URL in this binding.
+    if (active && !receivedLiveURL && url) receive(url);
+  }).catch(() => { if (active) reportLinkFailure(); });
+  return () => { active = false; subscription.remove(); };
+}, [attemptOpen, reportLinkFailure]);
+```
+
+The host's `attemptOpen` calls:
+
+```typescript
+deepLinkService.consumeIfReady(() => {
+  // Return true only when the existing authorized updates action accepts the intent.
+  return false; // Required replacement; not a working navigation implementation.
+});
+```
+
+Invoke it again when startup/authentication/navigation becomes ready. Preserve the Redux Toolkit store and existing providers. Keep callbacks stable so rerenders do not repeatedly re-read the initial URL. The host must clear pending state on logout/account replacement and prevent old-account callbacks from navigating.
+
+This is a manual generic-route adapter. If the app already uses React Navigation's `linking` integration, adapt that existing single owner instead of creating a second independent receiver. Reuse the validation/authentication boundary whichever library owns dispatch.
+
+</TabItem>
+</Tabs>
+
+## 4. Integrate notification taps without inventing a payload schema
+
+The FCM/APNs templates already capture a **generic pending updates open**. Bind their `consumeOpenIfReady`/open handler to the same authorized navigation action used above; a URL string does not need to be fabricated for that flow.
+
+If the actual product requires notification-specific links:
+
+1. Obtain the approved payload field/schema and the sender's exact platform behavior.
+2. Extract only that bounded field at the existing user-open event—not on every message receipt.
+3. Validate it using the reviewed route parser before retaining it.
+4. Revalidate current account/access before navigation; fetch protected data through its normal authenticated API.
+5. Choose one owner for initial/open delivery and test duplicate callbacks. Do not process both a library's open event and a generated URL independently for the same tap.
+
+Neither domain association nor an FCM/APNs origin proves that the current account can view a referenced order. No link in this template performs order placement or any other business write.
+
+## 5. Verify the route and readiness boundaries
+
+<MermaidZoom title="A valid link still requires current-account authorization">
+
+```mermaid
+flowchart TD
+    A["Initial link or later open event"] --> B{"Matches the approved route contract?"}
+    B -->|No| C["Reject with safe fallback"]
+    B -->|Yes| D["Retain typed pending destination"]
+    D --> E{"Startup, auth and navigation ready?"}
+    E -->|No| F["Wait or discard according to account policy"]
+    F --> E
+    E -->|Yes| G["Check current-account access"]
+    G --> H["Accept authorized navigation and consume intent"]
+    classDef input fill:#172554,stroke:#93c5fd,color:#fff;
+    classDef decision fill:#713f12,stroke:#fde047,color:#fff;
+    classDef state fill:#4c1d95,stroke:#d8b4fe,color:#fff;
+    classDef done fill:#064e3b,stroke:#6ee7b7,color:#fff;
+    class A input;
+    class B,E,G decision;
+    class C,D,F state;
+    class H done;
+```
+
+</MermaidZoom>
+
+| Test | Required result for this teaching contract |
+| :--- | :--- |
+| Exact approved HTTPS `/updates` | Accepted as a generic pending destination. |
+| Lookalike domain, HTTP, credentials, alternate port | Rejected. |
+| Query/fragment, extra path, trailing slash, encoded variant | Rejected until explicitly added through a reviewed parser contract. |
+| Valid link before authentication | No protected navigation before readiness and authorization. |
+| Repeated readiness check after accepted navigation | No reconsumption without a new accepted event. |
+| Account change while pending | Cleared/revalidated by the session owner; no prior-account content. |
+| App absent, browser fallback, user defaults | Behavior matches the approved web/platform route; association is tested separately from parser behavior. |
+| Notification tap and external URL | Each uses the single chosen event owner and authorization boundary. |
+
+The helpers keep a single pending boolean in memory and coalesce opens. They do not persist individual links across process death, guarantee exactly-once event handling, or implement an account-specific durable queue. Extend those behaviors only against the real requirement.
+
+Use [Testing & Quality](../testing-quality/index.mdx) for the actual test targets and coverage gates. Parser/unit checks cannot prove Android domain verification, Apple association, native event forwarding, or real-device routing.
+
+**Attach screenshot — sanitized association status, warm/cold link handling, rejected-input behavior, and authorized destination.**
+
+**Expected result:** the app accepts only the approved routes, waits for actual readiness, and opens protected destinations only under the current authorized account. Production readiness remains unresolved until the real domains, identities, route schema, and host bindings are supplied and verified.
+
+Return to [Push Notifications & Deep Linking](./index.mdx) for the section map.
+
+
+
+
+
+
+
+
+
+
+
+
 
