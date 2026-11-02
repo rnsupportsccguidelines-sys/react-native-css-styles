@@ -1,198 +1,1550 @@
 ---
-title: Start Here — Mobile Engineering
-description: Understand the mobile platform, choose your learning path, set up your Mac, and run your first application.
+title: Mobile Architecture Overview
+description: Understand feature responsibilities, dependency direction, and safe order submission across Android, iOS, and React Native.
 sidebar:
-  label: Start Here
+  label: Architecture Overview
   order: 1
 ---
 
 import MermaidZoom from '../components/mermaid-zoom.astro';
 
-# Start Here — Mobile Engineering
+# Mobile Architecture Overview
 
-Use this documentation to move from **a new developer workstation to a running application, reviewed changes, and verified delivery**. We support React Native, Android, and iOS. **React Native is the preferred starting point for new applications**; follow the assigned stack for an existing application.
+Architecture tells you **where code belongs, who owns state, and what happens when an operation fails**. Follow Clean Architecture boundaries and the documented network-resilience and circuit-breaker patterns across the supported mobile platforms.
 
-> **Confidential — internal use only.** Keep enterprise source, internal links, and operational evidence in approved systems. Never include credentials, signing material, personal data, or sensitive logs in documentation, screenshots, support messages, or AI prompts.
+**React Native is preferred for new applications.** Android and iOS remain supported; follow the assigned stack for an existing application. React Native uses **Redux Toolkit where Redux state is required**.
 
-## Choose your starting point
+> **Confidential — internal use only.** Keep enterprise architecture, source, and internal contracts within approved systems. Use synthetic data in examples. Never include credentials, production data, or sensitive diagnostics in diagrams, code, or AI prompts.
 
-| Your background | Start here | Continue with |
+## 1. Follow one feature: place a chicken order
+
+We use **My Chicken App** throughout Architecture and Platform & SDKs. A user selects a quantity, submits an order, and sees either a confirmed order or an accurately described unresolved outcome.
+
+This is a teaching example. It does not define an enterprise endpoint, request schema, SDK method, payment flow, or backend idempotency contract.
+
+| Responsibility | Owns in the chicken-order feature | Keep out |
 |---|---|---|
-| **Web, backend, or another discipline — new to mobile** | [Mobile Foundations](./non-mobile-engineer-guide.mdx): learn how mobile differs from web, including lifecycle, permissions, connectivity, local state, and installed versions. | [Platform Overview](./platform-overview.mdx) → [Machine Setup](./machine-setup-guide/index.mdx) → [First Local Run](./first-local-run.mdx). |
-| **Already an Android, iOS, or React Native engineer** | [Platform Overview](./platform-overview.mdx): understand the enterprise tools and ownership boundaries. | [Machine Setup](./machine-setup-guide/index.mdx) → [First Local Run](./first-local-run.mdx). |
+| **UI and state owner** | Render quantity and submission state, collect actions, prevent overlapping submissions, and reject stale account/session results. | Transport parsing, database queries, and privileged credentials. |
+| **Domain / use case** | Validate the input and coordinate the order operation through a domain-facing contract. | Screens, Redux store shapes, concrete HTTP clients, and database types. |
+| **Repository contract and implementation** | Describe the required order operation and implement the approved data policy. Map responses into domain outcomes. | Navigation and screen rendering. |
+| **Data adapters** | Perform concrete network or permitted local-storage operations. | Deciding what screen to show or treating cached data as proof that an order was accepted. |
+| **Application composition** | Construct implementations and inject them into the feature. | Hidden business rules inside startup wiring. |
 
-**New to mobile? Start with Mobile Foundations.** You do not need to understand Bitrise, signing, or store delivery before learning the basics and running your assigned application locally.
+The backend remains responsible for authorization and authoritative order processing. Client validation and disabled buttons do not provide server-side duplicate protection.
 
-## Understand this map before you continue
+## 2. Understand the runtime flow
 
-**Start with this diagram before opening the detailed documentation sections.** It shows how the mobile platform fits together, which tools support your work, and where to find each set of instructions. You do not need to know how to configure every tool yet.
-
-Read from **Onboarding → Development → Build and Validation → Delivery → Monitoring**. Each group uses its documentation section name. Dotted arrows show supporting capabilities, one-time enrollment, and feedback; they do not mean those activities run on every build. This is a platform and documentation map, not an executable pipeline.
-
-**Section headings are the bold, dark boxes with a gold border.** Each documentation section has its own background and outline color. Open that documentation section for the tools and steps shown beneath it.
-
-<MermaidZoom title="Understand the platform first — find the detailed instructions by section name">
+<MermaidZoom title="Place a chicken order — responsibilities and runtime flow">
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontSize": "24px", "background": "#1c2722", "lineColor": "#cbd5d0", "textColor": "#f3f6f4", "edgeLabelBackground": "#1c2722"}, "flowchart": {"padding": 24, "nodeSpacing": 35, "rankSpacing": 50}}}%%
 flowchart TB
-    START(["START HERE<br/>Understand the platform, then follow your learning path"])
+    USER["User taps Place Order"] --> UI["UI & State Owner<br/>Capture current account and request identity"]
+    UI --> DOMAIN["Domain Use Case<br/>Validate the quantity"]
+    DOMAIN --> VALID{"Input valid?"}
+    VALID -->|No| INVALID["Render validation feedback<br/>Do not send the order"]
+    VALID -->|Yes| REPO["Repository Implementation<br/>Called through the domain contract"]
+    REPO --> API["Network Adapter<br/>Use the approved backend contract"]
+    API --> SERVER["Backend<br/>Authorize, validate, and process"]
+    SERVER --> OUTCOME{"Known result received?"}
+    OUTCOME -->|Confirmed| CURRENT{"Account and request<br/>still current?"}
+    CURRENT -->|Yes| CONFIRMED["Render the confirmed order"]
+    CURRENT -->|No| STALE["Reject stale UI update"]
+    OUTCOME -->|No / connection interrupted| UNKNOWN["Show an unknown outcome<br/>Reconcile before another submission"]
 
-    subgraph ONBOARD[" "]
-        direction LR
-        HEADING_ONBOARD["Onboarding"]
-        HEADING_ONBOARD ~~~ PATH
-        PATH{"New to mobile?"}
-        BASICS["Mobile Foundations<br/>Mobile vs Web · Lifecycle · Permissions"]
-        SETUP["Platform Overview → Mac Setup<br/>Apple Silicon → First Local Run"]
-        PATH -->|Yes| BASICS --> SETUP
-        PATH -->|Experienced| SETUP
-    end
-
-    subgraph ARCH[" "]
-        HEADING_ARCH["Architecture"]
-        HEADING_ARCH ~~~ DESIGN
-        DESIGN["Design the feature<br/>Layer Boundaries · Network Resilience<br/>Feature Flags · Branching & PRs"]
-    end
-
-    subgraph PLATFORM[" "]
-        HEADING_PLATFORM["Platform & SDKs"]
-        HEADING_PLATFORM ~~~ IMPLEMENT
-        IMPLEMENT["Implement with platform standards<br/>React Native preferred · Android · iOS<br/>App Foundations · Authentication SDK"]
-    end
-
-    subgraph PUSH[" "]
-        HEADING_PUSH["Push Notifications & Deep Linking"]
-        HEADING_PUSH ~~~ ENGAGE
-        ENGAGE["Integrate the required capabilities<br/>FCM · Direct APNs · Backend Services<br/>Validated Links · Cold / Warm Opens"]
-    end
-
-    subgraph AI[" "]
-        HEADING_AI["GenAI & Tools"]
-        HEADING_AI ~~~ ASSIST
-        ASSIST["GitHub Copilot · ChatGPT<br/>Copyable Engineering Rules<br/>Author and Review Code & Test Drafts"]
-    end
-
-    subgraph TESTING[" "]
-        HEADING_TESTING["Testing & Quality"]
-        HEADING_TESTING ~~~ TEST
-        TEST["Write and verify meaningful tests<br/>Android · iOS · React Native<br/>Coverage · Sauce Labs Real Devices"]
-    end
-
-    subgraph CICD[" "]
-        direction TB
-        HEADING_CICD["CI/CD"]
-        HEADING_CICD ~~~ ENROLL
-        ENROLL["New application only: enroll once<br/>Secret-Free YAML → Vela Validation<br/>Reviewed Promotion → Platform Provisioning"]
-        REVIEW["Review application changes<br/>Private Repository · Pull Request<br/>Peer Review · Danger Checks"]
-        BUILD["Run governed Bitrise workflows<br/>Parallel Tests · Caching · Protected Signing<br/>Sauce Labs Integration · NowSecure Gates"]
-        ROUTES["Track each build route separately<br/>qa_android · qa_ios<br/>uat_android · uat_ios"]
-        EVIDENCE["Inspect artifacts and release evidence<br/>Unknown / Partial Failure → Safe Reconciliation"]
-        ENROLL -. "Enables build setup" .-> BUILD
-        REVIEW --> BUILD --> ROUTES --> EVIDENCE
-    end
-
-    subgraph STORE[" "]
-        direction LR
-        HEADING_STORE["App Stores & Distribution"]
-        HEADING_STORE ~~~ DEST
-        DEST{"Approved delivery destination"}
-        PRIVATE["Enterprise App Management<br/>Sign · Enable · Assign"]
-        PUBLIC["Google Play / App Store Connect<br/>Destination-Specific Approval & Processing"]
-        VISIBLE["Verify the exact version<br/>Available to its intended audience"]
-        DEST --> PRIVATE --> VISIBLE
-        DEST --> PUBLIC --> VISIBLE
-    end
-
-    subgraph OBS[" "]
-        HEADING_OBS["Observability"]
-        HEADING_OBS ~~~ MONITOR
-        MONITOR["Datadog<br/>Instrument the App · Inspect Errors & Performance<br/>Investigate the Correct Environment & Version"]
-    end
-
-    subgraph SUPPORT[" "]
-        HEADING_SUPPORT["Support & FAQ"]
-        HEADING_SUPPORT ~~~ HELP
-        HELP["Available throughout your journey<br/>Teams Support Channel · Expandable FAQ"]
-    end
-
-    %% Invisible layout links keep START HERE above every section.
-    START ~~~ HEADING_ONBOARD
-    START ~~~ HEADING_ARCH
-    START ~~~ HEADING_PLATFORM
-    START ~~~ HEADING_PUSH
-    START ~~~ HEADING_AI
-    START ~~~ HEADING_TESTING
-    START ~~~ HEADING_CICD
-    START ~~~ HEADING_STORE
-    START ~~~ HEADING_OBS
-    START ~~~ HEADING_SUPPORT
-
-    START --> PATH
-    SETUP --> DESIGN --> IMPLEMENT
-    IMPLEMENT -. "When the feature requires it" .-> ENGAGE
-    IMPLEMENT --> TEST --> REVIEW
-    SETUP -. "New application enrollment" .-> ENROLL
-    ASSIST -. "Development-time assistance" .-> IMPLEMENT
-    ASSIST -. "Reviewed test drafts" .-> TEST
-    ENGAGE -. "Verify integration behavior" .-> TEST
-    TEST -. "Committed tests execute in CI" .-> BUILD
-    EVIDENCE --> DEST
-    VISIBLE --> MONITOR
-    IMPLEMENT -. "Add instrumentation during development" .-> MONITOR
-    MONITOR -. "Findings inform the next change" .-> DESIGN
-    START -. "Help at any stage" .-> HELP
-
-    style ONBOARD fill:#102733,stroke:#22d3ee,stroke-width:2px
-    style ARCH fill:#231c40,stroke:#a78bfa,stroke-width:2px
-    style PLATFORM fill:#142647,stroke:#60a5fa,stroke-width:2px
-    style PUSH fill:#35172a,stroke:#f472b6,stroke-width:2px
-    style AI fill:#2b1940,stroke:#d8b4fe,stroke-width:2px
-    style TESTING fill:#302610,stroke:#facc15,stroke-width:2px
-    style CICD fill:#351f12,stroke:#fb923c,stroke-width:2px
-    style STORE fill:#142c24,stroke:#4ade80,stroke-width:2px
-    style OBS fill:#241d3c,stroke:#c4b5fd,stroke-width:2px
-    style SUPPORT fill:#112b2c,stroke:#2dd4bf,stroke-width:2px
-
-    classDef sectionHeading fill:#25342d,color:#f3f6f4,stroke:#fbbf24,stroke-width:3px,font-weight:bold,font-size:24px;
-    class HEADING_ONBOARD,HEADING_ARCH,HEADING_PLATFORM,HEADING_PUSH,HEADING_AI,HEADING_TESTING,HEADING_CICD,HEADING_STORE,HEADING_OBS,HEADING_SUPPORT sectionHeading;
-
-    classDef onboarding fill:#164e63,color:#ffffff,stroke:#22d3ee,font-size:24px;
-    classDef architecture fill:#312e81,color:#ffffff,stroke:#a5b4fc,font-size:24px;
-    classDef platform fill:#1e3a8a,color:#ffffff,stroke:#60a5fa,font-size:24px;
-    classDef notification fill:#831843,color:#ffffff,stroke:#f9a8d4,font-size:24px;
-    classDef assistant fill:#581c87,color:#ffffff,stroke:#d8b4fe,font-size:24px;
-    classDef testing fill:#713f12,color:#ffffff,stroke:#facc15,font-size:24px;
-    classDef pipeline fill:#7c2d12,color:#ffffff,stroke:#fdba74,font-size:24px;
-    classDef delivery fill:#14532d,color:#ffffff,stroke:#4ade80,font-size:24px;
-    classDef observability fill:#4c1d95,color:#ffffff,stroke:#c4b5fd,font-size:24px;
-    classDef support fill:#134e4a,color:#ffffff,stroke:#5eead4,stroke-width:3px,font-size:24px;
-    class START,PATH,BASICS,SETUP onboarding;
-    class DESIGN architecture;
-    class IMPLEMENT platform;
-    class ENGAGE notification;
-    class ASSIST assistant;
-    class TEST testing;
-    class ENROLL,REVIEW,BUILD,ROUTES,EVIDENCE pipeline;
-    class DEST,PRIVATE,PUBLIC,VISIBLE delivery;
-    class MONITOR observability;
-    class HELP support;
+    classDef presentation fill:#164e63,color:#ffffff,stroke:#67e8f9;
+    classDef domain fill:#312e81,color:#ffffff,stroke:#a5b4fc;
+    classDef data fill:#1e3a8a,color:#ffffff,stroke:#93c5fd;
+    classDef caution fill:#713f12,color:#ffffff,stroke:#fcd34d;
+    classDef success fill:#14532d,color:#ffffff,stroke:#86efac;
+    class USER,UI,INVALID presentation;
+    class DOMAIN,VALID domain;
+    class REPO,API,SERVER data;
+    class OUTCOME,CURRENT,STALE,UNKNOWN caution;
+    class CONFIRMED success;
 ```
 
 </MermaidZoom>
 
-**How to use the map:** find your current task, read the section named above its block, and follow that section's steps. Begin with your onboarding path rather than setting up every service at once. Existing applications do not repeat enrollment for each change; QA/UAT route names do not imply automatic public store release.
+A known rejection must use the backend's approved failure semantics; it is not a confirmed order. A timeout or cancellation after submission does not prove the order failed. Never invent a retry or lookup endpoint to resolve that uncertainty.
 
-## Find the instructions you need
+## 3. Keep dependencies pointing toward contracts
 
-| You want to… | Read |
+Runtime calls can reach a network implementation without the domain importing that implementation.
+
+<MermaidZoom title="Code dependencies — the domain does not import concrete adapters">
+
+```mermaid
+flowchart LR
+    UI["UI / State Owner"] --> DOMAIN["Domain<br/>Models · Use Cases<br/>Repository Contract"]
+    REPO["Repository Implementation"] --> DOMAIN
+    REPO --> DATA["Data Adapters<br/>HTTP · Permitted Storage"]
+    ROOT["Application Composition"] --> UI
+    ROOT --> REPO
+
+    classDef core fill:#312e81,color:#ffffff,stroke:#a5b4fc;
+    classDef outer fill:#164e63,color:#ffffff,stroke:#67e8f9;
+    class DOMAIN core;
+    class UI,REPO,DATA,ROOT outer;
+```
+
+</MermaidZoom>
+
+Arrows here mean **code dependencies**, not request order. Composition supplies the concrete repository through its contract. Domain code does not import the repository implementation, UI frameworks, or Redux.
+
+### Recognize the standard responsibilities in the repository
+
+The documented logical structure is:
+
+```text
+src/
+  ui/           # Screens, UI state, and state owners
+  domain/       # Business models, use cases, and required contracts
+  repository/   # Contract implementations and approved data policy
+  data/         # Concrete network and storage adapters
+```
+
+These are responsibility boundaries. Preserve the application's approved module/package layout; folders alone do not enforce imports. A repository contract belongs with the domain that requires it, while its concrete implementation sits outside that domain. Do not add a local order database merely to populate the example structure.
+
+## 4. Understand the data layer
+
+**The data layer is the app code that sends a request, receives the response, and converts it into a result the feature can use.** It does not display the screen. The backend is a separate service, outside the app.
+
+For the chicken-order example:
+
+1. The **screen** receives the Place Order tap.
+2. The **use case** validates the quantity.
+3. The **repository** coordinates the order submission using the API client.
+4. The **API client** sends the request to the backend and receives the response.
+5. The **repository** maps the response into an order result and returns it through the use case to the screen's state owner.
+
+<MermaidZoom title="One chicken order — request out, result back">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Screen / State Owner
+    participant RULES as Use Case
+    box rgb(22, 78, 99) App Data Access
+        participant REPO as Repository
+        participant API as API Client
+    end
+    participant SERVER as Backend Service
+
+    UI->>RULES: Place the selected chicken order
+    RULES->>RULES: Validate the quantity
+    Note over RULES: Continue only if input is valid
+    RULES->>REPO: Submit the validated order
+    REPO->>API: Send through the approved API contract
+    API->>SERVER: Request order creation
+    SERVER-->>API: Return the order response
+    API-->>REPO: Return response data
+    REPO->>REPO: Map response into an order result
+    REPO-->>RULES: Return mapped result
+    RULES-->>UI: Return result for current-account state
+    Note over UI: Display confirmation only when confirmed
+```
+
+</MermaidZoom>
+
+| Part | Plain meaning |
 |---|---|
-| Understand mobile before writing code | [Mobile Foundations](./non-mobile-engineer-guide.mdx) |
-| Understand the tools and responsibilities | [Platform Overview](./platform-overview.mdx) |
-| Install and verify your development tools | [Machine Setup — macOS Apple Silicon](./machine-setup-guide/index.mdx) |
-| Build and open your assigned application | [First Local Run](./first-local-run.mdx) |
-| Ask for help | [Teams Support](../support/support.mdx) · [FAQ](../support/index.mdx) |
+| **Repository** | Coordinates data access and converts the API response into the feature's result. |
+| **API client** | Handles the actual request and response through the established transport setup. |
+| **Backend** | Authorizes and processes the order. It is not part of the mobile app's data layer. |
 
-Installation instructions live in Machine Setup. Detailed architecture, SDK integration, push notifications, CI/CD, testing, observability, AI tooling, and store delivery stay in their dedicated sections.
+The diagram shows the confirmed-response path. If a response is lost after submission, the result can be **unknown**; do not show a confirmation or resend automatically. A confirmed response must still belong to the current account/request before updating the screen.
 
-**Start now:** [New to mobile → Mobile Foundations](./non-mobile-engineer-guide.mdx) · [Experienced mobile engineer → Platform Overview](./platform-overview.mdx).
+Local storage is deliberately omitted here. Add it only when the application's approved design requires it. The domain-facing repository contract is explained on the next page; it is a code boundary, not an extra request sent over the network.
+
+## 5. Map the responsibilities to your platform
+
+| Responsibility | Android | iOS | React Native |
+|---|---|---|---|
+| **Render the feature** | Compose or the established View UI. | SwiftUI or the established UIKit UI. | React Native components. |
+| **Own UI-facing state** | Lifecycle-aware ViewModel. | Appropriately isolated observable model / ViewModel. | Local component state where sufficient; Redux Toolkit for Redux-owned feature state. |
+| **Execute the use case** | Kotlin operation using domain-facing interfaces. | Swift operation using domain-facing protocols. | TypeScript operation using domain-facing contracts. |
+| **Access concrete data** | Repository implementation and network/storage adapters. | Repository implementation and network/storage adapters. | Repository implementation and network/storage adapters. |
+| **Connect dependencies** | Existing composition / DI mechanism. | Application composition and explicit dependency construction. | Application composition and the established injection mechanism. |
+
+The next page develops the feature contracts and platform code. Platform & SDKs supplies the platform-specific implementation standards; this overview does not introduce a new DI library or private SDK API.
+
+## 6. Define submission behavior before coding
+
+| Situation | Required behavior |
+|---|---|
+| Invalid quantity | Show validation feedback without sending the order. Define actual allowed values with the feature owner. |
+| Submission in progress | Expose submitting state and prevent overlapping submissions from this owner. |
+| Confirmed response | Display the confirmed result only for the current account and request. Prevent accidental resubmission of that completed operation. |
+| Timeout or cancellation after dispatch | Treat the business outcome as unknown unless the approved contract proves otherwise. Reconcile before another submission. |
+| Circuit breaker rejects a call before dispatch | Report dependency unavailability according to the operation contract. A breaker does not resolve an earlier order with an unknown outcome. |
+| Navigation, logout, or account switch | Respect lifetime ownership and block stale updates. Cancellation does not undo a server-side write. |
+| App process ends | In-memory flags disappear. Durable recovery requires the application's approved persistence and reconciliation design. |
+| Feature flag disables ordering | Apply the configured client behavior. Server authorization and business rules remain mandatory. |
+
+Test these behaviors at their owning boundaries. **100% production-code coverage is required under the supported metrics defined in Testing & Quality**; coverage does not replace meaningful assertions or device verification.
+
+## 7. Continue through Architecture
+
+| Page | What you will implement or learn |
+|---|---|
+| [Feature Architecture & Dependency Boundaries](./mobile-architecture.mdx) | Chicken-order contracts, folder responsibilities, state/data flow, and Android, iOS, and React Native code. |
+| [Network Resilience & Circuit Breakers](./circuit-breaker-resilience.mdx) | Timeout ownership, cancellation, safe retry decisions, circuit states, and unknown-write handling. |
+| [Feature Flags](./feature-flags.mdx) | Approved integration, defaults, persistence, runtime decisions, and teardown. |
+| [Branching & Pull Requests](./branching-prs.mdx) | Documented branch names, commits, approvals, and required checks. |
+
+**Next:** [Feature Architecture & Dependency Boundaries](./mobile-architecture.mdx). Detailed SDK setup, test execution, Datadog configuration, and release procedures remain in their dedicated sections.
+
+
+
+
+
+____________________________
+
+
+---
+title: Feature Architecture — Place a Chicken Order
+description: Follow one feature through UI state, domain validation, repository coordination, and data adapters on Android, iOS, and React Native.
+sidebar:
+  label: Feature Architecture
+  order: 2
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+# Feature Architecture — Place a Chicken Order
+
+**Build the feature in this order:** define its result → define the repository contract → implement data access → connect the use case → connect the screen's state owner.
+
+The examples below implement the **order core**, an injected API port, and fake composition. They do not call a real service or provide a complete screen. React Native additionally includes Redux Toolkit coordination. Platform UI and native lifecycle implementations belong in Platform & SDKs.
+
+> **Confidential — internal use only.** All identifiers and results below are synthetic. Keep enterprise APIs, credentials, source, and operational evidence in approved systems. Never place real orders to verify these examples.
+
+## 1. Follow one request
+
+<MermaidZoom title="Place a chicken order — request out, result back">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Screen / State Owner
+    participant USE as Place Chicken Order
+    participant REPO as Repository
+    participant API as API Client
+    participant SERVER as Backend
+
+    UI->>UI: Enter submitting state
+    UI->>USE: Submit the selected quantity
+    USE->>USE: Validate the input
+    Note over USE: Invalid input returns without a repository call
+    USE->>REPO: Submit valid input through the contract
+    REPO->>API: Use the injected API adapter
+    API->>SERVER: Send the approved request
+    SERVER-->>API: Return the order response
+    API-->>REPO: Return response data
+    REPO->>REPO: Map into a domain result
+    REPO-->>USE: Confirmed or unknown
+    USE-->>UI: Return the result
+    Note over UI: Update only the current account and request
+```
+
+</MermaidZoom>
+
+**Repository:** coordinates data access and maps the result. **API client:** performs the actual transport. **Backend:** authorizes and processes the order; it is outside the mobile app. The diagram shows a response arriving. A lost response can leave the order outcome unknown.
+
+## 2. Set the example contract
+
+| Input / result | Meaning |
+|---|---|
+| `accountId` / `accountID` | Active account supplied by the session owner. This value is not authorization. |
+| `requestId` / `requestID` | Identity for one intended order attempt. It is not automatically a backend idempotency key. |
+| `itemId` / `itemID` | Synthetic selected item, such as `chicken-grilled`. |
+| `quantity` | Teaching rule: integer from 1 through 20. Replace with confirmed product requirements. |
+| `confirmed` | The example adapter received a nonblank order ID in its expected response representation. |
+| `invalid` | Local validation failed; no repository call occurred. |
+| `unknown` | No usable confirmation is available after the adapter was invoked. Reconcile before another submission. |
+
+These types are **example-owned contracts**, not an enterprise HTTP schema. Production mapping must validate the approved backend response, account/request association, and failure semantics. A known server rejection needs an explicitly defined domain result; these examples conservatively classify unrecognized responses/errors as unknown.
+
+## 3. Put each responsibility in the correct location
+
+```text
+src/
+  ui/                 # Screen, state owner, Redux slice where applicable
+  domain/             # OrderRequest, OrderResult, OrderRepository, use case
+  repository/         # RemoteOrderRepository and response mapping
+  data/               # OrderApi and the concrete approved HTTP adapter
+```
+
+Use the project's Kotlin packages, Swift targets, or TypeScript modules to express these responsibilities. Domain code must not import concrete transport, UI, or Redux implementations. Wire concrete dependencies at application composition.
+
+The platform blocks are grouped into single files so the example core can be read and checked together. Their comments identify the declarations to separate when applying the boundaries in the real repository. A single example file does not enforce those module boundaries.
+
+## 4. Copy and inspect your platform core
+
+Use the existing project's compatible toolchain. No HTTP, database, or DI package is introduced by these examples.
+
+<Tabs>
+<TabItem label="Android">
+
+### `OrderFeature.kt` — domain, repository, API port, and fake composition
+
+```kotlin
+package com.example.mychicken.order
+
+import java.util.concurrent.CancellationException
+
+// Domain — example-owned models, not an enterprise HTTP schema.
+data class OrderRequest(
+    val accountId: String,
+    val requestId: String,
+    val itemId: String,
+    val quantity: Int,
+)
+sealed interface OrderResult {
+    data class Confirmed(val orderId: String) : OrderResult
+    data object Invalid : OrderResult
+    data object Unknown : OrderResult
+}
+interface OrderRepository {
+    suspend fun place(request: OrderRequest): OrderResult
+}
+class PlaceChickenOrder(private val repository: OrderRepository) {
+    suspend operator fun invoke(request: OrderRequest): OrderResult {
+        val ids = listOf(request.accountId, request.requestId, request.itemId)
+        if (ids.any { it.isBlank() } || request.quantity !in 1..20) {
+            return OrderResult.Invalid
+        }
+        return repository.place(request)
+    }
+}
+
+// Data — implement this port using the approved transport adapter.
+data class OrderResponse(val orderId: String)
+interface OrderApi {
+    suspend fun submit(request: OrderRequest): OrderResponse
+}
+
+// Repository implementation — one call, no retry or local fallback.
+class RemoteOrderRepository(private val api: OrderApi) : OrderRepository {
+    override suspend fun place(request: OrderRequest): OrderResult {
+        return try {
+            val response = api.submit(request)
+            if (response.orderId.isBlank()) OrderResult.Unknown
+            else OrderResult.Confirmed(response.orderId)
+        } catch (cancelled: CancellationException) {
+            // Preserve cancellation. An already-dispatched write still needs
+            // reconciliation; cancellation does not prove order failure.
+            throw cancelled
+        } catch (failure: Exception) {
+            OrderResult.Unknown
+        }
+    }
+}
+
+// Application composition — synthetic test/demo only. No network call.
+fun makeDemoPlaceOrder(): PlaceChickenOrder {
+    val api = object : OrderApi {
+        override suspend fun submit(request: OrderRequest) = OrderResponse("order-001")
+    }
+    return PlaceChickenOrder(RemoteOrderRepository(api))
+}
+```
+
+Invoke `makeDemoPlaceOrder()` from a controlled coroutine/test with `OrderRequest("demo-account", "demo-request", "chicken-grilled", 2)`. Expected result: `Confirmed("order-001")`. The fake never contacts a backend.
+
+A lifecycle-aware ViewModel owns submission state. Serialize submissions for the active order flow, publish UI-facing state, and reject stale session/request results. Native cancellation propagates; an already-dispatched order must not become retryable merely because its coroutine was cancelled. See [Android's architecture guidance](https://developer.android.com/topic/architecture).
+
+</TabItem>
+<TabItem label="iOS">
+
+### `OrderFeature.swift` — domain, repository, API port, and fake composition
+
+```swift
+import Foundation
+
+// Domain — example-owned models, not an enterprise HTTP schema.
+struct OrderRequest: Sendable {
+    let accountID: String
+    let requestID: String
+    let itemID: String
+    let quantity: Int
+}
+enum OrderResult: Sendable, Equatable {
+    case confirmed(orderID: String)
+    case invalid
+    case unknown
+}
+protocol OrderRepository: Sendable {
+    func place(_ request: OrderRequest) async throws -> OrderResult
+}
+struct PlaceChickenOrder: Sendable {
+    let repository: any OrderRepository
+
+    func callAsFunction(_ request: OrderRequest) async throws -> OrderResult {
+        try Task.checkCancellation()
+        let ids = [request.accountID, request.requestID, request.itemID]
+        guard ids.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }),
+              (1...20).contains(request.quantity) else { return .invalid }
+        return try await repository.place(request)
+    }
+}
+
+// Data — implement this port using the approved transport adapter.
+struct OrderResponse: Sendable { let orderID: String }
+protocol OrderAPI: Sendable {
+    func submit(_ request: OrderRequest) async throws -> OrderResponse
+}
+
+// Repository implementation — one call, no retry or local fallback.
+struct RemoteOrderRepository: OrderRepository {
+    let api: any OrderAPI
+
+    func place(_ request: OrderRequest) async throws -> OrderResult {
+        do {
+            let response = try await api.submit(request)
+            guard !response.orderID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else { return .unknown }
+            return .confirmed(orderID: response.orderID)
+        } catch is CancellationError {
+            // Preserve structured cancellation. The caller must reconcile an
+            // already-dispatched write; cancellation does not prove failure.
+            throw CancellationError()
+        } catch {
+            return .unknown
+        }
+    }
+}
+
+// Application composition — synthetic test/demo only. No network call.
+struct DemoOrderAPI: OrderAPI {
+    func submit(_ request: OrderRequest) async throws -> OrderResponse {
+        OrderResponse(orderID: "order-001")
+    }
+}
+func makeDemoPlaceOrder() -> PlaceChickenOrder {
+    PlaceChickenOrder(repository: RemoteOrderRepository(api: DemoOrderAPI()))
+}
+```
+
+In a controlled async test/task, call `try await makeDemoPlaceOrder()(OrderRequest(accountID: "demo-account", requestID: "demo-request", itemID: "chicken-grilled", quantity: 2))`. Expected result: `.confirmed(orderID: "order-001")`.
+
+An appropriately isolated ViewModel owns UI-facing mutation and active request/session identity. Do not start a new task for every repeated tap. Preserve cancellation while recording any unresolved dispatched order for the application's approved recovery process.
+
+</TabItem>
+<TabItem label="React Native">
+
+### `orderCore.ts` — domain, repository, API port, and fake composition
+
+```typescript
+// domain/order.ts — example-owned types, not an enterprise HTTP schema.
+export type OrderRequest = Readonly<{
+  accountId: string;
+  requestId: string;
+  itemId: string;
+  quantity: number;
+}>;
+export type OrderResult =
+  | Readonly<{ kind: 'confirmed'; orderId: string }>
+  | Readonly<{ kind: 'invalid' }>
+  | Readonly<{ kind: 'unknown' }>;
+export interface OrderRepository {
+  place(request: OrderRequest): Promise<OrderResult>;
+}
+
+// domain/placeChickenOrder.ts
+export function placeChickenOrder(repository: OrderRepository) {
+  return async (request: OrderRequest): Promise<OrderResult> => {
+    if (![request.accountId, request.requestId, request.itemId].every(id => id.trim().length > 0)
+      || !Number.isInteger(request.quantity)
+      || request.quantity < 1 || request.quantity > 20) {
+      return { kind: 'invalid' };
+    }
+    return repository.place(request);
+  };
+}
+
+// data/orderApi.ts — inject a fake or an approved real transport adapter.
+export interface OrderApi {
+  submit(request: OrderRequest): Promise<unknown>;
+}
+
+// repository/remoteOrderRepository.ts
+export function remoteOrderRepository(api: OrderApi): OrderRepository {
+  return {
+    async place(request) {
+      try {
+        const response = await api.submit(request);
+        if (typeof response !== 'object' || response === null
+          || !('orderId' in response)
+          || typeof response.orderId !== 'string'
+          || response.orderId.trim().length === 0) {
+          return { kind: 'unknown' };
+        }
+        return { kind: 'confirmed', orderId: response.orderId };
+      } catch {
+        // Conservative: no approved rejection / reconciliation contract is supplied.
+        return { kind: 'unknown' };
+      }
+    },
+  };
+}
+
+// Application composition — synthetic test/demo only. No network call.
+export function makeDemoPlaceOrder() {
+  const api: OrderApi = {
+    submit: async () => ({ orderId: 'order-001' }),
+  };
+  return placeChickenOrder(remoteOrderRepository(api));
+}
+```
+
+### `orderStore.ts` — Redux Toolkit coordination
+
+Place beside `orderCore.ts` for this grouped example. In the real application, keep the slice in `ui/` and import only the required domain types and injected operation. See the [Redux Toolkit usage guide](https://redux.js.org/toolkit/usage/usage-guide).
+
+```typescript
+import { configureStore, createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import type { PayloadAction } from '@reduxjs/toolkit';
+import type { OrderRequest, OrderResult } from './orderCore';
+
+type OrderState = {
+  accountId: string | null;
+  activeRequestId: string | null;
+  status: 'idle' | 'submitting' | 'confirmed' | 'invalid' | 'unknown';
+  orderId: string | null;
+};
+type Dependencies = {
+  placeOrder: (request: OrderRequest) => Promise<OrderResult>;
+};
+const initialState: OrderState = {
+  accountId: null, activeRequestId: null, status: 'idle', orderId: null,
+};
+export const submitOrder = createAsyncThunk<
+  OrderResult, OrderRequest,
+  { state: { order: OrderState }; extra: Dependencies }
+>('order/submit', (request, { extra }) => extra.placeOrder(request), {
+  condition: (request, { getState }) => {
+    const state = getState().order;
+    return state.accountId === request.accountId
+      && (state.status === 'idle' || state.status === 'invalid');
+  },
+});
+const slice = createSlice({
+  name: 'order', initialState,
+  reducers: {
+    // Call only from the established session owner. Not a resubmit/reset button.
+    accountChanged: (_state, action: PayloadAction<string | null>): OrderState => ({
+      ...initialState, accountId: action.payload,
+    }),
+  },
+  extraReducers: builder => builder
+    .addCase(submitOrder.pending, (state, action) => {
+      state.status = 'submitting';
+      state.activeRequestId = action.meta.requestId;
+      state.orderId = null;
+    })
+    .addCase(submitOrder.fulfilled, (state, action) => {
+      if (state.accountId !== action.meta.arg.accountId
+        || state.activeRequestId !== action.meta.requestId) return;
+      state.status = action.payload.kind;
+      state.orderId = action.payload.kind === 'confirmed' ? action.payload.orderId : null;
+      state.activeRequestId = null;
+    })
+    .addCase(submitOrder.rejected, (state, action) => {
+      if (state.accountId !== action.meta.arg.accountId
+        || state.activeRequestId !== action.meta.requestId) return;
+      state.status = 'unknown';
+      state.activeRequestId = null;
+    }),
+});
+export const { accountChanged } = slice.actions;
+export function makeOrderStore(dependencies: Dependencies) {
+  return configureStore({
+    reducer: { order: slice.reducer },
+    middleware: getDefaultMiddleware => getDefaultMiddleware({
+      thunk: { extraArgument: dependencies },
+    }),
+  });
+}
+```
+
+### Connect the synthetic operation
+
+This integration fragment runs against the fake, not a live backend. Keep the store instance stable; do not recreate it on every render.
+
+```typescript
+import { makeDemoPlaceOrder } from './orderCore';
+import { accountChanged, makeOrderStore, submitOrder } from './orderStore';
+
+const store = makeOrderStore({ placeOrder: makeDemoPlaceOrder() });
+store.dispatch(accountChanged('demo-account'));
+await store.dispatch(submitOrder({
+  accountId: 'demo-account',
+  requestId: 'demo-request',
+  itemId: 'chicken-grilled',
+  quantity: 2,
+}));
+// Expected: status === 'confirmed', orderId === 'order-001'.
+```
+
+The slice blocks another submission while submitting, after confirmation, or with an unknown outcome. It also ignores stale results after account changes. `action.meta.requestId` is Redux Toolkit's execution identity, separate from the business `requestId` supplied in the request.
+
+There is deliberately no Retry or New Order reset action. Add one only after the approved order/reconciliation lifecycle is defined. `accountChanged` belongs to the session owner, not a button used to bypass submission protection.
+
+</TabItem>
+</Tabs>
+
+## 5. Connect the real API at one boundary
+
+Replace the demo API implementation with the application's approved transport adapter. Keep the use case dependent on the repository contract.
+
+| Confirm with the owner | Implement in the adapter / integration |
+|---|---|
+| Endpoint, authorization, request and response schemas | Use the established authenticated client and response validation. Do not infer an endpoint from this page. |
+| Idempotency and reconciliation | Preserve the approved operation identity and reconcile unknown outcomes. |
+| Timeout and error semantics | Classify known rejection versus unknown outcome using the actual service contract. |
+| Retry ownership | Use one approved policy. No automatic business-write retries are present here. |
+| Account changes and process recovery | Prevent stale writes/results and recover unresolved operations according to the approved persistence/session design. |
+
+**In-memory guards do not provide durable duplicate protection.** Account reset, app restart, a second store/service instance, another device, and in-flight backend writes all require coordinated server/session handling. Ignoring a stale UI result does not cancel the business operation.
+
+## 6. Verify the boundaries
+
+| Exercise | Expected behavior |
+|---|---|
+| Valid synthetic request | One adapter call and the mapped confirmation. |
+| Blank identifier or invalid quantity | `invalid`; no adapter call. |
+| Missing/blank order ID or adapter error | `unknown`; no fabricated confirmation or automatic retry. |
+| Native task cancellation | Cancellation propagates; dispatched-write uncertainty remains subject to recovery. |
+| Repeated Redux submission while pending | One adapter call through the retained store. |
+| Redux submission after confirmed/unknown | Blocked until an approved lifecycle transition exists. |
+| Account changes before Redux response | Previous account's response does not update the new account's state. |
+
+Use the repository's actual unit-test and coverage commands. Native UI/device tests, complete screens, and 100% production-code coverage enforcement are covered in Testing & Quality and the platform standards. These core examples alone do not establish application-wide coverage or production readiness.
+
+**Next:** [Network Resilience & Circuit Breakers](./circuit-breaker-resilience.mdx) — decide how failures are handled without duplicating an order.
+
+
+
+
+--------------------------
+
+
+
+
+---
+title: Network Resilience & Circuit Breakers
+description: Handle chicken-order timeouts, cancellation, circuit rejection, and uncertain outcomes without creating duplicate orders.
+sidebar:
+  label: Network Resilience
+  order: 3
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+# Network Resilience & Circuit Breakers
+
+**A request failure is not always an order failure.** If My Chicken App sends an order and loses the response, the backend may still have created it. Show an unknown outcome and reconcile before another submission.
+
+Use this page after [Feature Architecture](./mobile-architecture.mdx). Put resilience at the approved network/data boundary, not in individual screen tap handlers.
+
+> **Confidential — internal use only.** Use synthetic failures in tests. Keep private endpoints, credentials, raw response bodies, account details, and signing material out of logs, examples, and support messages.
+
+## 1. Choose the right mechanism
+
+| Mechanism | Plain meaning | Chicken-order consequence |
+|---|---|---|
+| **Timeout** | Stop waiting after the configured transport/operation budget. | The server may already have accepted the order. |
+| **Cancellation** | Stop obsolete client work where supported. | Leaving the screen does not cancel a server-side order. |
+| **Retry** | Make another attempt. | Do not repeat submission without approved replay/idempotency semantics. |
+| **Circuit breaker** | Stop calling a dependency temporarily after qualifying failures. | New calls can be rejected before reaching the network. Earlier orders can still be unresolved. |
+| **Reconciliation** | Read the authoritative status through an approved contract. | Recover the original outcome instead of blindly submitting again. |
+
+A circuit breaker does not supply offline ordering, durable duplicate protection, or a guarantee against application crashes.
+
+## 2. Understand the three circuit states
+
+<MermaidZoom title="Circuit breaker — allow calls, pause calls, and probe recovery">
+
+```mermaid
+flowchart LR
+    CLOSED["CLOSED<br/>Allow admitted attempts<br/>Count qualifying failures"]
+    OPEN["OPEN<br/>Reject new attempts<br/>Do not call the dependency"]
+    HALF["HALF-OPEN<br/>Admit one recovery probe<br/>Reject competing probes"]
+
+    CLOSED -->|Configured threshold reached| OPEN
+    OPEN -->|Cooldown elapsed and next caller arrives| HALF
+    HALF -->|Success or non-outage response| CLOSED
+    HALF -->|Qualifying failure or cancelled probe| OPEN
+
+    classDef closed fill:#14532d,color:#ffffff,stroke:#86efac;
+    classDef open fill:#7f1d1d,color:#ffffff,stroke:#fca5a5;
+    classDef probe fill:#713f12,color:#ffffff,stroke:#fcd34d;
+    class CLOSED closed;
+    class OPEN open;
+    class HALF probe;
+```
+
+</MermaidZoom>
+
+The reference code below uses consecutive qualifying failures, one half-open probe, and a monotonic cooldown. A successful or non-qualifying closed-state outcome resets the failure streak. Client cancellation does not count as an outage. A cancelled probe releases its permit by reopening for a cooldown.
+
+**Threshold and cooldown values are service-specific.** Three failures and ten seconds are illustrative values from an earlier example, not approved defaults. Opening a circuit does not cancel attempts that were already admitted.
+
+## 3. Assign one owner per policy
+
+| Policy | Owner |
+|---|---|
+| Connection/read timeout and cancellation support | Approved HTTP adapter/client. |
+| Total operation budget | Agreed operation coordinator, including attempts and waits. |
+| Retry decisions and scheduling | One approved policy owner. Avoid independent client, repository, and screen retries. |
+| Circuit state | A retained breaker per protected dependency and approved session scope. |
+| Session renewal | Existing authentication/session integration. |
+| Submitting/unknown/unavailable UI state | Feature state owner. |
+| Recovery after unknown submission | Approved backend reconciliation and application recovery design. |
+
+Do not create a new breaker for each request. Do not share one breaker across unrelated services. Keep breaker objects outside Redux state; inject the retained dependency into the operation.
+
+## 4. Confirm the enterprise integration before adoption
+
+Enterprise policy requires HTTP requests to use the approved circuit-breaker integration. Obtain its **actual package, version, API, supported platforms, and policy configuration** from the owner before wiring production traffic.
+
+The standalone implementations below are **reference code for understanding and controlled verification**. They are not a replacement enterprise SDK or evidence of SDK compatibility. If the approved SDK supplies this policy, use its confirmed contract and do not stack a second breaker around it without an explicit design.
+
+## 5. Reference code for each platform
+
+Each `execute` performs **one attempt**. It does not implement transport timeouts, automatic retries, offline queues, telemetry, or backend reconciliation. The `OrderAttempt` wrapper shows where the injected operation runs; it does not define an enterprise order API.
+
+Failure classifiers and clock providers must be non-throwing and safe for the owning execution context. The concrete adapter translates qualifying transport/server outcomes into the configured typed failure. An HTTP response returned as a normal value must be classified explicitly; this breaker cannot infer failure from arbitrary return data.
+
+<Tabs>
+<TabItem label="Android">
+
+**File: `data/resilience/CircuitBreaker.kt`**
+
+Uses the project's existing `kotlinx-coroutines-core` dependency. State is mutex-protected; the network call runs outside the mutex. Non-cancellable finalization prevents a cancelled coroutine from stranding a half-open probe.
+
+```kotlin
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+
+class CircuitOpenException : Exception("Dependency temporarily unavailable")
+
+class CircuitBreaker(
+    private val failureThreshold: Int,
+    private val cooldownMillis: Long,
+    private val countsAsFailure: (Exception) -> Boolean,
+    private val nowMillis: () -> Long = { System.nanoTime() / 1_000_000 },
+) {
+    init {
+        require(failureThreshold > 0)
+        require(cooldownMillis > 0)
+    }
+
+    private enum class State { CLOSED, OPEN, HALF_OPEN }
+    private enum class Outcome { SUCCESS, FAILURE, IGNORED, CANCELLED }
+    private data class Ticket(val epoch: Long, val probe: Boolean)
+    private val mutex = Mutex()
+    private var state = State.CLOSED
+    private var failures = 0
+    private var openedAt = 0L
+    private var epoch = 0L
+
+    private suspend fun admit(): Ticket = mutex.withLock {
+        when (state) {
+            State.CLOSED -> Ticket(epoch, false)
+            State.HALF_OPEN -> throw CircuitOpenException()
+            State.OPEN -> {
+                if (nowMillis() - openedAt < cooldownMillis) {
+                    throw CircuitOpenException()
+                }
+                state = State.HALF_OPEN
+                epoch += 1
+                Ticket(epoch, true)
+            }
+        }
+    }
+
+    private fun open() {
+        state = State.OPEN
+        openedAt = nowMillis()
+        failures = 0
+        epoch += 1
+    }
+
+    private suspend fun finish(ticket: Ticket, outcome: Outcome) {
+        withContext(NonCancellable) {
+            mutex.withLock {
+                if (ticket.epoch != epoch) return@withLock
+                if (ticket.probe) {
+                    if (outcome == Outcome.FAILURE || outcome == Outcome.CANCELLED) {
+                        open()
+                    } else {
+                        state = State.CLOSED
+                        failures = 0
+                        epoch += 1
+                    }
+                } else when (outcome) {
+                    Outcome.SUCCESS, Outcome.IGNORED -> failures = 0
+                    Outcome.FAILURE -> {
+                        failures += 1
+                        if (failures >= failureThreshold) open()
+                    }
+                    Outcome.CANCELLED -> Unit
+                }
+            }
+        }
+    }
+
+    suspend fun <T> execute(operation: suspend () -> T): T {
+        currentCoroutineContext().ensureActive()
+        val ticket = admit()
+        val value: T
+        try {
+            currentCoroutineContext().ensureActive()
+            value = operation()
+            currentCoroutineContext().ensureActive()
+        } catch (error: Exception) {
+            val outcome = when {
+                error is CancellationException -> Outcome.CANCELLED
+                countsAsFailure(error) -> Outcome.FAILURE
+                else -> Outcome.IGNORED
+            }
+            finish(ticket, outcome)
+            throw error
+        }
+        finish(ticket, Outcome.SUCCESS)
+        return value
+    }
+}
+```
+
+**File: `data/OrderAttempt.kt` — integration contract**
+
+```kotlin
+class TransientDependencyFailure : Exception()
+
+// Configure once in application composition and inject the same instance.
+suspend fun <T> executeOrderAttempt(
+    breaker: CircuitBreaker,
+    fetch: suspend () -> T,
+): T = breaker.execute(fetch)
+```
+
+At construction, supply `countsAsFailure = { it is TransientDependencyFailure }` and approved threshold/cooldown values. The concrete API adapter must configure transport timeouts and produce typed failures. Caller cancellation propagates; timeout classification needs care because coroutine timeout exceptions are also cancellation exceptions. Do not use an enclosing coroutine deadline as evidence of backend failure automatically.
+
+</TabItem>
+<TabItem label="iOS">
+
+**File: `Data/Resilience/CircuitBreaker.swift`**
+
+An actor serializes state access. The operation runs across an `await`, so other callers can be admitted while the first is suspended. Epochs protect against stale completions during that reentrancy.
+
+```swift
+import Foundation
+
+struct CircuitOpenError: Error, Sendable {}
+
+actor CircuitBreaker {
+    private enum State { case closed, open, halfOpen }
+    private enum Outcome { case success, failure, ignored, cancelled }
+    private struct Ticket {
+        let epoch: UInt64
+        let probe: Bool
+    }
+
+    private let failureThreshold: Int
+    private let cooldown: TimeInterval
+    private let countsAsFailure: @Sendable (any Error) -> Bool
+    private let now: @Sendable () -> TimeInterval
+    private var state = State.closed
+    private var failures = 0
+    private var openedAt: TimeInterval = 0
+    private var epoch: UInt64 = 0
+
+    init(
+        failureThreshold: Int,
+        cooldown: TimeInterval,
+        countsAsFailure: @escaping @Sendable (any Error) -> Bool,
+        now: @escaping @Sendable () -> TimeInterval = {
+            ProcessInfo.processInfo.systemUptime
+        }
+    ) {
+        precondition(failureThreshold > 0)
+        precondition(cooldown.isFinite && cooldown > 0)
+        self.failureThreshold = failureThreshold
+        self.cooldown = cooldown
+        self.countsAsFailure = countsAsFailure
+        self.now = now
+    }
+
+    private func admit() throws -> Ticket {
+        switch state {
+        case .closed:
+            return Ticket(epoch: epoch, probe: false)
+        case .halfOpen:
+            throw CircuitOpenError()
+        case .open:
+            guard now() - openedAt >= cooldown else { throw CircuitOpenError() }
+            state = .halfOpen
+            epoch &+= 1
+            return Ticket(epoch: epoch, probe: true)
+        }
+    }
+
+    private func open() {
+        state = .open
+        openedAt = now()
+        failures = 0
+        epoch &+= 1
+    }
+
+    private func finish(_ ticket: Ticket, _ outcome: Outcome) {
+        guard ticket.epoch == epoch else { return }
+        if ticket.probe {
+            switch outcome {
+            case .failure, .cancelled:
+                open()
+            case .success, .ignored:
+                state = .closed
+                failures = 0
+                epoch &+= 1
+            }
+        } else {
+            switch outcome {
+            case .success, .ignored:
+                failures = 0
+            case .failure:
+                failures += 1
+                if failures >= failureThreshold { open() }
+            case .cancelled:
+                break
+            }
+        }
+    }
+
+    func execute<T: Sendable>(
+        _ operation: @Sendable () async throws -> T
+    ) async throws -> T {
+        try Task.checkCancellation()
+        let ticket = try admit()
+        let value: T
+        do {
+            try Task.checkCancellation()
+            value = try await operation()
+            try Task.checkCancellation()
+        } catch {
+            if error is CancellationError || Task.isCancelled {
+                finish(ticket, .cancelled)
+                throw CancellationError()
+            }
+            finish(ticket, countsAsFailure(error) ? .failure : .ignored)
+            throw error
+        }
+        finish(ticket, .success)
+        return value
+    }
+}
+```
+
+**File: `Data/OrderAttempt.swift` — integration contract**
+
+```swift
+struct TransientDependencyFailure: Error, Sendable {}
+
+func executeOrderAttempt<T: Sendable>(
+    breaker: CircuitBreaker,
+    fetch: @Sendable () async throws -> T
+) async throws -> T {
+    try await breaker.execute(fetch)
+}
+```
+
+Construct once with `countsAsFailure: { $0 is TransientDependencyFailure }` and reviewed configuration. Configure URLSession and operation deadlines in the concrete adapter. Keep `Sendable` requirements real; do not use unchecked conformance to pass mutable UI objects into the operation. Cancellation-aware transport must cooperate with task cancellation.
+
+</TabItem>
+<TabItem label="React Native">
+
+**File: `data/resilience/circuitBreaker.ts`**
+
+Admission and completion transitions are synchronous on the owning JavaScript runtime. No network operation is executed while updating state. Do not share this mutable instance across independent JS runtimes.
+
+```typescript
+export class CircuitOpenError extends Error {
+  constructor() {
+    super('Dependency temporarily unavailable');
+    this.name = 'CircuitOpenError';
+  }
+}
+
+type Outcome = 'success' | 'failure' | 'ignored' | 'cancelled';
+type Ticket = Readonly<{ epoch: number; probe: boolean }>;
+
+export class CircuitBreaker {
+  private state: 'closed' | 'open' | 'halfOpen' = 'closed';
+  private failures = 0;
+  private openedAt = 0;
+  private epoch = 0;
+
+  constructor(
+    private readonly failureThreshold: number,
+    private readonly cooldownMs: number,
+    private readonly countsAsFailure: (error: unknown) => boolean,
+    private readonly now: () => number,
+  ) {
+    if (!Number.isSafeInteger(failureThreshold) || failureThreshold < 1) {
+      throw new Error('failureThreshold must be a positive safe integer');
+    }
+    if (!Number.isFinite(cooldownMs) || cooldownMs <= 0) {
+      throw new Error('cooldownMs must be positive and finite');
+    }
+  }
+
+  private admit(): Ticket {
+    if (this.state === 'halfOpen') throw new CircuitOpenError();
+    if (this.state === 'open') {
+      if (this.now() - this.openedAt < this.cooldownMs) {
+        throw new CircuitOpenError();
+      }
+      this.state = 'halfOpen';
+      this.epoch += 1;
+      return { epoch: this.epoch, probe: true };
+    }
+    return { epoch: this.epoch, probe: false };
+  }
+
+  private open(): void {
+    this.state = 'open';
+    this.openedAt = this.now();
+    this.failures = 0;
+    this.epoch += 1;
+  }
+
+  private finish(ticket: Ticket, outcome: Outcome): void {
+    if (ticket.epoch !== this.epoch) return;
+    if (ticket.probe) {
+      if (outcome === 'failure' || outcome === 'cancelled') this.open();
+      else {
+        this.state = 'closed';
+        this.failures = 0;
+        this.epoch += 1;
+      }
+    } else if (outcome === 'failure') {
+      this.failures += 1;
+      if (this.failures >= this.failureThreshold) this.open();
+    } else if (outcome !== 'cancelled') {
+      this.failures = 0;
+    }
+  }
+
+  async execute<T>(
+    signal: AbortSignal,
+    operation: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
+    const checkCancellation = (): void => {
+      if (signal.aborted) {
+        const error = new Error('Operation cancelled');
+        error.name = 'AbortError';
+        throw error;
+      }
+    };
+    checkCancellation();
+    const ticket = this.admit();
+    let value: T;
+    try {
+      checkCancellation();
+      value = await operation(signal);
+      checkCancellation();
+    } catch (error: unknown) {
+      const cancelled = signal.aborted ||
+        (error instanceof Error && error.name === 'AbortError');
+      this.finish(ticket, cancelled ? 'cancelled' :
+        this.countsAsFailure(error) ? 'failure' : 'ignored');
+      throw error;
+    }
+    this.finish(ticket, 'success');
+    return value;
+  }
+}
+```
+
+**File: `data/orderAttempt.ts` — integration contract**
+
+```typescript
+import { CircuitBreaker } from './resilience/circuitBreaker';
+
+export class TransientDependencyFailure extends Error {}
+
+// One admitted attempt only. This function does not retry.
+export function executeOrderAttempt<T>(
+  breaker: CircuitBreaker,
+  signal: AbortSignal,
+  submit: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  return breaker.execute(signal, submit);
+}
+
+export function createOrderBreaker(
+  threshold: number,
+  cooldownMs: number,
+  monotonicNow: () => number,
+): CircuitBreaker {
+  return new CircuitBreaker(
+    threshold,
+    cooldownMs,
+    error => error instanceof TransientDependencyFailure,
+    monotonicNow,
+  );
+}
+```
+
+Inject a supported monotonic source such as `() => performance.now()` for the selected React Native runtime, or the project's clock adapter. Do not substitute wall-clock time without handling clock adjustments. The API adapter must pass `signal` to its actual request and enforce timeouts. Keep the breaker outside Redux state; inject it through the established service dependencies.
+
+</TabItem>
+</Tabs>
+
+### Call the wrapper at the actual network boundary
+
+Implement the `OrderApi` / `OrderAPI` port from [Feature Architecture](./mobile-architecture.mdx) using the approved client. Place admission around its actual submission attempt, before mapping the result. Do not wrap the example's already-mapped repository result: a returned `unknown` value is not an exception and will otherwise look like a successful breaker execution.
+
+For a write, a half-open probe must itself be an approved real operation; **never create a synthetic customer order merely to test recovery**. Follow the service's approved read-only health/probe design where available.
+
+## 6. Show the correct outcome to the user
+
+| Event | What happens next |
+|---|---|
+| Local validation fails | Correct the input. No network call; no outage count. |
+| Circuit rejects before the current attempt starts | Show temporary unavailability under the operation contract. Do not spin in an immediate retry loop. |
+| Approved submission returns confirmation | Show the current account/request's confirmed result. |
+| Submission times out or response is unusable | Mark the order unknown and start approved recovery. No fabricated confirmation. |
+| User cancels after dispatch | Stop client work where supported; preserve uncertainty about the backend result. |
+| Authentication expires or access is denied | Follow the approved session/authorization flow. Do not treat this as dependency availability failure by default. |
+| Service rate-limits a request | Follow its explicit delay and replay contract. Do not assume every rate limit is a server outage. |
+| Account switches | Reject stale UI updates and coordinate in-flight writes/recovery with the session owner. |
+
+The preceding feature-core example conservatively maps adapter exceptions to `unknown` because its private failure contract is unspecified. If the real adapter can **prove no dispatch occurred**, introduce an explicit unavailable/not-sent domain outcome and update the use case, UI, and tests together. Do not relabel all errors as safely retryable.
+
+## 7. Reconcile an unknown chicken order
+
+<MermaidZoom title="Unknown order — inspect authoritative status before another submission">
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant APP as Order Owner
+    participant API as Approved Backend
+
+    APP->>API: Submit the intended order
+    Note over APP,API: Response is lost or times out
+    APP->>APP: Preserve operation identity and block duplicate submission
+    APP->>API: Read status using the approved reconciliation contract
+    alt Original order confirmed
+        API-->>APP: Return the authoritative order result
+        APP->>APP: Display the confirmed order
+    else Status remains inconclusive
+        API-->>APP: Pending or insufficient evidence
+        APP->>APP: Keep unresolved state and follow recovery
+    end
+```
+
+</MermaidZoom>
+
+The status-read endpoint and persistence mechanism are intentionally not invented here. An absent result can be inconclusive if indexing or replication is delayed. The service contract determines whether and when another write is safe.
+
+If the approved client already retries requests, account for that behavior before enabling order submission. Local button guards and a stable request identifier alone do not establish server-side idempotency across restarts, devices, or new feature instances.
+
+## 8. Verify before connecting production traffic
+
+| Controlled test | Expected result |
+|---|---|
+| Qualifying failures reach the threshold | Circuit opens. |
+| Request arrives while open | Injected operation is not invoked. |
+| Cooldown expires | One recovery probe is admitted when a caller arrives. |
+| Competing half-open requests | Additional probes are rejected. |
+| Probe succeeds / fails | Circuit closes / reopens according to the defined policy. |
+| Probe is cancelled | Permit is released and circuit reopens without counting cancellation as an outage. |
+| Earlier attempt completes after a newer circuit generation | It does not overwrite newer breaker state. |
+| Invalid configuration | Construction fails instead of silently using unsafe defaults. |
+| Order response is lost | Unknown state; no automatic duplicate order. |
+
+Use an injected clock and scripted operations, not live outages or real orders. Cover transport cancellation, classification, retry ownership, and session recovery through the actual application's tests. The production-code coverage requirement and platform test commands belong in Testing & Quality.
+
+**Next:** [Feature Flags](./feature-flags.mdx) — control configured application behavior with safe defaults and clear lifecycle ownership.
+
+
+
+
+-------------------
+
+
+
+---
+title: Feature Flags — Control Chicken Ordering
+description: Configure Unleash, persist permitted flag data, and safely evaluate chicken-ordering behavior across Android, iOS, and React Native.
+sidebar:
+  label: Feature Flags
+  order: 4
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
+
+# Feature Flags — Control Chicken Ordering
+
+A feature flag chooses between behaviors **already present in the installed app**. In My Chicken App, the example flag `chicken-ordering-enabled` decides whether a user may **start a new ordering journey**. It does not authorize an order or undo one already sent.
+
+> **Confidential — internal use only.** Obtain endpoint and client-token configuration through the approved process. Never put backend/admin tokens, production data, or sensitive targeting information in mobile code, screenshots, or AI prompts.
+
+## 1. Define the example behavior
+
+| Value / event | App behavior |
+|---|---|
+| Flag enabled and supported by the app | Allow the new ordering journey when the established access policy also permits it. |
+| Flag disabled, missing, or not yet available | Keep the new ordering entry disabled. Preserve the rest of the app's supported behavior. |
+| Flag changes while an order is submitting | Keep tracking the original order result. Do not silently reset state or resend. |
+| Submission outcome is unknown | Continue reconciliation even if the flag is now disabled. |
+
+These flag names and behaviors are teaching examples. Confirm the real feature requirements and approved flag names with the owner. A frontend token is distributed with the client; it is not a privileged backend credential.
+
+<MermaidZoom title="Feature decision — check before a new order, preserve an order already submitted">
+
+```mermaid
+flowchart TB
+    START["User opens the ordering entry"] --> FLAG{"Usable flag decision<br/>enables ordering?"}
+    FLAG -->|No| DISABLED["Do not start a new order<br/>Show the defined unavailable entry"]
+    FLAG -->|Yes| ACCESS{"App supports the feature<br/>and access policy permits it?"}
+    ACCESS -->|No| DISABLED
+    ACCESS -->|Yes| JOURNEY["Begin the ordering journey"]
+    JOURNEY --> SUBMIT["Recheck entry policy before submission<br/>Submit through the order use case"]
+    SUBMIT --> RESULT["Track confirmed / rejected / unknown outcome<br/>A later flag change does not undo the write"]
+
+    classDef decision fill:#312e81,color:#ffffff,stroke:#a5b4fc;
+    classDef action fill:#164e63,color:#ffffff,stroke:#67e8f9;
+    classDef unavailable fill:#713f12,color:#ffffff,stroke:#fcd34d;
+    class START,JOURNEY,SUBMIT,RESULT action;
+    class FLAG,ACCESS decision;
+    class DISABLED unavailable;
+```
+
+</MermaidZoom>
+
+## 2. Configure the flag in the approved dashboard
+
+1. Open the enterprise Unleash dashboard through its approved internal entry point.
+2. Select the correct project and target environment.
+3. Create the approved feature toggle; this example uses `chicken-ordering-enabled`.
+4. Set its type and activation strategy according to the rollout owner's decision. Start disabled in the test environment.
+5. Confirm the application versions, audience, fallback behavior, and rollback owner before enabling it.
+6. For the optional presentation example, create `chicken-order-presentation` with approved variants. The sample recognizes `compact`; all other values use `standard`.
+
+A dashboard flag type named Permission does not replace backend permission enforcement.
+
+**Attach screenshot — selected project/environment and disabled flag, with tokens and targeting identifiers redacted.**
+
+Get these values from the owner before coding:
+
+| Value | Purpose |
+|---|---|
+| Approved Frontend API / Edge URL | Correct client evaluation endpoint, commonly ending in `/api/frontend`. |
+| Frontend token | Scope for the intended client, project, and environment. Never use an admin/backend token. |
+| App name | Approved application identity used by the SDK. |
+| Reviewed SDK versions | Compatible packages for the existing toolchain. |
+| Cache and refresh policy | Whether cached values may be used, age limits, and intended activation behavior. |
+
+## 3. Integrate your platform
+
+The examples cover **non-sensitive application-wide flags without account targeting**. They do not establish account-targeted cache isolation or a bounded-freshness security control. Use the account-transition guidance below before adding targeting.
+
+<Tabs>
+<TabItem label="Android">
+
+### A. Add the reviewed SDK
+
+In the application module's `build.gradle.kts`, using an approved `unleashVersion` project property:
+
+```kotlin
+dependencies {
+    val unleashVersion = providers.gradleProperty("unleashVersion").get()
+    implementation("io.getunleash:unleash-android:$unleashVersion")
+}
+```
+
+Inside the manifest element, include the required permissions:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+```
+
+Follow the [official Android SDK setup](https://docs.getunleash.io/sdks/android) for the pinned release.
+
+### B. Construct one client and evaluate the decision
+
+**File: `configuration/ChickenOrderFlags.kt`**
+
+```kotlin
+import android.content.Context
+import io.getunleash.android.DefaultUnleash
+import io.getunleash.android.UnleashConfig
+
+fun createOrderFlags(
+    context: Context,
+    frontendUrl: String,
+    frontendToken: String,
+    appName: String,
+): DefaultUnleash {
+    require(frontendUrl.startsWith("https://"))
+    require(frontendToken.isNotBlank() && appName.isNotBlank())
+    return DefaultUnleash(
+        androidContext = context.applicationContext,
+        unleashConfig = UnleashConfig.newBuilder(appName = appName)
+            .proxyUrl(frontendUrl)
+            .clientKey(frontendToken)
+            .build(),
+    )
+}
+
+fun canStartChickenOrder(
+    client: DefaultUnleash,
+    appSupportsOrdering: Boolean,
+    accessAllowed: Boolean,
+): Boolean = appSupportsOrdering && accessAllowed &&
+    client.isEnabled("chicken-ordering-enabled")
+```
+
+Retain the client in application composition and call `start()` once there. Evaluate from the feature owner at entry and before a new submission; do not fetch independently in every screen. A synchronous read does not subscribe the UI to changes. Use the pinned SDK's ready/state listeners if the entry must update live, then marshal UI updates through the ViewModel.
+
+Unknown flags use the SDK's disabled behavior. A false result does not prove the last network refresh succeeded. Keep lifecycle ownership at application scope; detach listeners and use the pinned SDK's documented close/release contract when that owner ends. Do not close an application client merely because one screen disappears.
+
+</TabItem>
+<TabItem label="iOS">
+
+### A. Add the reviewed Swift package
+
+Add `https://github.com/Unleash/unleash-ios-sdk.git` in Xcode using the approved release constraint, then link `UnleashProxyClientSwift` to the application target. Follow the [official iOS SDK reference](https://docs.getunleash.io/sdks/ios).
+
+### B. Construct one client and evaluate the decision
+
+**File: `Configuration/ChickenOrderFlags.swift`**
+
+```swift
+import UnleashProxyClientSwift
+
+@MainActor
+func createOrderFlags(
+    frontendURL: String,
+    frontendToken: String,
+    appName: String
+) -> UnleashClient {
+    precondition(frontendURL.hasPrefix("https://"))
+    precondition(!frontendToken.isEmpty && !appName.isEmpty)
+    return UnleashClient(
+        unleashUrl: frontendURL,
+        clientKey: frontendToken,
+        appName: appName
+    )
+}
+
+@MainActor
+func canStartChickenOrder(
+    client: UnleashClient,
+    appSupportsOrdering: Bool,
+    accessAllowed: Bool
+) -> Bool {
+    appSupportsOrdering && accessAllowed &&
+        client.isEnabled(name: "chicken-ordering-enabled")
+}
+```
+
+Retain the client in application composition and call `start()` once using the pinned release's API. Missing/unavailable initial data must follow the disabled fallback. The factory is not a UI subscription: if live entry updates are needed, connect documented ready/update subscriptions to the state owner and its actor.
+
+Keep subscription ownership explicit and use the pinned release's teardown contract. This page does not invent a native stop/unsubscribe API. Reading an SDK flag does not establish freshness or account isolation.
+
+</TabItem>
+<TabItem label="React Native">
+
+### A. Add the reference packages
+
+Retain the documented **`unleash-proxy-client` plus AsyncStorage** approach. Use the project's declared package manager and approved exact versions. If it uses Yarn:
+
+```bash
+MOBILE_UNLEASH_VERSION='REPLACE_WITH_APPROVED_UNLEASH_VERSION'
+MOBILE_STORAGE_VERSION='REPLACE_WITH_APPROVED_ASYNC_STORAGE_VERSION'
+yarn add --exact "unleash-proxy-client@$MOBILE_UNLEASH_VERSION" \
+  "@react-native-async-storage/async-storage@$MOBILE_STORAGE_VERSION"
+```
+
+If AsyncStorage already exists, use its current approved version rather than upgrading it to copy the example. Follow its native installation and the project's iOS Pod workflow when required. Commit intentional manifest and lockfile changes.
+
+Do not substitute the backend `unleash-client` package. See the [JavaScript SDK and React Native custom storage reference](https://docs.getunleash.io/sdks/javascript-browser#custom-store).
+
+### B. Add the retained client owner
+
+**File: `configuration/featureFlags.ts`**
+
+```typescript
+import { UnleashClient } from 'unleash-proxy-client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+type Config = Readonly<{
+  url: string;
+  frontendToken: string;
+  appName: string;
+  cacheNamespace: string; // Distinct approved app + environment namespace.
+}>;
+export function createFeatureFlags(
+  config: Config,
+  onChanged: () => void,
+  onFailure: () => void,
+) {
+  const url = new URL(config.url);
+  if (url.protocol !== 'https:' || !config.frontendToken.trim()
+    || !config.appName.trim() || !config.cacheNamespace.trim()) {
+    throw new Error('Invalid feature-flag configuration');
+  }
+  const client = new UnleashClient({
+    url: config.url,
+    clientKey: config.frontendToken,
+    appName: config.appName,
+    refreshInterval: 15, // Reference interval in seconds; review for your app.
+    storageProvider: {
+      save: async (name: string, data: unknown) => {
+        try {
+          await AsyncStorage.setItem(
+            `${config.cacheNamespace}:${name}`, JSON.stringify(data),
+          );
+        } catch { onFailure(); }
+      },
+      get: async (name: string) => {
+        try {
+          const raw = await AsyncStorage.getItem(`${config.cacheNamespace}:${name}`);
+          return raw === null ? undefined : JSON.parse(raw);
+        } catch { onFailure(); return undefined; }
+      },
+    },
+  });
+  let started = false;
+  let stopped = false;
+  let initialized = false;
+  const receive = () => {
+    if (stopped) return;
+    initialized = true;
+    onChanged();
+  };
+  const failure = () => { if (!stopped) onFailure(); };
+  // Register before start so initial cache/network events are not missed.
+  client.on('initialized', receive);
+  client.on('ready', receive);
+  client.on('update', receive);
+  client.on('error', failure);
+
+  return {
+    start() {
+      if (started || stopped) return;
+      started = true;
+      void client.start().catch(failure);
+    },
+    canStartOrder(appSupportsOrdering: boolean, accessAllowed: boolean): boolean {
+      return initialized && !stopped && appSupportsOrdering && accessAllowed
+        && client.isEnabled('chicken-ordering-enabled') === true;
+    },
+    orderPresentation(): 'standard' | 'compact' {
+      if (!initialized || stopped) return 'standard';
+      const variant = client.getVariant('chicken-order-presentation');
+      return variant.enabled && variant.name === 'compact' ? 'compact' : 'standard';
+    },
+    stop() {
+      if (stopped) return;
+      stopped = true;
+      initialized = false;
+      client.stop();
+      client.off('initialized', receive);
+      client.off('ready', receive);
+      client.off('update', receive);
+      client.off('error', failure);
+    },
+  };
+}
+```
+
+Callbacks must be non-throwing. Route errors to approved sanitized diagnostics; never log the raw SDK error or token configuration. Call `stop()` only when this owner ends. It is final for this wrapper; create a newly owned instance if a later lifecycle needs one.
+
+### C. Connect at application composition
+
+This is an integration fragment, not a separate screen or a complete config loader. Supply actual approved values and your existing state-notification/diagnostic callbacks:
+
+```typescript
+import { createFeatureFlags } from './configuration/featureFlags';
+
+const flags = createFeatureFlags(
+  {
+    url: 'https://REPLACE_WITH_APPROVED_HOST/api/frontend',
+    frontendToken: 'REPLACE_WITH_APPROVED_FRONTEND_TOKEN',
+    appName: 'REPLACE_WITH_APPROVED_APP_NAME',
+    cacheNamespace: 'REPLACE_WITH_APP_AND_ENVIRONMENT_NAMESPACE',
+  },
+  notifyFeatureEntryChanged,
+  reportSanitizedFlagFailure,
+);
+flags.start();
+
+// Read at entry and before starting a new order submission.
+const mayStart = flags.canStartOrder(appSupportsOrdering, accessAllowed);
+// When the application-level owner ends:
+// flags.stop();
+```
+
+`notifyFeatureEntryChanged`, `reportSanitizedFlagFailure`, and capability/access values are host-owned integration points, not SDK functions. Keep the service outside the Redux store and inject it through composition. **Redux Toolkit continues to own the application's business/session state**; do not put this mutable SDK instance in Redux.
+
+The wrapper listens for initial cache loading, readiness, and updates. Initial false is a safe local fallback, not proof of a remote false. The 15-second refresh interval is the reference example's configuration, not a guaranteed propagation deadline. App backgrounding, connectivity, and the provider can delay refresh.
+
+AsyncStorage data is not encrypted secret storage. This sample preserves permitted last-known values and does not impose a cache TTL. If ordering requires bounded-freshness decisions, add the owner-approved age/activation policy or server enforcement before use. A cache namespace separates app/environment storage names; it is not an account-security boundary.
+
+`orderPresentation()` demonstrates validated variant selection. Unknown/disabled variants fall back to `standard`; a variant must never change price, permission, or order status without the actual business contract.
+
+</TabItem>
+</Tabs>
+
+## 4. Keep account and order ownership safe
+
+| Event | Required behavior |
+|---|---|
+| Account targeting is introduced | Confirm context, cache partitioning, and activation rules for the pinned SDK. Do not add it to the application-wide sample unchanged. |
+| Account switch or logout | Hide old targeted decisions, invalidate prior work, and reject late updates until the correct scope is verified. |
+| Flag changes while quantity is being edited | Apply the documented activation boundary. Recheck before starting a new write. |
+| Flag changes after submission | Preserve submission/reconciliation state; do not cancel recovery or fabricate failure. |
+| Remote service is unreachable | Use only the approved default/stale policy. A client flag alone is not an immediate emergency stop. |
+
+Server authorization is always required. An offline device may continue to hold older flag values; enforce high-risk shutdown rules on the backend when immediate enforcement is required.
+
+## 5. Verify in an isolated test environment
+
+1. Start with the toggle disabled. Confirm the ordering entry is unavailable under the example policy.
+2. Enable it for the intended test environment. Confirm the updated decision and the actual visible entry after the allowed activation boundary.
+3. Disable it before submission. Confirm that no new ordering attempt starts.
+4. Change it while an existing fake order is pending. Confirm that the original result remains tracked without another submission.
+5. Test missing flags, malformed local cache, service failure, restart, and wrapper teardown.
+6. If using variants, test `compact`, disabled, and unknown variants; verify `standard` fallback.
+7. Verify native integration and account transitions separately before introducing targeting.
+
+**Attach screenshot — enabled and disabled ordering entry with sanitized environment/flag evidence.**
+
+Use meaningful assertions for both flag paths and the defined production-code coverage metrics. SDK readiness, cache loading, and flag evaluation are different observations; none alone proves that a critical operation is currently authorized.
+
+**Next:** [Branching & Pull Requests](./branching-prs.mdx).
+
+
+
+
+
+
+
+
+
