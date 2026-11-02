@@ -1,1022 +1,178 @@
 ---
-title: "Mobile Observability — Start Here"
-description: "Understand the Enterprise Datadog setup, privacy boundaries, mobile signals, and verification path across Android, iOS, and React Native."
-sidebar:
-  label: Start Here
-  order: 1
----
-
-import { Tabs, TabItem } from '@astrojs/starlight/components';
-import MermaidZoom from '../components/mermaid-zoom.astro';
-
-**Starting point:** an existing mobile app and the approved Enterprise Datadog access process.
-
-**On this page:** obtain access, identify your app configuration, and understand which signals you will verify.
-
-**Section outcome:** collect permitted app telemetry, investigate errors/performance, and connect eligible mobile requests to backend traces using the actual release identity.
-
-> **Confidential — Enterprise internal use only.** Never send passwords, payment data, customer/order payloads, authentication headers, or unapproved personal data to telemetry. Use approved access and redact screenshots.
-
-## 1. Know what each signal tells you
-
-| Signal | Developer question |
-| :--- | :--- |
-| RUM — Real User Monitoring | Which view/action/resource experienced the problem? |
-| Logs and handled errors | Which safe diagnostic event explains an application failure? |
-| Crash reporting / Error Tracking | Where did the JS/native application fail, and is its stack readable? |
-| Mobile vitals | Which release/view has responsiveness, startup, rendering, or stability problems? |
-| APM — Application Performance Monitoring | Can this eligible mobile request be linked to an instrumented backend trace? |
-| Session Replay, only if approved | Can a permitted, appropriately masked visual replay help investigate the journey? |
-
-Enable and verify each required signal separately. RUM initialization alone does not enable every signal or guarantee every interaction is captured. [Datadog application monitoring](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/).
-
-<MermaidZoom title="Permitted mobile telemetry and eligible backend correlation">
-
-```mermaid
-flowchart TD
-    A["Android / iOS / React Native app"] --> B["Approved SDK configuration, consent and data controls"]
-    B --> C["Views, actions, resources and permitted diagnostics"]
-    C --> D["Datadog intake at the approved site"]
-    B --> E["Instrumented request to an approved first-party host"]
-    E --> F["Gateway and instrumented backend services"]
-    F --> G["Backend APM traces"]
-    G --> H["Eligible RUM resource-to-trace correlation"]
-    D --> H
-    D --> I["RUM, errors and mobile performance views"]
-    J["Matching release source maps / native symbols from CI"] --> K["Readable eligible crash stacks"]
-    D --> K
-    classDef app fill:#172554,stroke:#93c5fd,color:#fff,stroke-width:2px;
-    classDef collect fill:#4c1d95,stroke:#d8b4fe,color:#fff,stroke-width:2px;
-    classDef backend fill:#713f12,stroke:#fde047,color:#fff,stroke-width:2px;
-    classDef result fill:#064e3b,stroke:#6ee7b7,color:#fff,stroke-width:2px;
-    class A,B,J app;
-    class C,D collect;
-    class E,F,G backend;
-    class H,I,K result;
-```
-
-</MermaidZoom>
-
-To connect a mobile request to its backend trace, instrument both the mobile network client and backend service. Allow tracing only for approved **first-party hosts**: the API domains your team controls. The services must preserve trace headers and retain the relevant sampled trace. These headers identify related requests; they do not authenticate or encrypt them. [Connect RUM and Traces](https://docs.datadoghq.com/tracing/other_telemetry/rum/).
-
-## 2. Obtain access and application configuration
-
-Complete these steps before adding the SDK:
-
-1. Request the **Datadog Observability Entitlement** through your Enterprise identity/access portal.
-2. After approval, open Datadog through Enterprise SSO.
-3. The authorized app owner locates the existing RUM application or creates the approved application if none exists. Use the actual app type: Android, iOS, or React Native.
-4. Record application ID, client token, approved Datadog site, environment, service/release naming, consent handling, and approved session/trace sampling.
-5. Confirm who owns dashboards, alert definitions, backend instrumentation, and release symbol uploads.
-
-Open the RUM application setup area in your Datadog tenant. Navigation labels can vary. Reuse an existing approved application rather than creating a duplicate. [Android application setup](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/android/setup/), [iOS application setup](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/ios/setup/), [React Native application setup](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/react_native/setup/).
-
-**Attach screenshot — application type, approved site, and setup status, with tokens and sensitive identifiers hidden.**
-
-### Obtain the configuration values
-
-Ask the application/observability owner for the following values. Use your approved configuration system; this table is a handoff reference, not an SDK configuration file.
-
-| Configuration | What you need |
-| :--- | :--- |
-| Application | Existing RUM application ID and platform. |
-| Intake | Client token and matching Datadog site. |
-| Release identity | Environment, service, app version, and build identifier. |
-| Collection | Consent behavior and RUM/trace sampling rates. |
-| Network tracing | Explicit first-party host allowlist and backend owner. |
-| Operations | Dashboard/alert owner and release-symbol upload owner. |
-
-**Expected result:** you can open the correct RUM application and identify the configuration for your non-production build. If access or a value is missing, contact its owner before configuring the SDK.
-
-### Use the correct credential
-
-| Value | Where it belongs / purpose |
-| :--- | :--- |
-| RUM application ID | Approved mobile configuration; identifies the RUM application. |
-| Client token | Mobile ingestion configuration. It is designed for client applications; do not substitute a Datadog API key. |
-| Datadog API key used for symbol uploads | Protected CI/tooling binding; never package it inside the app or commit it. |
-| Site, environment, service, version/build | Actual approved values associated with the application/release. SDK enum names and site hostnames are not necessarily interchangeable strings. |
-
-A client token is not a general management credential or permission to transmit confidential data. [Official client-token/key distinction](https://docs.datadoghq.com/account_management/api-app-keys/).
-
-## 3. Identify the platform integration points
-
-Choose your platform below. Locate the existing initialization, network client, and release artifacts before changing code. Implementation code follows on the integration page.
-
-<Tabs>
-<TabItem label="Android">
-
-| Integration point | What to identify |
-| :--- | :--- |
-| Gradle module/catalog | Actual Datadog SDK/plugin versions and app variants. |
-| Application initialization | Existing `Application` class and approved consent/configuration flow. |
-| View/action tracking | Activities, Fragments, or actual UI framework strategy. |
-| Network client | The OkHttp client actually used by the app, with approved trace-host configuration. |
-| Release symbols | Mapping file and variant/release association when R8/ProGuard obfuscation applies. |
-
-**Optional — existing integrations only.** From the directory containing `gradlew`, inspect the resolved RUM dependency:
-
-```bash
-./gradlew :app:dependencyInsight \
-  --configuration debugRuntimeClasspath \
-  --dependency dd-sdk-android-rum
-```
-
-Replace module/configuration for the real variant. This may resolve/download dependencies through the approved registry; it does not install a new SDK declaration or prove telemetry is working. If no dependency matches, continue with SDK installation on the integration page. [Datadog Android setup](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/android/setup/).
-
-</TabItem>
-<TabItem label="iOS">
-
-| Integration point | What to identify |
-| :--- | :--- |
-| Swift Package Manager / CocoaPods | Actual resolved Datadog modules and versions. |
-| Application startup | Existing AppDelegate/SwiftUI lifecycle and approved wrapper/initialization owner. |
-| View/action tracking | UIKit or SwiftUI strategy matching the real app. |
-| Network client | Actual URLSession integration and eligible first-party hosts. |
-| Release symbols | dSYMs from the exact archive, retained and uploaded through protected CI. |
-
-Inspect the existing Xcode scheme/toolchain:
-
-```bash
-xcodebuild -version
-# Replace with the actual workspace path.
-xcodebuild -list -workspace 'REPLACE_WITH_ACTUAL_WORKSPACE.xcworkspace'
-```
-
-Use `-project` if appropriate. Inspect resolved SDK versions in Xcode/package resolution or the project's lockfile. These commands inspect the toolchain/project, not Datadog ingestion. [Datadog iOS setup](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/ios/setup/).
-
-Xcode scheme environment variables are not automatically available in a store-launched app. Use the approved build/runtime configuration mechanism.
-
-</TabItem>
-<TabItem label="React Native">
-
-| Integration point | What to identify |
-| :--- | :--- |
-| `package.json` and selected lockfile | Actual core SDK and navigation-integration versions. |
-| Root/bootstrap | Existing provider/initialization lifecycle and approved configuration source. |
-| Navigation | Actual navigation library and view-tracking integration. |
-| Native applications | Compatible Android/iOS configuration and native crash reporting. |
-| Release symbols | Correct JS bundle/source maps plus applicable Android mappings/iOS dSYMs. |
-
-**Optional — existing integrations only.** From the React Native project root, inspect packages in an npm-managed project:
-
-```bash
-npm ls @datadog/mobile-react-native @datadog/mobile-react-navigation --depth=0
-```
-
-Use the equivalent inspection command for your selected package manager. Missing-package output is expected if Datadog has not been added. Choose the integration for your actual navigation library on the next page. [Datadog React Native setup](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/react_native/setup/).
-
-React Native also has native crash surfaces. JS source maps alone do not symbolicate every native crash; retain the matching platform artifacts. [React Native error tracking and symbolication](https://docs.datadoghq.com/error_tracking/frontend/mobile/reactnative/).
-
-</TabItem>
-</Tabs>
-
-## 4. Approve the data before enabling collection
-
-| Area | Required Enterprise handling |
-| :--- | :--- |
-| Credentials/headers | Do not attach Authorization, cookies, API keys, or raw authentication tokens. |
-| URLs/error messages | Remove sensitive query/path values and payload fragments using the approved field/mapper controls. |
-| Custom attributes | Allow only approved diagnostic fields; do not dump request/response objects or arbitrary Redux state. |
-| User identity | Use an approved pseudonymous identifier. Do not send raw email addresses or assume hashing an email makes it anonymous. |
-| Consent | Use the app's approved consent state and withdrawal behavior; do not hardcode `granted` simply to get events into the dashboard. |
-| Session Replay | Requires its own approval, supported SDK/configuration, and tested privacy settings; input masking does not sanitize every log/resource attribute. |
-
-Sampling controls how much telemetry is collected; it does not remove sensitive fields. Configure and test the pinned SDK's event filters and replay privacy controls separately. [Session Replay privacy](https://docs.datadoghq.com/session_replay/privacy_options/), [Android data handling](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/android/data_collected/), and [iOS consent configuration](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/ios/advanced_configuration/).
-
-SDK configuration alone does not establish legal compliance. Enterprise privacy requirements remain part of application design and approved data handling.
-
-### Safe event-design preview — My Chicken App
-
-This is a **documentation example**, not a Datadog SDK method or an Enterprise event schema:
-
-```json
-{
-  "event_name": "chicken_order.confirmed",
-  "attributes": {
-    "item_count": 2,
-    "outcome": "confirmed"
-  }
-}
-```
-
-Emit a confirmed event only after an actual valid receipt, not when the submit button is tapped. Do not attach customer names, addresses, payment details, order payloads, or raw order IDs to make the event easier to find. The app owner approves any additional correlation identifier and its privacy/retention treatment.
-
-## 5. Understand the performance targets
-
-Use these Enterprise targets when agreeing measurements with the observability owner. Define the scope and measurement window before creating alerts:
-
-| Target | Measurement definition |
-| :--- | :--- |
-| Time to Initial Display (TTID) ≤ 800 ms | Time until the first application frame is displayed during launch. Confirm platform/SDK support and launch type. |
-| Time to Full Display (TTFD) ≤ 2.0 s | Time until the application reports its initial content ready. Define the ready condition and platform instrumentation. |
-| Slow frames ≤ 5% | Confirm platform metric, numerator/denominator, refresh-rate handling, and aggregation. |
-| Sessions with frozen frames ≤ 0.1% | Define the percentage of measured sessions containing a frozen frame. Do not substitute a percentage of frames. |
-| Crash-free sessions ≥ 99.85% | Define application/environment/version, time window, sample/denominator policy, and alert ownership. |
-
-Datadog defines frozen frames as taking **longer than 700 ms** to render. Keep this duration separate from the target percentage of sessions affected. Rendering measurements differ across platforms. [Datadog Mobile Vitals](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/mobile_vitals/).
-
-TTID/TTFD collection is version/platform-specific. Datadog's current Android launch monitoring defines these during application launch; it is not automatic proof of identical metrics for every screen on every SDK. [Android launch monitoring](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/android/application_launch_monitoring/).
-
-Do not create a monitor from a target alone. The owner must supply metric/query, scope, aggregation, time window, evaluation behavior, notification destination, and sampling treatment.
-
-## 6. Verify one controlled journey
-
-After implementing the integration page:
-
-1. Run an approved non-production build with known environment/service/version values and the appropriate consent state.
-2. In My Chicken App, open the ordering screen, place an order using synthetic data, and wait for its confirmation.
-3. Open the RUM application and filter by that environment, app version, and test time. Find the ordering view, submission action, and confirmed event configured by the integration.
-4. Inspect an eligible correlated request only if mobile and backend tracing are both configured; missing correlation is an investigation, not permission to broaden host capture.
-5. Inspect the event fields for sensitive data. For crashes, verify a controlled test report against matching symbols using the approved non-production procedure.
-
-**Expected result:** the configured events appear under the intended application, environment, and version, without sensitive fields. If they are absent, check consent, site/token/application configuration, sampling, and network delivery before adding more events.
-
-SDK batching, network conditions, consent, sampling, processing, and symbol availability affect visibility. A successful initialization log is not proof of ingestion, complete capture, readable crash stacks, or correctly configured alerts. [Android setup and ingestion behavior](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/android/setup/).
-
-**Attach screenshot — sanitized RUM journey with the intended environment/version, and its eligible trace/error association.**
-
-## 7. Continue in order
-
-| Page | Developer work |
-| :--- | :--- |
-| [**Datadog Mobile Integration**](./datadog-mobile-integration.mdx) | Platform dependency/configuration snippets, initialization, views/actions/errors, network instrumentation, privacy/consent, and release-symbol upload integration. |
-| [**Monitoring & Troubleshooting**](./monitoring-and-troubleshooting.mdx) | Verify ingestion, investigate performance/errors, diagnose missing symbols/traces, and validate owner-defined dashboards/alerts. |
-
-**Developer:** owns application instrumentation and safe diagnostic attributes. **Platform/observability owner:** supplies access, site/application configuration, approved bindings, dashboards, and monitors. **Backend owner:** supplies compatible APM instrumentation. **Privacy/security owner:** confirms the permitted collection/identity/replay policy.
-
-CI/CD retains protected symbol-upload credentials and release identity. Testing verifies expected behavior before delivery; observability supplies runtime evidence and does not replace tests or release gates.
-
-**Next file: `datadog-mobile-integration.mdx`.**
-
-
-
-
--------------------
-
-
----
-title: "Datadog Mobile Integration"
-description: "Add Datadog to Android, iOS, or React Native, track a safe ordering journey, and prepare release symbols."
-sidebar:
-  label: Datadog Mobile Integration
-  order: 2
----
-
-import { Tabs, TabItem } from '@astrojs/starlight/components';
-import MermaidZoom from '../components/mermaid-zoom.astro';
-
-Start with the application ID, client token, site, environment, service, and consent requirements from [Start Here](./index.mdx).
-
-**Outcome:** your non-production app reports an ordering view and a confirmed-order action under the correct application and release.
-
-> **Confidential — Enterprise internal use only.** Use synthetic test data. Never include passwords, authentication headers, customer details, payment information, or order payloads in telemetry. Datadog API keys belong in protected CI configuration, never in the app.
-
-## 1. Choose the integration for your application
-
-| Application | Follow |
-| :--- | :--- |
-| Native Android | Android tab. |
-| Native iOS | iOS tab. |
-| React Native | React Native tab; let its SDK manage the underlying native integration. Do not also initialize independent native SDK instances for the same app. |
-
-**Version rule:** select compatible, approved SDK versions and commit the resulting dependency locks. The native examples use the modular SDK APIs; the React Native example uses the `DatadogProviderConfiguration` API with nested `rumConfiguration` (**3.x API family**). Older flat configuration constructors need their matching documentation, not a mixture of both APIs. [Mobile SDK migration](https://docs.datadoghq.com/real_user_monitoring/guide/mobile-sdk-upgrade/).
-
-The file names below are suggested application files. Keep your existing package names, startup lifecycle, and configuration mechanism.
-
-| Replace or supply | Use |
-| :--- | :--- |
-| SDK version marker | An exact approved release compatible with the project and API family shown. |
-| Client token/application ID | The matched configuration for your RUM application. Never supply an API key here. |
-| Environment/service/site | The approved values; SDK site enums differ from CLI site hostnames. |
-| Consent/sampling | Values supplied by the application’s consent and observability configuration. |
-| App startup and navigation | Your existing lifecycle and navigation components; the snippets identify merge points. |
-
-**Before copying:** reusable helper files are complete within their stated SDK API scope. Startup, lifecycle, and workflow fragments must be merged into the named existing files; they are not standalone applications.
-
-<MermaidZoom title="Integrate and verify Datadog one step at a time">
-
-```mermaid
-flowchart TD
-    A["Obtain application configuration"] --> B["Add compatible SDK dependencies"]
-    B --> C["Initialize once with actual consent"]
-    C --> D["Track ordering view"]
-    D --> E["Record confirmed order after receipt"]
-    E --> F["Verify events and safe fields in RUM"]
-    F --> G["Add approved network tracing and release symbols"]
-    G --> H["Verify correlated requests and readable crash stacks"]
-    classDef setup fill:#172554,stroke:#93c5fd,color:#fff;
-    classDef code fill:#4c1d95,stroke:#d8b4fe,color:#fff;
-    classDef verify fill:#064e3b,stroke:#6ee7b7,color:#fff;
-    class A,B setup;
-    class C,D,E,G code;
-    class F,H verify;
-```
-
-</MermaidZoom>
-
-## 2. Add the SDK and application integration
-
-The screen examples use explicit views/actions. The iOS wrapper also offers native crash reporting; enable it only when approved. SDKs may collect default metadata and diagnostics even without automatic interaction tracking. Review the enabled SDK features and captured fields; manual events still require consent and privacy review.
-
-<Tabs>
-<TabItem label="Android">
-
-### A. Add the RUM dependency
-
-In the **application module** `build.gradle.kts`, use an approved version in place of the marker:
-
-```kotlin
-val datadogVersion = "REPLACE_WITH_APPROVED_VERSION"
-
-dependencies {
-    implementation("com.datadoghq:dd-sdk-android-rum:$datadogVersion")
-}
-```
-
-Use your version catalog if the project already has one. Sync Gradle; confirm the dependency resolves before adding code. [Android SDK setup](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/android/setup/).
-
-### B. Add a small initialization boundary
-
-Suggested location:
-
-```text
-app/src/main/java/<your-package>/observability/
-└── MobileObservability.kt
-```
-
-```kotlin
-// Use your application's actual package declaration.
-import android.content.Context
-import com.datadog.android.Datadog
-import com.datadog.android.DatadogSite
-import com.datadog.android.core.configuration.Configuration
-import com.datadog.android.privacy.TrackingConsent
-import com.datadog.android.rum.Rum
-import com.datadog.android.rum.RumConfiguration
-
-object MobileObservability {
-    // Call on the main thread from the existing Application startup.
-    private var initialized = false
-
-    fun start(
-        context: Context,
-        clientToken: String,
-        applicationId: String,
-        environment: String,
-        service: String,
-        variant: String,
-        site: DatadogSite,
-        sessionSampleRate: Float,
-        consent: TrackingConsent,
-    ) {
-        if (initialized) return
-        require(listOf(clientToken, applicationId, environment, service)
-            .all { it.isNotBlank() }) { "Missing observability configuration" }
-        require(sessionSampleRate.isFinite() && sessionSampleRate in 0f..100f)
-
-        val configuration = Configuration.Builder(
-            clientToken = clientToken,
-            env = environment,
-            variant = variant,
-        ).useSite(site).setService(service).build()
-
-        Datadog.initialize(context.applicationContext, configuration, consent)
-        Rum.enable(
-            RumConfiguration.Builder(applicationId)
-                .setSessionSampleRate(sessionSampleRate)
-                .build()
-        )
-        initialized = true
-    }
-}
-```
-
-**Build configuration:** ensure the merged Android manifest permits network access (`android.permission.INTERNET`). Check the actual release configuration, not only the debug manifest.
-
-Call `MobileObservability.start(...)` **once from your existing `Application.onCreate()`**, after `super.onCreate()`, with values from your approved configuration. `variant` must match the variant associated with uploaded mappings; use an empty string when the application has no flavor variant. Do not add a second `Application` class. [Initialization and variant matching](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/android/setup/).
-
-When the application's consent state changes, pass its corresponding SDK value:
-
-```kotlin
-Datadog.setTrackingConsent(newConsent)
-```
-
-`newConsent` is the `TrackingConsent` value supplied by your consent flow. `PENDING` can collect and batch locally; use `NOT_GRANTED` when collection itself is not permitted. [Consent behavior](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/android/setup/).
-
-### C. Track the ordering screen and confirmed result
-
-Add these calls to the existing screen lifecycle and successful-order handler:
-
-```kotlin
-import com.datadog.android.rum.GlobalRumMonitor
-import com.datadog.android.rum.RumActionType
-
-// Merge these members into the existing ordering Activity.
-private val orderViewKey = Any()
-
-override fun onResume() {
-    super.onResume()
-    GlobalRumMonitor.get().startView(orderViewKey, "Chicken Order", emptyMap())
-}
-
-override fun onPause() {
-    GlobalRumMonitor.get().stopView(orderViewKey, emptyMap())
-    super.onPause()
-}
-
-// Invoke from the existing handler after validating the confirmed receipt.
-private fun recordConfirmedOrder(itemCount: Int) {
-    if (itemCount <= 0) return
-    GlobalRumMonitor.get().addAction(
-        RumActionType.CUSTOM,
-        "chicken_order.confirmed",
-        mapOf("item_count" to itemCount, "outcome" to "confirmed"),
-    )
-}
-```
-
-This is an **Activity class-body fragment**; merge with existing overrides rather than declaring duplicate methods. For Fragments or Compose, bind to the actual destination lifecycle. Do not combine manual and automatic view tracking for the same screen. [Android custom views/actions](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/android/advanced_configuration/).
-
-</TabItem>
-<TabItem label="iOS">
-
-### A. Add the Swift package
-
-In Xcode, open **File → Add Package Dependencies** and enter:
-
-```text
-https://github.com/DataDog/dd-sdk-ios.git
-```
-
-Select the approved compatible release and add **DatadogCore**, **DatadogRUM**, and **DatadogCrashReporting** to the application target. Commit `Package.resolved` according to the repository's dependency policy. [iOS SDK setup](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/ios/setup/), [native crash reporting](https://docs.datadoghq.com/error_tracking/frontend/mobile/ios/).
-
-### B. Initialize through the existing startup lifecycle
-
-Create `Observability/MobileObservability.swift`:
-
-```swift
-import DatadogCore
-import DatadogRUM
-import DatadogCrashReporting
-
-@MainActor
-final class MobileObservability {
-    static let shared = MobileObservability()
-    private var initialized = false
-    private init() {}
-
-    func start(
-        core: Datadog.Configuration,
-        applicationID: String,
-        sessionSampleRate: Float,
-        consent: TrackingConsent,
-        enableNativeCrashes: Bool
-    ) {
-        guard !initialized else { return }
-        precondition(!applicationID.isEmpty)
-        precondition(sessionSampleRate.isFinite && (0...100).contains(sessionSampleRate))
-
-        Datadog.initialize(with: core, trackingConsent: consent)
-        var rum = RUM.Configuration(applicationID: applicationID)
-        rum.sessionSampleRate = sessionSampleRate
-        RUM.enable(with: rum)
-        if enableNativeCrashes {
-            CrashReporting.enable()
-        }
-        initialized = true
-    }
-}
-```
-
-From your existing AppDelegate or SwiftUI application startup, construct `Datadog.Configuration(clientToken:env:site:service:)` using approved values, then pass it to `start`. Supply actual consent and sampling values, and the approved `enableNativeCrashes` setting. Do not use a default production token or automatically grant consent. Keep this startup on the main actor. [Core and RUM setup](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/ios/setup/).
-
-Xcode scheme environment variables are insufficient for store-launched apps. Bind configuration through the application’s existing release configuration mechanism.
-
-After initialization, apply consent changes with:
-
-```swift
-Datadog.set(trackingConsent: newConsent)
-```
-
-`newConsent` comes from the app's consent flow. `.pending` allows local collection/batching; `.notGranted` prevents collection. [iOS advanced configuration](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/ios/advanced_configuration/).
-
-### C. Add UIKit view tracking and the confirmed action
-
-Merge these methods into the existing order view controller; keep its current behavior:
-
-```swift
-import DatadogRUM
-
-// Inside the existing UIViewController subclass:
-override func viewDidAppear(_ animated: Bool) {
-    super.viewDidAppear(animated)
-    RUMMonitor.shared().startView(viewController: self, name: "Chicken Order")
-}
-
-override func viewDidDisappear(_ animated: Bool) {
-    RUMMonitor.shared().stopView(viewController: self)
-    super.viewDidDisappear(animated)
-}
-
-// Call only after validating the confirmed receipt.
-func recordConfirmedOrder(itemCount: Int) {
-    guard itemCount > 0 else { return }
-    RUMMonitor.shared().addAction(
-        type: .custom,
-        name: "chicken_order.confirmed",
-        attributes: ["item_count": itemCount, "outcome": "confirmed"]
-    )
-}
-```
-
-For SwiftUI, use the matching SDK’s SwiftUI view integration instead of adding a UIKit controller solely for tracking. Choose one view-tracking strategy per screen. [Manual views and actions](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/ios/advanced_configuration/?tab=swift).
-
-</TabItem>
-<TabItem label="React Native">
-
-### A. Install the core package
-
-From the project root, using the repository's selected package manager:
-
-```bash
-# Set this to the approved compatible version before running.
-DATADOG_RN_VERSION='REPLACE_WITH_APPROVED_VERSION'
-yarn add --exact "@datadog/mobile-react-native@$DATADOG_RN_VERSION"
-
-# If the iOS project manages CocoaPods through Bundler:
-(cd ios && bundle exec pod install)
-```
-
-If the project does not use Bundler, use its documented CocoaPods command. Commit the selected JS lockfile and `Podfile.lock`. Rebuild native apps; a Metro reload does not install native modules. [React Native SDK installation](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/react_native/setup/?tab=rum).
-
-### B. Configure a single provider
-
-Suggested files:
-
-```text
-src/observability/
-├── datadog.ts
-└── order-telemetry.ts
-App.tsx                         # Existing root; preserve providers/navigation
-```
-
-Create `src/observability/datadog.ts`:
-
-```typescript
-import {
-  DatadogProviderConfiguration,
-  TrackingConsent,
-} from '@datadog/mobile-react-native';
-
-type Options = ConstructorParameters<typeof DatadogProviderConfiguration>[3];
-
-type MobileConfiguration = {
-  clientToken: string;
-  environment: string;
-  applicationId: string;
-  service: string;
-  site: NonNullable<NonNullable<Options>['site']>;
-  sessionSampleRate: number;
-  consent: TrackingConsent;
+/** Edit these routes to match your site's published URLs before publishing. */
+const routes = {
+  onboarding: 'onboarding/',
+  architecture: 'architecture/',
+  platforms: 'platforms/',
+  push: 'push-notifications/',
+  cicd: 'cicd/',
+  testing: 'testing-quality/',
+  observability: 'observability/',
+  ai: 'genai-and-tools/',
+  stores: 'app-store-and-distribution/',
+  support: 'support/',
 };
 
-export function createDatadogConfiguration(input: MobileConfiguration) {
-  const required = [input.clientToken, input.environment, input.applicationId, input.service];
-  if (required.some(value => !value.trim())) {
-    throw new Error('Missing observability configuration');
+interface Props {
+  /** Site-relative documentation root, for example /mobile/. */
+  docsRoot?: string;
+}
+const { docsRoot = '/mobile/' } = Astro.props;
+const siteBase = import.meta.env.BASE_URL.replace(/\/$/, '');
+const root = docsRoot.replace(/^\/+|\/+$/g, '');
+const href = (path: string) => `${siteBase}/${root ? `${root}/` : ''}${path}`;
+
+const icons: Record<string, string> = {
+  "onboarding": "M4 19.5A2.5 2.5 0 0 1 6.5 17H20 M6.5 3H20v19H6.5A2.5 2.5 0 0 1 4 19.5v-14A2.5 2.5 0 0 1 6.5 3Z M8 7h8 M8 11h5",
+  "architecture": "m12 3 9 5-9 5-9-5 9-5Z M3 12l9 5 9-5 M3 16l9 5 9-5",
+  "platforms": "M8 3H5a2 2 0 0 0-2 2v3 M16 3h3a2 2 0 0 1 2 2v3 M21 16v3a2 2 0 0 1-2 2h-3 M8 21H5a2 2 0 0 1-2-2v-3 M8 8h8v8H8Z",
+  "push": "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9 M10 21h4",
+  "cicd": "M6 8V4 M4 6h4 M6 8v8 M6 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z M18 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z M18 8v7a3 3 0 0 1-3 3H9 M12 15l-3 3 3 3",
+  "testing": "m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6l8-3Z m-4 9 3 3 5-6",
+  "observability": "M3 12h4l3-8 4 16 3-8h4",
+  "ai": "m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z M20 2v4 M18 4h4",
+  "stores": "M12 16V3 m-4 4 4-4 4 4 M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5",
+  "support": "M4 13v-2a8 8 0 0 1 16 0v2 M4 12H3v6h4v-6H4Z M20 12h1v6h-4v-6h3Z M20 18v1a2 2 0 0 1-2 2h-4"
+};
+
+const sections = [
+  { title: 'Onboarding', icon: 'onboarding', description: 'New to the team or new to mobile? Start here, set up your Mac, and run your first app.', links: [
+    ['Start here', routes.onboarding],
+    ['Mobile foundations', `${routes.onboarding}non-mobile-engineer-guide/`],
+    ['Machine setup', `${routes.onboarding}machine-setup-guide/`],
+    ['First run & contribution', `${routes.onboarding}first-local-run/`],
+  ] },
+  { title: 'Architecture', icon: 'architecture', description: 'Understand feature boundaries, resilient networking, feature flags, and contribution rules.', links: [
+    ['Overview & layers', routes.architecture],
+    ['Network resilience', `${routes.architecture}circuit-breaker-resilience/`],
+    ['Feature flags', `${routes.architecture}feature-flags/`],
+    ['Branching & PRs', `${routes.architecture}branching-prs/`],
+  ] },
+  { title: 'Platform & SDKs', icon: 'platforms', description: 'Use platform standards and shared foundations. React Native is preferred for new applications.', links: [
+    ['Overview & SDK catalog', routes.platforms],
+    ['Android standards', `${routes.platforms}native-android-standards/`],
+    ['iOS standards', `${routes.platforms}native-ios-standards/`],
+    ['React Native standards', `${routes.platforms}react-native-standards/`],
+  ] },
+  { title: 'Push Notifications & Deep Linking', icon: 'push', description: 'Configure mobile notification paths, backend delivery, and validated application links.', links: [
+    ['Start here', routes.push],
+    ['FCM setup', `${routes.push}fcm-mobile-setup/`],
+    ['Direct APNs setup', `${routes.push}apns-ios-setup/`],
+    ['Deep linking', `${routes.push}deep-linking/`],
+  ] },
+  { title: 'CI/CD', icon: 'cicd', description: 'Prepare source, enroll through GitOps, and follow governed builds through verified delivery.', links: [
+    ['Start here', routes.cicd],
+    ['GitOps enrollment', `${routes.cicd}gitops-enrollment/`],
+    ['Bitrise pipelines', `${routes.cicd}bitrise-pipelines/`],
+    ['Delivery & verification', `${routes.cicd}delivery-and-verification/`],
+  ] },
+  { title: 'Testing & Quality', icon: 'testing', description: 'Write meaningful tests, enforce production-code coverage, and verify journeys on real devices.', links: [
+    ['Start here', routes.testing],
+    ['Write tests', `${routes.testing}writing-tests/`],
+    ['Coverage & gates', `${routes.testing}coverage-and-quality-gates/`],
+    ['Sauce Labs testing', `${routes.testing}sauce-labs-real-device-testing/`],
+  ] },
+  { title: 'Observability', icon: 'observability', description: 'Integrate Datadog and investigate application experience, errors, and performance.', links: [
+    ['Start here', routes.observability],
+    ['Datadog integration', `${routes.observability}datadog-mobile-integration/`],
+    ['Monitoring & troubleshooting', `${routes.observability}monitoring-and-troubleshooting/`],
+  ] },
+  { title: 'GenAI & Tools', icon: 'ai', description: 'Set up GitHub Copilot and ChatGPT with reviewed, copyable engineering rules.', links: [
+    ['Start here', routes.ai],
+    ['Engineering rules', `${routes.ai}engineering-rules/`],
+    ['GitHub Copilot', `${routes.ai}github-copilot-setup/`],
+    ['ChatGPT', `${routes.ai}chatgpt-setup/`],
+  ] },
+  { title: 'App Stores & Distribution', icon: 'stores', description: 'Follow signing approvals and the separate enterprise, Apple, and Google delivery processes.', links: [
+    ['Start here', routes.stores],
+    ['Enterprise distribution', `${routes.stores}enterprise-app-store/`],
+    ['Apple App Store', `${routes.stores}apple-app-store/`],
+    ['Google Play', `${routes.stores}google-play/`],
+  ] },
+  { title: 'Support & FAQ', icon: 'support', description: 'Find existing answers or open the enterprise Teams support channel.', links: [
+    ['Browse FAQ', routes.support],
+    ['Teams support', `${routes.support}support/`],
+  ] },
+];
+---
+
+<section class="portal" aria-label="Mobile engineering documentation">
+  <div class="intro">
+    <span class="eyebrow">ENTERPRISE MOBILE ENGINEERING</span>
+    <h2>Your path from first setup to verified delivery</h2>
+    <p>Choose a section below. New to the platform? Begin with Onboarding and understand the platform map before following the detailed guides.</p>
+    <a class="start-link" href={href(routes.onboarding)}>Start with onboarding <span aria-hidden="true">→</span></a>
+  </div>
+
+  <div class="section-grid">
+    {sections.map((section, index) => (
+      <section class="section-card"  aria-labelledby={`portal-section-${index}`}>
+        <header>
+          <span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d={icons[section.icon]} /></svg></span>
+          <h3 id={`portal-section-${index}`}>{section.title}</h3>
+        </header>
+        <p>{section.description}</p>
+        <nav aria-label={section.title}>
+          <ul>
+            {section.links.map(([label, path]) => (
+              <li><a href={href(path)}><span>{label}</span><span class="link-arrow" aria-hidden="true">↗</span></a></li>
+            ))}
+          </ul>
+        </nav>
+      </section>
+    ))}
+  </div>
+</section>
+
+<style>
+  .portal {
+    --brand: #008544;
+    --accent: var(--brand);
+    --brand-readable: #62d69b;
+    --portal-text: var(--sl-color-white, #f1f5f9);
+    --portal-muted: var(--sl-color-gray-2, #cbd5e1);
+    --portal-surface: var(--sl-color-gray-6, #172033);
+    --portal-border: var(--sl-color-gray-5, #475569);
+    color: var(--portal-text);
   }
-  if (!Number.isFinite(input.sessionSampleRate) ||
-      input.sessionSampleRate < 0 || input.sessionSampleRate > 100) {
-    throw new Error('Invalid observability sampling rate');
-  }
-
-  return new DatadogProviderConfiguration(
-    input.clientToken,
-    input.environment,
-    input.consent,
-    {
-      site: input.site,
-      service: input.service,
-      rumConfiguration: {
-        applicationId: input.applicationId,
-        sessionSampleRate: input.sessionSampleRate,
-        trackInteractions: false,
-        trackResources: false,
-        trackErrors: false,
-        nativeCrashReportEnabled: false,
-      },
-    },
-  );
-}
-```
-
-This starts with manual views/actions and the listed automatic capture features disabled. It uses the 3.x constructor shape; use the matching migration guide when upgrading an existing 2.x installation. [Provider configuration](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/react_native/setup/?tab=rum), [3.x migration and constructor](https://github.com/DataDog/dd-sdk-reactnative/blob/develop/MIGRATION.md).
-
-In `App.tsx`, wrap the existing application tree with **one** provider:
-
-```tsx
-// Merge into your existing root; do not replace its other providers.
-import { DatadogProvider } from '@datadog/mobile-react-native';
-
-// configuration is the stable result of createDatadogConfiguration(...),
-// created once from approved app configuration before mounting this tree.
-<DatadogProvider configuration={configuration}>
-  <ExistingApplicationTree />
-</DatadogProvider>
-```
-
-`configuration` and `ExistingApplicationTree` represent your existing app bindings, not additional SDK exports. Do not assume `process.env` is automatically populated in a mobile release. Preserve the Redux Toolkit store and other root providers. Update consent through the pinned SDK's documented consent API; do not remount/reinitialize the provider as a consent mechanism. [Consent and advanced configuration](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/react_native/advanced_configuration/).
-
-### C. Add explicit view and action calls
-
-Create `src/observability/order-telemetry.ts`:
-
-```typescript
-import { DdRum, RumActionType } from '@datadog/mobile-react-native';
-
-// Telemetry delivery must not break ordering or trigger an order retry.
-function send(operation: () => Promise<unknown>): void {
-  void Promise.resolve().then(operation).catch(() => {
-    // No raw error, payload, or credential logging here.
-  });
-}
-
-export function startOrderView(viewKey: string): void {
-  send(() => DdRum.startView(viewKey, 'Chicken Order', {}, Date.now()));
-}
-
-export function stopOrderView(viewKey: string): void {
-  send(() => DdRum.stopView(viewKey, {}, Date.now()));
-}
-
-export function recordConfirmedOrder(itemCount: number): void {
-  if (!Number.isSafeInteger(itemCount) || itemCount <= 0) return;
-  send(() => DdRum.addAction(
-    RumActionType.CUSTOM,
-    'chicken_order.confirmed',
-    { item_count: itemCount, outcome: 'confirmed' },
-    Date.now(),
-  ));
-}
-```
-
-Call `startOrderView` on **screen focus** with a stable, unique key for that screen instance; call `stopOrderView` on blur using the same key. Mount/unmount alone is insufficient when navigation keeps screens mounted. Record confirmation from the existing successful-order handler, not a render effect. [Manual RUM instrumentation](https://docs.datadoghq.com/client_sdks/advanced_configuration/).
-
-For an existing React Navigation screen, merge this focus binding into the screen component:
-
-```tsx
-import { useCallback } from 'react';
-import { useFocusEffect, useRoute } from '@react-navigation/native';
-import { startOrderView, stopOrderView } from './observability/order-telemetry';
-
-// Inside the existing order screen; adjust the import path above.
-const route = useRoute();
-useFocusEffect(useCallback(() => {
-  startOrderView(route.key);
-  return () => stopOrderView(route.key);
-}, [route.key]));
-```
-
-The route key identifies the mounted navigation entry; it must not contain personal data. Emit confirmation only from a verified success handler while the intended view is active. Do not pull the UI back to the order screen or retry a purchase merely to attach telemetry.
-
-For React Navigation, you can instead add the compatible `@datadog/mobile-react-navigation` integration and track navigation from `NavigationContainer.onReady`. Do not also manually start/stop those views. Route names/parameters must not expose user data. [Navigation integration](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/react_native/integrated_libraries/).
-
-</TabItem>
-</Tabs>
-
-## 3. Add network tracing and error capture deliberately
-
-After the basic view/action journey works, enable the signals required by your app:
-
-| Platform | Integration work | Official instructions |
-| :--- | :--- | :--- |
-| Android | Add compatible `dd-sdk-android-okhttp` and tracing modules. Enable tracing, configure approved hosts, and attach the interceptor to the actual application OkHttp client. An unused client captures nothing. | [Android RUM setup](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/android/setup/), [tracing integration](https://docs.datadoghq.com/tracing/trace_collection/custom_instrumentation/client-side/android/dd-api/). |
-| iOS | Add the tracing product where needed; configure RUM URLSession tracking, approved hosts, and URLSession instrumentation for the delegate/session actually used by the app. | [iOS advanced configuration](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/ios/advanced_configuration/). |
-| React Native | Enable `trackResources`, `trackErrors`, and native crash reporting only after reviewing captured data. Configure `firstPartyHosts` and trace sampling with the matching SDK API. Native networking outside the supported JS instrumentation needs its own integration. | [React Native configuration](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/react_native/advanced_configuration/). |
-
-Do not send raw exception messages or response objects as custom attributes. Use stable error categories and approved field filtering. Session Replay requires separate configuration and privacy validation; it is not enabled by these examples. [Replay privacy controls](https://docs.datadoghq.com/session_replay/privacy_options/).
-
-**Expected result:** the intended request appears as a RUM resource. A trace link appears only when trace propagation, backend instrumentation, and sampling support that request. [Connect RUM and APM](https://docs.datadoghq.com/tracing/other_telemetry/rum/).
-
-## 4. Keep symbols with the exact release
-
-| Build | Retain and upload |
-| :--- | :--- |
-| Android | R8/ProGuard mapping for the actual obfuscated variant; native symbols if required by the enabled crash integration. |
-| iOS | dSYMs from the exact device archive. |
-| React Native | JS bundle/source maps for each platform, plus the applicable native Android mappings and iOS dSYMs. |
-
-Use protected **Datadog API key** credentials for uploads, not the mobile client token. Pin the approved upload tool/plugin and preserve release association. [Android symbol upload](https://docs.datadoghq.com/error_tracking/frontend/mobile/android/), [iOS symbol upload](https://docs.datadoghq.com/error_tracking/frontend/mobile/ios/), [React Native source maps](https://docs.datadoghq.com/error_tracking/frontend/mobile/reactnative/).
-
-For iOS, the following is a **Bitrise workflow step fragment** to place after the archive and its dSYMs exist. It assumes an approved `datadog-ci` executable is already on the macOS runner's PATH:
-
-```yaml
-- script@1:
-    title: Upload matching iOS dSYMs to Datadog
-    inputs:
-      - content: |-
-          #!/usr/bin/env bash
-          set -euo pipefail
-          : "${DATADOG_API_KEY:?Bind through protected CI credentials}"
-          : "${DATADOG_SITE:?Set the approved CLI site hostname}"
-          : "${BITRISE_DSYM_PATH:?Archive must produce the matching dSYMs}"
-          command -v datadog-ci >/dev/null
-          test -e "$BITRISE_DSYM_PATH"
-          datadog-ci dsyms upload "$BITRISE_DSYM_PATH"
-```
-
-`DATADOG_SITE` here is the CLI hostname, such as `datadoghq.com`, not the SDK enum `US1`. Keep shell tracing disabled and never print credentials. Upload completion still needs a readable crash-stack verification. [Datadog dSYM upload command](https://docs.datadoghq.com/error_tracking/frontend/mobile/ios/).
-
-## 5. Run and inspect one journey
-
-1. Build and launch the app through its existing non-production run command/Xcode scheme.
-2. Apply the appropriate test consent state and use the approved non-production sampling configuration.
-3. Open the chicken-order screen. Place an order with synthetic data and wait for a valid confirmation.
-4. Open the correct RUM application. Filter by environment, app version, and the test time.
-5. Find the ordering view (**Chicken Order** in the manual examples) and **chicken_order.confirmed**. Inspect `item_count` and `outcome`; confirm no confidential fields were attached.
-6. After network/error instrumentation is enabled, inspect one eligible request and an approved controlled error/crash. For native crashes, relaunch the app so the SDK can upload its report.
-
-**Attach screenshot — sanitized ordering view and confirmed action, with environment/version filters visible.**
-
-| Observation | Next action |
-| :--- | :--- |
-| SDK initialization succeeds but no view appears | Confirm view tracking is actually called, consent allows upload, and the session is sampled. |
-| Events appear under the wrong app/site | Check the client token, application ID, and site as a matched configuration. |
-| Confirmed action repeats | Check for render-effect instrumentation or duplicate success handlers. Do not resubmit an order to repair telemetry. |
-| Resource appears without a backend trace | Check approved hosts, trace propagation, backend instrumentation, and sampling. |
-| Stack frames remain unreadable | Check the exact release's source maps/mappings/dSYMs and their upload association. |
-
-**Next page:** [Monitoring & Troubleshooting](./monitoring-and-troubleshooting.mdx) — inspect dashboards, runtime performance, alerts, and missing telemetry.
-
-
-
----------------------
+  :global([data-theme="light"]) .portal { --brand-readable: #008544; }
+  .intro { max-width: 52rem; margin-block-end: 2rem; }
+  .eyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .12em; color: var(--brand-readable); }
+  .intro h2 { margin: .65rem 0; font-size: clamp(1.65rem, 3vw, 2.4rem); line-height: 1.2; letter-spacing: -.025em; }
+  .intro p { color: var(--portal-muted); line-height: 1.7; margin: 0; }
+  .start-link { display: inline-flex; gap: .7rem; align-items: center; margin-block-start: 1rem; font-weight: 650; color: var(--brand-readable); }
+  .section-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+  .section-card { display: flex; flex-direction: column; min-width: 0; margin: 0; padding: 1.25rem; border: 1px solid var(--portal-border); border-block-start: 3px solid var(--accent); border-radius: .85rem; background: var(--portal-surface); }
+  .section-card header { display: flex; align-items: flex-start; gap: .7rem; }
+  .section-icon { display: grid; place-items: center; flex: 0 0 2rem; width: 2rem; height: 2rem; border: 1px solid var(--portal-border); border-radius: .5rem; color: var(--portal-text); font-size: 1.15rem; }
+  .section-icon { color: var(--brand-readable); background: color-mix(in srgb, var(--accent) 8%, var(--portal-surface)); border-color: color-mix(in srgb, var(--accent) 30%, var(--portal-border)); }
+  .section-icon svg { display: block; width: 1.3rem; height: 1.3rem; }
+  .section-card h3 { margin: .15rem 0 0; font-size: 1.1rem; line-height: 1.4; color: var(--portal-text); overflow-wrap: anywhere; }
+  .section-card p { margin: 1rem 0 1.25rem; font-size: .9rem; line-height: 1.65; color: var(--portal-muted); }
+  .section-card nav { margin-block-start: auto; }
+  .section-card ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; list-style: none; margin: 0; padding: 0; }
+  .section-card li { margin: 0; min-width: 0; }
+  .section-card a { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 2.75rem; height: 100%; padding: .55rem .65rem; border: 1px solid var(--portal-border); border-radius: .45rem; color: var(--portal-text); font-size: .8rem; line-height: 1.45; text-decoration: none; overflow-wrap: anywhere; }
+  .link-arrow { flex-shrink: 0; color: var(--portal-muted); }
+  .section-card a:hover { background: color-mix(in srgb, var(--brand) 7%, var(--portal-surface)); border-color: var(--brand-readable); text-decoration: underline; text-underline-offset: .2em; }
+  .portal a:focus-visible { outline: 3px solid var(--brand-readable); outline-offset: 3px; }
+  @media (max-width: 64rem) { .section-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 42rem) { .section-grid { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 24rem) { .section-card ul { grid-template-columns: minmax(0, 1fr); } }
+</style>
 
 
 ---
-title: "Monitoring & Troubleshooting"
-description: "Find mobile events, investigate crashes and slow journeys, and diagnose missing Datadog telemetry."
-sidebar:
-  label: Monitoring & Troubleshooting
-  order: 3
+title: Mobile Engineering Portal
+description: Find onboarding, architecture, platform standards, delivery, testing, monitoring, and support documentation.
+template: splash
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
-import MermaidZoom from '../components/mermaid-zoom.astro';
+import PortalOverview from './PortalOverview.astro';
 
-**Before starting:** complete [Datadog Mobile Integration](./datadog-mobile-integration.mdx), run a non-production build, and record its environment, app version/build, platform, and test time.
+<PortalOverview docsRoot="/mobile/" />
 
-**Outcome:** locate the test journey, identify which layer failed, and give the responsible owner useful evidence.
-
-> **Confidential — Enterprise internal use only.** Use synthetic data. Inspect diagnostic logs locally and redact them before sharing. Never share tokens, signed artifact URLs, customer/order payloads, payment information, or unrestricted session recordings.
-
-## 1. Find your test journey
-
-1. Open Datadog through Enterprise SSO and navigate to **RUM Explorer**.
-2. Select the RUM application configured in your build. Set the time range to include your test, accounting for the displayed time zone.
-3. Select **View** events. Filter by environment/version using the available facets and autocomplete.
-4. Find the **Chicken Order** view from the manual integration example. If you use automatic navigation tracking, use the actual configured route name.
-5. Open the view and inspect its related actions/resources/errors. Find **chicken_order.confirmed** after the successful order receipt.
-6. Inspect the action attributes. The example sends only `item_count` and `outcome`; it must not contain customer, payment, or order payloads.
-
-The application selector, event type, and time range are separate from the search query. A correct query in the wrong application or time range still returns nothing. [RUM Explorer](https://docs.datadoghq.com/real_user_monitoring/explorer/), [event inspection](https://docs.datadoghq.com/real_user_monitoring/explorer/events/).
-
-### Search examples
-
-Replace the environment and version markers with the values actually reported by the app. Select the matching event type first. Confirm attribute names against an event and the search autocomplete.
-
-```text
-# View events — ordering screen
- env:REPLACE_ENV version:REPLACE_VERSION @view.name:"Chicken Order"
-
-# Action events — completed order
- env:REPLACE_ENV version:REPLACE_VERSION @action.name:chicken_order.confirmed
-```
-
-Copy only the query line, not its comment. Quote values containing spaces or search syntax characters. If an attribute is not available as a searchable facet in your application, use the existing fields or ask the observability owner to configure the appropriate facet. [RUM search syntax](https://docs.datadoghq.com/real_user_monitoring/explorer/search_syntax/), [event selection and facets](https://docs.datadoghq.com/real_user_monitoring/explorer/search/).
-
-**Expected result:** the expected ordering view and confirmed action belong to the intended application, environment, and version. Event visibility proves those events arrived; it does not prove every session, crash, or network request is captured.
-
-**Attach screenshot — sanitized ordering view, confirmed action, and environment/version/time filters.**
-
-## 2. Diagnose missing telemetry in order
-
-<MermaidZoom title="Find the failing layer before changing instrumentation">
-
-```mermaid
-flowchart TD
-    A["Expected event missing"] --> B{"Correct app, event type and time range?"}
-    B -->|No| C["Correct Explorer filters"]
-    B -->|Yes| D{"SDK initialized and view tracking called?"}
-    D -->|No| E["Fix startup or screen lifecycle binding"]
-    D -->|Yes| F{"Consent permits upload and session sampled?"}
-    F -->|No| G["Verify approved consent and sampling configuration"]
-    F -->|Yes| H["Inspect site, client token, app ID and local SDK diagnostics"]
-    H --> I["Check network, proxy and intake response"]
-    I --> J["Reproduce with one controlled non-production journey"]
-    J --> K["Escalate sanitized evidence if unresolved"]
-    classDef start fill:#172554,stroke:#93c5fd,color:#fff;
-    classDef decision fill:#713f12,stroke:#fde047,color:#fff;
-    classDef fix fill:#4c1d95,stroke:#d8b4fe,color:#fff;
-    classDef result fill:#064e3b,stroke:#6ee7b7,color:#fff;
-    class A start;
-    class B,D,F decision;
-    class C,E,G,H,I fix;
-    class J,K result;
-```
-
-</MermaidZoom>
-
-| Observation | Inspect | Corrective action |
-| :--- | :--- | :--- |
-| No events | Application/site/token/ID, initialization, views, consent, sampling | Fix the specific binding; do not create a duplicate RUM application. |
-| View exists, confirmed action absent | Receipt validation and success handler | Confirm the action runs after valid success while the intended view is active. |
-| Duplicate actions/views | Repeated render effects, duplicate lifecycle handlers, manual plus automatic tracking | Keep one tracking strategy for each screen and one confirmation emission per handled success. |
-| Events arrive later | SDK batching, connectivity, device state | Allow normal batching and retest online. Do not repeatedly initialize the SDK. |
-| HTTP intake rejection | Sanitized status and SDK error category | Check the matched site/token/application configuration. Never print the token to diagnose it. |
-| Debug works, release does not | Native rebuild, release configuration, consent, sampling, network restrictions | Compare actual configuration sources and resolved dependencies. Do not rely on development-only environment variables. |
-
-Use the SDK guide matching the installed version: [Android setup](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/android/setup/), [iOS troubleshooting](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/ios/troubleshooting/), [React Native troubleshooting](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/react_native/troubleshooting/).
-
-## 3. Collect platform diagnostics locally
-
-Enable detailed SDK diagnostics only for the controlled non-production investigation. Restore normal verbosity afterwards. Do not upload unreviewed console output or modify installed SDK source files to add logging.
-
-<Tabs>
-<TabItem label="Android">
-
-### Confirm the application process
-
-From a terminal with the project's Android SDK tools on `PATH`:
-
-```bash
-adb devices
-
-# Replace with the installed application's actual package ID.
-APP_PACKAGE='REPLACE_WITH_APPLICATION_ID'
-adb shell pidof "$APP_PACKAGE"
-```
-
-If no PID appears, launch the app on the selected device and retry. With multiple devices, select the intended device with `adb -s SERIAL`.
-
-In Android Studio, open **Logcat**, select that device/process, and filter for Datadog SDK diagnostics. Record the error category/status and time; redact configuration and user data. Also confirm the release manifest permits network access and the actual OkHttp client is instrumented. [Android integration](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/android/setup/).
-
-### Confirm the resolved SDK
-
-From the directory containing `gradlew`:
-
-```bash
-./gradlew :app:dependencyInsight \
-  --configuration debugRuntimeClasspath \
-  --dependency dd-sdk-android-rum
-```
-
-Replace the module/configuration for the failing variant. This can resolve dependencies; it does not prove event delivery. Check compatible module versions rather than adding a second SDK initialization.
-
-</TabItem>
-<TabItem label="iOS">
-
-### Inspect SDK diagnostics
-
-Temporarily add this beside the existing SDK initialization in a debug build:
-
-```swift
-import DatadogCore
-
-#if DEBUG
-Datadog.verbosityLevel = .debug
-#endif
-```
-
-Run the app from Xcode, exercise the journey, and inspect Datadog messages in the console. Keep the setting out of release diagnostics. [iOS SDK troubleshooting](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/ios/troubleshooting/).
-
-### Compare crash symbol identifiers
-
-On macOS, supply the executable and dSYM from the **same device archive**:
-
-```bash
-APP_EXECUTABLE='REPLACE_WITH_ARCHIVED_APP_EXECUTABLE_PATH'
-DSYM_BUNDLE='REPLACE_WITH_MATCHING_DSYM_BUNDLE_PATH'
-xcrun dwarfdump --uuid "$APP_EXECUTABLE"
-xcrun dwarfdump --uuid "$DSYM_BUNDLE"
-```
-
-Compare UUIDs for the relevant architecture with the crash's binary identity. A simulator archive or another release's dSYM is not a substitute. Check that the matching file reached Datadog; rerunning upload with an unrelated dSYM cannot repair the stack. [iOS crash reporting and dSYMs](https://docs.datadoghq.com/error_tracking/frontend/mobile/ios/).
-
-</TabItem>
-<TabItem label="React Native">
-
-### Inspect the installed integration
-
-From an npm-managed project root:
-
-```bash
-npm ls @datadog/mobile-react-native @datadog/mobile-react-navigation --depth=0
-```
-
-Use the repository's selected package manager equivalent. The navigation package is optional when using manual view tracking. After adding/updating native modules, rebuild Android/iOS; reloading Metro alone is insufficient. [React Native setup](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/react_native/setup/?tab=rum).
-
-For the provider API in the integration page, temporarily include debug verbosity in its options:
-
-```typescript
-import { SdkVerbosity } from '@datadog/mobile-react-native';
-
-// Before mounting the provider, only in the diagnostic build:
-configuration.verbosity = SdkVerbosity.DEBUG;
-```
-
-`configuration` is the existing result of `createDatadogConfiguration(...)`; do not create a second provider. Inspect the Android process logs or Xcode console for the platform being tested. Remove temporary verbosity after the investigation. Check the installed version's configuration API rather than copying an older constructor. [SDK troubleshooting](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/react_native/troubleshooting/).
-
-### Distinguish JavaScript and native crash symbols
-
-| Stack | Artifact to inspect |
-| :--- | :--- |
-| Minified JavaScript | Matching platform bundle and source map, with the required release/debug identity. |
-| Android obfuscated Java/Kotlin | Exact R8/ProGuard mapping for that variant. |
-| iOS native crash | dSYMs matching the crashed binary UUIDs. |
-
-Do not regenerate source maps from a later checkout and assume they match a shipped bundle. For an OTA update, follow the approved integration's update identity rules. [React Native symbolication](https://docs.datadoghq.com/error_tracking/frontend/mobile/reactnative/).
-
-</TabItem>
-</Tabs>
-
-## 4. Investigate a slow journey
-
-1. Open the affected application/version and select a time range containing the report.
-2. Find the affected view and compare its events with a known working session using the same measurement scope.
-3. Inspect available rendering, long-task, CPU, and memory information. Availability depends on platform and SDK support.
-4. Inspect resource duration and failures. Follow an eligible resource into APM to investigate backend work.
-5. Compare releases and device/OS groups before assigning a cause. A slow network resource does not by itself prove a UI-thread problem.
-
-Use **TTID ≤ 800 ms**, **TTFD ≤ 2 s**, **slow frames ≤ 5%**, **sessions with frozen frames ≤ 0.1%**, and **crash-free sessions ≥ 99.85%** only with the measurement definitions agreed in [Start Here](./index.mdx). Do not substitute browser timings for mobile launch measurements.
-
-Datadog classifies frames taking longer than **700 ms** as frozen. A frame count and the percentage of sessions containing frozen frames require different calculations. [Mobile Vitals](https://docs.datadoghq.com/real_user_monitoring/application_monitoring/mobile_vitals/).
-
-**Attach screenshot — sanitized affected view and available performance timeline, with version and time filters.**
-
-## 5. Follow a request into backend APM
-
-1. Open a resource associated with the affected RUM view.
-2. Confirm it is the intended first-party request using its sanitized URL, method, status, and time.
-3. Open its trace link if available. Ask the backend owner to inspect the corresponding service and spans.
-4. If no trace link exists, verify the mobile host allowlist, actual network client instrumentation, trace propagation through gateways, backend instrumentation, and sampling/retention.
-
-Do not widen the host allowlist to every destination or inject trace headers into third-party requests to repair missing correlation. Trace headers connect telemetry; they are not authentication credentials. [RUM and APM correlation](https://docs.datadoghq.com/tracing/other_telemetry/rum/).
-
-## 6. Use dashboards and configure alerts
-
-### Open the application dashboard
-
-1. Open the application's RUM performance/summary dashboard.
-2. Select the intended application, environment, version, and time range.
-3. Inspect stability, available mobile vitals, and resource failures.
-4. Use deployment tracking to compare releases with comparable traffic and sampling. Drill into an affected event before concluding that a release caused a regression.
-
-[Mobile performance dashboards](https://docs.datadoghq.com/real_user_monitoring/platform/dashboards/performance/), [deployment tracking](https://docs.datadoghq.com/real_user_monitoring/platform/dashboards/testing_and_deployment/).
-
-**Attach screenshot — sanitized mobile performance dashboard and release comparison.**
-
-### Configure a monitor with the observability owner
-
-1. Open **Monitors → New Monitor → Real User Monitoring** if your role is authorized to create it; otherwise give the owner the intended measurement.
-2. Select event type, application/environment filters, and the actual supported count/measure or formula.
-3. Set the owner-approved evaluation window, aggregation, threshold, and grouping. For a percentage, define both numerator and denominator; for timing, define the statistic being evaluated.
-4. Inspect the query preview using representative traffic. Define the behavior when traffic is low or data is absent.
-5. Add the approved notification destination, responsible team, and investigation link. Validate the notification route through the agreed non-production procedure before operational use.
-
-There is no universal monitor YAML in this section: metric fields, windows, and notification destinations must match the application and approved monitoring configuration. [RUM monitor setup](https://docs.datadoghq.com/monitors/types/real_user_monitoring/), [monitor configuration](https://docs.datadoghq.com/monitors/configuration/).
-
-**No data does not mean healthy.** A zero-count result, an absent group, and a missing measure can behave differently. Confirm the configured missing-data behavior against the monitor's query type. [Monitor missing-data options](https://docs.datadoghq.com/monitors/guide/monitor_api_options/).
-
-**Attach screenshot — approved monitor scope, evaluation settings, and notification destination, with sensitive details hidden.**
-
-## 7. Escalate with useful evidence
-
-Send a sanitized report through the approved internal support route. Do not send raw logs or credentials. Use this template:
-
-```text
-Issue: [Missing events / unreadable crash / slow view / missing trace]
-Application and platform: [Approved app identity; Android / iOS / React Native]
-Environment and version/build: [Exact values]
-Observed time and time zone: [Start–end]
-SDK versions: [Resolved versions]
-Expected event or behavior: [View/action/resource]
-Observed result: [What actually appeared]
-Reproduction: [Synthetic steps]
-Evidence: [Access-controlled event/dashboard/build links]
-Diagnostics: [Sanitized status/category and symbol identity if relevant]
-Changes already tried: [Specific configuration or code changes]
-Owner needed: [Mobile / backend / observability / platform]
-```
-
-For missing events, include the Explorer filters and time range. For unreadable crashes, include release/artifact identity. For missing traces, include the sanitized request time and resource evidence. Share session/event identifiers only through approved access-controlled channels.
-
-Return to [Datadog Mobile Integration](./datadog-mobile-integration.mdx) for instrumentation changes or [Start Here](./index.mdx) for access and configuration ownership.
-
-
-
-
+> **Confidential — internal use only.** Keep enterprise information within approved systems. Never share credentials, signing material, personal data, or sensitive operational evidence.
 
 
 
