@@ -34,6 +34,7 @@ Read from **Onboarding → Development → Build and Validation → Delivery →
 <MermaidZoom title="Understand the platform first — find the detailed instructions by section name">
 
 ```mermaid
+%%{init: {"themeVariables": {"fontSize": "20px"}, "flowchart": {"padding": 24, "nodeSpacing": 40, "rankSpacing": 55}}}%%
 flowchart TB
     START(["START HERE<br/>Understand the platform, then follow your learning path"])
 
@@ -120,29 +121,29 @@ flowchart TB
     MONITOR -. "Findings inform the next change" .-> DESIGN
     START -. "Help at any stage" .-> HELP
 
-    classDef sectionTitle fill:#0f172a,color:#ffffff,stroke:#38bdf8,stroke-width:3px,font-weight:bold,font-size:19px;
+    classDef sectionTitle fill:#0f172a,color:#ffffff,stroke:#38bdf8,stroke-width:3px,font-weight:bold,font-size:24px;
     class DOC_ONBOARD,DOC_ARCH,DOC_PLATFORM,DOC_PUSH,DOC_CICD,DOC_TESTING,DOC_OBS,DOC_AI,DOC_STORE,DOC_SUPPORT sectionTitle;
 
-    classDef onboarding fill:#164e63,color:#ffffff,stroke:#22d3ee;
-    classDef architecture fill:#312e81,color:#ffffff,stroke:#a5b4fc;
-    classDef platform fill:#1e3a8a,color:#ffffff,stroke:#60a5fa;
-    classDef notification fill:#831843,color:#ffffff,stroke:#f9a8d4;
-    classDef assistant fill:#581c87,color:#ffffff,stroke:#d8b4fe;
-    classDef testing fill:#713f12,color:#ffffff,stroke:#facc15;
-    classDef pipeline fill:#7c2d12,color:#ffffff,stroke:#fdba74;
-    classDef delivery fill:#14532d,color:#ffffff,stroke:#4ade80;
-    classDef observability fill:#4c1d95,color:#ffffff,stroke:#c4b5fd;
-    classDef support fill:#134e4a,color:#ffffff,stroke:#5eead4,stroke-width:3px;
-    style ONBOARD fill:none,stroke:#94a3b8,stroke-width:1px,font-weight:bold,font-size:18px
-    style ARCH fill:none,stroke:#94a3b8,stroke-width:1px,font-weight:bold,font-size:18px
-    style PLATFORM fill:none,stroke:#94a3b8,stroke-width:1px,font-weight:bold,font-size:18px
-    style PUSH fill:none,stroke:#94a3b8,stroke-width:1px,font-weight:bold,font-size:18px
-    style CICD fill:none,stroke:#94a3b8,stroke-width:1px,font-weight:bold,font-size:18px
-    style TESTING fill:none,stroke:#94a3b8,stroke-width:1px,font-weight:bold,font-size:18px
-    style OBS fill:none,stroke:#94a3b8,stroke-width:1px,font-weight:bold,font-size:18px
-    style AI fill:none,stroke:#94a3b8,stroke-width:1px,font-weight:bold,font-size:18px
-    style STORE fill:none,stroke:#94a3b8,stroke-width:1px,font-weight:bold,font-size:18px
-    style SUPPORT fill:none,stroke:#94a3b8,stroke-width:1px,font-weight:bold,font-size:18px
+    classDef onboarding fill:#164e63,color:#ffffff,stroke:#22d3ee,font-size:20px;
+    classDef architecture fill:#312e81,color:#ffffff,stroke:#a5b4fc,font-size:20px;
+    classDef platform fill:#1e3a8a,color:#ffffff,stroke:#60a5fa,font-size:20px;
+    classDef notification fill:#831843,color:#ffffff,stroke:#f9a8d4,font-size:20px;
+    classDef assistant fill:#581c87,color:#ffffff,stroke:#d8b4fe,font-size:20px;
+    classDef testing fill:#713f12,color:#ffffff,stroke:#facc15,font-size:20px;
+    classDef pipeline fill:#7c2d12,color:#ffffff,stroke:#fdba74,font-size:20px;
+    classDef delivery fill:#14532d,color:#ffffff,stroke:#4ade80,font-size:20px;
+    classDef observability fill:#4c1d95,color:#ffffff,stroke:#c4b5fd,font-size:20px;
+    classDef support fill:#134e4a,color:#ffffff,stroke:#5eead4,stroke-width:3px,font-size:20px;
+    style ONBOARD fill:none,stroke:none
+    style ARCH fill:none,stroke:none
+    style PLATFORM fill:none,stroke:none
+    style PUSH fill:none,stroke:none
+    style CICD fill:none,stroke:none
+    style TESTING fill:none,stroke:none
+    style OBS fill:none,stroke:none
+    style AI fill:none,stroke:none
+    style STORE fill:none,stroke:none
+    style SUPPORT fill:none,stroke:none
 
     class START,PATH,BASICS,SETUP onboarding;
     class DESIGN architecture;
