@@ -1,247 +1,108 @@
----
-title: Start Here — Mobile Engineering
-description: Understand the mobile platform, choose your learning path, set up your Mac, and run your first application.
-sidebar:
-  label: Start Here
-  order: 1
----
+## How the repositories connect — files created at each step
 
-import MermaidViewer from "@components/MermaidViewer.astro";
+The application repository contains your code and tests. The three platform
+repositories store enrollment requests, provisioning logic, and approved
+Bitrise workflows.
 
-# Start Here — Mobile Engineering
+**Gold-bordered boxes identify repositories. Blue boxes identify files or
+file groups.**
 
-Start here to **set up your Mac, run the app, and make your first code change**. Later sections explain how to test the app and release it to users.
+| Step | File or output | Location | Responsible owner |
+|---|---|---|---|
+| 1 | Application source, native projects, and dependency lockfiles | Application repository | Approved starter or application team. |
+| 2 | `campfile.yml` | Application repository root | Developer, using the confirmed CAMP schema. |
+| 3 | Tests and required test scripts | Application repository | Developer, using the existing test framework. |
+| 4 | Approved workflow definitions and catalog metadata | `mobile-platform-configuration-bitrise-template` | Platform Engineering maintains these; developers select an approved template/version. |
+| 5 | `Config/Teams/<team>/Bitrise/Apps/<app>.yaml` | `mobile-platform-configuration` | Developer creates the secret-free enrollment request. |
+| 6 | Validation results and creation preview | Vela PR run | Platform automation produces these run outputs. |
+| 7 | Bitrise application, repository connection, workflows, access, and protected bindings | External platform configuration | The approved provisioning engine applies the request after protected promotion. |
+| 8 | Application binaries, matching test packages, and reports | Build outputs | The selected Bitrise workflows and repository commands. |
+| 9 | Device-test results, security assessment, and delivery evidence | Approved service and build results | Configured integrations produce evidence for the exact candidate. |
 
-We support React Native, Android, and iOS. **Use React Native for new apps unless your team chooses another platform.** For an existing app, use the platform and tools it already uses.
-
-> **Confidential — internal use only.** Keep enterprise source, internal links, and operational evidence in approved systems. Never include credentials, signing material, personal data, or sensitive logs in documentation, screenshots, support messages, or AI prompts.
-
-## Choose your starting point
-
-| Your background | Start here | Continue with |
-|---|---|---|
-| **Web, backend, or another discipline — new to mobile** | [Mobile Foundations](./non-mobile-engineer-guide.mdx): learn how mobile differs from web, including lifecycle, permissions, connectivity, local state, and installed versions. | [Platform Overview](./platform-overview.mdx) → [Machine Setup](./machine-setup-guide/index.mdx) → [First Local Run](./first-local-run.mdx). |
-| **Already an Android, iOS, or React Native engineer** | [Platform Overview](./platform-overview.mdx): learn which tools we use and who manages them. | [Machine Setup](./machine-setup-guide/index.mdx) → [First Local Run](./first-local-run.mdx). |
-
-**New to mobile? Start with Mobile Foundations.** You do not need to understand Bitrise, signing, or store delivery before learning the basics and running your assigned application locally.
-
-## Your developer journey
-
-Complete your onboarding path first. Then follow **Build → Test → Automate → Distribute → Monitor**.
-
-<MermaidViewer title="Your developer journey — find the section for each step">
+<MermaidViewer title="Repository responsibilities — from application files to verified delivery">
 
 ```mermaid
-flowchart LR
-    subgraph BUILD["BUILD"]
-        A["Architecture"]
-        B["Platform & SDKs"]
+flowchart TD
+    subgraph APPLICATION["1 · PREPARE APPLICATION FILES"]
+        APP["Application repository"]
+        SOURCE["Application code and native projects<br/>Dependency lockfiles"]
+        CAMP["Create campfile.yml<br/>Use the confirmed CAMP schema"]
+        TESTS["Add reviewed tests<br/>and required repository scripts"]
+        APP --> SOURCE --> CAMP --> TESTS
     end
 
-    subgraph TEST["TEST"]
-        C["Testing & Quality"]
+    subgraph CATALOG["2 · SELECT AN APPROVED WORKFLOW"]
+        TEMPLATE_REPO["mobile-platform-configuration-bitrise-template"]
+        TEMPLATE_FILES["Approved workflow definitions<br/>and catalog metadata"]
+        TEMPLATE_REPO --> TEMPLATE_FILES
     end
 
-    subgraph AUTOMATE["AUTOMATE"]
-        D["CI/CD"]
+    subgraph REQUEST["3 · CREATE THE ENROLLMENT REQUEST"]
+        CONFIG_REPO["mobile-platform-configuration"]
+        YAML["Config/Teams/&lt;team&gt;/Bitrise/Apps/&lt;app&gt;.yaml<br/>Source repository and branch<br/>Template ID, version, and access"]
+        CONFIG_REPO --> YAML
     end
 
-    subgraph STORE["DISTRIBUTE"]
-        E["App Store & Distribution"]
+    TESTS --> CONFIG_REPO
+    TEMPLATE_FILES -->|"Choose approved template and version"| YAML
+
+    YAML --> VALIDATE["Vela PR validation<br/>Inspect results and creation preview"]
+    VALIDATE --> MERGE["Review and protected promotion"]
+
+    subgraph ENGINE["4 · APPLY THE APPROVED REQUEST"]
+        ENGINE_REPO["mobile-platform-configuration-code"]
+        APPLY["Run the provisioning engine<br/>Validate the approved request"]
+        ENGINE_REPO --> APPLY
     end
 
-    subgraph MONITOR["MONITOR"]
-        F["Observability"]
-    end
+    MERGE -->|"Protected main push"| ENGINE_REPO
+    TEMPLATE_FILES -->|"Supply selected workflow definition"| APPLY
 
-    BUILD --> TEST --> AUTOMATE --> STORE --> MONITOR
+    APPLY --> BITRISE["Provision Bitrise application once<br/>Connect source and attach workflows<br/>Configure access and protected bindings"]
 
-    classDef heading fill:#1c2722,stroke:#93c5fd,color:#ffffff,stroke-width:3px,font-weight:bold;
-    class A,B,C,D,E,F heading;
+    BITRISE --> BUILD["Run the configured workflows<br/>Produce binaries, test packages, and reports"]
+    BUILD --> CHECKS["Inspect required results<br/>Tests, coverage, security, and signing"]
+    CHECKS --> GATE{"Required results and<br/>approvals satisfied?"}
 
-    style BUILD fill:transparent,stroke:#64748b,stroke-width:1px
-    style TEST fill:transparent,stroke:#a78bfa,stroke-width:1px
-    style AUTOMATE fill:transparent,stroke:#fbbf24,stroke-width:1px
-    style STORE fill:transparent,stroke:#6ee7b7,stroke-width:1px
-    style MONITOR fill:transparent,stroke:#67e8f9,stroke-width:1px
+    GATE -->|"Yes"| DELIVERY["Run the approved delivery route"]
+    DELIVERY --> VERIFY["Verify the exact version<br/>and intended audience access"]
+    GATE -->|"Failed or unknown"| STOP["Stop progression<br/>Preserve evidence and investigate"]
+
+    classDef repo fill:#422006,stroke:#fbbf24,color:#ffffff,stroke-width:4px,font-weight:bold;
+    classDef file fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
+    classDef automation fill:#4c1d95,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
+    classDef output fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    classDef blocked fill:#881337,stroke:#fda4af,color:#ffffff,stroke-width:2px;
+
+    class APP,TEMPLATE_REPO,CONFIG_REPO,ENGINE_REPO repo;
+    class SOURCE,CAMP,TESTS,TEMPLATE_FILES,YAML file;
+    class VALIDATE,MERGE,APPLY,BITRISE,BUILD,CHECKS,GATE automation;
+    class DELIVERY,VERIFY output;
+    class STOP blocked;
 ```
 
 </MermaidViewer>
 
-**Blue-bordered boxes are documentation section names.** The surrounding groups show the main task at each stage.
+### What developers create
 
-Use **Push Notifications & Deep Linking** when building those capabilities, **GenAI & Tools** when using Copilot or ChatGPT, and **Support & FAQ** whenever you need help. Plan tests and monitoring while building; this reading order does not require postponing them until later.
+Prepare the application files, tests, `campfile.yml`, and enrollment request.
+Use the approved schema and template version. The team directory must match
+`team`, and the request filename must match `app_name`.
 
-## Understand this map before you continue
+Platform Engineering maintains the provisioning engine and workflow catalog.
+Protected credentials are supplied through approved bindings, not committed
+inside the enrollment YAML.
 
-**Read this diagram first.** It shows the tools we use and which section explains each one. You do not need to set up every tool now.
+### What happens after enrollment
 
-Follow **Onboarding → Development → Build and Validation → Delivery → Monitoring**. Each group is named after a documentation section. Dotted arrows show extra connections, such as support or setup for a new app. The diagram helps you find instructions; it does not define the exact order of build steps.
+The approved request provisions the Bitrise application once and attaches its
+selected workflow configuration. Later application changes use the existing
+enrollment and configured build triggers.
 
-**Section headings are the bold, dark boxes with a gold border.** Each documentation section has its own background and outline color. Open that documentation section for the tools and steps shown beneath it.
+The selected template defines actual step order, concurrency, signing,
+and destination behavior. QA/UAT route names do not automatically mean
+public store delivery.
 
-<MermaidViewer title="Understand the platform first — find the detailed instructions by section name">
-
-```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontSize": "24px", "background": "#1c2722", "lineColor": "#cbd5d0", "textColor": "#f3f6f4", "edgeLabelBackground": "#1c2722"}, "flowchart": {"padding": 24, "nodeSpacing": 35, "rankSpacing": 50}}}%%
-flowchart TB
-    START(["START HERE<br/>Understand the platform, then follow your learning path"])
-
-    subgraph ONBOARD[" "]
-        direction LR
-        HEADING_ONBOARD["Onboarding"]
-        HEADING_ONBOARD ~~~ PATH
-        PATH{"New to mobile?"}
-        BASICS["Mobile Foundations<br/>Mobile vs Web · Lifecycle · Permissions"]
-        SETUP["Platform Overview → Mac Setup<br/>Apple Silicon → First Local Run"]
-        PATH -->|Yes| BASICS --> SETUP
-        PATH -->|Experienced| SETUP
-    end
-
-    subgraph ARCH[" "]
-        HEADING_ARCH["Architecture"]
-        HEADING_ARCH ~~~ DESIGN
-        DESIGN["Design the feature<br/>Layer Boundaries · Network Resilience<br/>Feature Flags · Branching & PRs"]
-    end
-
-    subgraph PLATFORM[" "]
-        HEADING_PLATFORM["Platform & SDKs"]
-        HEADING_PLATFORM ~~~ IMPLEMENT
-        IMPLEMENT["Implement with platform standards<br/>React Native preferred · Android · iOS<br/>App Foundations · Authentication SDK"]
-    end
-
-    subgraph PUSH[" "]
-        HEADING_PUSH["Push Notifications & Deep Linking"]
-        HEADING_PUSH ~~~ ENGAGE
-        ENGAGE["Integrate the required capabilities<br/>FCM · Direct APNs · Backend Services<br/>Validated Links · Cold / Warm Opens"]
-    end
-
-    subgraph AI[" "]
-        HEADING_AI["GenAI & Tools"]
-        HEADING_AI ~~~ ASSIST
-        ASSIST["GitHub Copilot · ChatGPT<br/>Copyable Engineering Rules<br/>Author and Review Code & Test Drafts"]
-    end
-
-    subgraph TESTING[" "]
-        HEADING_TESTING["Testing & Quality"]
-        HEADING_TESTING ~~~ TEST
-        TEST["Write and verify meaningful tests<br/>Android · iOS · React Native<br/>Coverage · Sauce Labs Real Devices"]
-    end
-
-    subgraph CICD[" "]
-        direction TB
-        HEADING_CICD["CI/CD"]
-        HEADING_CICD ~~~ ENROLL
-        ENROLL["New application only: enroll once<br/>Secret-Free YAML → Vela Validation<br/>Reviewed Promotion → Platform Provisioning"]
-        REVIEW["Review application changes<br/>Private Repository · Pull Request<br/>Peer Review · Danger Checks"]
-        BUILD["Run governed Bitrise workflows<br/>Parallel Tests · Caching · Protected Signing<br/>Sauce Labs Integration · NowSecure Gates"]
-        ROUTES["Track each build route separately<br/>qa_android · qa_ios<br/>uat_android · uat_ios"]
-        EVIDENCE["Inspect artifacts and release evidence<br/>Unknown / Partial Failure → Safe Reconciliation"]
-        ENROLL -. "Enables build setup" .-> BUILD
-        REVIEW --> BUILD --> ROUTES --> EVIDENCE
-    end
-
-    subgraph STORE[" "]
-        direction LR
-        HEADING_STORE["App Stores & Distribution"]
-        HEADING_STORE ~~~ DEST
-        DEST{"Approved delivery destination"}
-        PRIVATE["Enterprise App Management<br/>Sign · Enable · Assign"]
-        PUBLIC["Google Play / App Store Connect<br/>Destination-Specific Approval & Processing"]
-        VISIBLE["Verify the exact version<br/>Available to its intended audience"]
-        DEST --> PRIVATE --> VISIBLE
-        DEST --> PUBLIC --> VISIBLE
-    end
-
-    subgraph OBS[" "]
-        HEADING_OBS["Observability"]
-        HEADING_OBS ~~~ MONITOR
-        MONITOR["Datadog<br/>Instrument the App · Inspect Errors & Performance<br/>Investigate the Correct Environment & Version"]
-    end
-
-    subgraph SUPPORT[" "]
-        HEADING_SUPPORT["Support & FAQ"]
-        HEADING_SUPPORT ~~~ HELP
-        HELP["Available throughout your journey<br/>Teams Support Channel · Expandable FAQ"]
-    end
-
-    %% Invisible layout links keep START HERE above every section.
-    START ~~~ HEADING_ONBOARD
-    START ~~~ HEADING_ARCH
-    START ~~~ HEADING_PLATFORM
-    START ~~~ HEADING_PUSH
-    START ~~~ HEADING_AI
-    START ~~~ HEADING_TESTING
-    START ~~~ HEADING_CICD
-    START ~~~ HEADING_STORE
-    START ~~~ HEADING_OBS
-    START ~~~ HEADING_SUPPORT
-
-    START --> PATH
-    SETUP --> DESIGN --> IMPLEMENT
-    IMPLEMENT -. "When the feature requires it" .-> ENGAGE
-    IMPLEMENT --> TEST --> REVIEW
-    SETUP -. "New application enrollment" .-> ENROLL
-    ASSIST -. "Development-time assistance" .-> IMPLEMENT
-    ASSIST -. "Reviewed test drafts" .-> TEST
-    ENGAGE -. "Verify integration behavior" .-> TEST
-    TEST -. "Committed tests execute in CI" .-> BUILD
-    EVIDENCE --> DEST
-    VISIBLE --> MONITOR
-    IMPLEMENT -. "Add instrumentation during development" .-> MONITOR
-    MONITOR -. "Findings inform the next change" .-> DESIGN
-    START -. "Help at any stage" .-> HELP
-
-    style ONBOARD fill:#102733,stroke:#22d3ee,stroke-width:2px
-    style ARCH fill:#231c40,stroke:#a78bfa,stroke-width:2px
-    style PLATFORM fill:#142647,stroke:#60a5fa,stroke-width:2px
-    style PUSH fill:#35172a,stroke:#f472b6,stroke-width:2px
-    style AI fill:#2b1940,stroke:#d8b4fe,stroke-width:2px
-    style TESTING fill:#302610,stroke:#facc15,stroke-width:2px
-    style CICD fill:#351f12,stroke:#fb923c,stroke-width:2px
-    style STORE fill:#142c24,stroke:#4ade80,stroke-width:2px
-    style OBS fill:#241d3c,stroke:#c4b5fd,stroke-width:2px
-    style SUPPORT fill:#112b2c,stroke:#2dd4bf,stroke-width:2px
-
-    classDef sectionHeading fill:#25342d,color:#f3f6f4,stroke:#fbbf24,stroke-width:3px,font-weight:bold,font-size:24px;
-    class HEADING_ONBOARD,HEADING_ARCH,HEADING_PLATFORM,HEADING_PUSH,HEADING_AI,HEADING_TESTING,HEADING_CICD,HEADING_STORE,HEADING_OBS,HEADING_SUPPORT sectionHeading;
-
-    classDef onboarding fill:#164e63,color:#ffffff,stroke:#22d3ee,font-size:24px;
-    classDef architecture fill:#312e81,color:#ffffff,stroke:#a5b4fc,font-size:24px;
-    classDef platform fill:#1e3a8a,color:#ffffff,stroke:#60a5fa,font-size:24px;
-    classDef notification fill:#831843,color:#ffffff,stroke:#f9a8d4,font-size:24px;
-    classDef assistant fill:#581c87,color:#ffffff,stroke:#d8b4fe,font-size:24px;
-    classDef testing fill:#713f12,color:#ffffff,stroke:#facc15,font-size:24px;
-    classDef pipeline fill:#7c2d12,color:#ffffff,stroke:#fdba74,font-size:24px;
-    classDef delivery fill:#14532d,color:#ffffff,stroke:#4ade80,font-size:24px;
-    classDef observability fill:#4c1d95,color:#ffffff,stroke:#c4b5fd,font-size:24px;
-    classDef support fill:#134e4a,color:#ffffff,stroke:#5eead4,stroke-width:3px,font-size:24px;
-    class START,PATH,BASICS,SETUP onboarding;
-    class DESIGN architecture;
-    class IMPLEMENT platform;
-    class ENGAGE notification;
-    class ASSIST assistant;
-    class TEST testing;
-    class ENROLL,REVIEW,BUILD,ROUTES,EVIDENCE pipeline;
-    class DEST,PRIVATE,PUBLIC,VISIBLE delivery;
-    class MONITOR observability;
-    class HELP support;
-```
-
-</MermaidViewer>
-
-**How to use the map:** find your current task, read the section named above its block, and follow that section's steps. Begin with your onboarding path rather than setting up every service at once. Existing applications do not repeat enrollment for each change; QA/UAT route names do not imply automatic public store release.
-
-## Find the instructions you need
-
-| You want to… | Read |
-|---|---|
-| Understand mobile before writing code | [Mobile Foundations](./non-mobile-engineer-guide.mdx) |
-| Understand the tools and responsibilities | [Platform Overview](./platform-overview.mdx) |
-| Install and verify your development tools | [Machine Setup — macOS Apple Silicon](./machine-setup-guide/index.mdx) |
-| Build and open your assigned application | [First Local Run](./first-local-run.mdx) |
-| Ask for help | [Teams Support](../support/support.mdx) · [FAQ](../support/index.mdx) |
-
-Installation instructions live in Machine Setup. Detailed architecture, SDK integration, push notifications, CI/CD, testing, observability, AI tooling, and store delivery stay in their dedicated sections.
-
-**Start now:** [New to mobile → Mobile Foundations](./non-mobile-engineer-guide.mdx) · [Experienced mobile engineer → Platform Overview](./platform-overview.mdx).
+This flow does not establish that enrollment creates `bitrise.yml` inside
+the application repository. Confirm any generated-file behavior with the
+approved engine contract.
