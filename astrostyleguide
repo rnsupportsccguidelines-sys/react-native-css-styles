@@ -1,966 +1,347 @@
 ---
-title: "CI/CD Operations Overview"
-description: "Find the operational guides for repository inactivity, Bitrise limits, shared templates, the configuration engine, and Bitrise MCP."
+title: "Real-Device Testing with Sauce Labs"
+description: "Prepare native app and test packages, connect the supplied Bitrise steps, run device tests, and inspect the completed result."
 sidebar:
-  label: Operations Overview
-  order: 1
----
-
-import MermaidZoom from '../../components/mermaid-zoom.astro';
-
-**Use this section to operate and maintain the mobile build platform.** It covers scheduled repository checks, build limits and consumption, shared workflow templates, the configuration engine, and Bitrise MCP.
-
-For first-time application setup, start with [Mobile CI/CD — Start Here](../index.mdx). For a failed build or uncertain delivery result, open [Troubleshooting & Recovery](../troubleshooting-and-recovery.mdx).
-
-## Choose the guide for your task
-
-| Your task | Guide | What it covers |
-|---|---|---|
-| Monitor inactive repositories | [Repository Inactivity](./repository-inactivity.mdx) | Activity threshold, reminders, persisted counts, schedule, and archival conditions. |
-| Understand build limits and credit usage | **Bitrise Limits & Costs** — `bitrise-limits-and-costs.mdx` | Configured timeouts, runner capacity, retention, build consumption, and dated cost examples. |
-| Maintain an approved workflow template | **Bitrise Template Catalog** — `bitrise-template-catalog.mdx` | Template metadata, versions, checksums, review, immutable publication, and adoption. |
-| Inspect or maintain platform automation | **Configuration Engine** — `configuration-engine.mdx` | Request validation, protected apply, local emulation, development checks, and execution boundaries. |
-| Use the approved Bitrise MCP integration | **Bitrise MCP** — `bitrise-mcp.mdx` | Approved connection setup, authentication, capabilities, usage, and troubleshooting. |
-
-The named pages are the section's planned guides. Links are added as each page is prepared and reviewed.
-
-## Understand how the parts connect
-
-<MermaidZoom title="The platform components behind an application build">
-
-```mermaid
-flowchart TD
-    A["Reviewed application request<br/>Configuration repository"] --> B["Configuration engine<br/>Validates and applies the request"]
-    C["Approved template catalog<br/>Versioned build workflows"] --> B
-    B --> D["Bitrise application<br/>Configured builds and results"]
-    D --> E["Operations tasks<br/>Inspect limits and usage<br/>Run approved scheduled checks<br/>Use approved MCP capabilities"]
-    classDef request fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
-    classDef platform fill:#4c1d95,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
-    classDef operations fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
-    class A request;
-    class B,C,D platform;
-    class E operations;
-```
-
-</MermaidZoom>
-
-The diagram shows the relationship between the components. Individual operations run through their configured workflow, operator procedure, or approved MCP connection.
-
-## Find the repository involved
-
-| Repository | Operational purpose |
-|---|---|
-| `mobile-platform-configuration` | Stores application requests and reviewed publication-reconciliation manifests. |
-| `mobile-platform-configuration-code` | Contains the Python execution engine and Vela integration. |
-| `mobile-platform-configuration-bitrise-template` | Stores versioned workflow definitions and catalog metadata. |
-| Inactivity step and reminder repositories | Implement the scheduled inactivity process and store reminder counts described in its guide. |
-
-The application starter generates source for a new app. The Bitrise template supplies build workflows. Use [Prepare Your Repository](../prepare-your-repository.mdx) for starter usage and the template-catalog operations guide for shared workflow maintenance.
-
-## Confirm the owner and execution scope
-
-Before running an operational action, identify the target application/repository, approved procedure, execution environment, and authorized owner. Inspect whether it reads state or changes a remote system.
-
-| Action | What must be confirmed |
-|---|---|
-| Inspect build logs or usage | Access to the intended workspace, app, and run evidence. |
-| Run an inactivity workflow | Exact target, notification recipients, reminder state, and archival authorization. |
-| Publish or adopt a template | Reviewed version, checksum, catalog commit, approvals, and affected applications. |
-| Run configuration-engine tooling | Validation, simulation, dry-run, or live mode and the actual permitted credentials/effects. |
-| Use Bitrise MCP | Approved connection, supported tool, permissions, and intended target. |
-
-Keep protected values in their approved stores. Preserve the identities and evidence required to investigate a partial result. For an ambiguous external write, follow the reviewed reconciliation procedure before repeating it.
-
-**Start with [Repository Inactivity](./repository-inactivity.mdx), or select the guide matching your task above.**
-
-
-
-
--------------------
-
-
-
----
-title: "Repository Inactivity Checks"
-description: "Understand the supplied inactivity workflow, protected inputs, reminder tracking, and automatic archival conditions."
-sidebar:
-  label: Repository Inactivity
-  order: 2
----
-
-import MermaidZoom from '../../components/mermaid-zoom.astro';
-
-**The inactivity workflow checks a repository's latest activity and sends reminders when it has been inactive for more than 180 days.** The supplied process records reminder counts and can archive the repository after three reminders without a response.
-
-Use [Operations Overview](./index.mdx) to find the other platform maintenance guides.
-
-**Work locations — the approved Bitrise operations workflow and its reminder records.** The authorized platform/repository owner configures this automation for the intended repository.
-
-## 1. Understand the behavior
-
-<MermaidZoom title="From inactivity detection to reminders and archival">
-
-```mermaid
-flowchart TD
-    A["Scheduled workflow starts"] --> B["Read the repository's latest activity"]
-    B --> C{"Inactive for more<br/>than 180 days?"}
-    C -->|No| D["Finish the check"]
-    C -->|Yes| E["Follow the reminder process<br/>and record the reminder count"]
-    E --> F{"Three reminders and<br/>no response?"}
-    F -->|No| G["Keep the recorded reminder state"]
-    F -->|Yes| H["Archive the repository<br/>and notify the asset owner"]
-    classDef action fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
-    classDef question fill:#422006,stroke:#fbbf24,color:#ffffff,stroke-width:2px;
-    classDef done fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
-    classDef archive fill:#4c1d95,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
-    class A,B,E action;
-    class C,F question;
-    class D,G done;
-    class H archive;
-```
-
-</MermaidZoom>
-
-The diagram summarizes the supplied behavior. The step implementation determines the exact reminder/archival sequence and how it handles a response or renewed activity. Confirm those details before enabling the schedule.
-
-## 2. Identify the step and reminder store
-
-| Repository | Purpose in the reference |
-|---|---|
-| `TestOrg/bitrise_step_repoInactivityCheck.git` | Custom step that checks activity and performs the configured reminder/archival actions. |
-| `TestOrg/ReminderRepo.git` | Stores the reminder count for each application. |
-
-Use the approved enterprise repository locations and obtain access through the owner. The excerpt names these repositories but does not include the full shell implementation or reminder-record schema.
-
-Confirm what counts as **activity**. The latest text says repository activity, while earlier material referred to commit history. The approved implementation must establish which events affect the date before the policy is enabled.
-
-## 3. Confirm the target and protected bindings
-
-| Input | Purpose | Configuration |
-|---|---|---|
-| `MY_API_TOKEN` | Git API credential used by the custom step. | Protected Bitrise binding with the approved permissions. |
-| `MY_ORG_NAME` | Organization containing the target repository. | Approved workflow environment value. |
-| `MY_REPO_NAME` | Repository to monitor. | Approved workflow environment value. |
-| `CLIENT_SECRET` | OAuth secret used by the email integration. | Protected Bitrise binding. |
-
-Have the owner verify the exact target, reminder store, notification recipients, and archival authorization. The source excerpt leaves recipient lookup, email endpoints, OAuth configuration, and required permissions to the actual implementation.
-
-**Expected result —** the owner can identify the repository affected by this workflow and the protected integrations it will use.
-
-## 4. Configure the operations workflow
-
-The supplied procedure describes these steps:
-
-1. Open the intended application in Bitrise.
-2. Create the workflow named `CustomRepoInactivityCheck`.
-3. Open its configuration YAML.
-4. Add the supplied step below under that workflow's `steps`.
-5. Configure the environment values and protected secrets from section 3.
-6. Configure the approved schedule.
-
-Apply workflow changes through the platform's governed configuration process. Have the template owner confirm whether this workflow is supplied by a template or an approved application configuration extension.
-
-### Supplied step YAML
-
-This excerpt is reproduced exactly from the latest reference. It is a step list, rather than a complete `bitrise.yml`.
-
-```yaml
-- git::https://git.enterprise.com/TestOrg/bitrise_step_repoInactivityCheck.git:
-    inputs:
-      - MY_API_TOKEN: "$MY_API_TOKEN" # Personal access token of git
-      - MY_ORG_NAME: "$MY_ORG_NAME"
-      - MY_REPO_NAME: "$MY_REPO_NAME" # Target repo to monitor
-      - CLIENT_SECRET: "$CLIENT_SECRET" # OAuth client secret to dispatch email
-```
-
-The supplied Git step reference has no immutable version or commit pin. Obtain and review the approved execution pin and its `step.yml` before enabling this automation. Keep the source excerpt above for comparison with the reviewed configuration.
-
-The full helper script is not supplied, so this guide does not add a replacement implementation or a guessed dry-run flag. Confirm whether the approved step provides a safe inspection mode before testing its behavior.
-
-## 5. Confirm the schedule and reminder rules
-
-The reference instructs scheduling the workflow **every six months** and comparing inactivity against **180 days**. Calendar months and day counts are different measures. Confirm the actual scheduled trigger, timezone, and date calculation used by the implementation.
-
-Before enabling it, have the owner confirm:
-
-1. Which activity events update the last-activity date.
-2. How reminders are counted and when the count is persisted.
-3. How a developer response or renewed activity is detected.
-4. Whether and how reminders reset after activity resumes.
-5. The exact reminder count/state that authorizes archival.
-6. How overlapping runs, email failures, or record-write failures are handled.
-
-The supplied excerpt omits the schedule YAML, reminder intervals, reset logic, and concurrency contract. Obtain those from the step owner before describing the automation as configured.
-
-## 6. Inspect a controlled result
-
-Use an owner-approved test repository or existing execution evidence. The workflow may send email, update the reminder store, and archive its target. Confirm the exercise scope before triggering it.
-
-| Evidence | What to inspect |
-|---|---|
-| Target identity | Organization and repository match the intended target. |
-| Activity evidence | The selected activity event/date and computed inactivity interval. |
-| Reminder result | Intended recipient, email outcome, and recorded reminder count. |
-| Persistence | Reminder-store record reflects the completed action. |
-| Archival result, when applicable | Exact repository archive status and asset-owner notification. |
-| Run result | Failure or partial action is visible and traceable. |
-
-**Attach screenshot — target identity, sanitized activity/reminder result, and archive status where applicable.**
-
-**Expected result —** the observed actions match the approved target and policy, with reminder records and any archival result verified independently.
-
-## If the workflow fails
-
-| Problem | Next action |
-|---|---|
-| API authorization fails | Ask the owner to inspect the protected token and required repository permissions. |
-| Wrong target is selected | Have the owner stop the schedule and correct the reviewed target configuration. |
-| Email result is unknown | Inspect the notification outcome and reminder record before another send. |
-| Reminder count differs from expectations | Reconcile the stored record and completed run evidence. |
-| Archive result is uncertain | Query the exact repository state before another mutation. |
-| Renewed activity did not prevent archival | Preserve evidence and have the owner inspect activity selection, response/reset rules, and timing. |
-
-Use [Troubleshooting & Recovery](../troubleshooting-and-recovery.mdx) for partial or unknown external outcomes.
-
-**Next operations page — Bitrise Limits & Costs.** Understand the configured execution limits and build-credit usage.
-
-
--------------------------
-
-
----
-title: "Bitrise Limits & Costs"
-description: "Inspect the workspace's actual limits, understand recorded credit examples, and reduce avoidable build usage."
-sidebar:
-  label: Bitrise Limits & Costs
-  order: 3
----
-
-**A build consumes time and workspace capacity.** Long or duplicate builds can delay other teams and increase usage. Inspect the actual plan and workflow settings before estimating capacity or changing limits.
-
-**Work location — authorized Bitrise workspace settings, build results, and usage/billing records.** Use [Operations Overview](./index.mdx) to find the other maintenance guides.
-
-## 1. Confirm the actual limits
-
-The latest supplied reference records the following values. Its timeout and retention statements require confirmation against the active enterprise plan and configuration.
-
-| Area | Value described in the supplied reference | What the owner must confirm |
-|---|---|---|
-| Bitrise build timeout | 90 minutes. | Actual timeout for the selected workspace, runner, and workflow. |
-| Configuration-repository timeout | A separate recorded run uses 55 minutes. | The limit enforced by its Vela/configuration execution environment. |
-| Concurrency | Maximum simultaneous VMs on the referenced organization tier. | Current runner capacity and queue behavior. |
-| Artifact retention | 30 days. | Artifact-type retention and any enterprise custom policy. |
-| macOS initialization | 1–3 minutes. | Observed startup delay for the actual selected stack and run. |
-
-Current public Bitrise limits depend on the plan. Enterprise configuration is custom. Use the actual enterprise agreement/settings to resolve the recorded timeout and capacity values. Public documentation was checked on **8 November 2026**. [Bitrise plans](https://bitrise.io/pricing)
-
-### Retention requires explicit confirmation
-
-The public artifact policy checked on that date lists these periods for its current policy.
-
-| Artifact type | Public retention period |
-|---|---|
-| Test results and non-installable artifacts | 90 days. |
-| Installable APK/AAB/IPA artifacts | 150 days. |
-| HTML reports | 7 days. |
-| Pipeline intermediate files | 7 days. |
-
-Enterprise customers can have custom retention for eligible artifact types. Confirm whether the reference's 30-day period describes your own policy. Preserve required release evidence in approved storage before its applicable retention expires. [Artifact retention policy](https://docs.bitrise.io/en/bitrise-ci/run-and-analyze-builds/managing-build-files/artifact-retention-policy)
-
-## 2. Find why a build is slow
-
-1. Open the exact build and record its workflow, source commit, runner/stack, and duration.
-2. Distinguish queue/startup delay from commands already executing.
-3. Inspect step timings for checkout, dependencies, tests, build/archive, cloud assessment, and delivery.
-4. Identify the longest relevant phase and its recorded failure or wait state.
-5. Agree the configuration change with the owner and compare the affected phase after the reviewed change.
-
-Use the timeout of the platform involved in the failure. A Vela apply timeout and a Bitrise app-build timeout refer to separate executions.
-
-**Attach screenshot — step timings, selected runner, and relevant configured limit with sensitive details hidden.**
-
-## 3. Understand the earlier credit example
-
-The earlier supplied reference describes **30,000 credits per month**, an assumed **30 credits per build**, and **USD 14,500 per year**. Its effective contract date and the active enterprise billing model are unspecified. Use these as recorded calculation inputs and confirm current billing with the workspace owner.
-
-| Calculation | Result using those assumptions |
-|---|---|
-| Monthly build capacity | `30,000 / 30 = 1,000` builds. |
-| Monthly equivalent of the annual cost | `14,500 / 12 = USD 1,208.33` approximately. |
-| Allocated cost per build at full assumed capacity | `14,500 / (12 × 1,000) = USD 1.21` approximately. |
-
-The earlier figures of USD 1,215 per month, USD 14.40 per build, and USD 0.48 per build per day do not follow from those inputs. The table provides the corrected arithmetic.
-
-The allocated USD 1.21 assumes all 1,000 monthly builds are used and the annual cost covers the modeled service. It leaves actual extra fees and changing usage to the current agreement. Obtain the real billing model before applying this estimate to a budget.
-
-## 4. Count workflow runs and routes correctly
-
-One source change can start several workflows or routes. Confirm how the active contract measures those executions and charges their usage.
-
-The four governed routes are `qa_android`, `qa_ios`, `uat_android`, and `uat_ios`. Their duration and consumption can differ. An average for one build cannot establish the cost of the whole release until every applicable run is accounted for.
-
-For a release estimate, collect these actual measurements.
-
-| Measurement | Why it matters |
-|---|---|
-| Runs started by the change | Shows the full fan-out from PR, push, tag, schedule, and route triggers. |
-| Runner/stack for each run | Identifies the execution resource used. |
-| Duration and reported usage | Provides the measured basis for capacity/cost analysis. |
-| Retries and duplicate triggers | Identifies extra executions associated with the change. |
-| Device/security service usage | Keeps separate service consumption visible when estimating total release cost. |
-
-**Expected result —** the owner can connect an estimate to measured runs and the confirmed billing contract.
-
-## 5. Reduce avoidable build usage
-
-The supplied governance guidance calls for local checks, elimination of redundant builds, and failure investigation before reruns.
-
-| Situation | Action |
-|---|---|
-| Application already fails locally | Fix the affected local check before using another cloud run. |
-| PR and push events launch duplicate work | Have the owner review the actual trigger mapping and required status coverage. |
-| Module tests can execute independently | Use the reviewed detection and output handoff in [Parallel Testing](../parallel-testing.mdx). |
-| Dependency preparation is repeatedly expensive | Inspect the approved cache strategy, keys, restore/save behavior, and measured result. |
-| Long device tests occupy build capacity | Use the approved suite split or Sauce Labs integration while preserving required result collection. |
-| A run fails repeatedly | Inspect and correct its first relevant failure before another execution. |
-
-The supplied material gives no complete cache configuration or guaranteed percentage saving. Use the selected template's actual cache contract and compare observed duration and consumption.
-
-## 6. Preserve evidence and handle operational failures
-
-Have the platform owner confirm the artifact/evidence retention requirements, archive destination, retrieval procedure, and access policy. Verify required artifacts are accessible through the approved mechanism before depending on them for later recovery.
-
-| Problem | Next action |
-|---|---|
-| Build is queued | Inspect current runner capacity, running jobs, and actual plan limits. |
-| Build timed out | Identify the execution platform, its effective limit, and last completed operation. |
-| Usage exceeds the estimate | Compare the measured run count, duration/resource selection, retries, and billing period. |
-| Artifact expired or retrieval failed | Inspect approved retention/storage records and follow reviewed recovery using existing identities. |
-| Faster configuration skips a required result | Restore the required coverage and have the owner review the optimization. |
-
-For partial or unknown external outcomes, use [Troubleshooting & Recovery](../troubleshooting-and-recovery.mdx).
-
-**Next operations page — Bitrise Template Catalog.** Follow the approved workflow-template versioning, publication, and adoption process.
-
-
-----------------------
-
-
-
-
-
----
-title: "Bitrise Template Catalog"
-description: "Select an approved workflow template or follow the reviewed process for publishing and adopting an immutable template version."
-sidebar:
-  label: Bitrise Template Catalog
+  label: Sauce Labs Device Testing
   order: 4
 ---
 
-import MermaidZoom from '../../components/mermaid-zoom.astro';
-
-**A Bitrise template defines the workflows used to build and deliver an enrolled app.** The catalog records versioned workflow definitions and the metadata used to select and validate them.
-
-**Work location — `mobile-platform-configuration-bitrise-template`.** Application developers select an approved template during enrollment. Authorized template maintainers create, validate, publish, and approve shared workflow changes.
-
-Use [Operations Overview](./index.mdx) to find the related engine and workspace guides.
-
-## 1. Choose the task you need
-
-| Your task | Where to start |
-|---|---|
-| Enroll an app using an existing template | Follow [Enroll Your Application](../enroll-your-application.mdx) and select the approved exact version. |
-| Understand the workflows supplied by a template | Open its `bitrise.yml` and follow [Bitrise Pipelines](../bitrise-pipelines.mdx). |
-| Change a shared workflow | Follow the authoring, validation, review, and release procedure on this page. |
-| Address a faulty published version | Follow the reviewed successor-version and adoption procedure. |
-
-The application starter generates the app's source files. This catalog supplies workflow templates consumed by platform automation.
-
-## 2. Find metadata and workflow definitions
-
-The earlier reference describes this catalog layout.
-
-```text
-mobile-platform-configuration-bitrise-template/
-├── catalog/
-│   └── templates/
-│       └── <template_id>.json
-└── templates/
-    └── <template_id>/
-        └── <version>/
-            └── bitrise.yml
-```
-
-The latest release procedure requires each successor version to have its own template path and metadata file, with the exact paths and checksum verified before publication. Confirm the current repository's version-specific metadata structure before adding files. The earlier tree is a layout reference; the current validator and authoring instructions establish the accepted paths.
-
-| Item | What it identifies |
-|---|---|
-| Template ID | Workflow family, such as `react-native-qa-uat`. |
-| Template version | Exact semantic version, such as the recorded `1.16.1` example. |
-| Template path | Workflow YAML for the selected version. |
-| Metadata path | Selection, compatibility, and integrity information accepted by the catalog validator. |
-| Checksum | Integrity reference for the corresponding template bytes. |
-| Catalog commit | Exact reviewed Git revision containing the published template and metadata. |
-
-Template version and catalog commit identify different things. Record both when publishing or adopting a workflow.
-
-## 3. Prepare a successor version
-
-1. Read the repository's current template-authoring and versioning instructions.
-2. Identify the existing version and the change that requires a successor.
-3. Select the semantic version and predecessor relationship required by that contract.
-4. Create the new version's template and metadata paths.
-5. Update the task and changelog entry to identify the exact version.
-6. Review every changed workflow and embedded script, including input/output changes and compatibility with existing consumers.
-
-The latest reference requires strict semantic versioning and backward-compatibility checks. It does not supply a complete metadata JSON schema, predecessor field name, checksum-generation command, or compatibility-test implementation. Obtain those from the current repository before authoring executable metadata.
-
-Protected values remain in approved runtime stores. Templates can declare their required inputs and credential references according to the accepted contract. Inspect workflow scripts and example files for hardcoded tokens, private keys, signing material, and private endpoints before review.
-
-## 4. Run the catalog validation
-
-The earlier supplied procedure contains this command unchanged.
-
-```bash
-scripts/validate-template-catalog.sh
-```
-
-**Run location — the template catalog repository root.** Confirm the script exists and follow the current README for its dependencies and execution requirements.
-
-The latest release procedure requires **every repository validation gate** to pass on the exact PR head. Obtain the full gate list from the current validation instructions. The earlier single command alone does not establish the current complete gate set.
-
-| Validation area | What the review must establish |
-|---|---|
-| Version and predecessor | Consistent with the repository's versioning contract. |
-| Template and metadata paths | Correct new-version locations. |
-| Checksum | Matches the corresponding reviewed template bytes. |
-| Workflow/script changes | Supported inputs, outputs, failure behavior, and dependencies. |
-| Security | Protected values are absent from the repository change. |
-| Compatibility | The required checks pass for the supported consumers/platforms. |
-
-**Expected result —** the required local and hosted checks pass for the exact proposed revision.
-
-## 5. Review and publish the version
-
-<MermaidZoom title="Publish a reviewed immutable template version">
-
-```mermaid
-flowchart TD
-    A["Create the successor version<br/>and its metadata"] --> B["Validate paths, checksum,<br/>workflows, and scripts"]
-    B --> C["Obtain the required review<br/>for the exact PR revision"]
-    C --> D["Merge the approved head<br/>to develop"]
-    D --> E["Promote the reviewed tree<br/>to main through a separate PR"]
-    E --> F["Record the published commit<br/>and allow approved adoption"]
-    classDef action fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
-    classDef review fill:#4c1d95,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
-    classDef done fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
-    class A,B action;
-    class C,D,E review;
-    class F done;
-```
-
-</MermaidZoom>
-
-The latest reference supplies the following release sequence.
-
-1. Review the semantic version and predecessor relationship.
-2. Verify the metadata path, template path, and checksum.
-3. Run every repository validation gate.
-4. Review each changed workflow and embedded script.
-5. Merge the exact approved head into `develop`.
-6. Promote the reviewed tree to `main` through a separate PR.
-7. Record the promoted commit and hosted checks.
-8. Allow the engine or configuration repository to adopt that exact commit.
-
-Earlier material also calls for Platform Engineering and Information Security review. Confirm the actual required reviewers and branch protections in the active catalog repository.
-
-If the reviewed content changes during promotion, inspect the new diff and required checks before publishing.
-
-**Attach screenshot — version-specific paths, checks, review, and promoted commit with sensitive details hidden.**
-
-## 6. Adopt and verify the published version
-
-The latest process explicitly separates publishing from adoption. The engine or configuration repository adopts the reviewed catalog commit through its approved process.
-
-| Evidence | What to record |
-|---|---|
-| Published catalog commit | Exact promoted revision. |
-| Template ID/version | Workflow version selected by the consumer. |
-| Metadata/checksum result | Integrity evidence for the selected definition. |
-| Consumer change | Reviewed engine/configuration adoption reference. |
-| Verification execution | Actual source/app identity, route builds, and destination outcomes. |
-
-Earlier reference material requires checksum and canary verification after release. Confirm the controlled app and route scope before any adoption test. Inspect each route independently using [Deploy & Verify](../deploy-and-verify.mdx).
-
-A published version remains available according to the catalog's immutability contract. An existing app's accepted request is create-only. Use the reviewed adoption/lifecycle procedure for that app rather than changing its request as an assumed upgrade mechanism.
-
-## 7. Handle a faulty published template
-
-The earlier rollback guidance calls for a new patch version that reverses the regression, followed by the normal review/publication process. It also describes marking the defective version deprecated in metadata.
-
-Confirm the active version-status and successor rules before applying that procedure. The latest excerpt does not supply the status-field schema or an automatic consumer-rollback command.
-
-Have the owner record affected consumers, the replacement version/catalog commit, the reviewed adoption action, and verification results. Preserve existing app and destination identities while handling partial effects through [Troubleshooting & Recovery](../troubleshooting-and-recovery.mdx).
-
-## If validation or adoption fails
-
-| Problem | Next action |
-|---|---|
-| Metadata path or version is rejected | Follow the current catalog schema and versioning contract. |
-| Checksum differs | Reconcile the reviewed template bytes and recorded checksum before publication. |
-| Hosted checks refer to an older PR head | Inspect the checks and review for the current proposed revision. |
-| Consumer uses another catalog commit | Inspect its approved pin and adoption change. |
-| Canary result is partial | Record route-specific evidence and preserve completed platform state. |
-| Shared workflow change breaks a consumer | Follow reviewed successor-version and adoption recovery with the affected owner. |
-
-**Next operations page — Configuration Engine.** Understand request validation, protected apply, local emulation, and Python development gates.
-
-
------------------
-
-
-
----
-title: "Configuration Engine"
-description: "Understand request validation and protected apply, reproduce the supplied local-emulation commands, and run the documented Python development checks."
-sidebar:
-  label: Configuration Engine
-  order: 5
----
-
-import MermaidZoom from '../../components/mermaid-zoom.astro';
-
-**`mobile-platform-configuration-code` contains the Python engine that processes application requests.** Vela uses this engine to validate configuration and perform approved platform operations.
-
-**Work location — the engine checkout for development/emulation, or the protected Vela runtime for live apply.** Application request authors normally follow [Enroll Your Application](../enroll-your-application.mdx). Use this page when your assigned task involves engine development, diagnostics, or authorized operation.
-
-## 1. Understand the execution phases
-
-<MermaidZoom title="The same request passes through validation and protected apply">
-
-```mermaid
-flowchart TD
-    A["Application request<br/>in the configuration repository"] --> B["Vela PR validation<br/>schema + template integrity<br/>branch and repository constraints"]
-    B --> C["Required review<br/>and protected promotion"]
-    C --> D["Protected Vela Apply<br/>processes the approved commit"]
-    D --> E["Inspect app identity,<br/>builds, and route outcomes"]
-    classDef step fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
-    classDef protected fill:#4c1d95,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
-    classDef result fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
-    class A,B step;
-    class C,D protected;
-    class E result;
-```
-
-</MermaidZoom>
-
-The supplied PR validation covers strict request-schema checks, SHA-256 integrity of referenced templates, and branch/repository constraints. Protected apply uses the selected approved request and catalog identities to perform its permitted operations.
-
-## 2. Prepare the sibling checkouts
-
-For local Docker emulation, the reference requires Docker with Compose v2 and these three repositories under one parent directory.
-
-```text
-platform-work/
-├── mobile-platform-configuration-code/
-│   ├── scripts/vela-docker-emulation.sh
-│   ├── docker-compose.vela.yml
-│   └── <engine source and tests>
-├── mobile-platform-configuration/
-│   └── Config/Teams/<team>/Bitrise/Apps/<app>.yaml
-└── mobile-platform-configuration-bitrise-template/
-    └── <approved catalog and template files>
-```
-
-1. Obtain authorized access and the required revisions from the repository owners.
-2. Clone or open the checkouts using their current READMEs.
-3. Confirm their existing local work before changing branches or revisions.
-4. Open `mobile-platform-configuration-code` in your editor.
-5. Follow its development instructions to install the approved Python/runtime dependencies and configure local emulation inputs.
-
-The supplied excerpt omits the Python version, dependency-install command, and detailed simulation fixtures. Use the engine README to obtain those exact setup requirements.
-
-**Expected result —** the three checkouts have the required relative layout, Docker/Compose is available, and the engine's documented development dependencies are ready.
-
-## 3. Run local Docker emulation
-
-**Run location — the engine repository root.** The following commands are reproduced exactly from the latest reference.
-
-```bash
-scripts/vela-docker-emulation.sh build
-scripts/vela-docker-emulation.sh validate-pr
-scripts/vela-docker-emulation.sh apply-simulate
-
-# Or run the full local emulation:
-scripts/vela-docker-emulation.sh all
-```
-
-| Command | Purpose described in the reference |
-|---|---|
-| `build` | Builds the local emulation images. |
-| `validate-pr` | Runs the PR-validation emulation. |
-| `apply-simulate` | Runs the local apply simulation. |
-| `all` | Runs the full local emulation sequence. |
-
-Choose the individual commands or the `all` path for the exercise. Confirm the script's actual dependencies and behavior in the checked-out revision before running it.
-
-The reference says the script uses `docker-compose.vela.yml` and mounts the configuration and catalog repositories read-only. Inspect the emulation inputs, runtime mode, and available credentials with the owner. A read-only repository mount governs filesystem access; the mode and runtime configuration determine external effects.
-
-**Expected result —** the selected local mode finishes with an inspectable result against the intended request/catalog fixtures. Record the engine, configuration, and catalog revisions used.
-
-## 4. Read the supplied operator command
-
-The reference labels this an operator command and includes `--dry-run`. Its angle-bracket commit/correlation values are placeholders. The workspace identifier is replaced below with a marked placeholder. This is a review transcript; bare angle brackets have shell-redirection meaning if pasted directly into Bash.
-
-```text
-python3 -m bitrise_self_service.plugins.vela_apply \
-  --request-root ../mobile-platform-configuration \
-  --catalog-root ../mobile-platform-configuration-bitrise-template \
-  --request-file Config/Teams/mobile-platform/Bitrise/Apps/example.yaml \
-  --workspace REPLACE_WITH_APPROVED_WORKSPACE \
-  --event push \
-  --branch main \
-  --dry-run \
-  --catalog-revision <full-catalog-commit> \
-  --request-commit <configuration-commit> \
-  --correlation-id <vela-build-number>
-```
-
-### Prepare the dry-run invocation
-
-The following adaptation quotes the placeholder values and adds a guard that stops until all four are replaced. The CLI module, argument names, and `--dry-run` mode are retained. The workspace must be the authorized target, not the historical reference identity.
-
-Save this as a reviewed local operator script if the active engine runbook permits this invocation. Have the owner confirm the actual request path, prerequisite environment, and dry-run contract before execution.
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-set +x
-
-ENGINE_WORKSPACE='REPLACE_WITH_APPROVED_WORKSPACE'
-ENGINE_CATALOG_COMMIT='REPLACE_WITH_FULL_CATALOG_COMMIT'
-ENGINE_REQUEST_COMMIT='REPLACE_WITH_CONFIGURATION_COMMIT'
-ENGINE_CORRELATION_ID='REPLACE_WITH_RUN_CORRELATION_ID'
-
-for value in "$ENGINE_WORKSPACE" "$ENGINE_CATALOG_COMMIT" "$ENGINE_REQUEST_COMMIT" "$ENGINE_CORRELATION_ID"; do
-  case "$value" in
-    ''|REPLACE_WITH_*)
-      printf '%s\n' 'Set the approved operator inputs before running this script.' >&2
-      exit 2
-      ;;
-  esac
-done
-
-python3 -m bitrise_self_service.plugins.vela_apply \
-  --request-root ../mobile-platform-configuration \
-  --catalog-root ../mobile-platform-configuration-bitrise-template \
-  --request-file Config/Teams/mobile-platform/Bitrise/Apps/example.yaml \
-  --workspace "$ENGINE_WORKSPACE" \
-  --event push \
-  --branch main \
-  --dry-run \
-  --catalog-revision "$ENGINE_CATALOG_COMMIT" \
-  --request-commit "$ENGINE_REQUEST_COMMIT" \
-  --correlation-id "$ENGINE_CORRELATION_ID"
-```
-
-Change the reference request-file path to the actual reviewed request. The guard checks placeholder completion only. The engine and approved runbook validate the target, commit identity, event, and permissions.
-
-## 5. Understand the live execution boundary
-
-The latest runtime contract describes a digest-pinned wrapper that fetches build/base refs into a private temporary bare repository.
-
-| Constraint | What must be established |
-|---|---|
-| Request head | Matches `VELA_BUILD_COMMIT`. |
-| Live event and merge | Approved protected push/merge context. Live apply accepts a two-parent protected merge. |
-| Request scope | Maximum of one request per PR. |
-| Catalog revision | Exact approved commit selected by the runtime. |
-| Runtime/helper identity | Reviewed pinned implementation and immutable runtime image. |
-| Protected inputs | Available only through the approved execution configuration. |
-
-Follow the hosted protected workflow for live operations. The supplied command contains `--dry-run`; changing that flag alone does not establish an authorized live execution context. Obtain the full live runbook from the platform owner.
-
-The latest reference describes five outcome classes: validation failure, deterministic failure without side effect, partial failure, unknown side effect, and success. Inspect the exact engine result and recorded remote identities before deciding the next action.
-
-## 6. Run the Python development gates
-
-The reference supplies this complete command block unchanged. Run it from the engine repository root using the approved Python environment.
-
-```bash
-pytest -q
-ruff check
-ruff format --check
-mypy .
-pip-audit --skip-editable
-
-# Fallback when dependency installation is unavailable:
-python3 -m unittest discover -s tests
-python3 -m compileall -q src tests
-```
-
-| Command | What it checks |
-|---|---|
-| `pytest -q` | Configured Python test suite. |
-| `ruff check` | Configured lint rules. |
-| `ruff format --check` | Formatting without rewriting files. |
-| `mypy .` | Configured type analysis. |
-| `pip-audit --skip-editable` | Dependency audit using the configured environment. |
-| `python3 -m unittest discover -s tests` | Fallback unittest discovery. |
-| `python3 -m compileall -q src tests` | Python compilation of the named directories. |
-
-The final two commands are the reference's fallback when dependency installation is unavailable. Choose the full gate sequence or the documented fallback context. A successful fallback leaves the unavailable tests, lint/type checks, and dependency audit to be completed before claiming all required gates passed.
-
-Run each applicable command, inspect its result, and correct a failure before proceeding. Include hosted checks for the exact proposed engine revision in the review.
-
-**Expected result —** the required gates pass for the engine change, with any unavailable checks recorded explicitly.
-
-## 7. Preserve execution evidence
-
-| Evidence | Why it matters |
-|---|---|
-| Engine commit/runtime identity | Identifies the implementation actually executed. |
-| Configuration request commit/path | Identifies the request bytes. |
-| Catalog revision/template version | Identifies the approved workflow definition. |
-| Mode/event/branch | Identifies the execution boundary. |
-| Correlation and run IDs | Connects related operations and diagnostics. |
-| Existing/created app and build identities | Preserves completed work for later inspection and recovery. |
-| Actual outcome | Distinguishes successful, failed, partial, and uncertain effects. |
-
-For recurring distribution, publication reconciliation, or transport normalization, follow the reviewed engine procedure for that candidate. The latest summary names these capabilities but omits their full helper command/schema contracts. Use [Troubleshooting & Recovery](../troubleshooting-and-recovery.mdx) for the supplied state handling.
-
-**Attach screenshot — mode, revision identities, and sanitized engine result with protected values hidden.**
-
-## If development or execution fails
-
-| Problem | Next action |
-|---|---|
-| Sibling repository path is missing | Match the three checkout locations to the emulation layout. |
-| Python module cannot be imported | Follow the engine README's approved environment/dependency setup. |
-| Docker/Compose command fails | Inspect the first relevant error and the emulation requirements. |
-| Head differs from `VELA_BUILD_COMMIT` | Reconcile the exact request and trusted event identity before execution. |
-| Protected merge constraint is rejected | Use the repository's approved promotion and merge procedure. |
-| Engine reports partial or unknown effects | Preserve identities and state, then follow reviewed reconciliation. |
-| Fallback checks pass but full gates are unavailable | Record the missing checks and complete the required gates in the approved environment. |
-
-**Next operations page — Bitrise MCP.** Configure and use the approved MCP integration within its actual capabilities and access scope.
-
----------------------
-
----
-title: "Bitrise MCP Integration"
-description: "Connect the approved Copilot or ChatGPT client to the enterprise Bitrise gateway and verify a scoped tool call."
-sidebar:
-  label: Bitrise MCP
-  order: 6
----
-
 import { Tabs, TabItem } from '@astrojs/starlight/components';
-import MermaidZoom from '../../components/mermaid-zoom.astro';
+import MermaidZoom from '../components/mermaid-zoom.astro';
 
-**Bitrise MCP lets an approved AI client call tools that inspect or operate Bitrise.** Start by reading the status of one known build. Use the actual tools and permissions published by your enterprise gateway.
+**Sauce Labs runs your prepared tests on cloud devices and returns execution evidence.** Bitrise builds the packages and invokes the approved integration. Your tests verify application behavior, such as placing a demo chicken order and checking its confirmation.
 
-**Work locations — enterprise access management, the TrueFoundry gateway, and your approved Copilot or ChatGPT client.** The earlier supplied MCP guide describes `bitrise-mcp-server` behind a TrueFoundry MCP Gateway. The latest combined transcription contains no replacement MCP setup.
+**Work locations — the application repository, its approved Bitrise workflow, and the Sauce Labs results view.** Read [Writing Tests](./writing-tests.mdx) for test authoring and [Bitrise Pipelines](../cicd/bitrise-pipelines.mdx) for the CI/CD connection.
 
-## 1. Understand the connection
+## 1. Understand the test flow
 
-<MermaidZoom title="How your AI client reaches Bitrise">
+<MermaidZoom title="From your app and tests to a device-test result">
 
 ```mermaid
 flowchart TD
-    A["You ask Copilot or ChatGPT<br/>about an approved app/build"] --> B["Enterprise MCP gateway<br/>checks the connection and access"]
-    B --> C["Bitrise MCP tool<br/>uses the approved Bitrise binding"]
-    C --> D["Bitrise returns the operation result"]
-    D --> E["Inspect the matched identity<br/>and returned evidence"]
+    A["Write and review the device test"] --> B["Build the application<br/>and matching test package"]
+    B --> C["Register the app and upload<br/>the required packages"]
+    C --> D["Run the test on<br/>the approved cloud devices"]
+    D --> E["Inspect the completed result<br/>and available test evidence"]
+    E --> F{"Did the required suite pass?"}
+    F -->|Yes| G["Continue through the approved pipeline"]
+    F -->|No or unresolved| H["Investigate the exact test run<br/>before release progression"]
     classDef step fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
-    classDef access fill:#4c1d95,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
-    classDef done fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
-    class A,D step;
-    class B,C access;
-    class E done;
+    classDef decision fill:#422006,stroke:#fbbf24,color:#ffffff,stroke-width:2px;
+    classDef success fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    classDef help fill:#881337,stroke:#fda4af,color:#ffffff,stroke-width:2px;
+    class A,B,C,D,E step;
+    class F decision;
+    class G success;
+    class H help;
 ```
 
 </MermaidZoom>
 
-The gateway's authentication and its downstream Bitrise credential are separate. Confirm both identities and their effective permissions with the integration owner.
+## 2. Confirm access, region, and execution ownership
 
-Bitrise also documents its own vendor-hosted server with OAuth/PAT options. This page follows the enterprise gateway described in your supplied material. Have the enterprise owner confirm the approved endpoint, transport, and authentication before choosing a client configuration. [Bitrise MCP documentation](https://docs.bitrise.io/en/bitrise-platform/ai/bitrise-mcp)
+Obtain the Sauce Labs access approved for your role. Have the authorized integration owner confirm the account, selected data center, devices, and protected credentials.
 
-## 2. Obtain gateway access
+| Input | What to confirm |
+|---|---|
+| `SAUCE_USERNAME` | Account identity bound to the approved workflow. |
+| `SAUCE_ACCESS_KEY` | Protected access key for that identity. |
+| Region | Storage and test execution use the approved compatible data center. |
+| Device matrix | Available device names/platform versions, concurrency, and required suites. |
+| CLI/custom-step versions | Approved compatible pins and supported inputs/outputs. |
 
-1. Confirm your Bitrise account can access the intended workspace/application.
-2. Use the approved enterprise access portal to request the source-named **TrueFoundry MCP Gateway - Bitrise Server** entitlement.
-3. Obtain the required approval and confirm the entitlement is provisioned.
-4. Sign in to TrueFoundry through enterprise SSO and open **MCP Gateway**.
-5. Select the environment approved for your task and locate `bitrise-mcp-server`.
+The supplied native-runner example uses `us-west-1`. Current Espresso/XCUITest documentation lists `us-west-1` and `eu-central-1` for these runners. The source's separate US East REST listing must be confirmed for the actual product/API before use. [Espresso configuration](https://docs.saucelabs.com/mobile-apps/automated-testing/espresso-xcuitest/espresso/)
 
-The earlier guide uses `dev` and `prod` environment examples. Confirm the actual gateway environment and permitted operation with the owner.
+Keep the credential values in the protected platform configuration. A device test needing runtime application configuration or test credentials requires the runner's approved injection mechanism.
 
-**Expected result —** your identity can open the intended server registration and its approved connection details.
-
-## 3. Configure the downstream Bitrise credential
-
-The supplied PAT procedure applies when the owner confirms that this gateway uses per-user Bitrise PAT overrides.
-
-1. In Bitrise, open **Account settings → Security → Personal Access Tokens** using the account permitted for this integration.
-2. Create the approved token. The source example names it `Bitrise MCP Gateway`.
-3. Confirm its expiry and effective scope with the owner. The source says three months/90 days, which are different durations on some dates.
-4. Store the generated value using the designated protected process.
-5. In TrueFoundry, open the selected server's **Auth Overrides** panel.
-6. Add and save the approved per-user Bitrise credential through that protected interface.
-7. Confirm the saved override belongs to the intended account/server/environment.
-
-The source's instruction to leave all permissions selected requires owner review against the authorized app/workspace scope. Apply the approved permissions for the intended operations.
-
-**Attach screenshot — selected environment, server registration, and saved override status with credentials hidden.**
-
-## 4. Connect the approved AI client
+## 3. Prepare the packages for your platform
 
 <Tabs>
-<TabItem label="GitHub Copilot">
+<TabItem label="Android">
 
-### Confirm the client and configuration destination
-
-Open the approved VS Code/Copilot client and ask the integration owner for the gateway endpoint, transport, and authentication mechanism. Use the client's MCP setup flow and choose the intended scope/harness.
-
-The source assigns a top-level `mcpServers` example to `.vscode/mcp.json`. Current VS Code documentation distinguishes portable `mcpServers` configuration from its `servers` format. It also distinguishes Copilot sessions from Local-harness compatibility settings. Confirm the destination before copying a block. [VS Code MCP setup](https://code.visualstudio.com/docs/agent-customization/mcp-servers)
-
-### Supplied connection example
-
-This JSON is reproduced exactly from the earlier MCP reference. Its bearer value is already a placeholder. Keep actual tokens in the approved credential mechanism.
-
-```json
-    {
-      "mcpServers": {
-        "bitrise": {
-          "type": "sse",
-          "url": "https://mcp-gateway.enterprise.internal/sse/bitrise",
-          "headers": {
-            "Authorization": "Bearer YOUR_TRUEFOUNDRY_GATEWAY_TOKEN"
-          }
-        }
-      }
-    }
-    ```
-
-### Local-harness format adaptation
-
-The following is an explicitly adapted VS Code Local-harness configuration for `.vscode/mcp.json`. It uses `servers` and a password input reference. The gateway URL is a non-operational placeholder and must be replaced with the approved endpoint. This example is conditional on a client/harness that supports these fields and the supplied SSE transport.
-
-```json
-{
-  "inputs": [
-    {
-      "type": "promptString",
-      "id": "bitrise-gateway-token",
-      "description": "Approved gateway credential",
-      "password": true
-    }
-  ],
-  "servers": {
-    "bitrise": {
-      "type": "sse",
-      "url": "https://gateway.example.invalid/sse/bitrise",
-      "headers": {
-        "Authorization": "Bearer ${input:bitrise-gateway-token}"
-      }
-    }
-  }
-}
-```
-
-Portable Copilot configuration does not support these VS Code input variables, and interactive-input servers may not be forwarded into Copilot harness sessions. Use the owner's supported authentication flow for the selected harness. Review the server trust request, complete authentication, and inspect tool discovery. [Configuration scope and authentication](https://code.visualstudio.com/docs/agent-customization/mcp-servers)
-
-The source's `@bitrise` handle is a client UI example. Confirm that the actual server/tools are available in your selected session rather than relying on a specific handle.
-
-</TabItem>
-<TabItem label="ChatGPT">
-
-### Confirm the approved connection method
-
-The earlier reference describes a **Custom GPT Action** that imports an OpenAPI schema from a gateway adapter. That adapter uses a different interface from the MCP transport endpoint.
-
-The supplied adapter path is:
+### Files and runner
 
 ```text
-https://mcp-gateway.enterprise.internal/openapi/bitrise.json
+application-root/
+├── <Gradle project and wrapper>
+├── <application-module>/src/androidTest/
+│   └── <chicken-order device test>
+└── .sauce/
+    ├── saucelabs_request.yml     # Schema supplied by the private step owner
+    └── config.yml               # Espresso runner configuration
 ```
 
-Have the owner confirm that the adapter is deployed, permitted in the workspace, and supported by the current ChatGPT surface. Its schema and authentication must come from the owner. The supplied material does not include the actual OpenAPI schema.
+For the team's Android device path, use JUnit/AndroidJUnitRunner and the approved UI-test framework. The Sauce configuration selects `kind: espresso`. That runner name and the JUnit XML report format serve different roles.
 
-For the current remote-MCP path, official OpenAI guidance connects an existing remote MCP server through a plugin. Obtain the workspace-approved connection/plugin and complete its authentication using the enterprise instructions. Check the supported surface and required network access with the gateway owner. [ChatGPT MCP connections](https://learn.chatgpt.com/docs/extend/mcp)
+Build the application APK and matching instrumentation test APK using the module/variant supported by your project. Confirm the configured test class, application identity, runner, signing compatibility, and resulting output paths.
 
-### Verify the connection
+The latest reference builds the app but omits a matching test-APK producer. Obtain the approved producer tasks and actual output contract before dispatching the device suite.
 
-1. Select the approved Bitrise connection in the intended ChatGPT workspace/session.
-2. Complete its configured sign-in process.
-3. Inspect the available tools and permitted application scope.
-4. Perform the read-only verification in section 5.
+### Supplied `.sauce/config.yml`
 
-Keep credentials out of chat prompts and copied configuration examples. Follow the approved [ChatGPT Setup](../../genai-and-tools/chatgpt-setup.mdx) for your documentation/engineering workflow.
+This YAML is reproduced exactly from the latest reference. Replace its test-runner marker, class selector, device criteria, and application reference according to the approved configuration.
+
+```yaml
+apiVersion: v1alpha
+kind: espresso       # or xcuitest for iOS
+sauce:
+  region: us-west-1
+  concurrency: 2
+
+espresso:
+  app: storage:$SAUCE_APP_ID
+  testApp: storage:<your-test-runner-id>
+
+suites:
+  - name: "smoke-tests"
+    devices:
+      - name: "Google Pixel.*"
+        platformVersion: "14"
+    testOptions:
+      class:
+        - com.example.tests.SmokeTestSuite
+```
+
+`SAUCE_APP_ID` must resolve to the uploaded application bytes for this run when used in `storage:$SAUCE_APP_ID`. The private registration step also uses the name `SAUCE_APP_ID`. Confirm whether its returned identity is the same storage identity required by the runner before connecting the two.
+
+The separate `testApp` reference must identify the matching instrumentation package. Current vendor documentation defines the distinct application/test inputs and supports `v1alpha`. [Native Android runner fields](https://docs.saucelabs.com/mobile-apps/automated-testing/espresso-xcuitest/espresso/)
+
+</TabItem>
+<TabItem label="iOS">
+
+### Files and runner
+
+```text
+application-root/
+├── <Xcode project or workspace>/
+├── <XCUITest target source>/
+└── .sauce/
+    ├── saucelabs_request.yml     # Owner-confirmed iOS request schema
+    └── xcuitest.yml             # Separately selected runner configuration
+```
+
+Prepare an actual test-enabled shared scheme and the matching device application and XCUITest runner packages. Confirm signing/re-signing compatibility and package identity with the integration owner. A generic app build alone leaves the runner package outstanding.
+
+The latest reference supplies no complete iOS build/upload workflow. Obtain the approved native producers and pinned custom-step contract before execution.
+
+### `.sauce/xcuitest.yml` adaptation
+
+This is a separately labeled vendor-based teaching example. Its input names are local example bindings, not confirmed outputs from the private steps. The approved integration must provide the actual matching storage references and device selection.
+
+```yaml
+apiVersion: v1alpha
+kind: xcuitest
+sauce:
+  region: us-west-1
+  concurrency: 1
+xcuitest:
+  app: $MOBILE_NATIVE_APP_REF
+  testApp: $MOBILE_NATIVE_TEST_REF
+suites:
+  - name: chicken-order-ios
+    devices:
+      - name: REPLACE_WITH_APPROVED_IPHONE_NAME
+```
+
+Configure the real device and compatible OS criteria for the chosen account. Confirm environment-variable interpolation with the pinned CLI. [XCUITest runner fields](https://docs.saucelabs.com/mobile-apps/automated-testing/espresso-xcuitest/xcuitest/)
+
+</TabItem>
+<TabItem label="React Native">
+
+Use the Android native JUnit-based device path for the Android application. For iOS, use the separately approved XCUITest path when that is the configured team strategy. Run Jest/Redux Toolkit tests separately as part of the JavaScript checks.
+
+```text
+react-native-application/
+├── package.json
+├── android/                      # App and instrumentation test sources
+├── ios/                          # App and configured iOS test target
+└── .sauce/
+    ├── saucelabs_request.yml      # Path in the supplied Android example
+    ├── config.yml                # Supplied Espresso example
+    └── xcuitest.yml              # Optional approved iOS runner config
+```
+
+Confirm separate platform request values and files with the private step owner. The latest excerpt gives one request path but no complete request schema or multi-platform request-selection contract. Keep the Android and iOS package pairs/results independent.
+
+Appium capability examples in the reference describe an alternative integration. Use the team's approved native path for this example, and retain Appium only where separately configured and approved.
 
 </TabItem>
 </Tabs>
 
-## 5. Verify one read-only result
+## 4. Obtain the private request schema
 
-Use an application/build reference you are permitted to inspect. This prompt is a teaching example, with explicit read-only scope.
+The latest app-create step reads:
 
 ```text
-Use the approved Bitrise connection to retrieve the status of
-<approved application> and <exact build reference>.
-
-Return the matched application/build identity, observed status,
-and source commit if the tool provides it.
-
-Do not trigger, abort, upload, distribute, or change permissions.
-Keep credentials and private artifact download URLs out of the answer.
+.sauce/saucelabs_request.yml
 ```
 
-Inspect the actual tool call, returned identity, and result. Compare with the corresponding Bitrise build page where your role permits it.
+Its input name is exactly `saucelabs_request_yml`. Obtain the complete schema from the owner of the pinned app-create step. Confirm required metadata, platform/framework enums, device matrix representation, and version identity fields before creating the file.
 
-**Expected result —** the tool returns the intended app/build status under your authorized identity.
+Earlier supplied examples use `saucelabs.request.yml`, `request_file_path`, and other aliases. The latest integration contract shown below uses the path/input above. Confirm compatibility before changing a live consumer.
 
-**Attach screenshot — discovered tool and sanitized result with private values hidden.**
+## 5. Add the supplied Bitrise integration
 
-## 6. Understand the published capabilities
+This Android/React Native workflow is reproduced exactly. It installs npm dependencies, runs the configured unit test script, builds Android, optionally installs `saucectl`, then calls the two private steps.
 
-The source names these example tools. Actual names, inputs, outputs, and availability come from the deployed server's discovery/schema.
+```yaml
+workflows:
+  deploy:
+    steps:
+      # 1. Clone the repository
+      - git-clone@8: {}
 
-| Source example | Intended operation | What to confirm |
-|---|---|---|
-| `list_builds` | List builds. | App, filters, pagination, and returned identities. |
-| `get_build_status` | Read a build status. | Exact app/build identity. |
-| `get_build_log` | Retrieve logs. | Access scope and appropriate sanitization before sharing. |
-| `list_artifacts` | Inspect build artifact metadata. | Exact build and protection of private URLs. |
-| `trigger_build` | Start a build. | Authorized app, source, route, inputs, and execution identity. |
-| `abort_build` | Stop a build. | Exact run and effects already completed. |
+      # 2. Install dependencies
+      - npm@3:
+          title: npm install
+          inputs:
+            - workdir: "$WORKDIR"
+            - command: install
 
-A prompt requests an operation through the tool contract. Review the actual target and planned action before authorizing a write. Store its returned run/correlation identity so an ambiguous response can be reconciled before repeating the operation.
+      # 3. Run unit tests
+      - npm@3:
+          title: npm test
+          inputs:
+            - workdir: "$WORKDIR"
+            - command: test
 
-MCP operations follow the existing platform approvals, enrollment contract, and release process. Use [Troubleshooting & Recovery](../troubleshooting-and-recovery.mdx) for uncertain effects.
+      # 4. Set up Android build tools
+      - install-missing-android-tools@3: {}
 
-## 7. Confirm authentication changes with the owner
+      # 5. Build the Android app
+      - android-build@1:
+          inputs:
+            - project_location: "$PROJECT_LOCATION"
+            - module: "$MODULE"
+            - variant: "$VARIANT"
 
-The earlier source includes a future CIMD authentication statement. Confirm the deployed gateway/client support and actual token lifecycle with the owner before changing PAT setup or rotation.
+      # 6. [Optional] Install saucectl for running tests
+      - script@1:
+          inputs:
+            - content: |-
+                npm install -g saucectl
+                saucectl --version
 
-The exact term, metadata behavior, and sign-in contract should come from the deployed implementation. A roadmap statement alone leaves current authentication behavior unverified.
+      # 7. Register / provision the app in Sauce Labs
+      - git::https://git.enterprise.com/ACES-Mobile-Engineering/bitrise-step-saucelabs-app-create.git@1.0.0:
+          title: Create Sauce Labs App
+          inputs:
+            - saucelabs_request_yml: ".sauce/saucelabs_request.yml"
+            - sauce_username: "$SAUCE_USERNAME"
+            - sauce_access_key: "$SAUCE_ACCESS_KEY"
 
-## If setup fails
+      # 8. Upload the built APK and run tests
+      - git::https://git.enterprise.com/ACES-Mobile-Engineering/saucelabs-bitrise-step.git@1.0.0:
+          title: Upload App to Sauce Labs and Run Tests
+          inputs:
+            - sauce_username: "$SAUCE_USERNAME"
+            - sauce_access_key: "$SAUCE_ACCESS_KEY"
+```
 
-| Problem | Next action |
+### Explain the integration inputs
+
+| Input or step | Required setup |
 |---|---|
-| Server registration is unavailable | Confirm entitlement, environment, and gateway identity. |
-| Gateway login succeeds but Bitrise rejects a call | Inspect the downstream override and its actual Bitrise permissions. |
-| JSON configuration is rejected | Match the format, destination, transport, and authentication to the selected client/harness. |
-| ChatGPT cannot use the SSE endpoint | Confirm the approved MCP plugin or deployed OpenAPI adapter for that surface. |
-| Tools are missing | Inspect the published server version and workspace policy. |
-| Wrong app/build appears | Stop and reconcile the actual target before further operations. |
-| Write result is unknown | Preserve the request/run identity and have the owner inspect remote state before repeating it. |
+| `WORKDIR` | Actual application package root after checkout. |
+| `PROJECT_LOCATION` | Real Android Gradle project location. |
+| `MODULE`, `VARIANT` | Real module and build variant for the selected route. |
+| `saucelabs_request_yml` | Path accepted by the pinned app-create schema. |
+| `SAUCE_USERNAME`, `SAUCE_ACCESS_KEY` | Protected bindings for the authorized account. |
+| Native test package | Matching Android test APK or iOS runner from its approved producer. |
 
-**Return to [Operations Overview](./index.mdx)** to choose another platform task.
+The example's upload/test step shows only credentials. Its app/test artifact discovery, runner invocation, region, completion behavior, and report outputs require the pinned private `step.yml`/implementation contract. Obtain those definitions from the owner.
 
+The source installs `saucectl` without a version pin. Preserve this reference for comparison and obtain the approved CLI installation/version process before release execution.
 
+**Expected result —** the approved complete workflow selects the actual current application/test pair and waits for the required suites to finish.
 
+## 6. Understand the standalone upload and runner scripts
 
+The latest reference also supplies direct upload and execution scripts. Choose one approved upload path. If the private workflow uploads the packages, a separate upload command must be coordinated with that implementation.
 
+### Supplied application upload script
+
+The following script is unchanged. It uploads `$APP_PATH` to the US West Storage API and reads `.item.id` from its response.
+
+```bash
+RESPONSE=$(curl -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" \
+  --location \
+  --request POST 'https://api.us-west-1.saucelabs.com/v1/storage/upload' \
+  -F "payload=@$APP_PATH" \
+  -F "name=$(basename "$APP_PATH")")
+
+APP_ID=$(echo "$RESPONSE" | jq -r '.item.id')
+envman add --key SAUCE_APP_ID --value "$APP_ID"
+echo "Uploaded app to Sauce Labs. Storage ID: $APP_ID"
+```
+
+Before using this excerpt, confirm the input file, account region, response validation, and exact storage identity. The script omits complete HTTP/error handling. It also does not upload a matching test package or validate the result against the registered application identity.
+
+`envman add` exposes the ID through the running workflow environment. Separate workflow VMs need the approved output handoff. For an ambiguous upload result, inspect exact remote state before repeating the write.
+
+### Supplied `saucectl` script
+
+This script is reproduced exactly. The vendor installer downloads and executes code, so its version/provenance and approved installation method require owner confirmation before use.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Install saucectl
+curl -L https://saucelabs.github.io/saucectl/install | bash
+
+# Run tests using the configuration file in the repo
+saucectl run --config .sauce/config.yml
+```
+
+For the separately adapted iOS configuration, the command is:
+
+```bash
+saucectl run --config .sauce/xcuitest.yml
+```
+
+Run that command only in the approved job with its actual configured package references, credentials, and pinned CLI. The `.sauce/config.yml` reference selects the Android example unless its contents are changed through review.
+
+## 7. Inspect the completed device result
+
+The source registration description names `SAUCE_APP_ID`. Its upload/test description shows an `appium:app` storage capability example. A capability value belongs to its test-client configuration and needs an actual step output mapping before being treated as a shell variable.
+
+The latest excerpt does not define complete job-ID, pass/fail-count, result-URL, or exit-code output names. Confirm them from the pinned custom step rather than assuming the aliases from older examples.
+
+| Evidence | What to inspect |
+|---|---|
+| Build and source identity | The tests ran against the intended application commit/package. |
+| Application and test package | Correct platform pair and storage identities. |
+| Device matrix | Required suites ran on the approved devices/OS versions. |
+| Completed session result | Actual completion and result for each required suite. |
+| Execution evidence | Available video, timestamped screenshots, and device/browser logs. |
+| Network capture | HAR evidence where capture is enabled and supported. |
+| Bitrise result | The completed required test result affects progression through the approved workflow. |
+
+The source directs users to **Automated → Test Results** in Sauce Labs. Match each result to its actual build/session identity. Inspect missing, skipped, queued, timed-out, or inconclusive suites before reporting the required matrix as passed.
+
+**Attach screenshot — exact device session, app/build identity, and completed result with sensitive details hidden.**
+
+## 8. Use the chicken-order test consistently
+
+Follow [Writing Tests](./writing-tests.mdx) for the platform test implementation. For the demonstration, the test opens My Chicken App, places a synthetic chicken order, and asserts the expected confirmation using the app's actual selectors and demo response.
+
+Review the assertions and package pairing before committing. AI assistance remains in authoring with Copilot or ChatGPT. CI executes the committed test code.
+
+A device-test pass and JavaScript/native unit coverage are separate results. Use [Coverage & Quality Gates](./coverage-and-quality-gates.mdx) for coverage collection, thresholds, and the defined production-code scope.
+
+## If a step fails
+
+| Symptom | Next action |
+|---|---|
+| Credentials rejected | Ask the authorized owner to inspect account, region, binding, and permissions. |
+| Request YAML rejected | Validate against the pinned private app-create schema and exact input/path. |
+| Application cannot launch | Inspect package type, native identity, signing compatibility, and required runtime configuration. |
+| Runner/test package is missing | Inspect the actual producer and its output/storage mapping. |
+| Device remains queued | Inspect account concurrency, availability, and approved device criteria. |
+| No required tests execute | Confirm test target, instrumentation runner/scheme, class filters, and package pairing. |
+| Test result is pending or timed out | Inspect the exact session and completion behavior before another dispatch. |
+| Bitrise passes despite failed required tests | Inspect the private step's exit/result handling and pipeline failure configuration. |
+| Upload outcome is unknown | Preserve the request/package identity and reconcile remote state before another upload. |
+
+For partial or unknown operations, use [CI/CD Troubleshooting & Recovery](../cicd/troubleshooting-and-recovery.mdx). For the complete file map, use [CI/CD Project Preview](../cicd/integrated-project-preview.mdx).
