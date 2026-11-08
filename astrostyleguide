@@ -40,6 +40,14 @@ flowchart TD
 
 ## 2. Confirm access, region, and execution ownership
 
+| Owner | Responsibility |
+|---|---|
+| Developer | Commit reviewed tests, verify selectors, and identify native targets. |
+| Platform/integration owner | Bind credentials, pin tools/steps, and configure the package handoff and approved trigger. |
+| QA/test owner | Confirm devices, concurrency, isolated test data, and test-backend connectivity. |
+
+Cloud devices need the approved network path to the test backend. Confirm that path independently of the developer Mac’s VPN.
+
 Obtain the Sauce Labs access approved for your role. Have the authorized integration owner confirm the account, selected data center, devices, and protected credentials.
 
 | Input | What to confirm |
@@ -53,6 +61,21 @@ Obtain the Sauce Labs access approved for your role. Have the authorized integra
 The supplied native-runner example uses `us-west-1`. Current Espresso/XCUITest documentation lists `us-west-1` and `eu-central-1` for these runners. The source's separate US East REST listing must be confirmed for the actual product/API before use. [Espresso configuration](https://docs.saucelabs.com/mobile-apps/automated-testing/espresso-xcuitest/espresso/)
 
 Keep the credential values in the protected platform configuration. A device test needing runtime application configuration or test credentials requires the runner's approved injection mechanism.
+
+### Choose the device matrix and test data
+
+| Decision | What to record |
+|---|---|
+| Required coverage | Android device families, iPhone families, OS versions, and app capabilities actually required. |
+| Device selection | Approved criteria and the actual model/OS allocated to each run. |
+| Concurrency | Per-suite setting and shared account capacity across active builds. |
+| Test data | Synthetic orders, approved isolated accounts, and a known initial app/backend state. |
+| Connectivity | The approved path from cloud devices to the test backend. |
+| Completion | Every required suite/device combination that actually executed. |
+
+Parallel tests need independent state. Confirm cleanup and test-account allocation so one chicken-order test cannot alter another test’s result. Hardware-dependent features need their own supported device conditions. Inspect any re-signing or instrumentation effect on the application under test.
+
+**Attach screenshot — approved device criteria and actual allocated device/OS with private pool/account information hidden.**
 
 ## 3. Prepare the packages for your platform
 
@@ -68,7 +91,8 @@ application-root/
 │   └── <chicken-order device test>
 └── .sauce/
     ├── saucelabs_request.yml     # Schema supplied by the private step owner
-    └── config.yml               # Espresso runner configuration
+    ├── config.yml               # Supplied minimal runner configuration
+    └── espresso.yml             # Optional detailed runner adaptation
 ```
 
 For the team's Android device path, use JUnit/AndroidJUnitRunner and the approved UI-test framework. The Sauce configuration selects `kind: espresso`. That runner name and the JUnit XML report format serve different roles.
@@ -76,6 +100,16 @@ For the team's Android device path, use JUnit/AndroidJUnitRunner and the approve
 Build the application APK and matching instrumentation test APK using the module/variant supported by your project. Confirm the configured test class, application identity, runner, signing compatibility, and resulting output paths.
 
 The latest reference builds the app but omits a matching test-APK producer. Obtain the approved producer tasks and actual output contract before dispatching the device suite.
+
+### Build the application and test APKs
+
+This retained project-dependent example assumes module `app` and variant `debug`. Run it from the Gradle root only when the real tasks exist. For React Native, that root is normally `android/`.
+
+```bash
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
+```
+
+Inspect both outputs, AndroidJUnitRunner, test class, application ID, and signing compatibility. These tasks prepare packages for the cloud run.
 
 ### Supplied `.sauce/config.yml`
 
@@ -104,7 +138,53 @@ suites:
 
 `SAUCE_APP_ID` must resolve to the uploaded application bytes for this run when used in `storage:$SAUCE_APP_ID`. The private registration step also uses the name `SAUCE_APP_ID`. Confirm whether its returned identity is the same storage identity required by the runner before connecting the two.
 
+The inline comment `# or xcuitest for iOS` is retained from the supplied example. An iOS configuration also needs the `xcuitest` settings and compatible app/runner packages shown in the iOS tab. Changing only `kind` leaves the rest of this Android configuration incompatible.
+
 The separate `testApp` reference must identify the matching instrumentation package. Current vendor documentation defines the distinct application/test inputs and supports `v1alpha`. [Native Android runner fields](https://docs.saucelabs.com/mobile-apps/automated-testing/espresso-xcuitest/espresso/)
+
+### Optional `.sauce/espresso.yml` teaching adaptation
+
+This detailed example is retained from the earlier page. It selects two suites and requests artifact downloads. Its `MOBILE_*` variables are documentation-owned bindings supplied by the approved adapter. Use this configuration instead of the minimal config only when the actual runner hook supports the chosen path.
+
+```yaml
+apiVersion: v1alpha
+kind: espresso
+defaults:
+  timeout: 10m
+sauce:
+  region: $MOBILE_SAUCE_REGION
+  concurrency: 2
+  metadata:
+    build: $MOBILE_TEST_BUILD_LABEL
+    tags: [enterprise, android, regression]
+espresso:
+  app: $MOBILE_NATIVE_APP_REF
+  testApp: $MOBILE_NATIVE_TEST_REF
+suites:
+  - name: android-pixel-chicken-order
+    devices:
+      - name: "Google Pixel.*"
+        platformVersion: $MOBILE_ANDROID_OS
+    testOptions:
+      class:
+        - com.example.mychicken.order.PlaceChickenOrderUiTest
+  - name: android-galaxy-chicken-order
+    devices:
+      - name: "Samsung Galaxy.*"
+        platformVersion: $MOBILE_ANDROID_OS
+    testOptions:
+      class:
+        - com.example.mychicken.order.PlaceChickenOrderUiTest
+artifacts:
+  download:
+    when: always
+    match: ["*.xml", "*.log", "*.mp4", "*.png"]
+    directory: ./test-results/native-android
+```
+
+The 10-minute suite timeout and concurrency of two are teaching values. Confirm the approved budget and account capacity before adopting them.
+
+Bind the app and test references to separate verified `storage:<ID>` values from the same candidate/region. Device names, OS, concurrency, test class, and result-directory handling must match the approved matrix and actual project.
 
 </TabItem>
 <TabItem label="iOS">
@@ -124,6 +204,26 @@ Prepare an actual test-enabled shared scheme and the matching device application
 
 The latest reference supplies no complete iOS build/upload workflow. Obtain the approved native producers and pinned custom-step contract before execution.
 
+### Build the device test products
+
+Run this retained teaching example as Bash on the approved Mac after replacing the workspace and shared test-enabled scheme. It requires the owner-approved device-signing setup.
+
+```bash
+set -euo pipefail
+
+MOBILE_IOS_WORKSPACE='REPLACE_WITH_ACTUAL_WORKSPACE.xcworkspace'
+MOBILE_IOS_SCHEME='REPLACE_WITH_SHARED_TEST_SCHEME'
+mkdir -p .tmp
+MOBILE_DERIVED_DATA="$(mktemp -d .tmp/device-tests.XXXXXX)"
+xcodebuild build-for-testing \
+  -workspace "$MOBILE_IOS_WORKSPACE" \
+  -scheme "$MOBILE_IOS_SCHEME" \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath "$MOBILE_DERIVED_DATA"
+```
+
+The command produces device test products. Obtain the approved packaging/re-signing procedure for the application and runner. A ready-to-upload pair still needs that packaging verification.
+
 ### `.sauce/xcuitest.yml` adaptation
 
 This is a separately labeled vendor-based teaching example. Its input names are local example bindings, not confirmed outputs from the private steps. The approved integration must provide the actual matching storage references and device selection.
@@ -131,19 +231,32 @@ This is a separately labeled vendor-based teaching example. Its input names are 
 ```yaml
 apiVersion: v1alpha
 kind: xcuitest
+defaults:
+  timeout: 10m
 sauce:
-  region: us-west-1
+  region: $MOBILE_SAUCE_REGION
   concurrency: 1
+  metadata:
+    build: $MOBILE_TEST_BUILD_LABEL
+    tags: [enterprise, ios, regression]
 xcuitest:
   app: $MOBILE_NATIVE_APP_REF
   testApp: $MOBILE_NATIVE_TEST_REF
 suites:
-  - name: chicken-order-ios
+  - name: ios-iphone-chicken-order
     devices:
-      - name: REPLACE_WITH_APPROVED_IPHONE_NAME
+      - name: "iPhone.*"
+        platformVersion: $MOBILE_IOS_OS
+artifacts:
+  download:
+    when: always
+    match: ["*.xml", "*.log", "*.mp4", "*.png"]
+    directory: ./test-results/native-ios
 ```
 
-Configure the real device and compatible OS criteria for the chosen account. Confirm environment-variable interpolation with the pinned CLI. [XCUITest runner fields](https://docs.saucelabs.com/mobile-apps/automated-testing/espresso-xcuitest/xcuitest/)
+The 10-minute timeout and concurrency of one are teaching values requiring the approved budget and account capacity.
+
+Configure `MOBILE_SAUCE_REGION`, `MOBILE_IOS_OS`, and `MOBILE_TEST_BUILD_LABEL` through the approved runner. Set `MOBILE_NATIVE_APP_REF` and `MOBILE_NATIVE_TEST_REF` to the matching application/runner storage references. Confirm the real device criteria, artifact download behavior, and environment interpolation with the pinned CLI. [XCUITest runner fields](https://docs.saucelabs.com/mobile-apps/automated-testing/espresso-xcuitest/xcuitest/)
 
 </TabItem>
 <TabItem label="React Native">
@@ -158,6 +271,7 @@ react-native-application/
 └── .sauce/
     ├── saucelabs_request.yml      # Path in the supplied Android example
     ├── config.yml                # Supplied Espresso example
+    ├── espresso.yml              # Optional detailed Android configuration
     └── xcuitest.yml              # Optional approved iOS runner config
 ```
 
@@ -179,6 +293,26 @@ The latest app-create step reads:
 Its input name is exactly `saucelabs_request_yml`. Obtain the complete schema from the owner of the pinned app-create step. Confirm required metadata, platform/framework enums, device matrix representation, and version identity fields before creating the file.
 
 Earlier supplied examples use `saucelabs.request.yml`, `request_file_path`, and other aliases. The latest integration contract shown below uses the path/input above. Confirm compatibility before changing a live consumer.
+
+<details>
+<summary>Earlier request metadata example — confirm the consumer before using</summary>
+
+The recovered older page contains this earlier metadata example. It is retained for applications whose pinned integration accepts that contract. The latest step excerpt omits the schema, so the owner must establish compatibility before using these fields at the new request path.
+
+```yaml
+app_name: sample-mobile-app
+platform: android
+owner_email: mobile-test-owner@example.invalid
+team: sample-mobile-team
+description: Synthetic Enterprise workshop application for device testing
+business_unit: sample-business-unit
+environment: qa
+repository: https://git.example.invalid/mobile/sample-mobile-app.git
+```
+
+Confirm the accepted required/optional fields and platform values from the actual validator. This example’s synthetic ownership and URL values require replacement.
+
+</details>
 
 ## 5. Add the supplied Bitrise integration
 
@@ -253,9 +387,96 @@ The example's upload/test step shows only credentials. Its app/test artifact dis
 
 The source installs `saucectl` without a version pin. Preserve this reference for comparison and obtain the approved CLI installation/version process before release execution.
 
-**Expected result —** the approved complete workflow selects the actual current application/test pair and waits for the required suites to finish.
+**Expected result —** after the missing producer and private-step contracts are configured, the approved complete workflow selects the current application/test pair and waits for the required suites to finish.
 
-## 6. Understand the standalone upload and runner scripts
+### Keep the three identities separate
+
+| Identity | What it identifies | Evidence needed |
+|---|---|---|
+| Registration identity | The application metadata managed by the private integration. | Actual app-create result and its documented meaning. |
+| Storage identity | Uploaded application or test-package bytes. | Exact upload receipt, region, package association, and approved readback. |
+| Test-job/session identity | An execution of the selected test suite/device configuration. | Completed job result tied to the intended app/test references. |
+
+The source uses `SAUCE_APP_ID` in more than one description. Confirm its actual producer and meaning before assigning it to a runner’s storage reference. The latest excerpts leave the test-package upload and storage-ID producer unspecified.
+
+Earlier references name outputs such as `CREATION_STATUS`, `SAUCE_APP_FILE_NAME`, and `SAUCE_TEST_EXIT_CODE`. Other versions name status/job/count outputs differently. Retain the aliases required by the selected pinned implementation and verify the exact candidate handoff.
+
+## 6. Verify package identity and run the native suite
+
+### Inspect each local package
+
+Run this retained diagnostic block in the approved preparation job for each actual app/test package. Replace the path before running it.
+
+```bash
+set -euo pipefail
+
+MOBILE_DEVICE_PACKAGE='/REPLACE/path/to/the-actual-package'
+test -s "$MOBILE_DEVICE_PACKAGE"
+shasum -a 256 "$MOBILE_DEVICE_PACKAGE"
+```
+
+Record the source commit, target, package/version, signing evidence, and hash. Cross-workflow execution needs the actual artifact transfer.
+
+### `scripts/testing/run-native-sauce.sh`
+
+Save the file at the path shown below and run it from the application repository root, where `.sauce/` is located. This retained teaching wrapper runs after the approved integration establishes separate app/test storage references. It preserves the runner exit result and requires an installed CLI. Confirm its invocation through the private step’s real supported hook before configuring it.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+set +x
+: "${SAUCE_USERNAME:?Protected Sauce identity required}"
+: "${SAUCE_ACCESS_KEY:?Protected Sauce access key required}"
+: "${MOBILE_NATIVE_FRAMEWORK:?espresso or xcuitest required}"
+: "${MOBILE_NATIVE_APP_REF:?Verified current app storage reference required}"
+: "${MOBILE_NATIVE_TEST_REF:?Verified matching test runner storage reference required}"
+: "${MOBILE_SAUCE_REGION:?Approved Sauce region required}"
+: "${MOBILE_TEST_BUILD_LABEL:?Sanitized build correlation label required}"
+case "$MOBILE_SAUCE_REGION" in
+  us-west-1|eu-central-1) ;;
+  *) printf "%s\n" "Use a supported approved native-runner region." >&2; exit 1 ;;
+esac
+for reference in "$MOBILE_NATIVE_APP_REF" "$MOBILE_NATIVE_TEST_REF"; do
+  case "$reference" in
+    storage:*) [[ -n "${reference#storage:}" ]] || exit 1 ;;
+    *) exit 1 ;;
+  esac
+  case "$reference" in
+    *[[:space:]]*|*'<'*|*'>'*|*REPLACE_WITH_*)
+      printf "%s\n" "Set verified app/test storage references before dispatch." >&2
+      exit 1
+      ;;
+  esac
+done
+[[ "$MOBILE_NATIVE_APP_REF" != "$MOBILE_NATIVE_TEST_REF" ]] || exit 1
+case "$MOBILE_NATIVE_FRAMEWORK" in
+  espresso)
+    : "${MOBILE_ANDROID_OS:?Approved Android OS target required}"
+    config='.sauce/espresso.yml'
+    ;;
+  xcuitest)
+    : "${MOBILE_IOS_OS:?Approved iOS OS target required}"
+    config='.sauce/xcuitest.yml'
+    ;;
+  *) exit 1 ;;
+esac
+test -s "$config"
+command -v saucectl >/dev/null
+exec saucectl run --config "$config"
+```
+
+| Example input | Value to supply |
+|---|---|
+| `MOBILE_NATIVE_FRAMEWORK` | `espresso` or `xcuitest`. |
+| `MOBILE_NATIVE_APP_REF` | Verified current `storage:<app ID>`. |
+| `MOBILE_NATIVE_TEST_REF` | Verified matching `storage:<test package ID>`. |
+| `MOBILE_SAUCE_REGION` | Approved compatible region. |
+| `MOBILE_ANDROID_OS` / `MOBILE_IOS_OS` | Approved OS version for the selected suite. |
+| `MOBILE_TEST_BUILD_LABEL` | Sanitized source/build correlation label. |
+
+This wrapper is a teaching adaptation, with added checks for the documented native regions and unresolved/whitespace-containing storage references. It checks input shape and file availability. The approved adapter must also verify the actual remote package identity and bytes. Use the detailed `.sauce/espresso.yml` or `.sauce/xcuitest.yml` above when this wrapper is selected.
+
+## 7. Understand the standalone upload and runner scripts
 
 The latest reference also supplies direct upload and execution scripts. Choose one approved upload path. If the private workflow uploads the packages, a separate upload command must be coordinated with that implementation.
 
@@ -302,7 +523,7 @@ saucectl run --config .sauce/xcuitest.yml
 
 Run that command only in the approved job with its actual configured package references, credentials, and pinned CLI. The `.sauce/config.yml` reference selects the Android example unless its contents are changed through review.
 
-## 7. Inspect the completed device result
+## 8. Inspect the completed device result
 
 The source registration description names `SAUCE_APP_ID`. Its upload/test description shows an `appium:app` storage capability example. A capability value belongs to its test-client configuration and needs an actual step output mapping before being treated as a shell variable.
 
@@ -318,17 +539,39 @@ The latest excerpt does not define complete job-ID, pass/fail-count, result-URL,
 | Network capture | HAR evidence where capture is enabled and supported. |
 | Bitrise result | The completed required test result affects progression through the approved workflow. |
 
+Set failure-path evidence retention through the approved workflow while preserving the original test result. Artifact download patterns request matching files; enabled capture and supported collection determine which videos, screenshots, and network records actually exist.
+
+Confirm the configured report producer and collector if Bitrise requires a JUnit XML report. A `*.xml` download pattern selects available files; the test runner/reporting setup must produce them. The private step must expose the actual completed run identity and propagate its required result.
+
 The source directs users to **Automated → Test Results** in Sauce Labs. Match each result to its actual build/session identity. Inspect missing, skipped, queued, timed-out, or inconclusive suites before reporting the required matrix as passed.
 
 **Attach screenshot — exact device session, app/build identity, and completed result with sensitive details hidden.**
 
-## 8. Use the chicken-order test consistently
+## 9. Use the chicken-order test consistently
 
 Follow [Writing Tests](./writing-tests.mdx) for the platform test implementation. For the demonstration, the test opens My Chicken App, places a synthetic chicken order, and asserts the expected confirmation using the app's actual selectors and demo response.
 
 Review the assertions and package pairing before committing. AI assistance remains in authoring with Copilot or ChatGPT. CI executes the committed test code.
 
 A device-test pass and JavaScript/native unit coverage are separate results. Use [Coverage & Quality Gates](./coverage-and-quality-gates.mdx) for coverage collection, thresholds, and the defined production-code scope.
+
+## 10. Verify the integration before using it as a release gate
+
+Use owner-approved controlled cases or existing execution evidence. The private integration must have an inspectable result for each case.
+
+| Case | Expected behavior |
+|---|---|
+| Request lacks a required field | Validation reports the error before the configured cloud operation. |
+| App/test package pair is wrong | The preparation or execution result fails explicitly. |
+| Native test-package reference is missing | The required native suite remains incomplete. |
+| A required chicken-order assertion fails | Test failure is visible in Sauce Labs and the required Bitrise result. |
+| No tests are discovered or a required suite is skipped | The required device gate remains incomplete. |
+| Device allocation or backend access fails | Infrastructure failure is reported with the actual session evidence. |
+| Notification/upload response becomes unknown | Existing identities are preserved and remote state is reconciled before another write. |
+| Test failure occurs before evidence collection | The original failure remains visible while the approved collector handles available diagnostics. |
+| Android passes and iOS fails | Both platform outcomes remain visible independently. |
+
+Only mark the device gate passed after the required suites complete for the intended packages and matrix. Coverage, security assessment, release signing, and destination availability have their own required results.
 
 ## If a step fails
 
@@ -345,3 +588,5 @@ A device-test pass and JavaScript/native unit coverage are separate results. Use
 | Upload outcome is unknown | Preserve the request/package identity and reconcile remote state before another upload. |
 
 For partial or unknown operations, use [CI/CD Troubleshooting & Recovery](../cicd/troubleshooting-and-recovery.mdx). For the complete file map, use [CI/CD Project Preview](../cicd/integrated-project-preview.mdx).
+
+Continue with [IDE-Assisted Test Generation](./ide-assisted-test-generation.mdx) for authoring and reviewing tests with the approved AI tools.
