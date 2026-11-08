@@ -1,348 +1,247 @@
 ---
-title: "Shared Engineering Rules"
-description: "Copyable mobile engineering instructions for GitHub Copilot and ChatGPT, with Android, iOS, and React Native additions."
+title: Start Here — Mobile Engineering
+description: Understand the mobile platform, choose your learning path, set up your Mac, and run your first application.
 sidebar:
-  label: Engineering Rules
-  order: 2
+  label: Start Here
+  order: 1
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
 import MermaidViewer from "@components/MermaidViewer.astro";
 
-Use these rules with **GitHub Copilot or ChatGPT**. Copy the shared block, add the applicable platform block, then complete the project facts. The tool-specific setup pages explain how to supply this content to each tool.
+# Start Here — Mobile Engineering
 
-**Destination:** `docs/engineering-rules.md` in the application repository, unless your team already maintains an equivalent reviewed document. This is a suggested repository convention, not an automatically discovered instruction file.
+Start here to **set up your Mac, run the app, and make your first code change**. Later sections explain how to test the app and release it to users.
 
-Use approved accounts and permitted context. These instructions do not configure account privacy, grant access, or replace enforced CI controls.
+We support React Native, Android, and iOS. **Use React Native for new apps unless your team chooses another platform.** For an existing app, use the platform and tools it already uses.
 
-## 1. Assemble the rules for your repository
+> **Confidential — internal use only.** Keep enterprise source, internal links, and operational evidence in approved systems. Never include credentials, signing material, personal data, or sensitive logs in documentation, screenshots, support messages, or AI prompts.
 
-1. Open the existing repository instructions and conventions. Preserve them; resolve conflicting requirements with the responsible owner before changing them.
-2. Copy the **shared rules** below into the reviewed engineering document.
-3. Append the relevant **platform additions**. For React Native, include native Android/iOS requirements where the task touches those integrations.
-4. Complete the **project facts** from actual files and commands. Keep unavailable values explicitly unknown.
-5. Review the assembled document through the normal PR process. Configure Copilot or ChatGPT using its separate setup page.
+## Choose your starting point
 
-Do not paste every platform standard into always-on instructions. Keep durable requirements concise and supply detailed permitted references for the task. A file path or private link alone does not make its contents available to an assistant.
+| Your background | Start here | Continue with |
+|---|---|---|
+| **Web, backend, or another discipline — new to mobile** | [Mobile Foundations](./non-mobile-engineer-guide.mdx): learn how mobile differs from web, including lifecycle, permissions, connectivity, local state, and installed versions. | [Platform Overview](./platform-overview.mdx) → [Machine Setup](./machine-setup-guide/index.mdx) → [First Local Run](./first-local-run.mdx). |
+| **Already an Android, iOS, or React Native engineer** | [Platform Overview](./platform-overview.mdx): learn which tools we use and who manages them. | [Machine Setup](./machine-setup-guide/index.mdx) → [First Local Run](./first-local-run.mdx). |
 
-<MermaidViewer title="Assemble reviewed rules without inventing project facts">
+**New to mobile? Start with Mobile Foundations.** You do not need to understand Bitrise, signing, or store delivery before learning the basics and running your assigned application locally.
+
+## Your developer journey
+
+Complete your onboarding path first. Then follow **Build → Test → Automate → Distribute → Monitor**.
+
+<MermaidViewer title="Your developer journey — find the section for each step">
 
 ```mermaid
 flowchart LR
-    A["Shared engineering rules"] --> D["Review against existing repository conventions"]
-    B["Relevant platform additions"] --> D
-    C["Verified project facts and reference revisions"] --> D
-    D --> E["Reviewed engineering document"]
-    E --> F["GitHub Copilot instructions"]
-    E --> G["ChatGPT project instructions and references"]
-    classDef input fill:#172554,stroke:#93c5fd,color:#fff;
-    classDef review fill:#713f12,stroke:#fde047,color:#fff;
-    classDef rules fill:#4c1d95,stroke:#d8b4fe,color:#fff;
-    classDef tool fill:#064e3b,stroke:#6ee7b7,color:#fff;
-    class A,B,C input;
-    class D review;
-    class E rules;
-    class F,G tool;
+    subgraph BUILD["BUILD"]
+        A["Architecture"]
+        B["Platform & SDKs"]
+    end
+
+    subgraph TEST["TEST"]
+        C["Testing & Quality"]
+    end
+
+    subgraph AUTOMATE["AUTOMATE"]
+        D["CI/CD"]
+    end
+
+    subgraph STORE["DISTRIBUTE"]
+        E["App Store & Distribution"]
+    end
+
+    subgraph MONITOR["MONITOR"]
+        F["Observability"]
+    end
+
+    BUILD --> TEST --> AUTOMATE --> STORE --> MONITOR
+
+    classDef heading fill:#1c2722,stroke:#93c5fd,color:#ffffff,stroke-width:3px,font-weight:bold;
+    class A,B,C,D,E,F heading;
+
+    style BUILD fill:transparent,stroke:#64748b,stroke-width:1px
+    style TEST fill:transparent,stroke:#a78bfa,stroke-width:1px
+    style AUTOMATE fill:transparent,stroke:#fbbf24,stroke-width:1px
+    style STORE fill:transparent,stroke:#6ee7b7,stroke-width:1px
+    style MONITOR fill:transparent,stroke:#67e8f9,stroke-width:1px
 ```
 
 </MermaidViewer>
 
-## 2. Copy the shared rules
+**Blue-bordered boxes are documentation section names.** The surrounding groups show the main task at each stage.
 
-The following block is instruction content for `docs/engineering-rules.md`, not a script:
+Use **Push Notifications & Deep Linking** when building those capabilities, **GenAI & Tools** when using Copilot or ChatGPT, and **Support & FAQ** whenever you need help. Plan tests and monitoring while building; this reading order does not require postponing them until later.
 
-```markdown
-# Mobile engineering rules
+## Understand this map before you continue
 
-## Evidence and scope
-- Follow the approved project documentation and existing repository conventions.
-- Inspect the relevant implementation, interfaces, dependency locks, tests, and
-  configuration before proposing a change. State which references are available.
-- Never invent internal SDK methods, endpoints, YAML fields, selectors, credentials,
-  test commands, or business rules. Identify missing contracts explicitly.
-- When references or repository settings disagree, explain the discrepancy and
-  obtain the owning team's decision. Do not silently weaken a requirement.
-- Implement the requested outcome with a focused diff. Preserve unrelated work.
-  Do not add dependencies, migrate frameworks, or reformat the repository unless
-  required by the agreed task.
-- Distinguish illustrative samples from production contracts. Do not turn a sample
-  price, receipt, hostname, or identifier into a product requirement.
+**Read this diagram first.** It shows the tools we use and which section explains each one. You do not need to set up every tool now.
 
-## Data protection and security
-- Use only Enterprise-approved GitHub Copilot or ChatGPT environments and permitted
-  project context. Do not transmit secrets, signing material, customer/production
-  data, private logs, or unapproved source code to AI services.
-- Never put passwords, access tokens, certificates, or private keys in source,
-  prompts, fixtures, logs, screenshots, PR text, or committed configuration.
-- Use the approved authentication and secure-storage contracts. Do not invent a
-  token lifecycle, credential store, or cryptographic scheme.
-- Validate external inputs at API, storage, notification, and navigation boundaries.
-  Enforce authorization before accessing protected data or destinations.
+Follow **Onboarding → Development → Build and Validation → Delivery → Monitoring**. Each group is named after a documentation section. Dotted arrows show extra connections, such as support or setup for a new app. The diagram helps you find instructions; it does not define the exact order of build steps.
 
-## Architecture and application foundations
-- Preserve feature-oriented Clean Architecture and unidirectional data flow.
-  Presentation coordinates through domain/application contracts; domain code does
-  not depend on concrete UI, networking, or persistence implementations.
-- Construct concrete dependencies at the composition boundary. Keep business rules
-  testable through injected contracts and deterministic fixtures.
-- Define state ownership, task lifetime, cancellation, account scope, and stale-result
-  handling. Do not publish results for an obsolete request or account session.
-- Keep DTOs and persistence models inside their owning boundaries; validate and map
-  them to domain values before exposing them to presentation.
-- Reuse approved design tokens, localization, branding, authentication, notification
-  routing, and cleanup contracts. Do not create competing feature-local systems.
-- Keep account cleanup coordinated: gate access, stop writers, perform scoped
-  deletion, verify the outcome, and preserve a recoverable state on failure.
-- Use documented timeout, retry, circuit-breaker, and feature-flag behavior. A retry
-  must be safe for the operation; do not blindly repeat a purchase or external write.
-- Treat flags as runtime configuration, not authorization. Define safe defaults,
-  refresh/failure behavior, and tests without assuming immediate remote delivery.
+**Section headings are the bold, dark boxes with a gold border.** Each documentation section has its own background and outline color. Open that documentation section for the tools and steps shown beneath it.
 
-## Implementation
-- Use the project's approved toolchain, dependency versions, and lockfiles.
-  Verify API compatibility against the installed version before writing a snippet.
-- Prefer explicit types, immutable values, narrow responsibilities, and readable
-  error categories. Do not silence type or concurrency checks to make code compile.
-- Preserve cancellation and distinguish validation failure, known failure, and an
-  unknown external outcome. Do not report success before confirming the result.
-- Keep UI rendering free of uncontrolled side effects. Use the appropriate lifecycle
-  and synchronization instead of fixed sleeps or repeated render-triggered calls.
-- Follow the repository's accessibility, localization, and theme conventions.
+<MermaidViewer title="Understand the platform first — find the detailed instructions by section name">
 
-## Testing and quality
-- Add meaningful tests for changed behavior at the appropriate unit, integration,
-  and UI boundaries. Include relevant failure, cancellation, and duplicate-submit cases.
-- Use the approved fake services and synthetic fixtures. Never submit real orders
-  or payments while validating documentation examples or generated tests.
-- Account for every production file under the defined 100% coverage policy. Enforce
-  supported coverage metrics using the documented reports and gate configuration.
-  Never exclude executable production logic simply to reach the target.
-- Coverage does not prove correctness. Assert the required result and side effects;
-  where practical, demonstrate that the test detects the intended regression.
-- Preserve the existing test runner and synchronization. JUnit execution, JavaScript
-  tests, and JUnit XML reporting are distinct; do not substitute one for another.
-- AI generation happens at authoring time. CI executes committed, reviewed code;
-  do not add LLM test generation or automatic AI test repair to Bitrise.
-- React Native JavaScript/TypeScript tests use the existing Jest setup. Android
-  device tests use the team's JUnit instrumentation path. iOS device tests use
-  the separately approved XCUITest setup.
-- JUnit XML is a report format, not proof that native device tests executed.
-- Collect fresh coverage for every required production file and supported metric.
-  Keep JavaScript and native coverage separate; do not reuse stale reports.
-- Generated tests must use actual fixtures, selectors, imports, and commands.
-  Review them before committing. A generated test must assert meaningful behavior.
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontSize": "24px", "background": "#1c2722", "lineColor": "#cbd5d0", "textColor": "#f3f6f4", "edgeLabelBackground": "#1c2722"}, "flowchart": {"padding": 24, "nodeSpacing": 35, "rankSpacing": 50}}}%%
+flowchart TB
+    START(["START HERE<br/>Understand the platform, then follow your learning path"])
 
-## CI/CD and external state
-- Keep enrollment requests secret-free and use the documented governed provisioning
-  process. Do not manually create duplicate Bitrise apps or upload credentials as a
-  developer workaround.
-- Preserve the exact enrollment path casing:
-  Config/Teams/<team>/Bitrise/Apps/<app>.yaml
-  The team directory must match team; the filename must match app_name.
-- Select an approved compatible workflow template and its exact version.
-  Do not invent CAMP fields, request fields, or template inputs.
-- Enrollment creates the application once. Later builds use the existing
-  enrollment; do not create another Bitrise app for a source change.
-- Preserve approved workflow templates and the separate qa_android, qa_ios,
-  uat_android, and uat_ios routes. Verify each route independently.
-- Distinguish local validation, PR validation, protected promotion, live apply,
-  compilation, testing, signing, uploading, and verified distribution.
-- Keep protected signing and service credentials in their approved bindings.
-  Do not expose them in YAML or diagnostic output.
-- Platform Engineering owns protected signing stores and credential bindings.
-  Do not create replacement signing identities to work around failed builds.
-- Run configured tests and coverage verification. Missing reports, skipped
-  required suites, and unknown results must not be reported as passing.
-- For parallel tests, verify module selection, cross-workflow flag transfer,
-  and completed results. Shell variables do not automatically cross runner boundaries.
-- Sauce Labs requires matching application and native test packages.
-  Keep registration, storage, and execution identities distinct.
-- The supplied Sauce integration uses .sauce/saucelabs_request.yml through
-  saucelabs_request_yml. Obtain the pinned private step's complete schema.
-- Confirm the completed NowSecure assessment and approved severity decision.
-  Successful submission alone is not a security pass. Surface conflicting severity
-  policies for an owner decision rather than selecting one silently.
-- For an uncertain external write or partial_failure, stop further mutation, preserve
-  existing resources, and use the documented read-only reconciliation/escalation.
-  Do not blindly rerun enrollment, upload, signing, or protected promotion.
-- Treat store/internal distribution as complete only with destination-specific
-  evidence. A successful build or upload does not prove user visibility or release.
-- Match the exact destination version and intended audience. Tester availability
-  and public production release are separate states.
-- Do not create cloud resources, run live deployments, publish artifacts, alter access,
-  or send messages merely because a task requests code or documentation examples.
+    subgraph ONBOARD[" "]
+        direction LR
+        HEADING_ONBOARD["Onboarding"]
+        HEADING_ONBOARD ~~~ PATH
+        PATH{"New to mobile?"}
+        BASICS["Mobile Foundations<br/>Mobile vs Web · Lifecycle · Permissions"]
+        SETUP["Platform Overview → Mac Setup<br/>Apple Silicon → First Local Run"]
+        PATH -->|Yes| BASICS --> SETUP
+        PATH -->|Experienced| SETUP
+    end
 
-## Observability
-- Use the approved Datadog application, site, client token, environment, service,
-  release identity, consent, and sampling configuration.
-- Keep Datadog API keys in protected CI/tooling bindings, never in the app.
-- Send only permitted diagnostic attributes. Never dump request/response payloads,
-  authentication headers, arbitrary application state, or customer/order data.
-- Sampling is not redaction. Configure collection filters and replay privacy
-  separately; use only approved pseudonymous identity handling.
-- Emit confirmed outcomes only after validation. Match symbols/source maps to the
-  exact release and verify readable stacks and eligible trace correlation.
+    subgraph ARCH[" "]
+        HEADING_ARCH["Architecture"]
+        HEADING_ARCH ~~~ DESIGN
+        DESIGN["Design the feature<br/>Layer Boundaries · Network Resilience<br/>Feature Flags · Branching & PRs"]
+    end
 
-## Contribution and reporting
-- Follow the documented application branch conventions, Conventional Commits,
-  two peer approvals, and required passing Danger and Bitrise checks.
-- Keep application branching separate from configuration-repository promotion.
-  Inspect the active approved branch rules before proposing commands. If documented
-  branch names conflict, obtain the owner's decision. Never guess the promotion
-  route or bypass branch protection.
-- Run the applicable documented checks. Report exactly what ran, its result, and
-  what remains unverified. Never claim a native build, device test, coverage target,
-  cloud execution, or deployment succeeded without evidence.
-- Write concise developer documentation with file locations, replacement values,
-  commands, expected results, and failure actions. Do not add checklists or filler.
-- For documentation diagrams, use the existing MermaidViewer component:
-  import MermaidViewer from "@components/MermaidViewer.astro";
-  Use clear flow/sequence diagrams, readable colors, and the existing expansion control.
-  Verify rendering and light/dark behavior before claiming those checks passed.
-- Use published documentation routes, such as /mobile/platforms/native-android-standards/,
-  rather than relative .mdx page links.
+    subgraph PLATFORM[" "]
+        HEADING_PLATFORM["Platform & SDKs"]
+        HEADING_PLATFORM ~~~ IMPLEMENT
+        IMPLEMENT["Implement with platform standards<br/>React Native preferred · Android · iOS<br/>App Foundations · Authentication SDK"]
+    end
+
+    subgraph PUSH[" "]
+        HEADING_PUSH["Push Notifications & Deep Linking"]
+        HEADING_PUSH ~~~ ENGAGE
+        ENGAGE["Integrate the required capabilities<br/>FCM · Direct APNs · Backend Services<br/>Validated Links · Cold / Warm Opens"]
+    end
+
+    subgraph AI[" "]
+        HEADING_AI["GenAI & Tools"]
+        HEADING_AI ~~~ ASSIST
+        ASSIST["GitHub Copilot · ChatGPT<br/>Copyable Engineering Rules<br/>Author and Review Code & Test Drafts"]
+    end
+
+    subgraph TESTING[" "]
+        HEADING_TESTING["Testing & Quality"]
+        HEADING_TESTING ~~~ TEST
+        TEST["Write and verify meaningful tests<br/>Android · iOS · React Native<br/>Coverage · Sauce Labs Real Devices"]
+    end
+
+    subgraph CICD[" "]
+        direction TB
+        HEADING_CICD["CI/CD"]
+        HEADING_CICD ~~~ ENROLL
+        ENROLL["New application only: enroll once<br/>Secret-Free YAML → Vela Validation<br/>Reviewed Promotion → Platform Provisioning"]
+        REVIEW["Review application changes<br/>Private Repository · Pull Request<br/>Peer Review · Danger Checks"]
+        BUILD["Run governed Bitrise workflows<br/>Parallel Tests · Caching · Protected Signing<br/>Sauce Labs Integration · NowSecure Gates"]
+        ROUTES["Track each build route separately<br/>qa_android · qa_ios<br/>uat_android · uat_ios"]
+        EVIDENCE["Inspect artifacts and release evidence<br/>Unknown / Partial Failure → Safe Reconciliation"]
+        ENROLL -. "Enables build setup" .-> BUILD
+        REVIEW --> BUILD --> ROUTES --> EVIDENCE
+    end
+
+    subgraph STORE[" "]
+        direction LR
+        HEADING_STORE["App Stores & Distribution"]
+        HEADING_STORE ~~~ DEST
+        DEST{"Approved delivery destination"}
+        PRIVATE["Enterprise App Management<br/>Sign · Enable · Assign"]
+        PUBLIC["Google Play / App Store Connect<br/>Destination-Specific Approval & Processing"]
+        VISIBLE["Verify the exact version<br/>Available to its intended audience"]
+        DEST --> PRIVATE --> VISIBLE
+        DEST --> PUBLIC --> VISIBLE
+    end
+
+    subgraph OBS[" "]
+        HEADING_OBS["Observability"]
+        HEADING_OBS ~~~ MONITOR
+        MONITOR["Datadog<br/>Instrument the App · Inspect Errors & Performance<br/>Investigate the Correct Environment & Version"]
+    end
+
+    subgraph SUPPORT[" "]
+        HEADING_SUPPORT["Support & FAQ"]
+        HEADING_SUPPORT ~~~ HELP
+        HELP["Available throughout your journey<br/>Teams Support Channel · Expandable FAQ"]
+    end
+
+    %% Invisible layout links keep START HERE above every section.
+    START ~~~ HEADING_ONBOARD
+    START ~~~ HEADING_ARCH
+    START ~~~ HEADING_PLATFORM
+    START ~~~ HEADING_PUSH
+    START ~~~ HEADING_AI
+    START ~~~ HEADING_TESTING
+    START ~~~ HEADING_CICD
+    START ~~~ HEADING_STORE
+    START ~~~ HEADING_OBS
+    START ~~~ HEADING_SUPPORT
+
+    START --> PATH
+    SETUP --> DESIGN --> IMPLEMENT
+    IMPLEMENT -. "When the feature requires it" .-> ENGAGE
+    IMPLEMENT --> TEST --> REVIEW
+    SETUP -. "New application enrollment" .-> ENROLL
+    ASSIST -. "Development-time assistance" .-> IMPLEMENT
+    ASSIST -. "Reviewed test drafts" .-> TEST
+    ENGAGE -. "Verify integration behavior" .-> TEST
+    TEST -. "Committed tests execute in CI" .-> BUILD
+    EVIDENCE --> DEST
+    VISIBLE --> MONITOR
+    IMPLEMENT -. "Add instrumentation during development" .-> MONITOR
+    MONITOR -. "Findings inform the next change" .-> DESIGN
+    START -. "Help at any stage" .-> HELP
+
+    style ONBOARD fill:#102733,stroke:#22d3ee,stroke-width:2px
+    style ARCH fill:#231c40,stroke:#a78bfa,stroke-width:2px
+    style PLATFORM fill:#142647,stroke:#60a5fa,stroke-width:2px
+    style PUSH fill:#35172a,stroke:#f472b6,stroke-width:2px
+    style AI fill:#2b1940,stroke:#d8b4fe,stroke-width:2px
+    style TESTING fill:#302610,stroke:#facc15,stroke-width:2px
+    style CICD fill:#351f12,stroke:#fb923c,stroke-width:2px
+    style STORE fill:#142c24,stroke:#4ade80,stroke-width:2px
+    style OBS fill:#241d3c,stroke:#c4b5fd,stroke-width:2px
+    style SUPPORT fill:#112b2c,stroke:#2dd4bf,stroke-width:2px
+
+    classDef sectionHeading fill:#25342d,color:#f3f6f4,stroke:#fbbf24,stroke-width:3px,font-weight:bold,font-size:24px;
+    class HEADING_ONBOARD,HEADING_ARCH,HEADING_PLATFORM,HEADING_PUSH,HEADING_AI,HEADING_TESTING,HEADING_CICD,HEADING_STORE,HEADING_OBS,HEADING_SUPPORT sectionHeading;
+
+    classDef onboarding fill:#164e63,color:#ffffff,stroke:#22d3ee,font-size:24px;
+    classDef architecture fill:#312e81,color:#ffffff,stroke:#a5b4fc,font-size:24px;
+    classDef platform fill:#1e3a8a,color:#ffffff,stroke:#60a5fa,font-size:24px;
+    classDef notification fill:#831843,color:#ffffff,stroke:#f9a8d4,font-size:24px;
+    classDef assistant fill:#581c87,color:#ffffff,stroke:#d8b4fe,font-size:24px;
+    classDef testing fill:#713f12,color:#ffffff,stroke:#facc15,font-size:24px;
+    classDef pipeline fill:#7c2d12,color:#ffffff,stroke:#fdba74,font-size:24px;
+    classDef delivery fill:#14532d,color:#ffffff,stroke:#4ade80,font-size:24px;
+    classDef observability fill:#4c1d95,color:#ffffff,stroke:#c4b5fd,font-size:24px;
+    classDef support fill:#134e4a,color:#ffffff,stroke:#5eead4,stroke-width:3px,font-size:24px;
+    class START,PATH,BASICS,SETUP onboarding;
+    class DESIGN architecture;
+    class IMPLEMENT platform;
+    class ENGAGE notification;
+    class ASSIST assistant;
+    class TEST testing;
+    class ENROLL,REVIEW,BUILD,ROUTES,EVIDENCE pipeline;
+    class DEST,PRIVATE,PUBLIC,VISIBLE delivery;
+    class MONITOR observability;
+    class HELP support;
 ```
 
-These requirements summarize the linked engineering sections. Detailed contracts and versioned examples remain in those pages; an assistant must have permitted access to the relevant content before relying on it.
+</MermaidViewer>
 
-## 3. Append the platform additions
+**How to use the map:** find your current task, read the section named above its block, and follow that section's steps. Begin with your onboarding path rather than setting up every service at once. Existing applications do not repeat enrollment for each change; QA/UAT route names do not imply automatic public store release.
 
-<Tabs>
-<TabItem label="Android">
+## Find the instructions you need
 
-```markdown
-## Android additions
-- Follow the established Kotlin, Compose, ViewModel, StateFlow, coroutine, Room,
-  Retrofit/approved HTTP, and Hilt conventions in the application.
-- Compose renders state and emits actions; ViewModels coordinate use cases and
-  expose read-only state. Do not access Retrofit or Room directly from UI code.
-- Keep domain models and repository contracts independent of Android UI and concrete
-  transport/storage APIs. Use suspend/lifecycle-aware operations and propagate
-  coroutine cancellation instead of converting it into an ordinary failure.
-- Keep account-scoped persistence, migrations, and session access checks explicit.
-- Preserve the approved JDK/Gradle/AGP/Kotlin/Compose compatibility set. Do not copy
-  a plugin version or API import from another project without checking compatibility.
-- Use the actual unit-test and JUnit/Espresso instrumentation targets. Reuse real
-  resource IDs, screen objects, idling resources, and the configured device matrix.
-- Use the repository's single-responsibility file conventions and approved SDK APIs.
-```
+| You want to… | Read |
+|---|---|
+| Understand mobile before writing code | [Mobile Foundations](./non-mobile-engineer-guide.mdx) |
+| Understand the tools and responsibilities | [Platform Overview](./platform-overview.mdx) |
+| Install and verify your development tools | [Machine Setup — macOS Apple Silicon](./machine-setup-guide/index.mdx) |
+| Build and open your assigned application | [First Local Run](./first-local-run.mdx) |
+| Ask for help | [Teams Support](../support/support.mdx) · [FAQ](../support/index.mdx) |
 
-Reference: [Android Standards](/mobile/platforms/native-android-standards/).
+Installation instructions live in Machine Setup. Detailed architecture, SDK integration, push notifications, CI/CD, testing, observability, AI tooling, and store delivery stay in their dedicated sections.
 
-</TabItem>
-<TabItem label="iOS">
-
-```markdown
-## iOS additions
-- Follow the application's Swift, SwiftUI/UIKit, observable state, and repository
-  conventions. Keep UI state and its ViewModel appropriately main-actor isolated.
-- Keep domain values independent of SwiftUI/UIKit, concrete URLSession adapters,
-  and persistence implementations. Pass immutable Sendable values across actors.
-- Keep SwiftData contexts/models inside their owning isolation boundary. Return
-  domain snapshots rather than leaking persistence objects to presentation.
-- Distinguish compiler version, language mode, deployment target, and default actor
-  isolation. Do not copy the reference example's minimum OS into an existing app
-  or weaken concurrency checking without an approved compatibility decision.
-- Use structured task ownership and cancellation; guard against stale account or
-  request results after suspension. An actor alone does not prevent reentrancy bugs.
-- Preserve the actual unit/XCUITest targets, accessibility identifiers, and bounded
-  condition waits. Do not replace synchronization with sleeps.
-- Keep each class, struct, and protocol in its own single-responsibility file as
-  required by the platform convention. Preserve documented signing ownership.
-```
-
-Reference: [iOS Standards](/mobile/platforms/native-ios-standards/).
-
-</TabItem>
-<TabItem label="React Native">
-
-```markdown
-## React Native additions
-- React Native is strongly preferred for new apps; preserve an existing app's
-  supported stack unless migration is explicitly agreed.
-- Use strict TypeScript and validate external values at runtime. Do not use any,
-  broad type assertions, or disabled checks to conceal an incompatible contract.
-- Use Redux Toolkit for shared application state. Keep reducers pure and state
-  serializable; inject clients and use cases outside Redux state.
-- Keep local UI state local when appropriate. Preserve the existing server-data
-  policy; do not duplicate the same data across RTK Query and a competing cache.
-- Views/hooks coordinate through feature contracts, not concrete HTTP or storage
-  instances. Handle cancellation, request identity, and account-session changes.
-- Preserve the approved native-module/toolchain compatibility and selected lockfile.
-  Rebuild native apps when native dependencies change; Metro reload is insufficient.
-- Keep JavaScript feature/store tests in the existing JS runner. Preserve the team's
-  Android JUnit native device-test path; do not replace it with Appium/WebdriverIO.
-  Use the approved iOS native UI test setup for iOS device coverage.
-- Follow declaration-named, single-responsibility file conventions. Preserve approved
-  credential storage, account-scoped persistence, and native integration boundaries.
-```
-
-Reference: [React Native Standards](/mobile/platforms/react-native-standards/). Apply the relevant native additions when changing Android or iOS integrations.
-
-</TabItem>
-</Tabs>
-
-## 4. Record project facts without inventing them
-
-Append this block and replace the markers. It is a **human-maintained Markdown record**, not an executable tool configuration. Record command working directories as well as the commands themselves.
-
-```markdown
-## Project facts
-- Documentation revision: REPLACE_WITH_REVIEWED_REVISION
-- Repository revision used for facts: REPLACE_WITH_COMMIT
-- Applicable platforms: REPLACE_WITH_ACTUAL_PLATFORMS
-- Instruction/reference owner: REPLACE_WITH_RESPONSIBLE_TEAM
-
-### Paths and versions
-- Application/module/workspace: REPLACE_WITH_VERIFIED_PATHS
-- Source roots and production-file inventory: REPLACE_WITH_VERIFIED_SCOPE
-- Unit/UI test targets and fixture paths: REPLACE_WITH_VERIFIED_PATHS
-- Toolchain, dependency catalog, and lockfiles: REPLACE_WITH_VERIFIED_FILES
-- Existing authentication/foundation contracts: REPLACE_WITH_PERMITTED_REFERENCES
-- Approved CI template and route configuration: REPLACE_WITH_PERMITTED_REFERENCES
-- Configuration repository and active promotion branches: REPLACE_WITH_VERIFIED_VALUES
-- CAMP schema and approved request schema: REPLACE_WITH_REVIEWED_REFERENCES
-- Parallel-selection flags and cross-runner handoff: REPLACE_WITH_VERIFIED_CONTRACT
-- Sauce Labs step versions, schema, and package paths: REPLACE_WITH_VERIFIED_CONTRACT
-- NowSecure assessment and severity policy: REPLACE_WITH_OWNER_CONFIRMED_POLICY
-- Signing and distribution owner: REPLACE_WITH_RESPONSIBLE_TEAM
-
-### Local verification
-- Type/static checks: REPLACE_WITH_WORKING_DIRECTORY_AND_COMMAND
-- Unit/integration tests: REPLACE_WITH_WORKING_DIRECTORY_AND_COMMAND
-- Native UI/device tests: REPLACE_WITH_WORKING_DIRECTORY_AND_COMMAND_OR_CI_HANDOFF
-- Coverage report and gate: REPLACE_WITH_WORKING_DIRECTORY_COMMAND_AND_REPORT_PATH
-- Application build: REPLACE_WITH_WORKING_DIRECTORY_AND_COMMAND
-- Last verification: REPLACE_WITH_DATE_REVISION_AND_ACTUAL_RESULTS
-
-### Unresolved contracts
-- UNKNOWN: REPLACE_WITH_MISSING_FACT_AND_RESPONSIBLE_OWNER
-```
-
-Remove a marker only after verifying the value. Use `not applicable` with a reason for a genuinely inapplicable field. Unknown commands must remain unknown; do not paste placeholder commands into a terminal.
-
-If the source revision changes, recheck facts affected by the change. Do not attach secrets or private credentials to make this record “complete.”
-
-## 5. Review and configure the selected tool
-
-| Review question | Required outcome |
-| :--- | :--- |
-| Does a rule conflict with the project contract or approved documentation? | Surface the discrepancy and get the owning team's decision. |
-| Does an instruction refer to an inaccessible file? | Supply permitted content through the tool's supported context mechanism. |
-| Are a version, command, or SDK interface still unknown? | Keep the gap explicit; do not present the integration as ready to run. |
-| Are checks actually executed? | Record their real result and limitations. |
-| Did a rule change? | Review the change and update each configured tool copy. |
-
-**Expected result:** the reviewed rules contain shared requirements, relevant platform additions, verified project facts, and explicit unresolved items. They contain no secrets and make no unsupported claims about tests or deployments.
-
-**Next:** configure [GitHub Copilot](/mobile/genai-and-tools/github-copilot-setup/) or [ChatGPT](/mobile/genai-and-tools/chatgpt-setup/). Merely saving `docs/engineering-rules.md` does not prove either tool has loaded it.
-
-## Reference pages
-
-| Area | Detailed instructions |
-| :--- | :--- |
-| Boundaries and runtime behavior | [Architecture](/mobile/architecture/), [resilience](/mobile/architecture/circuit-breaker-resilience/), [feature flags](/mobile/architecture/feature-flags/). |
-| Shared application capabilities | [App Foundations](/mobile/platforms/enterprise-app-foundations/), [SDK catalog](/mobile/platforms/master-sdk-catalog/). |
-| Contribution and delivery | [Branching & PRs](/mobile/architecture/branching-prs/), [CI/CD](/mobile/cicd/). |
-| Test generation and evidence | [IDE test generation](/mobile/testing-quality/ide-assisted-test-generation/), [coverage gates](/mobile/testing-quality/coverage-and-quality-gates/), [Sauce Labs](/mobile/testing-quality/sauce-labs-real-device-testing/). |
-| Runtime monitoring | [Observability](/mobile/observability/). |
+**Start now:** [New to mobile → Mobile Foundations](./non-mobile-engineer-guide.mdx) · [Experienced mobile engineer → Platform Overview](./platform-overview.mdx).
