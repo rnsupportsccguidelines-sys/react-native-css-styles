@@ -1,108 +1,846 @@
-## How the repositories connect — files created at each step
+---
+title: "Mobile CI/CD — Start Here"
+description: "Understand how your mobile code becomes a tested app and reaches its users. Start with the tools, repositories, and setup order."
+sidebar:
+  label: Start Here
+  order: 1
+---
 
-The application repository contains your code and tests. The three platform
-repositories store enrollment requests, provisioning logic, and approved
-Bitrise workflows.
+import { Aside } from '@astrojs/starlight/components';
+import MermaidViewer from "@components/MermaidViewer.astro";
 
-**Gold-bordered boxes identify repositories. Blue boxes identify files or
-file groups.**
+Start here if you have an application repository and are setting up CI/CD for the first time. Follow this section to connect the repository, run automated checks, build the app, and verify delivery to users. React Native developers follow both Android and iOS steps when releasing to both platforms.
 
-| Step | File or output | Location | Responsible owner |
-|---|---|---|---|
-| 1 | Application source, native projects, and dependency lockfiles | Application repository | Approved starter or application team. |
-| 2 | `campfile.yml` | Application repository root | Developer, using the confirmed CAMP schema. |
-| 3 | Tests and required test scripts | Application repository | Developer, using the existing test framework. |
-| 4 | Approved workflow definitions and catalog metadata | `mobile-platform-configuration-bitrise-template` | Platform Engineering maintains these; developers select an approved template/version. |
-| 5 | `Config/Teams/<team>/Bitrise/Apps/<app>.yaml` | `mobile-platform-configuration` | Developer creates the secret-free enrollment request. |
-| 6 | Validation results and creation preview | Vela PR run | Platform automation produces these run outputs. |
-| 7 | Bitrise application, repository connection, workflows, access, and protected bindings | External platform configuration | The approved provisioning engine applies the request after protected promotion. |
-| 8 | Application binaries, matching test packages, and reports | Build outputs | The selected Bitrise workflows and repository commands. |
-| 9 | Device-test results, security assessment, and delivery evidence | Approved service and build results | Configured integrations produce evidence for the exact candidate. |
+Begin with a working local application. If you still need development tools or help launching the app, complete [Machine Setup](../onboarding/machine-setup-guide/index.mdx) and [First Local Run](../onboarding/first-local-run.mdx).
 
-<MermaidViewer title="Repository responsibilities — from application files to verified delivery">
+## 1. What CI and CD do
+
+**Continuous integration (CI)** runs checks when code changes. For example, a developer opens a pull request, automation runs the configured checks, and reviewers inspect the results before merging.
+
+**Continuous delivery (CD)** prepares an approved build for its destination. This includes the required security assessment, signing, upload, and availability checks. The selected workflow and release approvals control when delivery can proceed.
+
+| Term | Simple meaning |
+|---|---|
+| Repository | The Git project containing your files and their change history. |
+| Commit | A recorded version of the files. Its commit ID identifies the code being built. |
+| Pull request, or PR | A proposed change submitted for review. |
+| Workflow | A named job containing ordered steps. |
+| Pipeline | The configuration that connects build jobs and their dependencies. |
+| Artifact | A file produced by a build, such as an Android APK/AAB or an iOS IPA. |
+| Enrollment | The first-time process that connects an application to the governed build platform. |
+
+## 2. Understand the overall journey
+
+<Aside type="caution" title="Do not create bitrise.yml in your application project folder">
+
+Your application repository contains app code, tests, and `campfile.yml`. The CAMP file is the only CI/CD configuration the app team maintains there.
+
+Platform Engineering maintains the versioned `bitrise.yml` in `mobile-platform-configuration-bitrise-template`. Your enrollment request selects it using `template_id` and `template_version`. Open the **Workflows** menu in Bitrise to see the configuration applied to your app. Work with the template owner when a workflow needs to change.
+
+</Aside>
+
+**Start at the top and follow the arrows.** Each box describes an action or result. The four build routes use the workflows supplied by the approved template.
+
+<MermaidViewer title="The complete CI/CD journey — from your app to its users">
 
 ```mermaid
 flowchart TD
-    subgraph APPLICATION["1 · PREPARE APPLICATION FILES"]
-        APP["Application repository"]
-        SOURCE["Application code and native projects<br/>Dependency lockfiles"]
-        CAMP["Create campfile.yml<br/>Use the confirmed CAMP schema"]
-        TESTS["Add reviewed tests<br/>and required repository scripts"]
-        APP --> SOURCE --> CAMP --> TESTS
-    end
+    START["APPLICATION REPOSITORY<br/>App code, tests, and campfile.yml<br/>Run and test the app on your Mac"] --> ENROLLED{"Is your app already<br/>connected to Bitrise?"}
 
-    subgraph CATALOG["2 · SELECT AN APPROVED WORKFLOW"]
-        TEMPLATE_REPO["mobile-platform-configuration-bitrise-template"]
-        TEMPLATE_FILES["Approved workflow definitions<br/>and catalog metadata"]
-        TEMPLATE_REPO --> TEMPLATE_FILES
-    end
+    ENROLLED -->|No — first setup| REQUEST["mobile-platform-configuration<br/>Enrollment YAML names the app repo and branch<br/>and selects a template ID and version"]
+    REQUEST --> VALIDATE["Vela validates the request<br/>Review and promote to protected main"]
+    VALIDATE --> APPLY["mobile-platform-configuration-code<br/>Vela runs the provisioning engine<br/>to create and configure the Bitrise app"]
+    TEMPLATE["mobile-platform-configuration-bitrise-template<br/>Platform Engineering maintains versioned bitrise.yml<br/>with build, test, security, signing, and delivery steps"] -->|"Supply the selected version"| APPLY
+    CREDENTIALS["Platform Engineering supplies<br/>protected access and signing credentials"] -.-> APPLY
+    APPLY --> READY["Bitrise app<br/>Workflows menu shows applied configuration"]
+    ENROLLED -->|Yes| READY
 
-    subgraph REQUEST["3 · CREATE THE ENROLLMENT REQUEST"]
-        CONFIG_REPO["mobile-platform-configuration"]
-        YAML["Config/Teams/&lt;team&gt;/Bitrise/Apps/&lt;app&gt;.yaml<br/>Source repository and branch<br/>Template ID, version, and access"]
-        CONFIG_REPO --> YAML
-    end
+    READY --> BUILD
+    CHANGE["Later: make an application change<br/>Run local checks and open a PR"]
+    CHANGE --> REVIEW["Run configured PR checks<br/>Danger feedback and code review"]
+    REVIEW --> APPROVED["Merge approved code<br/>to the configured source branch"]
+    APPROVED --> BUILD["Bitrise runs the configured routes<br/>QA Android · QA iOS<br/>UAT Android · UAT iOS"]
+    BUILD --> CHECKS["Run the steps in the selected template<br/>Build · configured tests and security checks<br/>Signing when required"]
+    CHECKS --> PASSED{"Did all required steps<br/>and approvals pass?"}
 
-    TESTS --> CONFIG_REPO
-    TEMPLATE_FILES -->|"Choose approved template and version"| YAML
+    PASSED -->|Yes| DESTINATION{"Where does this<br/>approved release go?"}
+    DESTINATION -->|Enterprise distribution| PRIVATE["App Management<br/>Upload · sign if required<br/>enable · assign users"]
+    DESTINATION -->|Store delivery| STORE["Google Play / App Store Connect<br/>Upload · processing<br/>required release approvals"]
+    PRIVATE --> VERIFY["Verify the exact app version<br/>is available to the intended users"]
+    STORE --> VERIFY
+    VERIFY --> LATER["Next application change<br/>uses the existing enrollment"]
+    LATER -.-> CHANGE
 
-    YAML --> VALIDATE["Vela PR validation<br/>Inspect results and creation preview"]
-    VALIDATE --> MERGE["Review and protected promotion"]
+    PASSED -->|No| FAILURE["Inspect the failed step<br/>Fix the app or contact the platform owner"]
+    VERIFY -->|Failed or unknown| RECOVERY["Preserve completed work<br/>Owner checks destination state<br/>and follows reviewed recovery"]
 
-    subgraph ENGINE["4 · APPLY THE APPROVED REQUEST"]
-        ENGINE_REPO["mobile-platform-configuration-code"]
-        APPLY["Run the provisioning engine<br/>Validate the approved request"]
-        ENGINE_REPO --> APPLY
-    end
-
-    MERGE -->|"Protected main push"| ENGINE_REPO
-    TEMPLATE_FILES -->|"Supply selected workflow definition"| APPLY
-
-    APPLY --> BITRISE["Provision Bitrise application once<br/>Connect source and attach workflows<br/>Configure access and protected bindings"]
-
-    BITRISE --> BUILD["Run the configured workflows<br/>Produce binaries, test packages, and reports"]
-    BUILD --> CHECKS["Inspect required results<br/>Tests, coverage, security, and signing"]
-    CHECKS --> GATE{"Required results and<br/>approvals satisfied?"}
-
-    GATE -->|"Yes"| DELIVERY["Run the approved delivery route"]
-    DELIVERY --> VERIFY["Verify the exact version<br/>and intended audience access"]
-    GATE -->|"Failed or unknown"| STOP["Stop progression<br/>Preserve evidence and investigate"]
-
-    classDef repo fill:#422006,stroke:#fbbf24,color:#ffffff,stroke-width:4px,font-weight:bold;
-    classDef file fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
-    classDef automation fill:#4c1d95,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
-    classDef output fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
-    classDef blocked fill:#881337,stroke:#fda4af,color:#ffffff,stroke-width:2px;
-
-    class APP,TEMPLATE_REPO,CONFIG_REPO,ENGINE_REPO repo;
-    class SOURCE,CAMP,TESTS,TEMPLATE_FILES,YAML file;
-    class VALIDATE,MERGE,APPLY,BITRISE,BUILD,CHECKS,GATE automation;
-    class DELIVERY,VERIFY output;
-    class STOP blocked;
+    classDef source fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
+    classDef setup fill:#4c1d95,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
+    classDef decision fill:#422006,stroke:#fbbf24,color:#ffffff,stroke-width:2px;
+    classDef delivery fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    classDef help fill:#881337,stroke:#fda4af,color:#ffffff,stroke-width:2px;
+    classDef repo fill:#30204f,stroke:#fbbf24,color:#ffffff,stroke-width:3px;
+    class START,REQUEST,APPLY,TEMPLATE repo;
+    class CHANGE,REVIEW,APPROVED,BUILD,CHECKS,LATER source;
+    class VALIDATE,CREDENTIALS,READY setup;
+    class ENROLLED,PASSED,DESTINATION decision;
+    class PRIVATE,STORE,VERIFY delivery;
+    class FAILURE,RECOVERY help;
 ```
 
 </MermaidViewer>
 
-### What developers create
+**Gold-bordered boxes** show the four repositories and what each owns. **Purple boxes** show first-time platform setup. **Blue boxes** show application changes and automated checks. **Green boxes** show delivery and user access. **Red boxes** show investigation and recovery. Yellow diamonds show decisions.
 
-Prepare the application files, tests, `campfile.yml`, and enrollment request.
-Use the approved schema and template version. The team directory must match
-`team`, and the request filename must match `app_name`.
+| Part of the flow | Where to learn the details |
+|---|---|
+| Prepare the app and its metadata | Prepare Your Repository and CAMP File Reference. |
+| Connect the app to Bitrise | Configuration Repository, Enroll Your Application, and Review & Promote. |
+| Understand the build routes and checks | Bitrise Pipelines, Danger PR Checks, and Parallel Testing. |
+| Prepare device tests | Testing & Quality, including the Sauce Labs guide. |
+| Confirm security and signing | NowSecure Security Gates and Signing & Credentials. |
+| Deliver and confirm availability | Deploy & Verify and the App Store & Distribution section. |
+| Handle later changes or failures | Later Builds and Troubleshooting & Recovery. |
 
-Platform Engineering maintains the provisioning engine and workflow catalog.
-Protected credentials are supplied through approved bindings, not committed
-inside the enrollment YAML.
+The application source branch and the configuration repository's promotion branches belong to different repositories. Record their commits and review results separately.
 
-### What happens after enrollment
+The latest reference gives different promotion paths for different contexts. Its template-release procedure uses `develop` → `main`, while the review-and-promotion summary states `development` → `staging` → `main`. Confirm the configuration repository's active branch rules before opening a request PR.
 
-The approved request provisions the Bitrise application once and attaches its
-selected workflow configuration. Later application changes use the existing
-enrollment and configured build triggers.
+Initial enrollment triggers the initial build routes. Later source changes trigger the configured recurring builds. The selected template determines which steps run for each route and their order. Confirm that the configured security gate evaluates the completed assessment before reporting a security pass. The latest reference describes High/Critical findings as blocking and Medium findings as requiring remediation within 30 days. Store delivery follows its own configured route and approvals.
 
-The selected template defines actual step order, concurrency, signing,
-and destination behavior. QA/UAT route names do not automatically mean
-public store delivery.
+## 3. Know the tools
 
-This flow does not establish that enrollment creates `bitrise.yml` inside
-the application repository. Confirm any generated-file behavior with the
-approved engine contract.
+| Tool | What it does | Where you use it |
+|---|---|---|
+| GitHub Enterprise | Stores source and configuration, and hosts pull requests. | Your Mac and the repository website. |
+| Vela | Validates enrollment requests and runs protected platform automation. | Configuration-repository PR checks and platform runs. |
+| Bitrise | Runs the approved mobile build workflows. | Build pages, step logs, and artifact results. |
+| Danger | Adds automated feedback to pull requests. | PR comments and configured check results. |
+| Sauce Labs | Runs prepared device tests and collects execution evidence. | Testing results and the device-testing guide. |
+| NowSecure | Assesses application binaries for security findings. | Assessment results and the configured severity gate. |
+| Enterprise App Management | Processes approved private releases and makes them available to assigned users. | Distribution results and the enterprise user catalog. |
+| Google Play / App Store Connect | Receives approved store-delivery packages. | Your destination-specific store guide. |
+
+In this documentation, My Chicken App provides a teaching example. Its tests place a demo chicken order and check the expected result. Developers review and commit the test before CI executes it. Copilot or ChatGPT can assist during authoring under the approved AI rules.
+
+Use [Testing & Quality](../testing-quality/index.mdx) for test code, device-test requirements, and results. Use [Observability](../observability/index.mdx) for Datadog monitoring after configuring the app's telemetry.
+
+## 4. Understand the four repositories
+
+The app team maintains application code, tests, and the CAMP file. CAMP is the only app-owned CI/CD configuration. The enrollment request in `mobile-platform-configuration` selects the approved template ID and version. Platform Engineering maintains the versioned `bitrise.yml` and the Danger, parallel testing, Sauce Labs, NowSecure, signing, and deployment automation in `mobile-platform-configuration-bitrise-template`.
+
+You will work with application code and enrollment configuration. Platform Engineering maintains the shared engine and workflow catalog.
+
+| Repository | What it contains | Your first action |
+|---|---|---|
+| Your application repository | React Native source, Android/iOS projects, tests, and `campfile.yml`. | Run the application and its local checks. |
+| `mobile-platform-configuration` | Application enrollment requests and their reviewed promotion. | Locate the approved request directory and submission procedure. |
+| `mobile-platform-configuration-code` | The automation engine that validates requests and applies approved changes. | Understand its role. Platform Engineering manages execution and maintenance. |
+| `mobile-platform-configuration-bitrise-template` | Catalog metadata and versioned Bitrise workflow templates. | Select a compatible, approved template and its exact version during enrollment. |
+
+The **application starter template** generates your app's source. The **Bitrise workflow template** defines how automation builds and delivers it. The enrollment request selects the workflow template.
+
+The latest reference places new requests at `Config/Teams/<team>/Bitrise/Apps/<app>.yaml` in the configuration repository. The team directory must match the request's `team`, and the filename must match `app_name`. An accepted request represents initial creation. Follow the reviewed continuation or reconciliation procedure for an existing application.
+
+## 5. Confirm access before setup
+
+Use the enterprise access process to request the access needed for your role. Use the approved Teams support channel when you need the correct repository or owner.
+
+| Access or detail | Why you need it |
+|---|---|
+| Application repository | Read, change, and publish your application source. |
+| Configuration repository | Submit and follow the enrollment request. |
+| Approved template catalog | Confirm template status, platform, version, and allowed source branch. |
+| Bitrise workspace | Inspect the enrolled application's builds, logs, and artifacts. |
+| Device-test and security results | Investigate Sauce Labs test failures and NowSecure findings as permitted by your role. |
+| Platform Engineering contact | Confirm protected signing bindings, platform failures, and recovery actions. |
+
+Application teams prepare their source, tests, dependencies, and enrollment request. Use the documented support boundary to confirm which platform owner manages provisioning, protected credentials, and distribution integration for your application.
+
+## 6. Follow the setup pages in order
+
+Each setup page explains the working location, required inputs, commands or YAML, and the result to inspect.
+
+| Order | Page | Result |
+|---|---|---|
+| 1 | Prepare Your Repository | A working application revision ready for automation. |
+| 2 | CAMP File Reference | Application metadata follows the confirmed schema. |
+| 3 | Configuration Repository | You know where to submit enrollment configuration. |
+| 4 | Enroll Your Application | The request is validated and submitted for review. |
+| 5 | Review & Promote | The protected apply result and application identity are recorded. |
+| 6 | Bitrise Pipelines | You understand the workflows, triggers, scripts, and artifact handoffs. |
+| 7 | Danger PR Checks | Required review automation is configured and its results are understood. |
+| 8 | Parallel Testing | Module selection and parallel test results are understood. |
+| 9 | NowSecure Security Gates | The required assessment and release decision are confirmed. |
+| 10 | Signing & Credentials | The selected route has compatible protected signing configuration. |
+| 11 | Deploy & Verify | The intended version is available to its approved audience. |
+| 12 | Later Builds | Subsequent source changes use the existing enrollment. |
+
+Use **Troubleshooting & Recovery** when a stage fails or an external operation has an unknown outcome. Open [Complete Project Preview](./integrated-project-preview.mdx) to see the Android, iOS, and React Native folder and file examples. Use **Workshop Walkthrough** to practise the journey.
+
+The [Operations Overview](./operations/index.mdx) introduces the guides covering repository inactivity, Bitrise limits and costs, template maintenance, the configuration engine, and Bitrise MCP. Open them when your task requires those topics.
+
+## 7. Know when a release is complete
+
+The governed routes are `qa_android`, `qa_ios`, `uat_android`, and `uat_ios`. Record the outcome of each route independently.
+
+| Result | What you can conclude |
+|---|---|
+| Enrollment validation passed | The request passed its configured validation. Inspect the protected apply separately. |
+| Build passed | The configured build completed. Inspect required tests, assessment, signing, and delivery evidence. |
+| Artifact uploaded | The destination received the file. Follow its processing and availability results. |
+| Release verified | The exact intended version is available to its approved users or testers. |
+
+For enterprise distribution, verify the applicable signing result, enabled state, assigned audience, and exact version at the user endpoint. For store delivery, follow the destination-specific verification and approvals in [App Store & Distribution](../app-store-and-distribution/index.mdx).
+
+**Attach screenshot — one build's source commit, workflow name, and final result with sensitive values hidden.**
+
+If a create or upload operation has an unknown result, preserve the current state and ask the platform owner to reconcile it before another external write.
+
+The reference workshop demonstrates why these results matter. Its QA Android release was reported as signed, enabled, assigned, and visible. The QA iOS build passed, but App Management signing failed. UAT publication remained unconfirmed. Record each outcome separately.
+
+Continue with [Prepare Your Repository](./prepare-your-repository.mdx).
+
+
+
+
+
+---------------------------------
+
+
+
+---
+title: "Understand the Configuration Repository"
+description: "Find the application request directory, understand the platform repositories, and prepare to submit a first enrollment request."
+sidebar:
+  label: Configuration Repository
+  order: 4
+---
+
+import MermaidViewer from "@components/MermaidViewer.astro";
+
+**`mobile-platform-configuration` stores requests that platform automation processes.** You add a YAML file to request a new Bitrise application. Reviewers inspect that change before protected automation applies it.
+
+Your application source stays in its own repository. The enrollment request points to that repository and selects an approved build template.
+
+**Work location — the `mobile-platform-configuration` checkout on your Mac.** Finish application preparation first, then obtain access to this repository through the approved enterprise process.
+
+## 1. Understand the repositories
+
+The app team maintains application code, tests, and the CAMP file. CAMP is the only app-owned CI/CD configuration. The enrollment request in `mobile-platform-configuration` selects the approved template ID and version. Platform Engineering maintains the versioned `bitrise.yml` and the Danger, parallel testing, Sauce Labs, NowSecure, signing, and deployment automation in `mobile-platform-configuration-bitrise-template`.
+
+| Repository | What it contains | How you use it |
+|---|---|---|
+| Your application repository | Application source, native projects, tests, and CAMP metadata. | Develop the app and record the source branch and commit. |
+| `mobile-platform-configuration` | Enrollment YAML and reviewed publication-reconciliation manifests. | Submit the application request and follow its review results. |
+| `mobile-platform-configuration-code` | The Python automation engine and Vela integration. | Understand what processes the request. Engine maintenance belongs on the configuration-engine operations page. |
+| `mobile-platform-configuration-bitrise-template` | Approved versioned Bitrise workflow templates and their metadata. | Select the exact compatible template ID and version during enrollment. |
+
+### How the repositories and files connect
+
+<MermaidViewer title="From the app repository to the Bitrise Workflows menu">
+
+```mermaid
+flowchart TD
+    subgraph SOURCE["PREPARE THE APP"]
+        APP_REPO["Application repository"]
+        APP_FILES["App code, tests, and campfile.yml"]
+        APP_REPO --- APP_FILES
+    end
+
+    subgraph ENROLLMENT["REQUEST ENROLLMENT"]
+        CONFIG_REPO["mobile-platform-configuration"]
+        REQUEST["Enrollment YAML<br/>App repo, source branch,<br/>template_id, and template_version"]
+        CONFIG_REPO --- REQUEST
+    end
+
+    subgraph CATALOG["SUPPLY THE APPROVED WORKFLOW"]
+        TEMPLATE_REPO["mobile-platform-configuration-bitrise-template"]
+        WORKFLOW["Versioned bitrise.yml<br/>Workflow names, ordered steps, and inline Bash<br/><br/>Build and release<br/>Checkout, dependencies, caching, Android and iOS builds<br/>Signing, artifact upload, and deployment<br/><br/>Checks when included in the selected version<br/>Danger PR checks, automated tests, parallel testing, and coverage<br/>Sauce Labs device tests and NowSecure security checks"]
+        TEMPLATE_REPO --- WORKFLOW
+    end
+
+    subgraph PROVISION["APPLY THE APPROVED REQUEST"]
+        ENGINE_REPO["mobile-platform-configuration-code"]
+        APPLY["Vela runs the engine to provision<br/>and configure the Bitrise app"]
+        ENGINE_REPO --- APPLY
+    end
+
+    APP_FILES -->|"Reference the source repo and branch"| REQUEST
+    REQUEST --> REVIEW["Vela validates the PR<br/>Review the preview and promote the approved request"]
+    REVIEW --> APPLY
+    WORKFLOW -->|"Supply the requested template version"| APPLY
+    APPLY --> BITRISE["Bitrise app<br/>Workflows menu shows the applied definitions"]
+    BITRISE --> RUN["Bitrise build<br/>Check out source and run the selected workflow"]
+
+    classDef repo fill:#30204f,stroke:#fbbf24,color:#ffffff,stroke-width:3px;
+    classDef detail fill:#1e293b,stroke:#94a3b8,color:#ffffff,stroke-width:1px;
+    classDef service fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
+    classDef result fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    class APP_REPO,CONFIG_REPO,TEMPLATE_REPO,ENGINE_REPO repo;
+    class APP_FILES,REQUEST,WORKFLOW,APPLY detail;
+    class REVIEW service;
+    class BITRISE,RUN result;
+    style SOURCE fill:transparent,stroke:#94a3b8
+    style ENROLLMENT fill:transparent,stroke:#94a3b8
+    style CATALOG fill:transparent,stroke:#94a3b8
+    style PROVISION fill:transparent,stroke:#94a3b8
+```
+
+</MermaidViewer>
+
+**Gold borders mark repository names.** The box below each name shows the files or automation it owns. The enrollment YAML selects the shared template by ID and version. Later source changes use the enrolled Bitrise app and its configured triggers.
+
+### What is inside the shared `bitrise.yml`?
+
+In the supplied React Native template, `react-native-qa-uat` v1.10.0, the file defines these workflows and steps:
+
+| What the YAML contains | What Bitrise does with it |
+|---|---|
+| `qa_android`, `qa_ios`, `uat_android`, and `uat_ios` | Runs the selected Android or iOS build for QA or UAT. |
+| Reusable checkout, Node setup, package access, dependency installation, and cache steps | Prepares the app source and build environment. |
+| Inline Bash under a Script step's `inputs → content` | Runs commands for tasks such as Node setup, package authentication, and Digital.ai deployment. |
+| `qa_parallel` and `uat_parallel` | Uses `build-router-start` to launch the Android and iOS child builds for the selected environment. |
+| Android APK build, iOS archive with signing, and private artifact upload | Produces and publishes build artifacts to Bitrise. |
+| Digital.ai deployment step | Delivers the candidate when enabled. In this sample, `SKIP_DEPLOY` defaults to `true`. Private artifact upload to Bitrise is a separate step. |
+
+The supplied v1.10.0 sample shows parallel Android and iOS **builds**. Its workflow definitions omit Danger, Jest sharding, Sauce Labs, and NowSecure. Check the selected template version to see which integrations your app runs.
+
+## 2. Open the correct checkout
+
+1. Obtain the approved clone URL for `mobile-platform-configuration` from its owner.
+2. Follow its README to clone the repository using the access method approved for your role. The supplied happy path describes a fork-based request flow. Confirm whether your contribution uses a fork or a permitted branch in the central repository.
+3. Open the checkout in your editor and read its current README and enrollment instructions.
+4. Open the editor's terminal in that checkout.
+
+You can use these read-only Git commands to identify the checkout. They are inspection aids for this guide.
+
+```bash
+git status --short --branch
+git remote get-url origin
+git rev-parse HEAD
+```
+
+| Output | What to confirm |
+|---|---|
+| Branch and local changes | You understand the current branch and any work already present. |
+| `origin` URL | It identifies the expected central repository or your approved fork. |
+| Commit ID | It identifies the configuration checkout revision. |
+
+For a fork, confirm the target repository for the request PR using the contribution instructions. Keep credentials out of recorded clone URLs.
+
+**Expected result —** you can identify the configuration checkout and the repository where the request will be reviewed.
+
+## 3. Find the application request directory
+
+The latest reference specifies this layout. Preserve the directory casing and the `.yaml` extension.
+
+```text
+mobile-platform-configuration/
+└── Config/
+    └── Teams/
+        └── <team_name>/
+            └── Bitrise/
+                ├── Apps/
+                │   └── <app_name>.yaml
+                └── PublicationReconciliations/
+                    └── build-<failed_build>.json
+```
+
+The enrollment request path is:
+
+```text
+Config/Teams/<team>/Bitrise/Apps/<app>.yaml
+```
+
+| Path element | What it means |
+|---|---|
+| `Config/Teams/` | Fixed directory names with the casing shown. |
+| `<team>` | Your approved team value. It must match the YAML `team` field. |
+| `Bitrise/Apps/` | Directory containing new application requests. |
+| `<app>.yaml` | Application request file. Its basename must match `app_name`. |
+| `PublicationReconciliations/` | Separate reviewed manifests for publication recovery. Follow the recovery procedure when needed. |
+
+The enrollment page supplies the request YAML and explains its fields. Confirm the current checkout follows this documented path. Escalate a mismatch to the platform owner before placing a file in another directory.
+
+## 4. Confirm the contribution and branch rules
+
+The configuration repository's branch rules govern the request. The application source branch identifies which application code the selected workflow builds.
+
+The supplied material gives these promotion descriptions:
+
+| Context | Documented flow |
+|---|---|
+| Configuration happy path | Reviewed protected merge to `main` triggers live apply. |
+| Review-and-promotion summary | `development` → `staging` → `main`. |
+| Template catalog release procedure | `develop` → `main` through a separate promotion PR. |
+
+Confirm the configuration repository's actual PR target and promotion procedure with its owner. Use the template repository's branch rules only when changing that repository.
+
+**Expected result —** you know where to branch from, where to open the request PR, and how an approved request reaches protected `main`.
+
+## 5. Understand validation and live apply
+
+| Phase | What happens | Result to inspect |
+|---|---|---|
+| PR validation | Vela checks request structure, template integrity/version requirements, and branch/repository constraints. | Checks for the exact request PR revision. |
+| Protected live apply | The engine processes the approved change inside the trusted runtime and performs the permitted provisioning operations. | Apply status, existing or created app identity, and resulting build identities. |
+
+The latest reference limits live apply to a protected two-parent merge and a maximum of one request per PR. The engine wrapper checks that the request head matches `VELA_BUILD_COMMIT`. Follow the current repository enforcement and reviewed promotion process.
+
+Keep secret values in the approved protected systems. Request YAML contains application and access declarations. The engine's operator commands and runtime configuration are covered in the configuration-engine operations page.
+
+## 6. Check whether the application already exists
+
+An accepted request is **create-only**. The reference says to preserve it rather than rename, delete, or edit it to request lifecycle changes.
+
+If the application has already been created, use its existing identity and the applicable later-build, continuation, or publication-reconciliation procedure. Ask the platform owner to confirm the existing inventory when the result of an earlier enrollment is unclear.
+
+**Expected result —** you know whether to submit a new-app request or follow the procedure for an existing app.
+
+## If you cannot proceed
+
+| Problem | Next action |
+|---|---|
+| Repository access is denied | Request the required access through the approved enterprise process. |
+| Request directory differs from the documented path | Confirm the supported repository revision and validator with the platform owner. |
+| PR target or promotion branch is unclear | Obtain the active configuration-repository branch contract. |
+| Application may already exist | Inspect the earlier request/app results with the owner before submitting another creation request. |
+| Existing enrollment partially failed | Preserve its identity and follow the reviewed recovery procedure. |
+
+**Attach screenshot — configuration repository request directory, with sensitive identifiers hidden.**
+
+**Next page — [Enroll Your Application](./enroll-your-application.mdx).** Select an approved template and create one request YAML in the directory above.
+
+
+
+------------------------------
+
+---
+title: "Understand Bitrise Pipelines"
+description: "Read the supplied pipeline YAML, understand where commands run, and connect build routes to device tests and delivery."
+sidebar:
+  label: Bitrise Pipelines
+  order: 7
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import MermaidViewer from "@components/MermaidViewer.astro";
+
+**Bitrise runs the commands that check, build, and deliver your application.** Its YAML configuration names the jobs and defines the steps they execute.
+
+Start with the Bitrise app identified by the successful apply result. If you are setting up CI/CD for the first time, follow [Review & Promote](/mobile/cicd/review-and-promote/) to get there.
+
+<Aside type="caution" title="Do not create bitrise.yml in your application project folder">
+
+The app repository contains application code, tests, and `campfile.yml`. Platform Engineering maintains the versioned `bitrise.yml` and its CI/CD steps and scripts in `mobile-platform-configuration-bitrise-template`.
+
+</Aside>
+
+## 1. Find the configuration used by your app
+
+1. In the enrollment request in `mobile-platform-configuration`, find `template_id` and `template_version`. Together they identify the workflow definition selected for your app.
+2. Find that version in the [Bitrise Template Catalog](/mobile/cicd/operations/bitrise-template-catalog/). The supplied example is `templates/react-native-qa-uat/1.10.0/bitrise.yml` in the shared template repo. Use the catalog to confirm your app's actual version and path.
+3. Open the Bitrise app from the apply result. Open **Workflows** and select a workflow such as `qa_android`. The menu shows the definitions applied to your app.
+4. Open a build for that workflow. Match its source commit, runner, and ordered step results to the run you expected.
+
+<MermaidViewer title="How the shared configuration reaches the Bitrise app">
+
+```mermaid
+flowchart TD
+    REQ["mobile-platform-configuration<br/>Enrollment YAML selects the template ID and version"]
+    TEMPLATE["mobile-platform-configuration-bitrise-template<br/>Platform Engineering maintains the versioned bitrise.yml"]
+    ENGINE["mobile-platform-configuration-code<br/>Vela runs the engine after protected promotion"]
+    VIEW["Bitrise Workflows menu<br/>Shows the configuration applied to the app"]
+    RUN["Bitrise build log<br/>Shows which steps ran for the source commit"]
+    REQ --> ENGINE
+    TEMPLATE -->|"Supply the selected workflow definition"| ENGINE
+    ENGINE --> VIEW --> RUN
+    classDef repo fill:#30204f,stroke:#fbbf24,color:#ffffff,stroke-width:3px;
+    classDef service fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
+    classDef result fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    class REQ,TEMPLATE,ENGINE repo;
+    class VIEW service;
+    class RUN result;
+```
+
+</MermaidViewer>
+
+**Attach screenshot — enrolled application, workflow configuration source, and selected stack with sensitive values hidden.**
+
+## 2. Understand the execution levels
+
+| YAML level | Simple meaning | Example from the reference |
+|---|---|---|
+| Pipeline | Connects workflows into a larger process. | `release-pipeline` in the separate stage-based example below. |
+| Stage | Groups workflows into a phase in a stage-based pipeline. | `test-stage` in that example. |
+| Workflow | A named job that runs steps and can call other workflows. | `qa_android` in v1.10.0. |
+| Step | One operation inside a workflow. | `android-build@1` produces the APK. |
+| Script | Bash commands the runner executes from a Script step. | The Node setup commands under `inputs → content`. |
+
+### What the shared `bitrise.yml` runs
+
+Platform Engineering maintains these operations in the shared template. A **Script step** contains Bash under `inputs → content`. A **Bitrise step** runs a packaged operation such as Git checkout or Xcode archive. The selected workflow determines which operations Bitrise runs.
+
+| Operation in `react-native-qa-uat` v1.10.0 | Where to find it | What runs |
+|---|---|---|
+| Check out the app | `_checkout` | Bitrise steps activate the SSH key when supplied and clone the app repository when the checkout condition allows it. |
+| Set up Node | `_prepare_node` | Two Bash scripts clean up version files in the build checkout and select the configured Node version with `asdf`. |
+| Authenticate to the package registry | `_configure_sprout_npm_auth` | Bash configures npm access for private packages using the approved runtime token. |
+| Install dependencies | `_npm_install_standard`, `_npm_install_legacy_peer_deps` | npm steps provide two installation modes. The shown `qa_android` workflow selects the legacy peer-dependency mode. |
+| Prepare app environment values | `_write_env_file` | Bash writes the configured environment values into the build checkout when applicable. |
+| Restore and save caches | `_restore_node_cache`, `_restore_android_cache`, `_restore_ios_cache` and matching `_save_*` workflows | Bitrise cache steps reuse and save eligible dependency or build files. |
+| Build the Android APK | `_android_build` | Bitrise steps set up Java and Android tools, set the version, and build the APK. An inline Bash script handles the ephemeral Android debug keystore. |
+| Archive the iOS app | `_ios_archive` | Bitrise steps install CocoaPods dependencies, set the build number, and archive with the configured export method and signing. |
+| Run Android and iOS builds together | `qa_parallel`, `uat_parallel` | The build router launches the corresponding Android and iOS child workflows and waits for their results. |
+| Publish a private Bitrise artifact | `_bitrise_upload`, also used by `verify_bitrise_artifact_upload` | The upload step publishes build evidence in Bitrise with the public artifact page disabled. |
+| Deliver to Digital.ai App Management | `_apperian_deploy` | Bash handles update, upload, publication, policy processing, destination signing, and enablement as configured. `SKIP_DEPLOY` defaults to `true`. |
+
+### Checks and destinations that depend on the selected template
+
+The supplied v1.10.0 YAML shows the operations above. Use the approved template version to confirm which of the following integrations your app has and where they run.
+
+| Integration | What to look for in the selected workflow |
+|---|---|
+| Danger PR checks | The PR workflow invokes the shared Danger rules and posts feedback to GitHub. |
+| Lint, type checks, unit tests, and coverage | Steps call the approved checks for the app and report their results. |
+| Parallel test execution | Test workflows run selected suites or Jest shards and report each required result. |
+| Sauce Labs | Steps prepare and upload the required app and test packages, run device tests, and collect the completed result. |
+| NowSecure | Steps submit the supported binary, wait for its assessment, and evaluate the required severity policy. |
+| Google Play or App Store Connect | An approved delivery step sends the signed candidate to the configured destination and route. |
+
+### Follow one real workflow from the supplied template
+
+The React Native v1.10.0 sample defines its jobs under `workflows:`. Start with `qa_android` and follow the names in `before_run` and `after_run` to their definitions elsewhere in the same file. This excerpt retains the source indentation. It is one entry under `workflows:` and depends on the other definitions in the template.
+
+```yaml
+  qa_android:
+    description: Android QA build and artifact upload.
+    before_run:
+    - _checkout
+    - _restore_node_cache
+    - _prepare_node
+    - _configure_sprout_npm_auth
+    - _npm_install_legacy_peer_deps
+    - _write_env_file
+    after_run:
+    - _restore_android_cache
+    - _android_build
+    - _save_node_cache
+    - _save_android_cache
+    - _bitrise_upload
+    - _apperian_deploy
+    envs:
+    - DEPLOY_ENV: qa
+      opts:
+        is_expand: false
+    - DEPLOY_PLATFORMS: android
+      opts:
+        is_expand: false
+    - SKIP_POLICIES: true
+      opts:
+        is_expand: false
+```
+
+| Read this part | What happens in the QA Android run |
+|---|---|
+| `before_run` | Check out the app, restore the Node cache, prepare Node and package access, install dependencies, and prepare the app environment. |
+| `after_run` | Restore the Android cache, build the APK, save caches, upload the Bitrise artifact, and reach the Digital.ai deployment workflow. |
+| `envs` | Set the environment to QA and the platform to Android for this route. |
+
+The iOS route uses `_ios_archive` in place of `_android_build`. Its archive depends on the selected workspace, scheme, export settings, and signing bindings. The UAT workflows select the UAT environment.
+
+### Read an inline script
+
+This exact Script step from `_prepare_node` shows how YAML hands Bash commands to the runner.
+
+```yaml
+    - script@1:
+        title: Set Node version
+        run_if: '{{getenv "SKIP_TOOL_DOWNLOAD_STEPS" | ne "true"}}'
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -euo pipefail
+            set -x
+
+            asdf install nodejs "$NODE_VERSION"
+            asdf global nodejs "$NODE_VERSION"
+```
+
+`run_if` decides whether the step runs. `content: |-` supplies the indented Bash commands. Here, `asdf` installs and selects the Node version in `NODE_VERSION`. The runner must already have the expected tool available.
+
+### Follow the parallel Android and iOS builds
+
+The `qa_parallel` workflow prepares shared dependencies and uses the following router step to start two child builds. The UAT workflow follows the same pattern for its UAT children.
+
+```yaml
+    - build-router-start@0.14.7:
+        title: Start QA platform builds
+        inputs:
+        - access_token: "$BITRISE_START_BUILD_ACCESS_TOKEN"
+        - workflows: |-
+            qa_android_parallel
+            qa_ios_parallel
+        - environment_key_list: |-
+            WORKDIR
+            PROJECT_LOCATION
+            MODULE
+            VARIANT
+            IOS_PROJECT_PATH
+            IOS_SCHEME
+            IOS_DISTRIBUTION_METHOD
+            IOS_PODFILE_PATH
+            IOS_PLIST_PATH
+            NODE_VERSION
+            ENV_FILE_KEYS
+            SKIP_DEPLOY
+            SKIP_SIGNING
+            SKIP_ENABLE
+            REMOVE_POLICIES_AFTER_DEPLOY
+            SKIP_TOOL_DOWNLOAD_STEPS
+        - wait_for_builds: "true"
+        - abort_on_fail: "yes"
+        - verbose: "no"
+```
+
+Read each child build's result separately. The parent passes the listed environment keys and waits for the child builds. The child workflows check out the app and restore their caches. This is **parallel platform builds**. For changed-module selection or splitting a Jest suite, see [Parallel Testing](/mobile/cicd/parallel-testing/).
+
+In v1.10.0, the private artifact upload and Digital.ai delivery have separate outcomes. `SKIP_DEPLOY` defaults to `true`, so a build can publish its Bitrise artifact and skip Digital.ai. Confirm the actual destination and exact version in [Deploy & Verify](/mobile/cicd/deploy-and-verify/).
+
+## 3. Read a separate stage-based pipeline example
+
+<MermaidViewer title="Read the separate stage-based pipeline example">
+
+```mermaid
+flowchart TD
+    A["Prepare stage<br/>setup"] --> B["Test stage<br/>unit-tests + lint-and-security"]
+    B --> C["Build stage<br/>build-android + build-ios"]
+    C --> D["Distribution stage<br/>deploy-internal"]
+    classDef step fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
+    classDef done fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    class A,B,C step;
+    class D done;
+```
+
+</MermaidViewer>
+
+Stages describe sequential phases. Workflows grouped in one stage can run concurrently when the configured dependencies and available runners permit it. Step results and the workflow's failure settings determine whether execution proceeds.
+
+This earlier reference illustrates how stages group workflows. The supplied v1.10.0 sample uses workflow chaining and child builds. To run the stage-based example, the complete configuration needs definitions for `setup`, `unit-tests`, `lint-and-security`, `build-android`, `build-ios`, and `deploy-internal`.
+
+```yaml
+format_version: '11'
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+project_type: react-native
+
+pipelines:
+  release-pipeline:
+    stages:
+      - prepare-stage: {}
+      - test-stage: {}
+      - build-stage: {}
+      - distribution-stage: {}
+
+stages:
+  prepare-stage:
+    workflows:
+      - setup: {}
+  test-stage:
+    workflows:
+      - unit-tests: {}
+      - lint-and-security: {}
+  build-stage:
+    workflows:
+      - build-android: {}
+      - build-ios: {}
+  distribution-stage:
+    workflows:
+      - deploy-internal: {}
+```
+
+| Entry | What to understand |
+|---|---|
+| `format_version: '11'` | Configuration-format value used by this reference. |
+| `default_step_lib_source` | Default library used to resolve standard step identifiers. |
+| `project_type: react-native` | Project type declared by the example. |
+| `pipelines` | Pipeline names and their stage order. |
+| `stages` | Workflows grouped into each stage. |
+
+The example stage named `lint-and-security` does not define its checks. The workflow body must show what it actually executes. A binary assessment needs the appropriate built package available at its configured execution point.
+
+## 4. Understand the four governed routes
+
+The platform enrollment defines these route identities. Inspect the selected template for their actual workflow names, build targets, and destinations.
+
+| Route | Platform and purpose |
+|---|---|
+| `qa_android` | Android QA build and its configured checks/distribution. |
+| `qa_ios` | iOS QA build and its configured checks/distribution. |
+| `uat_android` | Android UAT build and its configured checks/distribution. |
+| `uat_ios` | iOS UAT build and its configured checks/distribution. |
+
+The pipeline example above uses generic workflow names. Confirm how your approved template implements the four routes. Record each route's source commit, build ID, artifacts, and final result separately.
+
+## 5. Read the separate Android and Sauce Labs integration example
+
+Platform Engineering maintains this workflow and its Sauce Labs automation. The request path shown in the reference is a runtime input. Confirm how the selected template makes the request and runner configuration available on the Bitrise runner.
+
+The following `deploy` workflow is reproduced exactly from the integration reference. The supplied v1.10.0 sample omits Danger, Jest sharding, Sauce Labs, and NowSecure. Platform Engineering supplies those integrations when the selected template version includes them. Read the prerequisites below before adapting this example.
+
+```yaml
+workflows:
+  deploy:
+    steps:
+      # 1. Clone the repository
+      - git-clone@8: {}
+
+      # 2. Install dependencies
+      - npm@3:
+          title: npm install
+          inputs:
+            - workdir: "$WORKDIR"
+            - command: install
+
+      # 3. Run unit tests
+      - npm@3:
+          title: npm test
+          inputs:
+            - workdir: "$WORKDIR"
+            - command: test
+
+      # 4. Set up Android build tools
+      - install-missing-android-tools@3: {}
+
+      # 5. Build the Android app
+      - android-build@1:
+          inputs:
+            - project_location: "$PROJECT_LOCATION"
+            - module: "$MODULE"
+            - variant: "$VARIANT"
+
+      # 6. [Optional] Install saucectl for running tests
+      - script@1:
+          inputs:
+            - content: |-
+                npm install -g saucectl
+                saucectl --version
+
+      # 7. Register / provision the app in Sauce Labs
+      - git::https://git.enterprise.com/ACES-Mobile-Engineering/bitrise-step-saucelabs-app-create.git@1.0.0:
+          title: Create Sauce Labs App
+          inputs:
+            - saucelabs_request_yml: ".sauce/saucelabs_request.yml"
+            - sauce_username: "$SAUCE_USERNAME"
+            - sauce_access_key: "$SAUCE_ACCESS_KEY"
+
+      # 8. Upload the built APK and run tests
+      - git::https://git.enterprise.com/ACES-Mobile-Engineering/saucelabs-bitrise-step.git@1.0.0:
+          title: Upload App to Sauce Labs and Run Tests
+          inputs:
+            - sauce_username: "$SAUCE_USERNAME"
+            - sauce_access_key: "$SAUCE_ACCESS_KEY"
+```
+
+### Follow each step
+
+| Step | Where it runs | What it does |
+|---|---|---|
+| `git-clone@8` | Bitrise runner. | Checks out application source using the configured repository access. |
+| `npm@3` with `command: install` | Bitrise runner, in `$WORKDIR`. | Installs the application's dependencies using the supplied npm command. |
+| `npm@3` with `command: test` | Bitrise runner, in `$WORKDIR`. | Runs the test script defined in `package.json`. |
+| `install-missing-android-tools@3` | Android-capable runner. | Prepares Android tools required by this example. |
+| `android-build@1` | Android-capable runner. | Builds the configured project/module/variant. |
+| `script@1` | Bitrise runner's shell. | Executes the embedded `saucectl` installation and version commands. |
+| Sauce Labs app-create step | Bitrise runner, calling the configured integration. | Registers/provisions the application using request metadata. |
+| Sauce Labs upload/test step | Bitrise runner and Sauce Labs service. | Performs the configured package upload and cloud-test operation. |
+
+The source installs an unpinned global `saucectl`. Keep the reference snippet intact for comparison and have the owner confirm the approved CLI version and installation procedure for an executable template.
+
+### Configure the required inputs
+
+| Input | What must be supplied |
+|---|---|
+| `WORKDIR` | The checked-out directory containing `package.json`. |
+| `PROJECT_LOCATION` | Android Gradle project location expected by the pinned build step. |
+| `MODULE` | Actual application module for the selected route. |
+| `VARIANT` | Actual application build variant. |
+| `.sauce/saucelabs_request.yml` | Request file consumed by this example's pinned app-create step. |
+| `SAUCE_USERNAME`, `SAUCE_ACCESS_KEY` | Protected Sauce Labs credential bindings. |
+| Application and test artifacts | Real output paths and matching device-test packages required by the selected runner. |
+
+The example's private upload/test step exposes only its credential inputs in this excerpt. Its artifact-path, runner-command, region, and output handoffs must be confirmed from the pinned step contract before execution. Use the request filename consumed by that contract. Earlier references use a different request path.
+
+**Expected result —** the approved workflow resolves every input and selects the actual application and test packages produced for its route.
+
+## 6. Understand what Sauce Labs does in CI/CD
+
+<MermaidViewer title="Bitrise builds the packages and Sauce Labs runs the device tests">
+
+```mermaid
+flowchart TD
+    A["Bitrise prepares the application<br/>and matching test packages"] --> B["Configured steps register the app<br/>and upload the required packages"]
+    B --> C["Sauce Labs runs the tests<br/>on the selected devices"]
+    C --> D["Collect the completed test result<br/>and available evidence"]
+    D --> E{"Did the required tests pass?"}
+    E -->|Yes| F["Continue to the next approved step"]
+    E -->|No or unresolved| G["Stop progression<br/>and inspect the test result"]
+    classDef step fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
+    classDef decision fill:#422006,stroke:#fbbf24,color:#ffffff,stroke-width:2px;
+    classDef pass fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    classDef stop fill:#881337,stroke:#fda4af,color:#ffffff,stroke-width:2px;
+    class A,B,C,D step;
+    class E decision;
+    class F pass;
+    class G stop;
+```
+
+</MermaidViewer>
+
+The latest registration description names `SAUCE_APP_ID`. The upload/test description also shows an `appium:app` storage capability. Confirm their actual meanings and handoff from the pinned integration. Android native instrumentation uses its configured JUnit-based runner. Select the framework supported by the application's test suite.
+
+Verify that required tests complete and that their result affects the workflow's exit status. Keep the completed run identity and available video, screenshots, device logs, and reports. Network HAR evidence depends on enabled capture.
+
+Use [Sauce Labs Real-Device Testing](/mobile/testing-quality/sauce-labs-real-device-testing/) for the detailed setup, runner configuration, request metadata, test code, and troubleshooting. Choose one approved upload path so custom steps and a separate cURL upload do not upload the same package unintentionally.
+
+## 7. Know where YAML and shell scripts run
+
+YAML declares the configured operations. A Script step executes the commands under its `content` input on the runner. In the supplied example, the shell executes `npm install -g saucectl`, waits for it to finish, then executes `saucectl --version`.
+
+A checked-in `.sh` file must be present in the checkout and invoked by a configured step. Its directory and command must match the approved workflow. Writing the file alone leaves its execution to that workflow configuration.
+
+Workflows running on separate VMs need configured artifact or output handoffs. A file or environment variable created in one VM requires an approved transfer mechanism before another workflow can consume it. The Parallel Testing page covers this handoff.
+
+## 8. Inspect one run before proceeding
+
+Open a build triggered through the approved process. Confirm the event, source branch, source commit, workflow/route, selected runner, and each step's result.
+
+The supplied v1.10.0 file contains workflow definitions. Confirm the trigger in the effective Bitrise configuration before expecting a PR or push to start a particular workflow. Use the application source branch permitted by the template.
+
+For iOS, confirm the approved macOS/Xcode runner, workspace/project, shared scheme, and export/signing setup. The Android workflow above supplies an Android example. Obtain the corresponding iOS workflow from the selected template.
+
+**Attach screenshot — one route's source commit, ordered steps, and device-test result with sensitive details hidden.**
+
+## If a step fails
+
+| Problem | Next action |
+|---|---|
+| Pipeline names a missing workflow | Inspect the complete approved configuration and referenced workflow definitions. |
+| npm cannot find `package.json` | Confirm `$WORKDIR` points to the application's package root. |
+| Android module/variant fails | Match `$PROJECT_LOCATION`, `$MODULE`, and `$VARIANT` to the real project and pinned step contract. |
+| Sauce request file is missing | Match its checkout path to the pinned app-create input. |
+| Upload or test artifact is missing | Inspect the producer's actual outputs and configured handoffs. |
+| Device result is pending or unknown | Inspect the exact session and wait for or reconcile its result before reporting a required test pass. |
+| Workflow runs on an unexpected event | Inspect the configured trigger, webhook, and application source branch. |
+
+**Next page — [Danger PR Checks](/mobile/cicd/danger-pr-checks/).** See how the shared PR workflow runs Danger and where to inspect the feedback.
+
+
+
+---------------
+
+
+
+
+
+
