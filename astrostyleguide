@@ -1,119 +1,347 @@
 ---
-title: "Mobile Engineering Glossary"
-description: "Plain-language definitions and the distinctions developers need to build, test, and release mobile apps."
+title: "Prepare Your Repository"
+description: "Find your application files, run the existing local checks, and identify the source repository and branch before CI/CD enrollment."
 sidebar:
-  label: Glossary
-  order: 99
+  label: Prepare Your Repository
+  order: 2
 ---
 
-Use this page when a term is unfamiliar or when you need to know **where a file belongs, who owns a step, or what a result proves**.
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidZoom from '../components/mermaid-zoom.astro';
 
-## Start with these concepts
+This page prepares the application that Bitrise will build. Start with your application folder on your Mac. By the end, you should have a working local app, passing project checks, and a published source revision you can identify.
 
-Imagine you change the **Place order** button in My Chicken App. Here is how that change goes from your Mac to a user’s phone.
+**Work location — your application repository on your Mac.** The enrollment request will be created later in `mobile-platform-configuration`.
 
-1. **Find the project.** A repository, or repo, is the project’s files and their change history. A branch is a line of work in that repo. A commit records a version of the files so the team can identify exactly what was built.
-2. **Understand what the app does.** The screen displays the button and sends the tap to the ViewModel or state owner. The use case checks whether the order is valid. The repository in the app code sends the request through the app’s data layer. The backend is the server that accepts or rejects the order.
-3. **Test the behavior.** Run the app and its tests on your Mac. A unit test can check that an invalid quantity never reaches the ordering service. A device test can install the app, tap the button, and check what the user sees. Coverage shows how much production code the tests ran.
-4. **Ask for review.** Open a pull request, or PR, so teammates can review the change. If configured, Bitrise starts the PR workflow. Danger checks the PR rules, and test steps check the code. Open the PR and the Bitrise log to see each result.
-5. **Build the app.** Bitrise checks out the selected commit and runs the workflow defined in the shared `bitrise.yml`. A build packages the app into a file such as an APK or IPA. Depending on the workflow, Sauce Labs can test the built app on real devices and NowSecure can assess the binary for security findings.
-6. **Deliver and verify.** The approved workflow signs and delivers the candidate as required by the destination. An intended user then checks that the exact version is available. Uploading a build artifact to Bitrise and making the app available to users are separate results.
-7. **Monitor the release.** Use the configured Datadog monitoring to investigate crashes, errors, or slow screens. Match what you see to the app version and environment before deciding what to fix.
+Use [Machine Setup](../onboarding/machine-setup-guide/index.mdx) to install the required tools on macOS Apple Silicon. Follow the application's documented versions and dependency installation instructions.
 
-### Know which file to open
+Prepare your application code, tests, and CAMP file here. Platform Engineering supplies the Bitrise workflow and shared CI/CD automation through the selected template.
 
-| If you want to know… | Open… |
+## 1. Choose your starting point
+
+| Your situation | What to do |
 |---|---|
-| What app metadata does my team provide? | `campfile.yml` in the application repository. |
-| Which shared workflow template did we select? | The enrollment YAML in `mobile-platform-configuration`. Read `template_id` and `template_version`. |
-| What commands does Bitrise run? | The selected version’s `bitrise.yml` in `mobile-platform-configuration-bitrise-template`. Platform Engineering maintains it. |
-| Which step ran for my change? | The Bitrise build log for your commit and workflow. |
-| Can users access this release? | The configured enterprise catalog or store. Match the exact version and intended audience. |
+| You already have an application repository | Open that checkout and continue with step 2. |
+| You need a new application | Select your platform in **Create a new application** below. |
+| Your application is already enrolled in Bitrise | Prepare and verify your source changes, then follow the later-build procedure for its existing enrollment. |
 
-> **First setup or another code change?** Enrollment connects a new application to Bitrise once. For a feature change like this one, use the existing Bitrise app and its configured triggers.
+### Create a new application
 
-## Repositories and configuration
+<Tabs>
+<TabItem label="React Native">
 
-| Term | What it means | What to remember |
-|---|---|---|
-| **Application repository** | The Git repository containing the app source, native projects, tests, and dependency lockfiles. | The CAMP file is the only CI/CD configuration the app team maintains here. |
-| **CAMP file** | The app metadata file used by the platform. The examples in these guides use `campfile.yml`. | Follow the approved CAMP schema for your application. |
-| **Enrollment request** | A secret-free YAML file in `mobile-platform-configuration` that identifies the app, source repo, branch, template, and access. | The documented path is `Config/Teams/<team>/Bitrise/Apps/<app>.yaml`. Its casing matters. Enrollment is for initial provisioning. |
-| **Configuration engine** | The platform automation in `mobile-platform-configuration-code` that processes approved requests. | Vela validates the request before protected apply. Review the validation and apply results separately. |
-| **Application starter template** | A template that generates application source files. | Use the generated application directory to build and test your app. |
-| **Bitrise workflow template** | A shared, versioned workflow definition in `mobile-platform-configuration-bitrise-template`. | Platform Engineering maintains its `bitrise.yml`. The enrollment request selects it with `template_id` and `template_version`. |
+**Create the app from the approved React Native starter.**
 
-> **Where does `bitrise.yml` go?** Use the versioned file in the shared template repo. The **Workflows** menu in Bitrise shows the configuration applied to the app.
+1. Create an empty private application repository through the approved process. Save its clone URL for step 5.
+2. Follow the approved React Native starter README to set up package registry access. Confirm the CLI and starter versions it requires.
+3. Open Terminal in the **parent folder where you want the new project created**. Run the workshop starter command with `MyChickenapp` as the project name. The command resolves the latest CLI. If the current starter README provides a pinned command, use that version with the same project name.
 
-## Architecture and application behavior
+```bash
+npx @react-native-community/cli@latest init MyChickenapp \
+  --template @mobilearch/react-native-template
+```
 
-| Term | What it means | What to remember |
-|---|---|---|
-| **MVVM** | Model–View–ViewModel separates screen rendering, presentation state, and application behavior. | The view sends actions and renders state. Business rules belong in the domain or use case. |
-| **Use case** | An operation that expresses a business action, such as placing a chicken order. | It can validate the order before calling a repository. |
-| **Repository in application code** | A contract or implementation that gives the feature access to data or operations. | In architecture examples, this term refers to a code boundary. In Git instructions, it means the source project. |
-| **Redux Toolkit** | The tool used for shared Redux state in React Native. | A slice manages its part of the state. Keep API clients and credentials outside Redux state. |
-| **SDK** | A package of APIs and tools for integrating a capability. | Use the approved package version and its documented contract. |
-| **Feature flag** | Configuration that enables or disables behavior at runtime. | Access to protected resources still requires authorization. |
-| **Circuit breaker** | A mechanism that temporarily stops calls to a failing dependency. | Before retrying an order with an unknown result, confirm whether the original operation completed. |
-| **FCM and APNs** | Firebase Cloud Messaging and Apple Push Notification service deliver notifications. | Follow the app's approved provider path. FCM registration tokens and APNs device tokens serve different integrations. |
-| **Deep link** | A link that opens a specific destination inside the app. | Validate the link and verify the current user can access the destination. |
+The generator creates a folder named `MyChickenapp`. For your own project, substitute your approved project name in both commands.
 
-## Build and test execution
+**Generated React Native project**
 
-| Term | What it means | What to remember |
-|---|---|---|
-| **CI and CD** | Continuous integration checks code changes. Continuous delivery prepares an approved candidate for distribution. | Follow the required checks and approvals for the selected route. |
-| **Trigger** | A configured event that starts a run, such as a pull request update or a push. | Check which workflow the event selects. |
-| **Pipeline, workflow, and step** | A pipeline connects jobs. A workflow runs ordered operations. A step performs one operation. | Start with the workflow name in the build log, then find the step that produced the result. |
-| **Runner** | The machine or environment where a workflow executes. | Each runner needs its own dependencies and inputs. Separate runners need an explicit handoff for files or outputs. |
-| **Script step** | A Bitrise step that runs shell commands, often embedded under `inputs → content`. | In the governed setup, Platform Engineering maintains these scripts in the approved template. |
-| **Danger** | Automation that applies configured PR rules and posts feedback to GitHub. | Inspect the PR feedback and Bitrise result. Code checks and peer reviews have their own results. |
-| **Parallel builds** | Separate build jobs run at the same time. | In the supplied v1.10.0 example, QA and UAT can each launch Android and iOS builds together. |
-| **Parallel tests and sharding** | Independent test jobs run concurrently. Sharding divides a suite into groups. | A parallel Android and iOS build does not establish that Jest tests were split across jobs. |
-| **Jest, Android JUnit, and XCUITest** | Jest runs JavaScript tests. Android JUnit instrumentation runs on Android devices or emulators. XCUITest runs iOS UI tests. | JUnit XML is a report format. Check which runner actually executed the tests. |
-| **Coverage** | How much production code tests exercised, measured by supported counters such as lines or branches. | The requirement is 100% within the defined production scope and supported metrics. Check file scope, fresh reports, and meaningful assertions. |
-| **Sauce Labs** | Runs prepared tests on real devices and reports their results. | Match the app and test packages to the run. Verify the completed test result after upload. |
-| **NowSecure** | Assesses a built mobile binary and provides findings for the configured security gate. | Inspect the completed assessment for the exact candidate and the decision under the approved severity policy. |
-| **MCP** | Model Context Protocol lets an approved AI client use tools exposed by an integration. | Bitrise MCP access and the workflow that builds your app are separate concerns. CI runs committed tests. |
+```text
+MyChickenapp/
+├── package.json
+├── <package-manager lockfile>
+├── <React Native source and test files>
+├── android/
+│   ├── gradlew
+│   └── app/
+└── ios/
+    └── Podfile
+```
 
-## Signing, delivery, and evidence
+**React Native starter structure**
 
-| Term | What it means | What to remember |
-|---|---|---|
-| **Artifact** | A file produced by a build, such as an APK, AAB, IPA, or test report. | Identify the exact source revision and build that produced it. |
-| **APK, AAB, and IPA** | APK is an installable Android package. AAB is an Android App Bundle used for Play delivery. IPA is an iOS app package. | Use the package and signing configuration required by the selected destination. |
-| **Signing** | Applies and verifies the identity used to distribute an app package. | Platform Engineering manages protected signing bindings. Enterprise distribution may also perform destination signing or policy processing. |
-| **QA and UAT** | QA is quality assurance. UAT is user acceptance testing. | Route names identify the intended testing context. The configured workflow determines the destination and audience. |
-| **Private artifact upload** | Publishes the output to Bitrise build artifacts. | Verify enterprise catalog or store delivery separately. In the supplied v1.10.0 template, Digital.ai deployment defaults to skipped. |
-| **Distribution** | Makes an approved version available through the intended enterprise catalog or store route. | Match the exact version or build number and verify access with an intended user. |
-| **Partial failure and reconciliation** | Some steps completed, but another failed or its result is unknown. Reconciliation checks the current state using existing evidence. | Preserve confirmed results. Ask the platform owner to check the destination before repeating an external write. |
-| **Observability** | Uses runtime data such as crashes, errors, traces, or performance signals to understand app behavior. | Match Datadog data and symbols to the affected release and environment. |
+The starter repository's `docs/template-structure.md` shows the following layout under `template/`. This is the starter's source layout. After generation, open `MyChickenapp/` to work on your app.
 
-## Choose your next step
+```text
+template/
+├── src/
+│   ├── app/
+│   │   ├── bootstrap/
+│   │   ├── entry/
+│   │   ├── navigation/
+│   │   ├── providers/
+│   │   └── store/
+│   ├── features/
+│   │   ├── auth/
+│   │   ├── catalog/
+│   │   ├── tasks/
+│   │   └── settings/
+│   ├── shared/
+│   │   ├── infrastructure/
+│   │   ├── ui/
+│   │   └── types/
+│   ├── application/
+│   ├── domain/
+│   └── data/
+├── __tests__/
+└── docs/
+```
 
-| Where you are now | What to do next |
+| Folder | What belongs there |
 |---|---|
-| **I’ve never run this app.** | Use the Apple Silicon Machine Setup guide, then follow First Local Run. Confirm the development app opens before changing code. |
-| **I have a feature to build.** | Follow Architecture and the standards for Android, iOS, or React Native. Use the app’s existing state, networking, and shared foundations. |
-| **I have a new app repo and no Bitrise app.** | Prepare the app and CAMP file, then follow the CI/CD enrollment guide. The request selects an approved shared workflow template. |
-| **The app is already enrolled and I changed code.** | Run the relevant local tests, open an application PR, and inspect the configured Bitrise checks for that commit. |
-| **I need to change how Bitrise builds or tests the app.** | Find the selected template ID and version, then work with Platform Engineering on the shared `bitrise.yml`. |
-| **I want Copilot or ChatGPT to draft a test.** | Give the approved tool the expected behavior, permitted context, and existing test conventions. Review and run the draft locally before committing it. |
-| **A build passed and I need to confirm delivery.** | Open the configured destination. Match the app identity and exact version or build number, then check access for an intended user. |
-| **Users report a problem after release.** | Record the affected app version, environment, and time. Use Datadog to look for matching errors, crashes, or performance changes. |
+| `src/app/` | App startup, dependency setup, Redux store, session setup, providers, and navigation. Start tracing the app at `index.js` and `src/app/entry/AppRoot.tsx`. |
+| `src/features/` | Screens, ViewModels, and state owned by each feature. The starter includes Auth, Catalog, Tasks, and Settings as reference features. |
+| `src/shared/` | Reusable UI, shared types, and infrastructure such as the API client, app configuration, and storage adapter. |
+| `src/application/` | Helpers that coordinate work across the app. |
+| `src/domain/` | Business entities, failures, repository contracts, and use cases. |
+| `src/data/` | Data models, mappers, data sources, and repository implementations. |
+| `__tests__/` | Starter tests, including an app render smoke test and an auth reducer test. |
 
-## Understand what each result proves
+4. Enter the generated folder and confirm the expected files exist. If you changed the project name above, use the same name here.
 
-Read results for the **same source commit and candidate**. A single run can pass one step and still be waiting for another.
+```bash
+cd MyChickenapp
+pwd
+ls -l package.json android/gradlew ios/Podfile
+```
 
-| What you see | What you can say |
+5. Continue to **Open the application folder** below. Run the app and its local checks, then publish the generated source to your private repo and record the branch and commit.
+
+The React Native starter generates the app. During enrollment, the approved Bitrise template supplies the shared `bitrise.yml`.
+
+</TabItem>
+<TabItem label="Android">
+
+**Create a native Android app.**
+
+If your team provides an approved Android application starter, follow its README. For the native `MyChickenapp` example, use the Android Studio **Empty Activity** template for Kotlin and Jetpack Compose.
+
+1. In Android Studio, select **New Project → Empty Activity**.
+2. Set **Name** to `MyChickenapp`. Use the package name and minimum SDK approved for your app. Save it in a new `MyChickenapp` folder and finish project creation.
+3. Wait for Gradle sync. Open a terminal in the generated folder and build the debug APK:
+
+```bash
+pwd
+ls -l gradlew
+./gradlew :app:assembleDebug
+```
+
+The command assumes the generated module is named `app`. In Android Studio, select an emulator and click **Run** to confirm the starter screen opens. [Android Studio project setup](https://developer.android.com/studio/projects/create-project)
+
+**Example Android folder structure**
+
+```text
+MyChickenapp/
+├── gradlew                         # Runs the project's Gradle wrapper
+├── gradle/
+│   └── wrapper/
+├── settings.gradle.kts             # Declares the Gradle modules
+├── build.gradle.kts                # Project-level build configuration
+└── app/
+    ├── build.gradle.kts            # App module configuration
+    └── src/
+        ├── main/                   # Kotlin source, manifest, and resources
+        ├── test/                   # Local unit tests, when present
+        └── androidTest/            # Device and emulator tests, when present
+```
+
+Your starter may use `.gradle` instead of `.gradle.kts` or a different module name. Open the folder that contains `gradlew`.
+
+</TabItem>
+<TabItem label="iOS">
+
+**Create a native iOS app.**
+
+If your team provides an approved iOS application starter, follow its README. For the native `MyChickenapp` example, use Xcode’s **iOS App** template.
+
+1. In Xcode, choose **File → New → Project** and select **iOS → App**.
+2. Set **Product Name** to `MyChickenapp`, **Interface** to **SwiftUI**, and **Language** to **Swift**. Use your approved organization identifier and team settings. Save the project.
+3. In a terminal beside the generated project file, confirm that Xcode can list the targets and schemes:
+
+```bash
+pwd
+xcodebuild -list -project MyChickenapp.xcodeproj
+```
+
+In Xcode, select the app scheme and an iOS Simulator, then click **Run** to confirm the starter screen opens. [Create an Xcode project](https://developer.apple.com/documentation/xcode/creating-an-xcode-project-for-an-app)
+
+**Example iOS folder structure**
+
+```text
+MyChickenapp/
+├── MyChickenapp.xcodeproj/          # Xcode project and target configuration
+├── MyChickenapp/
+│   ├── MyChickenappApp.swift       # App entry point
+│   ├── ContentView.swift          # Starter screen
+│   └── Assets.xcassets/            # App icons, images, and colors
+├── MyChickenappTests/             # Unit tests, if selected
+└── MyChickenappUITests/           # UI tests, if selected
+```
+
+Open `MyChickenapp.xcodeproj` for this example. If your starter specifies an `.xcworkspace`, open that workspace.
+
+</TabItem>
+</Tabs>
+
+Continue below to verify the files and publish the source to an approved private repository. During enrollment, select the approved Bitrise template for the platform you chose.
+
+<MermaidZoom title="Prepare your application before enrollment">
+
+```mermaid
+flowchart TD
+    A["Open your application folder"] --> B["Confirm the project files"]
+    B --> C["Run the app and local checks"]
+    C --> D["Publish reviewed source changes"]
+    D --> E["Record repository, branch, and commit"]
+    E --> F["Continue to CAMP metadata"]
+    classDef action fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
+    classDef done fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    class A,B,C,D,E action;
+    class F done;
+```
+
+</MermaidZoom>
+
+## 2. Open the application folder
+
+Open the project in your editor, then open its terminal. The terminal must point to the application folder before you run the commands below.
+
+For an existing remote application that you have not downloaded, follow [First Local Run](../onboarding/first-local-run.mdx) to clone the assigned repository and install its locked dependencies. Then return here and confirm the files for your platform.
+
+<Tabs>
+<TabItem label="React Native">
+
+The root is the folder containing `package.json`. The supplied workshop checks for these native files too.
+
+```text
+application-root/
+├── package.json
+├── <project's package-manager lockfile>
+├── android/
+│   ├── gradlew
+│   └── app/
+│       └── build.gradle
+└── ios/
+    └── Podfile
+```
+
+A project may use a supported alternative Gradle build-file format. Follow its approved template's layout.
+
+React Native needs both native toolchains when building Android and iOS. Record the Android application module and the iOS workspace/project and shared scheme from the existing project instructions.
+
+</TabItem>
+<TabItem label="Android">
+
+Open the native Android project root containing the Gradle wrapper and application module.
+
+```text
+application-root/
+├── gradlew
+├── gradle/
+│   └── wrapper/
+├── settings.gradle or settings.gradle.kts
+└── <application-module>/
+    ├── build.gradle or build.gradle.kts
+    └── src/
+```
+
+Use the module and variant documented by the project. Record its application ID and the build/test tasks that already work locally.
+
+</TabItem>
+<TabItem label="iOS">
+
+Open the workspace or project specified by the application's setup guide.
+
+```text
+application-root/
+├── <application>.xcodeproj/
+├── <application>.xcworkspace/    # When the project uses a workspace
+├── <application-source>/
+└── <test-source>/               # When test targets are configured
+```
+
+Retain the project's shared schemes and applicable dependency locks. Record the workspace/project, scheme, and bundle identifiers used by the approved build.
+
+</TabItem>
+</Tabs>
+
+## 3. Identify the Git repository
+
+Run the following in the application terminal. These commands inspect the current checkout.
+
+```bash
+git status --short --branch
+git branch --show-current
+git rev-parse HEAD
+git remote get-url origin
+```
+
+| Command | What to read |
 |---|---|
-| **Vela validation passed** | The enrollment request passed its configured checks. Look for a separate live apply result to confirm provisioning. |
-| **Danger passed** | The PR passed the configured Danger rules. Check peer review and code test results separately. |
-| **A Bitrise step was skipped** | The step did not run. Check whether the workflow condition and release policy allowed the skip. |
-| **Tests passed** | The executed tests passed. Check test discovery, required suites, and any separate coverage threshold. |
-| **Sauce Labs packages uploaded** | The packages reached the upload destination. Check the completed device run for the actual test outcome. |
-| **NowSecure assessment submitted** | An assessment was requested. Open the completed report and check the severity decision for the same binary. |
-| **APK or IPA available in Bitrise** | Bitrise produced and uploaded an artifact. Check the configured catalog or store for distribution. |
-| **The exact version is visible to an intended user** | You have evidence of availability for that audience. Record installation and launch separately when required. |
+| `git status --short --branch` | Current branch and local changes. |
+| `git branch --show-current` | Application branch name. A blank result requires checking the checkout state. |
+| `git rev-parse HEAD` | Full commit ID of the current checkout. |
+| `git remote get-url origin` | Address of the connected source repository. |
+
+Confirm the repository is private in GitHub Enterprise and that you can access it. Use a repository URL without embedded passwords or tokens when recording or sharing details.
+
+**Expected result —** you have identified the application checkout and its remote. If Git reports that this is not a repository, open the generated application's correct folder. If `origin` is missing, follow the approved private-repository publishing instructions.
+
+## 4. Run the existing local checks
+
+First install dependencies using the application's README and committed dependency locks. Then launch the app using its documented development configuration. For React Native, verify the native platforms you plan to release.
+
+The supplied Bitrise workflow runs `npm test` for its npm application. The earlier preparation reference also supplies `npm run lint`. Run these commands only when the application defines the corresponding scripts.
+
+```bash
+npm test
+npm run lint
+```
+
+Type `npm test` in the application terminal and wait for it to finish. Read the test result. If it passes, run `npm run lint` and read that result. Resolve a failure before continuing.
+
+Each `npm` command looks up its script in `package.json`. These commands run on your Mac during preparation. Later, the Bitrise npm step runs the configured command on a build machine. The configuration repository has its own validation procedure.
+
+| Platform | Local verification |
+|---|---|
+| React Native | Run the existing JavaScript/TypeScript checks and the documented Android/iOS builds. |
+| Android | Run the project's configured Gradle tests and development build. |
+| iOS | Run the project's configured Xcode tests and development build using its shared scheme. |
+
+Use the approved starter's actual Gradle tasks, Xcode scheme, and test setup. [First Local Run](../onboarding/first-local-run.mdx) explains how to identify and launch the development target. Follow [Testing & Quality](../testing-quality/index.mdx) for writing tests, coverage configuration, and device-test preparation.
+
+**Expected result —** the app launches in the required development environment, its configured tests execute, and local checks pass. Record the first failing command if you need help.
+
+## 5. Publish and confirm the intended source
+
+Review and publish source changes through your team's application PR process. After the accepted changes reach the application branch intended for enrollment, confirm that branch and commit in GitHub Enterprise.
+
+The source branch must be compatible with the selected Bitrise template. The latest request example uses `development`. Confirm the branch allowed by the template you select before using that value. The enrollment page explains the catalog check.
+
+Record these details for the request.
+
+```text
+Application name
+Private application repository URL
+Application source branch
+Accepted source commit ID
+Android application module and build variant, when applicable
+iOS workspace/project and shared scheme, when applicable
+Local commands executed and their results
+```
+
+Use the accepted remote branch's commit when local HEAD still identifies a separate feature branch or a revision changed by merging.
+
+**Attach screenshot — application repository, intended branch, and accepted commit with sensitive details hidden.**
+
+## If a step fails
+
+| Problem | Next action |
+|---|---|
+| Expected application files are missing | Check that you opened the generated application rather than the starter repository. |
+| Dependencies cannot be downloaded | Check the approved registry setup and your access using the project's setup instructions. |
+| `npm test` or `npm run lint` is missing | Inspect `package.json` and ask the application owner for the approved checks. |
+| App build or tests fail | Fix the first failure locally and repeat the affected check. |
+| Source branch differs from the catalog requirement | Confirm the intended branch with the platform owner before writing the request. |
+| Reviewed changes exist only on your Mac | Publish them through the application review process and confirm their remote commit. |
+
+**Next page — [CAMP File Reference](./campfile-reference.mdx).** Add application metadata before continuing to the configuration repository and enrollment request.
