@@ -1,141 +1,278 @@
 ---
-title: Mobile Platform Overview
-description: Learn the enterprise mobile tools, developer responsibilities, and the difference between local development, enrollment, builds, and delivery.
+title: "Later Builds — Code Changes & Template Updates"
+description: "Follow app changes from GitHub events to Bitrise results, then understand how shared workflow updates and template changes are adopted."
 sidebar:
-  label: Platform Overview
-  order: 3
+  label: Later Builds
+  order: 13
 ---
 
+import { Aside } from '@astrojs/starlight/components';
 import MermaidViewer from "@components/MermaidViewer.astro";
 
-# Mobile Platform Overview
+Your app is already enrolled. Use this page when you change application code, update the shared workflow, or need a different template for the existing Bitrise app.
 
-This page explains **the tools we use to build, test, release, and monitor mobile apps**. For each tool, you will learn what it does and when to use it.
+**Example throughout this page — MyChickenapp.** Its application code and its enrollment YAML live in separate repositories. The app already has a Bitrise identity and an applied shared workflow.
 
-To install your development tools, follow [Machine Setup](./machine-setup-guide/index.mdx).
+| Question | Where to look |
+|---|---|
+| Which application code will be built? | The application repository, branch, and source revision selected for the run. |
+| Which commands will execute? | The workflow configuration currently applied to the Bitrise app. |
+| What starts the run? | An enabled trigger matching the received event, or an approved manual/API/scheduled start. |
+| Who changes the build commands? | Platform Engineering, through shared template review and adoption. |
 
-> **Confidential — internal use only.** Keep enterprise source, configuration, internal links, and operational evidence within approved systems. Never share credentials, signing material, personal data, or sensitive logs in documentation, screenshots, support messages, or AI prompts.
+An application commit and a template version identify two different inputs to a build. Record both when investigating its result.
 
-## Tech Stack Selection
+<Aside type="caution" title="Keep the existing enrollment and Bitrise app">
 
-Your **tech stack** is the set of languages, frameworks, and tools you use to build the app. If you’re joining an existing app, use its stack and the tool versions in its repository. For a new app, **start with React Native as the preferred choice**. Review platform-specific requirements with your team before choosing a native stack.
+App developers maintain code, tests, and `campfile.yml` in the app repo. Platform Engineering maintains the shared `bitrise.yml`. Accepted enrollment requests are create-only. Use the approved existing-app change procedure for template or lifecycle changes.
 
-<MermaidViewer title="Choose a mobile tech stack">
+</Aside>
+
+## 1. Choose the change you are making
+
+| Your change | Where the change belongs | What starts the next action |
+|---|---|---|
+| Change Login, Home, or another feature | Application repo. | A configured app-repo event reaches Bitrise and matches a trigger. |
+| Push a second fix to an open application PR | Same application repo and PR branch. | The configured PR-update event can start checks for the new revision. |
+| Change tests or app dependencies | Application repo, including the applicable lockfile. | The configured app trigger starts the required checks and build. |
+| Change a shared build command, test stilstep, or deployment script | Bitrise template repo, maintained by Platform Engineering. | Catalog validation, review, publication, then approved adoption by the consumer. |
+| Upgrade the template version | Approved existing-app adoption procedure. | The platform applies the approved version to the existing app. |
+| Change the template ID | Approved existing-app lifecycle or migration procedure. | The platform verifies compatibility and applies the approved configuration. |
+| Investigate an unsuccessful run | Existing Bitrise app and destination evidence. | Follow reviewed recovery before repeating operations with external side effects. |
+
+## 2. Understand the two repository events
+
+| Event | System that processes it | What it does |
+|---|---|---|
+| First enrollment request reaches protected `main` in `mobile-platform-configuration` | Vela and the configuration engine. | Provisions the Bitrise app and applies its selected workflow configuration. |
+| Later application PR or push event | The configured GitHub-to-Bitrise connection and Bitrise trigger rules. | Selects a workflow in the existing Bitrise app to build the intended application revision. |
+
+The first setup records the relationship between the app repository, Bitrise app, and selected template. Later source builds reuse that relationship.
+
+### What remains available after the first enrollment?
+
+After successful enrollment, the platform has an existing Bitrise app connected to the application source and configured with the selected workflow. That connection and applied configuration are what later builds use.
+
+You can follow the next build without reopening the original enrollment request. Open the existing Bitrise app and inspect its incoming event, selected workflow, and checkout revision.
+
+### How GitHub tells Bitrise about a change
+
+1. You push a commit or open/update a PR in the **application repository**.
+2. The configured GitHub connection sends the event to Bitrise. A webhook is an event notification that contains details such as the repository, event, and revision.
+3. Bitrise evaluates the configured event and branch filters.
+4. A matching trigger selects the workflow or pipeline.
+5. The run checks out its selected revision and executes the applied workflow configuration.
+6. Inspect the build log and configured GitHub check/status to confirm the result belongs to that revision.
+
+For a webhook-based integration, the platform owner can inspect the application repo's **Settings → Webhooks → Recent deliveries**, subject to GitHub access and interface labels. A GitHub App integration uses installation event subscriptions, which are managed separately. Confirm which connection your enterprise uses before diagnosing a missing event. [Bitrise incoming webhooks](https://docs.bitrise.io/en/bitrise-platform/integrations/webhooks/adding-incoming-webhooks), [GitHub App events](https://docs.bitrise.io/en/bitrise-platform/repository-access/github-app-integration)
+
+The supplied v1.10.0 template defines workflows but supplies no complete app trigger mapping. Record the actual PR event, source/target branch filters, and selected workflow with Platform Engineering. The branch and workflow examples below illustrate the flow.
+
+<MermaidViewer title="Later application changes — GitHub event to verified result">
 
 ```mermaid
 flowchart TD
-    START{"Are you joining an existing app?"}
-    EXISTING["Use the app's current stack<br/>Follow its repository setup"]
-    NEW["Start with React Native<br/>Preferred for new apps"]
-    REVIEW{"Has the team approved a native stack<br/>for this app's requirements?"}
-    RN["React Native<br/>TypeScript and React"]
-    NATIVE["Use the approved native platform<br/>Android with Kotlin or iOS with Swift"]
-    START -->|"Yes"| EXISTING
-    START -->|"No"| NEW --> REVIEW
-    REVIEW -->|"No"| RN
-    REVIEW -->|"Yes"| NATIVE
+    APP["APPLICATION REPOSITORY<br/>Commit a code or test change"]
+    EVENT["GitHub PR or push event"]
+    CONNECTION["Configured webhook or GitHub App<br/>Delivers the event to Bitrise"]
+    MATCH{"Does an enabled trigger<br/>match the event and branch?"}
+    RUN["Existing Bitrise app<br/>Runs the selected workflow for its selected revision"]
+    RESULT["Inspect completed checks and artifacts<br/>Record the source commit and build ID"]
+    DELIVERY["When configured and approved<br/>Deliver the candidate and verify exact-version access"]
+    NO["No matching automatic build<br/>Owner inspects the event and trigger configuration"]
+    APP --> EVENT --> CONNECTION --> MATCH
+    MATCH -->|"Yes"| RUN --> RESULT --> DELIVERY
+    MATCH -->|"No"| NO
+    classDef repo fill:#30204f,stroke:#fbbf24,color:#ffffff,stroke-width:3px;
+    classDef step fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
     classDef decision fill:#713f12,stroke:#fcd34d,color:#ffffff,stroke-width:2px;
-    classDef action fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
-    classDef choice fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
-    class START,REVIEW decision;
-    class NEW action;
-    class EXISTING,RN,NATIVE choice;
+    classDef result fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    class APP repo;
+    class EVENT,CONNECTION,RUN step;
+    class MATCH,NO decision;
+    class RESULT,DELIVERY result;
 ```
 
 </MermaidViewer>
 
-| Stack | What you build with | When to consider it |
-|---|---|---|
-| **React Native** | TypeScript and React. Use Redux Toolkit for shared state where Redux is needed. | Start here for a new app. You can share feature code across Android and iOS while keeping separate native builds. [React Native Standards](/mobile/platforms/react-native-standards/) |
-| **Native Android** | Kotlin and Jetpack Compose in Android Studio. | Consider it for an approved Android-only app or when a required Android SDK or device integration drives the decision. [Android Standards](/mobile/platforms/native-android-standards/) |
-| **Native iOS** | Swift and SwiftUI in Xcode. | Consider it for an approved iOS-only app or when a required Apple platform capability drives the decision. [iOS Standards](/mobile/platforms/native-ios-standards/) |
+## 3. Case A — first code change after enrollment
 
-Before choosing a stack for a new app, confirm the target platforms and required SDKs or hardware. If a device integration is central to the app, verify it on the intended device before committing to a stack.
+**Example — change Login in MyChickenapp.**
 
-### Why choose one stack over another?
+1. Edit the application code and its tests in the app repo.
+2. Run the project’s local checks. If your repo defines `test` for Yarn, run:
 
-| Choice | Why it fits | Example |
-|---|---|---|
-| **React Native** | When Android and iOS need the same features, the team can share screens, business rules, and JavaScript tests. A change to shared code can serve both apps, while each platform still needs its own build and device testing. | **My Chicken App** has the same menu, quantity selection, and order confirmation on Android and iOS. React Native lets the team implement that flow once in shared code. |
-| **Native Android** | When the app targets Android and depends heavily on an Android SDK or device capability, Kotlin lets the team work directly with that API. This can avoid maintaining a React Native bridge for an integration central to the app. | A warehouse app runs on managed Android scanners and depends on the scanner vendor’s Android SDK for its main workflow. |
-| **Native iOS** | When the app targets iOS and depends heavily on an Apple framework or device capability, Swift lets the team work directly with that API and follow its lifecycle and tooling. | An iPhone-only app depends on an Apple framework for a core feature, and the team confirms that direct Swift integration best fits the requirement. |
+```bash
+yarn test
+```
 
-A platform-specific feature can still fit in a React Native app. If an approved native module meets the requirement, keep the rest of the app shared. For a critical integration, build a small prototype on the target device and compare how much native code, testing, and maintenance each option needs.
+3. Commit and push through the application's normal branch process. Open its PR.
+4. The configured PR event reaches Bitrise. If a PR trigger matches, the existing app starts the selected checks. Danger runs when that workflow includes it.
+5. Review the current-revision check results and obtain the required peer approvals.
+6. Merge into the approved application branch. If its push event matches a build trigger, Bitrise starts the configured build route.
+7. Open that run. Match the source revision, branch, workflow, applied template version, and artifact.
+8. Follow the route's checks, security decision, signing, and delivery requirements. Confirm destination access for the exact version.
 
-## Tools you use while developing
+PR runs may use a PR revision or a generated merge revision according to configuration. A merge to the application branch can produce a different commit. Read the actual run identity instead of assuming the PR build and post-merge build used identical commits.
 
-| Tool or capability | What it does | Your action |
-|---|---|---|
-| **VS Code** | Edits React Native TypeScript and project configuration. | Open the generated or assigned application repository and use its documented scripts. |
-| **Android Studio** | Provides Android development, emulator management, native debugging, and build tools. | Use it for Android applications and the Android side of React Native. |
-| **Xcode** | Provides Apple SDKs, simulators, native debugging, and iOS build tools. | Use it for iOS applications and the iOS side of React Native. |
-| **Private source repositories** | Store application code, dependency locks, tests, and reviewed configuration. | Work from the assigned branch and submit focused pull requests. |
-| **Architecture and platform standards** | Define responsibility boundaries, state ownership, networking, and platform conventions. | Follow the existing application structure and the relevant platform standards. |
-| **App Foundations and Authentication SDK** | Document shared application capabilities and authentication integration. | Use the approved integration for your application. Confirm SDK contracts and versions before implementation. |
-| **Redux Toolkit** | Manages React Native state where Redux is required. | Follow the application's established store and feature patterns. Keep temporary UI state local when appropriate. |
-| **GitHub Copilot and ChatGPT** | Assist with authoring and understanding code and tests. | Use approved engineering rules and permitted context. Review generated code before committing it. |
+**Expected result —** the new application revision is associated with its own check/build evidence. The approved workflow and applicable approvals decide whether it progresses to delivery.
 
-React Native shares application code across platforms; Android and iOS still require their own native configuration, build targets, permissions, signing, and verification.
+### Walk through the events for one Login change
 
-## Tools that validate and deliver changes
+The revision labels below are teaching labels. Read actual commit IDs in GitHub and Bitrise. The table assumes your app has both an appropriate PR trigger and a post-merge push trigger.
 
-| Tool or capability | What it does | What developers need to understand |
-|---|---|---|
-| **Danger.js** | Checks configured pull-request conventions and posts review feedback. | Resolve the actual required checks. A bot response does not replace human review or tests. |
-| **Vela** | Validates and previews enrollment requests, and runs the governed apply process after protected promotion. | Request validation is separate from live provisioning. Track the exact request and apply commit. |
-| **Bitrise** | Runs approved build, test, artifact, and delivery workflows. | Use the application's approved templates and routes. Do not manually create an app outside governed enrollment. |
-| **Change detection, parallel testing, and caching** | Reduce unnecessary work and distribute supported test execution. | Preserve correctness when selecting affected modules. Cache hits and skipped work do not prove a feature was tested. |
-| **Sauce Labs** | Executes supported tests on real devices and provides diagnostic evidence. | Supply the correct app and test artifacts, review failures, and inspect logs, screenshots, and recordings where available. |
-| **NowSecure** | Assesses mobile artifacts and supports configured security gates. | Review the assessed artifact and severity decision. Follow approved exception handling rather than bypassing the gate. |
-| **Protected signing** | Makes approved signing credentials available through platform-controlled integration. | Follow the signing setup for the target route. Keep private keys, passwords, and certificates out of source and request YAML. |
-| **Enterprise App Management** | Distributes eligible private application versions to intended audiences. | Verify distribution signing, enablement, assignment, and exact-version visibility separately from build success. |
-| **Google Play / App Store Connect** | Receive approved store artifacts and manage platform-specific processing and distribution. | Follow the separate store-delivery instructions. Upload, processing, tester availability, and public release are different outcomes. |
+| Event | What GitHub sends | What Bitrise does | What you open |
+|---|---|---|---|
+| You edit Login locally | Nothing until you publish the change. | No new remote run from an unpublished edit. | Local test output. |
+| You push the branch and open the PR | Push and PR events according to the connected integration. | Evaluates each enabled trigger and starts the matching workflow. One event can match a different workflow from the other. | PR checks and the corresponding build's cause. |
+| The PR check runs for revision A | The connected integration supplies the PR context. | Runs its selected revision and the configured PR checks. | Actual checkout revision, tests, and Danger feedback when included. |
+| You merge the reviewed PR | A push to the target application branch. | If the branch trigger matches, starts a new run for the accepted branch revision. | Post-merge build ID and source commit. |
+| The route produces an artifact | A build result is available in Bitrise. | Runs the remaining configured steps and any permitted delivery operation. | Artifact identity, deployment step result, and destination version. |
 
-AI-assisted test generation happens during development. **The CI pipeline executes committed, reviewed test code; it does not call an LLM to generate tests.**
+**The workflow file does not need to change for another Login fix.** The same commands can build a new application revision.
 
-## Application capabilities and runtime monitoring
+## 4. Case B — a second code change or another push to the same PR
 
-| Capability | Purpose | Important boundary |
-|---|---|---|
-| **FCM and direct APNs integration paths** | Deliver notifications through the application's approved provider path. | Follow the separate mobile and backend guides. FCM registration tokens and APNs device tokens are different identifiers. |
-| **Deep linking** | Opens approved application destinations from links or notification interactions. | Validate the route and require current-account authorization before navigation. A link does not authorize an action. |
-| **Feature flags** | Control configured application behavior at runtime. | Use approved defaults, persistence, and teardown behavior. Flags do not replace server-side authorization. |
-| **Network resilience** | Handles transient failures and protects application behavior during service disruption. | Follow the operation's retry and reconciliation contract. Do not blindly retry business writes. |
-| **Datadog** | Collects configured mobile experience, error, crash, and performance telemetry, with backend correlation where configured. | Instrument meaningful journeys, use approved consent and privacy settings, and verify the correct environment and app version. |
+**Example — fix Login again, or add a Home change.**
 
-## Separate local development, enrollment, and delivery
-
-| Stage | What happens | Your next action |
-|---|---|---|
-| **Local development** | You prepare your Mac, obtain the assigned source, and run the application locally. | Complete Machine Setup and First Local Run. Existing applications do not need a new enrollment request. |
-| **First enrollment** | A new application's secret-free request selects an approved template/version and access groups. Validation and review precede protected promotion and platform provisioning. | Follow the CI/CD enrollment guide. Do not submit an already-created app as a new request. |
-| **Later builds** | The enrolled application's approved triggers run its configured workflows. | Inspect the exact source commit, workflow, test results, and artifacts. Follow the repository's trigger rules. |
-| **Delivery** | An approved artifact progresses through the intended destination's signing, processing, assignment, and verification steps. | Verify the exact version and audience. A green build alone is not delivery evidence. |
-
-The four governed build routes are:
-
-| Route | Target |
+| Situation | What happens |
 |---|---|
-| `qa_android` | Android QA |
-| `qa_ios` | iOS QA |
-| `uat_android` | Android UAT |
-| `uat_ios` | iOS UAT |
+| Push another commit to the same open PR | The configured PR-update connection and trigger can start checks for the updated revision. Read the latest required statuses. |
+| A new PR is opened after the previous one merged | Its configured event follows the same connection and trigger path using the existing Bitrise app. |
+| Merge the second approved change | The configured branch event can start a new build for that revision. Record its own build and package identity. |
+| An earlier build is still running | Record both build IDs and revisions. Queueing, concurrency, cancellation, and delivery ordering follow the configured platform policy. |
 
-These names identify distinct routes. Success on one route does not establish another route's outcome. Store delivery requires its own approved process; these four routes do not imply automatic public release.
+A passing result for the earlier revision establishes its own outcome. Inspect the second revision's required checks before approving or releasing it. For overlapping releases, the owner must confirm ordering so an older candidate does not replace the intended newer version.
 
-## Know who owns the next action
+### Example with two successive releases
 
-| Area | Developer responsibility | Platform or designated owner responsibility |
+| | First change | Second change |
 |---|---|---|
-| **Application code and tests** | Implement features, review generated code, verify behavior, and maintain the required coverage. | Maintain shared standards and approved infrastructure within their scope. |
-| **Enrollment request** | Supply accurate, secret-free application details and address review feedback. | Govern the catalog, validation/apply tooling, protected promotion, access integration, and provisioning. |
-| **Build configuration** | Follow approved templates and investigate application-level failures. | Maintain approved templates and platform-controlled execution and credential integration. |
-| **Release outcome** | Check evidence for the exact commit, artifact, destination, version, and audience. | Perform platform-owned approvals, signing, distribution, and recovery actions under the applicable process. |
+| Feature edited | Fix Login. | Add a Home feature. |
+| Application identity | Existing MyChickenapp Bitrise app. | The same existing Bitrise app. |
+| Source revision | First accepted application revision. | Second accepted application revision. |
+| Workflow configuration | Currently applied shared template version. | The same version, unless an approved adoption occurred between runs. |
+| Build output | A candidate associated with the first build ID. | A candidate associated with the second build ID. |
+| Release evidence | Result for the first candidate. | Independent result for the second candidate. |
 
-If an external write has an unknown outcome, stop and preserve evidence. Use the approved read-only reconciliation and recovery process before another mutation; do not repeat enrollment or replace signing material as an assumed fix.
+The second source change enters through the application repo's connection and trigger. The original enrollment YAML remains the record of initial provisioning.
 
-## Continue with setup
+## 5. Case C — Platform Engineering changes shared bitrise.yml
 
-Open [Machine Setup — macOS Apple Silicon](./machine-setup-guide/index.mdx), then [First Local Run](./first-local-run.mdx). Detailed integrations remain in Architecture, Platform & SDKs, Push Notifications & Deep Linking, CI/CD, Testing & Quality, Observability, GenAI & Tools, and App Stores & Distribution.
+**Example — add a test step, adjust a build command, or introduce Sauce Labs or NowSecure.**
 
-**Need help?** [Teams Support](../support/support.mdx) · [FAQ](../support/index.mdx).
+1. The template owner changes the workflow and scripts in `mobile-platform-configuration-bitrise-template`.
+2. Follow the catalog's immutable-version process. Create the successor version and required metadata, validate the YAML/scripts and compatibility, and obtain review.
+3. Publish the approved version and record its catalog commit and checksum evidence.
+4. Use the approved adoption process for the existing consumer. Confirm how that process applies the workflow configuration to the Bitrise app.
+5. Inspect the applied configuration in Bitrise. Confirm the version and changed steps before selecting a verification run.
+6. Run the approved controlled verification using the intended app revision. Inspect the affected routes, artifacts, and any destination effects.
+
+**Publishing a template and applying it to an existing Bitrise app are separate actions.** The supplied material does not define an automatic upgrade of every enrolled app or a complete executable adoption command. Platform Engineering must confirm that handoff. [Template publication and adoption](/mobile/cicd/operations/bitrise-template-catalog/)
+
+### Example — add an automated test step
+
+Suppose Platform Engineering adds a step to run the app's approved test command. The template change first receives its own validation, review, and publication. The owner then follows approved adoption for MyChickenapp and inspects the applied workflow.
+
+The verification build must show the new test step and its actual test result. A merged template PR alone leaves the existing app's adoption unconfirmed. Record the published version, the adoption result, and the verification build together.
+
+<MermaidViewer title="A shared workflow change reaches an existing app through approved adoption">
+
+```mermaid
+flowchart TD
+    TEMPLATE["TEMPLATE REPOSITORY<br/>Create and review the successor bitrise.yml version"]
+    RELEASE["Validate and publish<br/>Record version, catalog commit, and integrity evidence"]
+    ADOPT["Approved existing-app adoption<br/>Platform owner applies the selected configuration"]
+    APP["Existing Bitrise app<br/>Inspect applied workflows and runtime bindings"]
+    VERIFY["Controlled verification build<br/>Match app revision, template, and results"]
+    TEMPLATE --> RELEASE --> ADOPT --> APP --> VERIFY
+    classDef repo fill:#30204f,stroke:#fbbf24,color:#ffffff,stroke-width:3px;
+    classDef step fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
+    classDef result fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    class TEMPLATE repo;
+    class RELEASE,ADOPT,APP step;
+    class VERIFY result;
+```
+
+</MermaidViewer>
+
+## 6. Case D — upgrade the version or change the template ID
+
+The following values illustrate a request to change workflow selection. They are a discussion record for the platform owner, not an enrollment update schema.
+
+```text
+Existing Bitrise app: [recorded app identity]
+Application source revision: [commit selected for verification]
+Current template ID and version: [actual applied values]
+Requested template ID and version: [approved compatible selection]
+Reason for the change: [required behavior]
+Catalog commit: [reviewed published revision]
+Adoption procedure: [owner-confirmed process]
+Verification routes: [applicable workflows]
+Recovery procedure: [reviewed procedure]
+```
+
+| Change | What the owner must establish |
+|---|---|
+| Same template ID, successor version | Input compatibility, changed steps, required bindings, adoption procedure, and verification. |
+| Different template ID | Supported app platform, source branch, workflow names, package producers, protected bindings, destinations, and existing-app migration support. |
+| Add a new workflow requirement | Publish/adopt a version that implements the requirement, then verify its result in the existing app. |
+| Change the source branch or connected repository | Use the approved lifecycle procedure and verify the new event filters and checkout identity. |
+
+The accepted request is create-only. The supplied references omit the existing-app update manifest/API and migration commands. Have the platform owner supply that procedure and record its result. Preserve the existing app and destination identities throughout the change.
+
+### Example — choose a different template ID
+
+Suppose MyChickenapp needs a different approved workflow family. Give the platform owner the current app identity, current template ID/version, and proposed ID/version. The owner checks that the new family supports the app's native targets, workflow names, signing, and destinations, then performs the supported migration.
+
+After migration, inspect the applied workflow in the existing Bitrise app and run the approved verification revision. Confirm the intended trigger selects an available workflow and that the produced candidate reaches the correct destination when delivery is permitted.
+
+## 7. Case E — start another build or investigate a failed run
+
+A manual or scheduled run follows the platform's configured start mechanism. Confirm the selected app revision, applied workflow, runtime inputs, and permitted delivery effects before starting it. A manual run does not demonstrate that webhook triggering works.
+
+If a run failed before a permitted retry, follow the reviewed recovery procedure. If it may already have uploaded, signed, enabled, or distributed a candidate, preserve the build ID and let the owner reconcile exact destination state first.
+
+## 8. Follow the candidate from build to delivery
+
+For each applicable Android and iOS route, record the source commit, build ID, package version, artifact hash/reference, applied template version, and required results.
+
+| Stage | What to inspect |
+|---|---|
+| Tests and coverage | Required suites actually executed and fresh reports passed the configured thresholds. |
+| NowSecure, when included | Completed assessment for the exact binary and approved severity decision. |
+| Signing | Required native signing and destination processing are confirmed. |
+| Private Bitrise artifact | Exact APK, IPA, or other expected output is available in the run. |
+| Destination delivery | Intended version is enabled/processed and available to the approved audience. |
+
+The supplied v1.10.0 example can upload private Bitrise artifacts while `SKIP_DEPLOY` remains `true`. Its `qa_parallel` and `uat_parallel` workflows launch native platform builds. Inspect the selected version for actual tests and security steps. [Bitrise Pipelines](/mobile/cicd/bitrise-pipelines/)
+
+When the platform uses a separate recurring-distribution worker, confirm how it discovers the existing Bitrise app's builds and records progress. The source describes inventory, a cursor, version markers, and checksums. It omits the complete worker, schedule, and concurrency contract.
+
+| Reported stream outcome | Required handling |
+|---|---|
+| `matched` or `completed` | Verify the marked destination version and preserve completed operations. |
+| `not_published` before mutation | Correct the deterministic input/retention issue while preserving cursor and evidence. |
+| `side_effect_unknown` | Stop further writes and have the owner reconcile the exact version marker and checksum. |
+| Identity, cursor, pagination, or latest-version mismatch | Have the authorized owner disable the external schedule and investigate. |
+| Missing or duplicate inventory | Keep the schedule disabled and correct inventory through review. |
+
+**Attach screenshot — source revision, workflow, step results, and exact destination version with sensitive details hidden.**
+
+## 9. Trace a missing, duplicate, or unexpected build
+
+Follow the chain in order. Begin in the repo where the change was made, then inspect event delivery, trigger selection, the Bitrise run, and destination results.
+
+| Observation | Follow the chain |
+|---|---|
+| No build after a push or PR update | Confirm the event occurred in the app repo, the connection delivered it, and an enabled event/branch filter matched. |
+| Connection delivered the event but no run appeared | Ask the owner to inspect trigger filters and selected workflow availability. |
+| One action produced multiple builds | Compare event types and run causes. PR and push triggers may both match. Have the owner check duplicate connections and intended trigger overlap. |
+| A run used an unexpected revision | Inspect PR merge-revision settings, source branch, selected commit, and checkout log. |
+| Template published but new steps are absent | Inspect approved adoption and the effective configuration for the specific app. |
+| New template needs a missing secret or input | Ask the template owner to confirm protected provisioning and runtime input mapping. |
+| New build succeeded but testers see the old version | Inspect whether delivery ran, the selected destination, processing/signing, audience assignment, and exact-version access. |
+
+**Attach screenshot — the configured event and branch filter beside the selected workflow, with private connection details hidden.**
+
+**Next — [Troubleshooting & Recovery](/mobile/cicd/troubleshooting-and-recovery/).**
