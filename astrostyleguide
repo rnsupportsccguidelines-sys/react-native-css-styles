@@ -1,211 +1,4 @@
 ---
-title: "Testing & Quality — Start Here"
-description: "Write feature tests, run local checks, enforce coverage, and inspect real-device results in the approved CI/CD workflow."
-sidebar:
-  label: Start Here
-  order: 1
----
-
-import { Tabs, TabItem } from '@astrojs/starlight/components';
-import MermaidViewer from "@components/MermaidViewer.astro";
-
-## 1. What will you set up?
-
-Use this section to test a feature from your first local run through its completed device-test result. The shared example is **placing a chicken order in My Chicken App**.
-
-**Start with:** an application that already runs on your Mac, its approved dependencies, and access to its test configuration. Complete [Machine Setup](/mobile/onboarding/machine-setup-guide/) first if needed.
-
-You will write tests, run them locally, configure the required coverage checks, and connect prepared device tests to the approved Bitrise workflow. Keep changes in the existing application repository.
-
-<MermaidViewer title="Testing journey — your Mac, Bitrise, and Sauce Labs">
-
-```mermaid
-flowchart TD
-    LOCAL["YOUR MAC<br/>Write tests and run local checks"] --> REVIEW["PULL REQUEST<br/>Review and commit application code and tests"]
-    REVIEW --> CI["BITRISE<br/>Run configured tests and coverage checks"]
-    CI --> PACK["BUILD TEST PACKAGES<br/>Application and matching native test package"]
-    PACK --> DEVICE["SAUCE LABS<br/>Run required real-device suites"]
-    DEVICE --> RESULT{"Required tests and coverage passed?"}
-    RESULT -->|"Yes"| NEXT["Continue through remaining<br/>security and release gates"]
-    RESULT -->|"Failed or unknown"| STOP["Investigate the exact run<br/>Required progression stays blocked"]
-    classDef local fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
-    classDef automation fill:#4c1d95,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
-    classDef decision fill:#713f12,stroke:#fde047,color:#ffffff,stroke-width:2px;
-    classDef pass fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
-    classDef blocked fill:#881337,stroke:#fda4af,color:#ffffff,stroke-width:2px;
-    class LOCAL,REVIEW local;
-    class CI,PACK,DEVICE automation;
-    class RESULT decision;
-    class NEXT pass;
-    class STOP blocked;
-```
-
-</MermaidViewer>
-
-**Blue shows developer work; purple shows automated execution.** This is the learning flow. The approved Bitrise template determines actual stage order, parallel jobs, and required checks.
-
-Copilot or ChatGPT may help draft tests during development. Developers review and commit the code; **CI does not call an LLM**.
-
-## 2. Choose the right test
-
-| Test | What it checks | Chicken-order example |
-|---|---|---|
-| Unit | One behavior with controlled dependencies. | Invalid quantity makes no submission call. |
-| Integration | Components working together. | The repository result updates the Redux Toolkit store or ViewModel correctly. |
-| Component / UI | User actions and visible state. | Submitting shows progress, followed by the returned confirmation. |
-| Native device | The installed app on a selected device and OS. | An approved test account completes the order journey in an isolated environment. |
-| Coverage check | Which production code the tests executed. | Every required production file is accounted for and supported metrics reach 100%. |
-
-**100% production-code coverage is required within the defined scope and supported metrics.** Coverage does not prove assertions are correct or replace device tests, code review, or security assessment.
-
-| Application | Local logic tests | Native device tests |
-|---|---|---|
-| Android | Existing JUnit setup. | JUnit instrumentation with AndroidJUnitRunner and the configured UI-test framework. |
-| iOS | Existing XCTest / approved Swift Testing setup. | XCUITest with matching application and test-runner packages. |
-| React Native | Existing Jest setup for JavaScript/TypeScript, including Redux Toolkit behavior. | Use the configured Appium suite for JavaScript device tests, or Android JUnit instrumentation and iOS XCUITest for native suites. |
-
-JUnit XML is a report format. Exporting Jest results as JUnit XML does not run Android instrumentation tests. Android JUnit does not execute the iOS suite.
-
-## 3. Run the existing local checks
-
-Select your platform. These commands are entry points, not a complete test or coverage configuration. Use the repository's actual targets, variants, schemes, and package manager.
-
-<Tabs>
-<TabItem label="Android">
-
-**Where:** the application directory containing `gradlew`. These examples assume module `app` and the unflavored `debug` variant.
-
-Find the available tasks:
-
-```bash
-./gradlew :app:tasks --all
-```
-
-Run lint and local JVM unit tests:
-
-```bash
-./gradlew :app:lintDebug :app:testDebugUnitTest
-```
-
-For configured instrumentation tests, start the intended emulator or connect an authorized test device. Inspect the device list before running:
-
-```bash
-adb devices
-./gradlew :app:connectedDebugAndroidTest
-```
-
-The connected-test task runs against connected targets. It does not run Sauce Labs tests. Expect actual discovered tests and pass/fail counts; `NO-SOURCE` is not evidence that a required suite passed.
-
-</TabItem>
-<TabItem label="iOS">
-
-**Where:** application root on your Mac. Replace the workspace and shared scheme values:
-
-```bash
-MOBILE_IOS_WORKSPACE='REPLACE_WITH_WORKSPACE_PATH'
-MOBILE_IOS_SCHEME='REPLACE_WITH_TEST_ENABLED_SHARED_SCHEME'
-
-xcodebuild -list -workspace "$MOBILE_IOS_WORKSPACE"
-xcodebuild -showdestinations \
-  -workspace "$MOBILE_IOS_WORKSPACE" \
-  -scheme "$MOBILE_IOS_SCHEME"
-```
-
-Choose an available Simulator ID. Replace all three inputs and run:
-
-```bash
-set -euo pipefail
-
-MOBILE_IOS_WORKSPACE='REPLACE_WITH_WORKSPACE_PATH'
-MOBILE_IOS_SCHEME='REPLACE_WITH_TEST_ENABLED_SHARED_SCHEME'
-MOBILE_SIMULATOR_UDID='REPLACE_WITH_AVAILABLE_SIMULATOR_ID'
-
-xcodebuild test \
-  -workspace "$MOBILE_IOS_WORKSPACE" \
-  -scheme "$MOBILE_IOS_SCHEME" \
-  -destination "platform=iOS Simulator,id=$MOBILE_SIMULATOR_UDID" \
-  -enableCodeCoverage YES
-```
-
-Use `-project` with the actual `.xcodeproj` if the application has no workspace. The scheme must include the intended tests. Simulator results do not establish real-device execution, and collecting coverage does not enforce its threshold.
-
-</TabItem>
-<TabItem label="React Native">
-
-**Where:** the application root containing `package.json`.
-
-Inspect the existing scripts first:
-
-```bash
-node -e 'console.log(JSON.stringify(require("./package.json").scripts, null, 2))'
-```
-
-If the repository defines these npm scripts, run them one at a time. Fix any failure before continuing:
-
-```bash
-npm run typecheck
-npm run lint
-npm run test:coverage
-```
-
-For Yarn or another approved package manager, use its equivalent commands. A script name does not create its implementation: the coverage page explains the Jest configuration and enforcement. Do not replace the manifest or install another runner just to match these names.
-
-Expect completed Jest tests and a fresh coverage report. Then run the applicable Appium or native device suites using the project's configured runner. Check each suite's result separately.
-
-</TabItem>
-</Tabs>
-
-## 4. Connect the results to CI/CD
-
-| Check | Responsibility | Result to inspect |
-|---|---|---|
-| PR review | Danger and required repository checks. | Feedback and required statuses for the reviewed revision. Danger is not the feature-test runner. |
-| Tests and coverage | Configured Bitrise workflows and repository scripts. | Completed suites, fresh reports, full production scope, and passing thresholds. |
-| Parallel execution | Approved module selection and workflow handoff. | Required selected jobs actually ran; shared changes and missing flags are handled correctly. |
-| Real devices | Bitrise prepares packages and invokes the Sauce Labs integration. | Matching app/test packages, completed run identity, actual device/OS, and suite outcome. |
-| Binary security | NowSecure assessment and severity gate. | Completed assessment and the configured release decision. A test pass does not satisfy this gate. |
-| Delivery | Protected signing and destination-specific workflows. | Exact-version distribution and user visibility. A device-test pass alone is not a release. |
-
-For the supplied Sauce Labs integration, commit `.sauce/saucelabs_request.yml` in the app repo using the schema from the pinned step's owner. Platform Engineering maintains the shared workflow, which reads that file through `saucelabs_request_yml`. Follow the workflow and packaging instructions in [Sauce Labs Device Testing](/mobile/testing-quality/sauce-labs-real-device-testing/).
-
-Use [Bitrise Pipelines](/mobile/cicd/bitrise-pipelines/), [Parallel Testing](/mobile/cicd/parallel-testing/), and [NowSecure Security Gates](/mobile/cicd/nowsecure-security-gates/) for their respective integration details. Keep existing enrollment for later builds; test changes do not require creating another Bitrise app.
-
-## 5. Read the outcome correctly
-
-| Observed result | Meaning |
-|---|---|
-| Build completed | Compilation succeeded; inspect whether tests ran. |
-| Coverage report exists | Validate scope and thresholds before claiming coverage passed. |
-| Packages uploaded or test job created | Device execution is not yet confirmed. |
-| Required suites completed successfully | Check source/artifact association, test counts, and every required device result. |
-| Required result failed, missing, or unknown | Investigate; do not report a pass. |
-
-Use independent synthetic data for parallel order tests. Keep runtime credentials in the approved injection mechanism. If a cloud write has an uncertain result, preserve evidence and follow the CI/CD reconciliation procedure before another write.
-
-**Attach screenshot — completed test summary, coverage result, and device result with sensitive data hidden.**
-
-## 6. Continue in order
-
-| Page | What you will configure |
-|---|---|
-| [Writing Tests](/mobile/testing-quality/writing-tests/) | Chicken-order tests, controlled dependencies, UI identifiers, and assertions for each platform. |
-| [Coverage & Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/) | Production-file scope, supported metrics, report generation, and required threshold enforcement. |
-| [Sauce Labs Device Testing](/mobile/testing-quality/sauce-labs-real-device-testing/) | Native packages, runner configuration, supplied Bitrise steps, and completed device results. |
-| [IDE-Assisted Test Generation](/mobile/testing-quality/ide-assisted-test-generation/) | Copilot/ChatGPT context, prompts, draft review, local execution, and committed tests. |
-| [Complete Login Example](/mobile/testing-quality/login-device-test-example/) | Copy the React Native screen and success/failure tests, then follow IDE authoring and the shared Bitrise/Sauce Labs handoff. |
-
-Developers own feature behavior and test code. QA/test owners confirm journeys, devices, and isolated data. Platform owners supply approved templates, protected bindings, and integration contracts.
-
-**Next — [Writing Tests for One Feature](/mobile/testing-quality/writing-tests/).**
-
-
-
-
-----------------------
-
-
-
----
 title: "Complete Login Example — Code, Tests & Sauce Labs"
 description: "Follow a React Native Login feature through success and failure tests, approved AI authoring, and shared Bitrise execution on Sauce Labs."
 sidebar:
@@ -216,19 +9,23 @@ sidebar:
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 import MermaidViewer from "@components/MermaidViewer.astro";
 
-Use this final example to connect **screen code → test code → the configured runner → Bitrise → Sauce Labs results**. MyChickenapp accepts a demo username and password, shows Home on success, and stays on Login with an error on failure.
+Start with the Jest test you can run from your IDE. If your team also tests Login on Sauce Labs, follow the device test example for its configured runner. Both paths use the same MyChickenapp demo screen. Correct demo credentials open Home. An incorrect password keeps the user on Login and shows an error.
 
 **Learning fixture.** The values `demo-user` and `demo-only` are synthetic. The app performs local validation with no backend, session token, or real authentication. For an existing product feature, apply these test patterns to its approved authentication contract.
 
-## 1. Understand the test paths
+## 1. Choose what to test
+
+**Jest:** Simulate pressing **Sign in** and check how the screen responds. Use the Jest code in section 4 and run it in section 5.
+
+**Appium:** Open the installed app on a phone, type the credentials, tap **Sign in**, and check what appears. WebdriverIO runs the JavaScript test. Appium performs the actions on the phone that Sauce Labs provides. Follow sections 6 and 7 only if you need that device run.
 
 | Test path | Where it runs | What it checks |
 |---|---|---|
 | Jest policy/component tests | Mac or Bitrise runner. | Validation, state, error rendering, and the Home result. |
-| JavaScript Appium device tests | Test code runs in the configured Node runner and controls the installed app on Sauce Labs devices. | Types credentials, taps Sign in, and checks the actual native screen. |
+| JavaScript Appium device tests | WebdriverIO runs the JavaScript on the runner. Appium controls the app on the Sauce Labs phone. | Types credentials, taps Sign in, and checks the actual native screen. |
 | Native device suites, when selected | Android JUnit instrumentation or iOS XCUITest runs through the configured device integration. | The equivalent screen journey in the native framework. |
 
-The team supports Appium as well as native device suites. **Use the runner actually configured for your project.** The WebdriverIO/Mocha configuration below is a teaching adaptation for Appium, not a verified copy of your private runner setup.
+The team supports Appium as well as native device suites. **Use the runner actually configured for your project.** The WebdriverIO/Mocha configuration is an example. Use your approved shared configuration for enterprise runs.
 
 <MermaidViewer title="One Login feature — local tests and real-device tests">
 
@@ -258,34 +55,29 @@ flowchart TD
 
 ## 2. Prepare the project and file locations
 
-Start with an existing React Native app that runs locally and a selected Bitrise template with the required Sauce Labs integration. The supplied v1.10.0 build sample omits Sauce Labs. Have the owner confirm the approved version for your application.
-
-| Prerequisite | What to confirm before copying |
-|---|---|
-| React Native | Existing app entry point, approved dependencies, and a safe demo destination. |
-| Jest component testing | Existing Jest/Babel setup and an approved compatible `@testing-library/react-native` version. Preserve the React Native preset and existing setup. |
-| Appium JavaScript | Actual runner and framework. This example uses a compatible pinned WebdriverIO CLI, local runner, Mocha framework, globals, spec reporter, and Sauce service in the shared tooling. |
-| Native suites | Use the native tabs only with configured AndroidJUnitRunner/Espresso dependencies or an Xcode UI-test target. |
-| Sauce Labs | Approved account, region, exact uploaded app reference, device/OS, and test-run permissions. |
+Start with a React Native app that runs locally. For this demo, use the three files below. If you're testing your own login screen, keep your existing screen and Jest setup. Go to the **Jest** tab in section 4, then run the test from the **Jest** tab in section 5.
 
 ```text
-MyChickenapp/                                      # Application repository
-├── campfile.yml
-├── .sauce/
-│   └── saucelabs_request.yml                      # Owner-supplied private schema
-├── src/demo/login/
-│   ├── authenticate-demo.js
-│   ├── LoginDemo.jsx
-│   └── login.test.js                             # Jest policy and component tests
-├── e2e/appium/
-│   └── login.e2e.cjs                             # Appium device tests
-├── android/app/src/androidTest/java/<actual-package>/
-│   └── LoginDeviceTest.kt                        # When using the native suite
-└── ios/<actual-UI-test-target>/
-    └── LoginDeviceTests.swift                    # When using the native suite
+MyChickenapp/
+└── src/demo/login/
+    ├── authenticate-demo.js
+    ├── LoginDemo.jsx
+    └── login.test.js
 ```
 
-The shared template owns `bitrise.yml` and execution tooling. The example runner file `wdio.sauce.conf.cjs` below belongs in the approved shared tooling, at a location the template owner confirms. Your app's `.sauce/saucelabs_request.yml` is a separate request file. Obtain its private schema from the app-create step owner.
+You can finish the Jest example without adding an E2E folder, installing Appium tooling, or setting up Bitrise or Sauce Labs.
+
+### Optional device testing
+
+If your team already runs device tests, use its existing runner, folder, and template. Choose the Appium, Android, or iOS example that matches that setup.
+
+| If your team uses | Example file | Where it goes |
+|---|---|---|
+| WebdriverIO and Appium | `login.e2e.js` | In the folder matched by the existing WebdriverIO `specs` setting. Section 6 uses `e2e/appium/` as an example path. |
+| Android Espresso | `LoginDeviceTest.kt` | In the Android module's existing instrumentation test source set. |
+| iOS XCUITest | `LoginDeviceTests.swift` | In the existing Xcode UI-test target. |
+
+For a Sauce Labs run, confirm the approved Bitrise template has the device integration enabled. The supplied v1.10.0 build sample omits it. The shared template owns `bitrise.yml` and execution tooling. If the app-create step requires `.sauce/saucelabs_request.yml`, use the schema from the step owner.
 
 ## 3. Copy the feature files
 
@@ -543,12 +335,22 @@ describe('Login screen', () => {
 ```
 
 </TabItem>
-<TabItem label="login.e2e.cjs — Appium">
+<TabItem label="login.e2e.js — Appium">
 
-Place this in `e2e/appium/`. The file uses the WebdriverIO Mocha runner. On Android, the selectors use the accessible labels. On iOS, they use the `testID` identifiers exposed by React Native. Inspect those elements on the actual target devices.
+Use your existing device-test folder. The sample runner in section 6 looks in `e2e/appium/`. WebdriverIO selects this file through its `specs` setting and runs it with Mocha. Appium executes the device commands. The `.e2e.js` suffix is a naming convention. Keep the separate `login.test.js` in Jest and exclude `e2e/appium/` if your Jest configuration matches device tests.
+
+This example uses ES module imports. If your app does not already load this directory as ES modules, add or merge this `package.json` in the folder containing the device test.
+
+```json
+{
+  "type": "module"
+}
+```
+
+On Android, the selectors use the accessible labels. On iOS, they use the `testID` identifiers exposed by React Native. Inspect those elements on the actual target devices.
 
 ```javascript
-const {browser, $, expect} = require('@wdio/globals');
+import {browser, $, expect} from '@wdio/globals';
 
 function control(androidLabel, iosIdentifier) {
   return $(browser.isIOS ? `~${iosIdentifier}` : `~${androidLabel}`);
@@ -822,7 +624,7 @@ In Xcode, select the test-enabled scheme and Simulator, then choose **Product �
 </TabItem>
 <TabItem label="Appium">
 
-Open `login.e2e.cjs` in VS Code. For the shared Sauce example, run this from the tooling directory after the owner has provided the configuration and runtime inputs in section 6.
+Open `login.e2e.js` in VS Code. For the shared Sauce example, run this from the tooling directory after the owner has provided the configuration and runtime inputs in section 6.
 
 ```bash
 : "${MOBILE_SHARED_WDIO_CONFIG:?Set the approved shared configuration path}"
@@ -834,9 +636,9 @@ This starts a remote session for the uploaded app. For a local device session, u
 </TabItem>
 </Tabs>
 
-## 6. Read the Appium runner configuration
+## 6. Read the optional Appium runner configuration
 
-The following full WebdriverIO configuration is an **official-API teaching adaptation** for shared tooling. It assumes compatible pinned WebdriverIO/Mocha/Sauce packages are available in that tooling. The private custom step's actual Appium runner, inputs, and hooks still need owner confirmation.
+The following full WebdriverIO configuration is an **official-API teaching adaptation** for shared tooling. It assumes compatible pinned WebdriverIO/Mocha/Sauce packages are available in that tooling. The shared runner configuration uses CommonJS, so its filename ends in `.cjs`. It loads the ES module test through `specs`. The private custom step's actual Appium runner, inputs, and hooks still need owner confirmation.
 
 <Tabs>
 <TabItem label="wdio.sauce.conf.cjs — shared tooling">
@@ -874,7 +676,7 @@ exports.config = {
   user: required('SAUCE_USERNAME'),
   key: required('SAUCE_ACCESS_KEY'),
   region,
-  specs: [path.join(appRoot, 'e2e/appium/login.e2e.cjs')],
+  specs: [path.join(appRoot, 'e2e/appium/login.e2e.js')],
   maxInstances: 1,
   logLevel: 'error',
   waitforTimeout: 15000,
@@ -905,7 +707,7 @@ These `MOBILE_*` names belong to this example. Map them through the approved ada
 
 | Input | Value supplied by the owner |
 |---|---|
-| `MOBILE_APP_CHECKOUT` | Absolute path to the application checkout containing `e2e/appium/login.e2e.cjs`. |
+| `MOBILE_APP_CHECKOUT` | Absolute path to the application checkout containing `e2e/appium/login.e2e.js`. |
 | `MOBILE_TEST_PLATFORM` | `android` or `ios` for this run. |
 | `MOBILE_SAUCE_REGION` | Approved `us` or `eu` mapping for this example. |
 | `MOBILE_SAUCE_APP_REF` | `storage:<exact-file-ID>` for this run's uploaded APK or IPA. |
@@ -919,7 +721,7 @@ These `MOBILE_*` names belong to this example. Map them through the approved ada
 
 The configuration selects one platform and one concurrent session. Run Android and iOS independently with their matching app references. It uses the Sauce service to publish job metadata/results. An Appium run controls the app through a session and executes the JavaScript spec from its Node runner. A native Espresso/XCUITest suite instead uses its compiled test products. [Sauce Appium real devices](https://docs.saucelabs.com/mobile-apps/automated-testing/appium/real-devices/), [WebdriverIO Sauce service](https://webdriver.io/docs/sauce-service/)
 
-## 7. Connect app creation, upload, and execution in Bitrise
+## 7. See how Bitrise runs the optional device tests
 
 Platform Engineering confirms the actual integration contract for the selected template. Follow this order:
 
@@ -991,8 +793,9 @@ Open the feature and relevant test files in the IDE. Supply only the context all
 
 ```text
 Using authenticate-demo.js, LoginDemo.jsx, and login.test.js,
-add a test for an empty password. Use the existing React Native testing
-library and fixture. Assert the expected error and that Home is absent.
+add a test for submitting with both fields empty. Use the existing React
+Native testing library and fixture. Assert that the username error appears
+first and that Home is absent.
 Preserve the production requirement. Do not add dependencies or weaken
 coverage. Return the proposed test and any missing context.
 ```
@@ -1001,7 +804,7 @@ coverage. Return the proposed test and any missing context.
 <TabItem label="Appium prompt">
 
 ```text
-Using LoginDemo.jsx and login.e2e.cjs, draft a WebdriverIO/Mocha
+Using LoginDemo.jsx and login.e2e.js, draft a WebdriverIO/Mocha
 Appium test for an empty username. Reuse the existing selector helper
 and Reset demo fixture. Assert the exact error and that Home is absent.
 Use the current Android/iOS mapping. No fixed sleeps, hidden retries,
@@ -1038,8 +841,3 @@ Review the draft, run the focused test, and confirm it detects the expected fail
 **Attach screenshot — Login, invalid-login error, Home, and completed test results using only the synthetic fixture.**
 
 For a missing element, inspect the installed app's native hierarchy and selector mapping. For no tests discovered, inspect the actual runner and spec/class selection. For upload or session outcomes that are unknown, preserve the recorded identities and follow the approved reconciliation procedure before another external write.
-
-**Verification scope.** MDX, code syntax, and isolated configuration/policy checks are reported with this revision. The actual React Native component tests, Android/iOS compilation, accessibility hierarchy, device allocation, private steps, and live Sauce Labs execution require project verification. Add the full production behavior tests and coverage gates when integrating with real authentication.
-
-
-
