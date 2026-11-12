@@ -1,843 +1,659 @@
----
-title: "Complete Login Example — Code, Tests & Sauce Labs"
-description: "Follow a React Native Login feature through success and failure tests, approved AI authoring, and shared Bitrise execution on Sauce Labs."
-sidebar:
-  label: Complete Login Example
-  order: 6
----
-
-import { Tabs, TabItem } from '@astrojs/starlight/components';
-import MermaidViewer from "@components/MermaidViewer.astro";
-
-Start with the Jest test you can run from your IDE. If your team also tests Login on Sauce Labs, follow the device test example for its configured runner. Both paths use the same MyChickenapp demo screen. Correct demo credentials open Home. An incorrect password keeps the user on Login and shows an error.
-
-**Learning fixture.** The values `demo-user` and `demo-only` are synthetic. The app performs local validation with no backend, session token, or real authentication. For an existing product feature, apply these test patterns to its approved authentication contract.
-
-## 1. Choose what to test
-
-**Jest:** Simulate pressing **Sign in** and check how the screen responds. Use the Jest code in section 4 and run it in section 5.
-
-**Appium:** Open the installed app on a phone, type the credentials, tap **Sign in**, and check what appears. WebdriverIO runs the JavaScript test. Appium performs the actions on the phone that Sauce Labs provides. Follow sections 6 and 7 only if you need that device run.
-
-| Test path | Where it runs | What it checks |
-|---|---|---|
-| Jest policy/component tests | Mac or Bitrise runner. | Validation, state, error rendering, and the Home result. |
-| JavaScript Appium device tests | WebdriverIO runs the JavaScript on the runner. Appium controls the app on the Sauce Labs phone. | Types credentials, taps Sign in, and checks the actual native screen. |
-| Native device suites, when selected | Android JUnit instrumentation or iOS XCUITest runs through the configured device integration. | The equivalent screen journey in the native framework. |
-
-The team supports Appium as well as native device suites. **Use the runner actually configured for your project.** The WebdriverIO/Mocha configuration is an example. Use your approved shared configuration for enterprise runs.
-
-<MermaidViewer title="One Login feature — local tests and real-device tests">
-
-```mermaid
-flowchart TD
-    APP["React Native Login screen<br/>Username, password, and screen identifiers"]
-    JEST["Jest tests<br/>Run the policy and component assertions"]
-    APPIUM["Appium JavaScript device tests<br/>Find fields, type, tap, and assert"]
-    BUILD["Shared Bitrise workflow<br/>Build a device-compatible app with its JS bundle"]
-    CREATE["App-create custom step<br/>Read the app-side request"]
-    UPLOAD["Approved upload and execution integration<br/>Upload the app and start the selected runner"]
-    PHONE["Sauce Labs phone<br/>Appium drives the installed app"]
-    RESULT["Completed success and failure tests<br/>Inspect assertions and associated evidence"]
-    APP --> JEST
-    APP --> BUILD --> CREATE --> UPLOAD
-    APPIUM --> UPLOAD
-    UPLOAD --> PHONE --> RESULT
-    classDef code fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
-    classDef automation fill:#4c1d95,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
-    classDef result fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
-    class APP,JEST,APPIUM code;
-    class BUILD,CREATE,UPLOAD,PHONE automation;
-    class RESULT result;
-```
-
-</MermaidViewer>
-
-## 2. Prepare the project and file locations
-
-Start with a React Native app that runs locally. For this demo, use the three files below. If you're testing your own login screen, keep your existing screen and Jest setup. Go to the **Jest** tab in section 4, then run the test from the **Jest** tab in section 5.
-
-```text
-MyChickenapp/
-└── src/demo/login/
-    ├── authenticate-demo.js
-    ├── LoginDemo.jsx
-    └── login.test.js
-```
-
-You can finish the Jest example without adding an E2E folder, installing Appium tooling, or setting up Bitrise or Sauce Labs.
-
-### Optional device testing
-
-If your team already runs device tests, use its existing runner, folder, and template. Choose the Appium, Android, or iOS example that matches that setup.
-
-| If your team uses | Example file | Where it goes |
-|---|---|---|
-| WebdriverIO and Appium | `login.e2e.js` | In the folder matched by the existing WebdriverIO `specs` setting. Section 6 uses `e2e/appium/` as an example path. |
-| Android Espresso | `LoginDeviceTest.kt` | In the Android module's existing instrumentation test source set. |
-| iOS XCUITest | `LoginDeviceTests.swift` | In the existing Xcode UI-test target. |
-
-For a Sauce Labs run, confirm the approved Bitrise template has the device integration enabled. The supplied v1.10.0 build sample omits it. The shared template owns `bitrise.yml` and execution tooling. If the app-create step requires `.sauce/saucelabs_request.yml`, use the schema from the step owner.
-
-## 3. Copy the feature files
-
-<Tabs>
-<TabItem label="authenticate-demo.js">
-
-```javascript
-// Synthetic fixture for the documentation demo. Keep real authentication in its approved adapter.
-export function authenticateDemo(username, password) {
-  if (!username.trim()) {
-    return {ok: false, message: 'Enter a username.'};
-  }
-  if (!password) {
-    return {ok: false, message: 'Enter a password.'};
-  }
-  if (username.trim() !== 'demo-user' || password !== 'demo-only') {
-    return {ok: false, message: 'Invalid demo credentials.'};
-  }
-  return {ok: true};
-}
-```
-
-</TabItem>
-<TabItem label="LoginDemo.jsx">
-
-```jsx
-import React, {useState} from 'react';
-import {
-  Button,
-  Keyboard,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  useColorScheme,
-} from 'react-native';
-import {authenticateDemo} from './authenticate-demo';
-
-export default function LoginDemo() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [signedIn, setSignedIn] = useState(false);
-  const dark = useColorScheme() === 'dark';
-  const foreground = dark ? '#f8fafc' : '#0f172a';
-  const background = dark ? '#111827' : '#ffffff';
-
-  function resetDemo() {
-    Keyboard.dismiss();
-    setUsername('');
-    setPassword('');
-    setError('');
-    setSignedIn(false);
-  }
-
-  function signIn() {
-    Keyboard.dismiss();
-    const result = authenticateDemo(username, password);
-    setPassword('');
-    if (result.ok) {
-      setError('');
-      setSignedIn(true);
-    } else {
-      setError(result.message);
-    }
-  }
-
-  return (
-    <ScrollView
-      style={{backgroundColor: background}}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled">
-      {signedIn ? (
-        <>
-          <Text
-            testID="home.heading"
-            accessibilityLabel="Home screen"
-            accessibilityRole="header"
-            style={[styles.heading, {color: foreground}]}>
-            Home
-          </Text>
-          <Button
-            testID="login.reset"
-            accessibilityLabel="Reset demo"
-            title="Reset demo"
-            onPress={resetDemo}
-          />
-        </>
-      ) : (
-        <>
-          <Text accessibilityRole="header" style={[styles.heading, {color: foreground}]}>
-            MyChickenapp — Login demo
-          </Text>
-          <Text style={{color: foreground}}>Username</Text>
-          <TextInput
-            testID="login.username"
-            accessibilityLabel="Username"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={username}
-            onChangeText={setUsername}
-            style={[styles.input, {color: foreground}]}
-          />
-          <Text style={{color: foreground}}>Password</Text>
-          <TextInput
-            testID="login.password"
-            accessibilityLabel="Password"
-            autoCapitalize="none"
-            autoCorrect={false}
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            returnKeyType="go"
-            onSubmitEditing={signIn}
-            style={[styles.input, {color: foreground}]}
-          />
-          {error ? (
-            <Text
-              testID="login.error"
-              accessibilityRole="alert"
-              accessibilityLabel={error}
-              style={{color: foreground}}>
-              {error}
-            </Text>
-          ) : null}
-          <Button
-            testID="login.submit"
-            accessibilityLabel="Sign in"
-            title="Sign in"
-            onPress={signIn}
-          />
-          <Button
-            testID="login.reset"
-            accessibilityLabel="Reset demo"
-            title="Reset demo"
-            onPress={resetDemo}
-          />
-        </>
-      )}
-    </ScrollView>
-  );
-}
-
-const styles = StyleSheet.create({
-  content: {padding: 20, paddingTop: 48, gap: 10},
-  heading: {fontSize: 24, fontWeight: '700'},
-  input: {borderWidth: 1, borderColor: '#64748b', padding: 10, borderRadius: 8},
-});
-```
-
-</TabItem>
-<TabItem label="App.jsx — isolated demo entry">
-
-Mount the component in the existing app's demo/test destination. This fragment assumes the app root sits above `src/`. Adjust the import for the file you are editing.
-
-```jsx
-import React from 'react';
-import LoginDemo from './src/demo/login/LoginDemo';
-
-export default function App() {
-  return <LoginDemo />;
-}
-```
-
-Use this entry only in an isolated demo app whose entry registration imports `App`. In the approved starter, render `<LoginDemo />` in a test destination under the existing `src/app/entry/AppRoot.tsx` navigation and providers.
-
-</TabItem>
-</Tabs>
-
-The local `useState` values belong to this isolated screen fixture. A real authenticated session follows the app's established session and Redux Toolkit/foundation contracts.
-
-## 4. Add success and failure tests
-
-| Scenario | Expected screen | Assertion |
-|---|---|---|
-| `demo-user` + `demo-only` | Home. | Home appears and Login fields disappear. |
-| `demo-user` + wrong password | Login with `Invalid demo credentials.` | Error appears and Home remains absent. |
-| Empty username | Login with `Enter a username.` | No success state. |
-| Empty password | Login with `Enter a password.` | No success state. |
-
-**Invalid-login test success means the app correctly rejected the credentials.** The test passes when it observes the expected error. A failed test means an assertion or execution failed.
-
-<Tabs>
-<TabItem label="login.test.js — Jest">
-
-Place this beside `LoginDemo.jsx`. The existing Jest configuration must discover it and transform JSX through the React Native preset.
-
-```jsx
-import React from 'react';
-import {fireEvent, render, screen} from '@testing-library/react-native';
-import LoginDemo from './LoginDemo';
-import {authenticateDemo} from './authenticate-demo';
-
-describe('demo authentication policy', () => {
-  test.each([
-    ['', 'demo-only', {ok: false, message: 'Enter a username.'}],
-    ['   ', 'demo-only', {ok: false, message: 'Enter a username.'}],
-    ['demo-user', '', {ok: false, message: 'Enter a password.'}],
-    ['wrong-user', 'demo-only', {ok: false, message: 'Invalid demo credentials.'}],
-    ['demo-user', 'wrong-password', {ok: false, message: 'Invalid demo credentials.'}],
-    ['demo-user', 'demo-only', {ok: true}],
-    [' demo-user ', 'demo-only', {ok: true}],
-  ])('checks username %s with controlled fixture input', (username, password, expected) => {
-    expect(authenticateDemo(username, password)).toEqual(expected);
-  });
-});
-
-describe('Login screen', () => {
-  test('shows Home after successful demo login', () => {
-    render(<LoginDemo />);
-    fireEvent.changeText(screen.getByTestId('login.username'), 'demo-user');
-    fireEvent.changeText(screen.getByTestId('login.password'), 'demo-only');
-    fireEvent.press(screen.getByTestId('login.submit'));
-
-    expect(screen.getByTestId('home.heading')).toBeTruthy();
-    expect(screen.queryByTestId('login.username')).toBeNull();
-  });
-
-  test('shows an error and stays on Login for a wrong password', () => {
-    render(<LoginDemo />);
-    fireEvent.changeText(screen.getByTestId('login.username'), 'demo-user');
-    fireEvent.changeText(screen.getByTestId('login.password'), 'wrong-password');
-    fireEvent.press(screen.getByTestId('login.submit'));
-
-    expect(screen.getByText('Invalid demo credentials.')).toBeTruthy();
-    expect(screen.queryByTestId('home.heading')).toBeNull();
-    expect(screen.getByTestId('login.password').props.value).toBe('');
-  });
-
-  test('rejects an empty username', () => {
-    render(<LoginDemo />);
-    fireEvent.press(screen.getByTestId('login.submit'));
-    expect(screen.getByText('Enter a username.')).toBeTruthy();
-  });
-
-  test('rejects an empty password', () => {
-    render(<LoginDemo />);
-    fireEvent.changeText(screen.getByTestId('login.username'), 'demo-user');
-    fireEvent.press(screen.getByTestId('login.submit'));
-    expect(screen.getByText('Enter a password.')).toBeTruthy();
-  });
-
-  test('resets the demo after success', () => {
-    render(<LoginDemo />);
-    fireEvent.changeText(screen.getByTestId('login.username'), 'demo-user');
-    fireEvent.changeText(screen.getByTestId('login.password'), 'demo-only');
-    fireEvent.press(screen.getByTestId('login.submit'));
-    fireEvent.press(screen.getByTestId('login.reset'));
-
-    expect(screen.getByTestId('login.username').props.value).toBe('');
-    expect(screen.getByTestId('login.password').props.value).toBe('');
-    expect(screen.queryByTestId('home.heading')).toBeNull();
-  });
-});
-```
-
-</TabItem>
-<TabItem label="login.e2e.js — Appium">
-
-Use your existing device-test folder. The sample runner in section 6 looks in `e2e/appium/`. WebdriverIO selects this file through its `specs` setting and runs it with Mocha. Appium executes the device commands. The `.e2e.js` suffix is a naming convention. Keep the separate `login.test.js` in Jest and exclude `e2e/appium/` if your Jest configuration matches device tests.
-
-This example uses ES module imports. If your app does not already load this directory as ES modules, add or merge this `package.json` in the folder containing the device test.
-
-```json
-{
-  "type": "module"
-}
-```
-
-On Android, the selectors use the accessible labels. On iOS, they use the `testID` identifiers exposed by React Native. Inspect those elements on the actual target devices.
-
-```javascript
-import {browser, $, expect} from '@wdio/globals';
-
-function control(androidLabel, iosIdentifier) {
-  return $(browser.isIOS ? `~${iosIdentifier}` : `~${androidLabel}`);
-}
-
-async function enterLogin(username, password) {
-  const usernameField = control('Username', 'login.username');
-  await usernameField.waitForDisplayed();
-  await usernameField.setValue(username);
-
-  const passwordField = control('Password', 'login.password');
-  await passwordField.waitForDisplayed();
-  await passwordField.setValue(password);
-
-  const submit = control('Sign in', 'login.submit');
-  await submit.waitForDisplayed();
-  await submit.click();
-}
-
-describe('MyChickenapp Login device journey', () => {
-  beforeEach(async () => {
-    // The Reset demo button belongs to this synthetic teaching screen.
-    const reset = control('Reset demo', 'login.reset');
-    await reset.waitForDisplayed();
-    await reset.click();
-    await control('Username', 'login.username').waitForDisplayed();
-  });
-
-  it('shows an error for invalid credentials and stays on Login', async () => {
-    await enterLogin('demo-user', 'wrong-password');
-
-    const error = browser.isIOS
-      ? await $('~login.error')
-      : await $('~Invalid demo credentials.');
-    await expect(error).toBeDisplayed();
-    if (browser.isIOS) {
-      await expect(error).toHaveAttribute('label', 'Invalid demo credentials.');
-    } else {
-      await expect(error).toHaveText('Invalid demo credentials.');
-    }
-    await expect(control('Home screen', 'home.heading')).not.toBeExisting();
-    await expect(control('Username', 'login.username')).toBeDisplayed();
-  });
-
-  it('shows Home for valid demo credentials', async () => {
-    await enterLogin('demo-user', 'demo-only');
-    await expect(control('Home screen', 'home.heading')).toBeDisplayed();
-    await expect(control('Username', 'login.username')).not.toBeExisting();
-  });
-});
-```
-
-The demo has an explicit Reset demo button to restore the fixture between tests. For real authentication, use the approved account/session reset procedure and test account isolation. If the selected device's keyboard covers a button, add the platform's reviewed dismissal or scroll action before tapping. [React Native accessibility](https://reactnative.dev/docs/accessibility)
-
-</TabItem>
-<TabItem label="LoginDeviceTest.kt — native Android">
-
-This is the native alternative for the same screen. Use the existing approved JUnit, AndroidX test, and Espresso dependencies and AndroidJUnitRunner. Replace the package and `MainActivity` import with the actual application values. Each test launches a fresh demo Activity without persisted authentication.
-
-```kotlin
-package com.example.mychicken
-
-import android.os.SystemClock
-import android.view.View
-import android.view.ViewGroup
-import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.UiController
-import androidx.test.espresso.ViewAction
-import androidx.test.espresso.action.ViewActions.click
-import androidx.test.espresso.action.ViewActions.closeSoftKeyboard
-import androidx.test.espresso.action.ViewActions.replaceText
-import androidx.test.espresso.assertion.ViewAssertions.doesNotExist
-import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
-import androidx.test.espresso.matcher.ViewMatchers.isRoot
-import androidx.test.espresso.matcher.ViewMatchers.withContentDescription
-import androidx.test.ext.junit.rules.ActivityScenarioRule
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.example.mychicken.MainActivity // Replace with your real Activity.
-import org.hamcrest.Matcher
-import org.hamcrest.Matchers.allOf
-import org.junit.Rule
-import org.junit.Test
-import org.junit.runner.RunWith
-
-@RunWith(AndroidJUnit4::class)
-class LoginDeviceTest {
-    @get:Rule
-    val activity = ActivityScenarioRule(MainActivity::class.java)
-
-    @Test
-    fun validDemoLoginShowsHome() {
-        waitForLabel("Username")
-        onView(withContentDescription("Username"))
-            .perform(replaceText("demo-user"), closeSoftKeyboard())
-
-        waitForLabel("Password")
-        onView(withContentDescription("Password"))
-            .perform(replaceText("demo-only"), closeSoftKeyboard())
-
-        waitForLabel("Sign in")
-        onView(withContentDescription("Sign in")).perform(click())
-
-        waitForLabel("Home screen")
-        onView(withContentDescription("Home screen"))
-            .check(matches(isDisplayed()))
-    }
-
-    @Test
-    fun invalidDemoLoginShowsError() {
-        waitForLabel("Username")
-        onView(withContentDescription("Username"))
-            .perform(replaceText("demo-user"), closeSoftKeyboard())
-        waitForLabel("Password")
-        onView(withContentDescription("Password"))
-            .perform(replaceText("wrong-password"), closeSoftKeyboard())
-        waitForLabel("Sign in")
-        onView(withContentDescription("Sign in")).perform(click())
-
-        waitForLabel("Invalid demo credentials.")
-        onView(withContentDescription("Invalid demo credentials."))
-            .check(matches(isDisplayed()))
-        onView(withContentDescription("Home screen")).check(doesNotExist())
-    }
-
-    // Bounded wait for this local RN demo's JS-driven screen updates.
-    private fun waitForLabel(label: String, timeoutMs: Long = 15_000) {
-        val target = allOf(withContentDescription(label), isDisplayed())
-        onView(isRoot()).perform(object : ViewAction {
-            override fun getConstraints(): Matcher<View> = isRoot()
-
-            override fun getDescription(): String =
-                "Wait up to $timeoutMs ms for $label"
-
-            override fun perform(controller: UiController, root: View) {
-                val deadline = SystemClock.uptimeMillis() + timeoutMs
-                while (true) {
-                    if (containsView(root, target)) return
-                    if (SystemClock.uptimeMillis() >= deadline) {
-                        throw AssertionError("Visible element not found: $label")
-                    }
-                    controller.loopMainThreadForAtLeast(50)
-                }
-            }
-        })
-    }
-
-    private fun containsView(view: View, matcher: Matcher<View>): Boolean {
-        if (matcher.matches(view)) return true
-        if (view is ViewGroup) {
-            for (index in 0 until view.childCount) {
-                if (containsView(view.getChildAt(index), matcher)) return true
-            }
-        }
-        return false
-    }
-}
-```
-
-The bounded wait handles this fixture's JS-driven rendering. Real network authentication requires the app's approved synchronization, including the relevant idling resources. [Android Espresso synchronization](https://developer.android.com/training/testing/espresso/idling-resource)
-
-</TabItem>
-<TabItem label="LoginDeviceTests.swift — native iOS">
-
-Add this to the actual Xcode UI-test target, configure its target app, and include it in the shared test-enabled scheme. Each test launches the demo with empty fields.
-
-```swift
-import XCTest
-
-final class LoginDeviceTests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
-    func testValidDemoLoginShowsHome() {
-        let app = XCUIApplication()
-        app.launch()
-
-        let username = app.textFields["login.username"]
-        XCTAssertTrue(username.waitForExistence(timeout: 15))
-        XCTAssertTrue(username.isHittable)
-        username.tap()
-        username.typeText("demo-user")
-
-        let password = app.secureTextFields["login.password"]
-        XCTAssertTrue(password.waitForExistence(timeout: 5))
-        XCTAssertTrue(password.isHittable)
-        password.tap()
-        password.typeText("demo-only")
-
-        let submit = app.buttons["login.submit"]
-        XCTAssertTrue(submit.waitForExistence(timeout: 5))
-        XCTAssertTrue(submit.isHittable)
-        submit.tap()
-
-        let home = app.staticTexts["home.heading"]
-        XCTAssertTrue(home.waitForExistence(timeout: 10))
-        XCTAssertEqual(home.label, "Home screen")
-    }
-    func testInvalidDemoLoginShowsError() {
-        let app = XCUIApplication()
-        app.launch()
-
-        let username = app.textFields["login.username"]
-        XCTAssertTrue(username.waitForExistence(timeout: 15))
-        XCTAssertTrue(username.isHittable)
-        username.tap()
-        username.typeText("demo-user")
-
-        let password = app.secureTextFields["login.password"]
-        XCTAssertTrue(password.waitForExistence(timeout: 5))
-        XCTAssertTrue(password.isHittable)
-        password.tap()
-        password.typeText("wrong-password")
-
-        let submit = app.buttons["login.submit"]
-        XCTAssertTrue(submit.waitForExistence(timeout: 5))
-        XCTAssertTrue(submit.isHittable)
-        submit.tap()
-
-        let error = app.staticTexts["login.error"]
-        XCTAssertTrue(error.waitForExistence(timeout: 10))
-        XCTAssertEqual(error.label, "Invalid demo credentials.")
-        XCTAssertFalse(app.staticTexts["home.heading"].exists)
-    }
-
-}
-```
-
-Inspect the actual identifiers and button visibility on the chosen device. [Apple UI element waiting](https://developer.apple.com/documentation/xcuiautomation/xcuielement/waitforexistence(timeout:))
-
-</TabItem>
-</Tabs>
-
-## 5. Run the tests in the IDE
-
-<Tabs>
-<TabItem label="Jest">
-
-**Jest.** From the app root, use the configured Yarn test script. If it invokes Jest, run the feature file, then the repository's full coverage command:
-
-```bash
-yarn test --runTestsByPath src/demo/login/login.test.js
-```
-
-```bash
-# Use this only when the repository defines test:coverage.
-yarn test:coverage
-```
-
-Expected feature results are seven policy cases and five component tests. This example alone does not establish the required application-wide 100% coverage. Include all intended production files and supported metrics in the existing gate.
-
-</TabItem>
-<TabItem label="Android">
-
-Start an authorized emulator or device. From the app root, use the actual package/class name in the command:
-
-```bash
-cd android
-./gradlew :app:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.example.mychicken.LoginDeviceTest
-```
-
-A debug React Native run may need Metro through the app's normal development workflow. Confirm both Login cases execute.
-
-</TabItem>
-<TabItem label="iOS">
-
-In Xcode, select the test-enabled scheme and Simulator, then choose **Product → Test**. Confirm both Login cases execute.
-
-</TabItem>
-<TabItem label="Appium">
-
-Open `login.e2e.js` in VS Code. For the shared Sauce example, run this from the tooling directory after the owner has provided the configuration and runtime inputs in section 6.
-
-```bash
-: "${MOBILE_SHARED_WDIO_CONFIG:?Set the approved shared configuration path}"
-./node_modules/.bin/wdio run "$MOBILE_SHARED_WDIO_CONFIG"
-```
-
-This starts a remote session for the uploaded app. For a local device session, use your project's local Appium configuration.
-
-</TabItem>
-</Tabs>
-
-## 6. Read the optional Appium runner configuration
-
-The following full WebdriverIO configuration is an **official-API teaching adaptation** for shared tooling. It assumes compatible pinned WebdriverIO/Mocha/Sauce packages are available in that tooling. The shared runner configuration uses CommonJS, so its filename ends in `.cjs`. It loads the ES module test through `specs`. The private custom step's actual Appium runner, inputs, and hooks still need owner confirmation.
-
-<Tabs>
-<TabItem label="wdio.sauce.conf.cjs — shared tooling">
-
-```javascript
-const path = require('node:path');
-
-function required(name) {
-  const value = process.env[name];
-  if (!value || value.includes('REPLACE_WITH_')) {
-    throw new Error(`Missing approved runtime input: ${name}`);
-  }
-  return value;
-}
-
-const platform = required('MOBILE_TEST_PLATFORM');
-if (!['android', 'ios'].includes(platform)) {
-  throw new Error('MOBILE_TEST_PLATFORM must be android or ios');
-}
-const region = required('MOBILE_SAUCE_REGION');
-if (!['us', 'eu'].includes(region)) {
-  throw new Error('This example supports approved us or eu region mappings');
-}
-const appRef = required('MOBILE_SAUCE_APP_REF');
-if (!/^storage:[^\s]+$/.test(appRef) || appRef.startsWith('storage:filename=')) {
-  throw new Error('Use the storage reference for the exact uploaded app file');
-}
-const appRoot = required('MOBILE_APP_CHECKOUT');
-if (!path.isAbsolute(appRoot)) {
-  throw new Error('MOBILE_APP_CHECKOUT must be an absolute checkout path');
-}
-
-exports.config = {
-  runner: 'local',
-  user: required('SAUCE_USERNAME'),
-  key: required('SAUCE_ACCESS_KEY'),
-  region,
-  specs: [path.join(appRoot, 'e2e/appium/login.e2e.js')],
-  maxInstances: 1,
-  logLevel: 'error',
-  waitforTimeout: 15000,
-  connectionRetryCount: 0,
-  framework: 'mocha',
-  mochaOpts: {timeout: 90000, retries: 0},
-  reporters: ['spec'],
-  services: ['sauce'],
-  capabilities: [{
-    platformName: platform === 'android' ? 'Android' : 'iOS',
-    'appium:automationName': platform === 'android' ? 'UiAutomator2' : 'XCUITest',
-    'appium:deviceName': required('MOBILE_DEVICE_NAME'),
-    'appium:platformVersion': required('MOBILE_DEVICE_OS'),
-    'appium:app': appRef,
-    'sauce:options': {
-      name: 'MyChickenapp Login success and failure',
-      build: required('MOBILE_TEST_BUILD_LABEL'),
-      appiumVersion: required('MOBILE_APPIUM_VERSION'),
-    },
-  }],
-};
-```
-
-</TabItem>
-<TabItem label="Runtime inputs">
-
-These `MOBILE_*` names belong to this example. Map them through the approved adapter when adopting it.
-
-| Input | Value supplied by the owner |
-|---|---|
-| `MOBILE_APP_CHECKOUT` | Absolute path to the application checkout containing `e2e/appium/login.e2e.js`. |
-| `MOBILE_TEST_PLATFORM` | `android` or `ios` for this run. |
-| `MOBILE_SAUCE_REGION` | Approved `us` or `eu` mapping for this example. |
-| `MOBILE_SAUCE_APP_REF` | `storage:<exact-file-ID>` for this run's uploaded APK or IPA. |
-| `MOBILE_DEVICE_NAME`, `MOBILE_DEVICE_OS` | Approved available device criteria and OS version. |
-| `MOBILE_APPIUM_VERSION` | Owner-approved Appium image supported by the selected cloud service. |
-| `MOBILE_TEST_BUILD_LABEL` | Sanitized label identifying the source/build/platform. |
-| `SAUCE_USERNAME`, `SAUCE_ACCESS_KEY` | Protected authorized Sauce Labs credentials. |
-
-</TabItem>
-</Tabs>
-
-The configuration selects one platform and one concurrent session. Run Android and iOS independently with their matching app references. It uses the Sauce service to publish job metadata/results. An Appium run controls the app through a session and executes the JavaScript spec from its Node runner. A native Espresso/XCUITest suite instead uses its compiled test products. [Sauce Appium real devices](https://docs.saucelabs.com/mobile-apps/automated-testing/appium/real-devices/), [WebdriverIO Sauce service](https://webdriver.io/docs/sauce-service/)
-
-## 7. See how Bitrise runs the optional device tests
-
-Platform Engineering confirms the actual integration contract for the selected template. Follow this order:
-
-1. Check out the reviewed application revision and install the pinned app/tooling dependencies.
-2. Build a device-compatible APK or IPA with the JavaScript bundle and intended demo entry point. For native device suites, also build the matching test package.
-3. Run the app-create step with the app-repo request file and protected credentials.
-4. Run the approved upload operation and resolve the exact binary storage ID. Confirm the meaning of any output named `SAUCE_APP_ID` before mapping it to a storage reference.
-5. Start the selected runner and wait for completion. Confirm both Login cases ran and that the result propagates to Bitrise.
-6. Collect the actual run identity and available evidence.
-
-| Reference | Repository URL |
-|---|---|
-| `bitrise-step-saucelabs-app-create` | |
-| Approved upload-and-test step | |
-
-<Tabs>
-<TabItem label="Exact custom-step reference">
-
-This exact excerpt is retained from the supplied integration. It references the private step implementations. The upload/test excerpt supplies credential inputs but omits the complete artifact/runner mapping. It requires the owner-confirmed package producers and private step contract before execution.
-
-```yaml
-      # 7. Register / provision the app in Sauce Labs
-      - git::https://git.enterprise.com/ACES-Mobile-Engineering/bitrise-step-saucelabs-app-create.git@1.0.0:
-          title: Create Sauce Labs App
-          inputs:
-            - saucelabs_request_yml: ".sauce/saucelabs_request.yml"
-            - sauce_username: "$SAUCE_USERNAME"
-            - sauce_access_key: "$SAUCE_ACCESS_KEY"
-
-      # 8. Upload the built APK and run tests
-      - git::https://git.enterprise.com/ACES-Mobile-Engineering/saucelabs-bitrise-step.git@1.0.0:
-          title: Upload App to Sauce Labs and Run Tests
-          inputs:
-            - sauce_username: "$SAUCE_USERNAME"
-            - sauce_access_key: "$SAUCE_ACCESS_KEY"
-```
-
-</TabItem>
-<TabItem label="Shared WDIO invocation — adaptation">
-
-Use this separate teaching excerpt only when the owner selects the shared WDIO runner after the upload. If the custom upload-and-test step already executes the tests internally, configure that step's supported runner path instead of starting a second device run.
-
-```yaml
-- script@1:
-    title: Execute the configured Login Appium suite
-    inputs:
-      - content: |-
-          #!/usr/bin/env bash
-          set -euo pipefail
-          set +x
-          : "${MOBILE_SHARED_TOOLING_DIR:?Shared tooling directory required}"
-          : "${MOBILE_SHARED_WDIO_CONFIG:?Absolute shared config path required}"
-          cd "$MOBILE_SHARED_TOOLING_DIR"
-          test -x node_modules/.bin/wdio
-          ./node_modules/.bin/wdio run "$MOBILE_SHARED_WDIO_CONFIG"
-```
-
-The owner makes the configuration from section 6 available at `MOBILE_SHARED_WDIO_CONFIG` and supplies its runtime inputs. The spec path is resolved from the separate app checkout. This is a workflow step excerpt, not a complete template or a confirmed hook accepted by your private step.
-
-</TabItem>
-</Tabs>
-
-## 8. Use Copilot or ChatGPT to extend the example
-
-Open the feature and relevant test files in the IDE. Supply only the context allowed by enterprise policy, plus the actual runner, selectors, and conventions. Configure the selected assistant through [GenAI & Tools](/mobile/genai-and-tools/).
-
-<Tabs>
-<TabItem label="Jest prompt">
-
-```text
-Using authenticate-demo.js, LoginDemo.jsx, and login.test.js,
-add a test for submitting with both fields empty. Use the existing React
-Native testing library and fixture. Assert that the username error appears
-first and that Home is absent.
-Preserve the production requirement. Do not add dependencies or weaken
-coverage. Return the proposed test and any missing context.
-```
-
-</TabItem>
-<TabItem label="Appium prompt">
-
-```text
-Using LoginDemo.jsx and login.e2e.js, draft a WebdriverIO/Mocha
-Appium test for an empty username. Reuse the existing selector helper
-and Reset demo fixture. Assert the exact error and that Home is absent.
-Use the current Android/iOS mapping. No fixed sleeps, hidden retries,
-new packages, cloud calls, or real credentials in the draft.
-```
-
-</TabItem>
-<TabItem label="Native test prompt">
-
-```text
-Using the open LoginDemo.jsx and the current Android JUnit or iOS
-XCUITest file, add the equivalent empty-username device test.
-Reuse the configured native runner, selectors, and reset behavior.
-Report missing target or dependency configuration. Preserve the expected
-error and never generate production credentials or new private APIs.
-```
-
-</TabItem>
-</Tabs>
-
-Review the draft, run the focused test, and confirm it detects the expected failure. Then run the full required checks and commit the reviewed change. Bitrise executes committed code. AI authoring occurs before CI execution.
-
-## 9. Read the completed result
-
-| Result to inspect | Expected evidence |
-|---|---|
-| Jest | The intended policy/component cases executed against the changed feature. |
-| Appium or native suite | Both correct-credential and wrong-password scenarios passed their own assertions. |
-| App and source | The cloud run references the intended platform, uploaded file, source revision, and build label. |
-| Device | Allocated model and OS satisfy the approved matrix. |
-| Evidence | Completed run identity plus available command logs, video, or screenshots. |
-| Bitrise | The required device outcome is reflected in the workflow result. |
-
-**Attach screenshot — Login, invalid-login error, Home, and completed test results using only the synthetic fixture.**
-
-For a missing element, inspect the installed app's native hierarchy and selector mapping. For no tests discovered, inspect the actual runner and spec/class selection. For upload or session outcomes that are unknown, preserve the recorded identities and follow the approved reconciliation procedure before another external write.
+Mobile Engineering Documentation Map
+
+Find each documentation file by section and enter the responsible person in the Owner column.
+
+Portal entry (standalone)
+
+Topic
+
+File
+
+Description
+
+Owner
+
+Welcome & Quick Start
+
+welcome-and-quick-start.mdx
+
+Get access, choose your onboarding track, set up your workstation, and prepare your first pull request on the Mobile Engineering Platform.
+
+
+Portal Overview
+
+Topic
+
+File
+
+Description
+
+Owner
+
+Mobile Engineering Portal
+
+index.mdx
+
+Find onboarding, architecture, platform standards, delivery, testing, monitoring, and support documentation.
+
+
+Onboarding
+
+Topic
+
+File
+
+Description
+
+Owner
+
+Start Here — Mobile Engineering
+
+index.mdx
+
+Understand the mobile platform, choose your learning path, set up your Mac, and run your first application.
+
+
+Mobile Foundations for Web & Backend Engineers
+
+non-mobile-engineer-guide.mdx
+
+Learn the mobile concepts that affect your first feature before setting up and running an application.
+
+
+Mobile Platform Overview
+
+platform-overview.mdx
+
+Learn the enterprise mobile tools, developer responsibilities, and the difference between local development, enrollment, builds, and delivery.
+
+
+Machine Setup — macOS Apple Silicon
+
+machine-setup-guide/index.mdx
+
+Install and verify the tools needed to develop Android, iOS, or React Native applications on an Apple Silicon Mac.
+
+
+First Local Run & Contribution
+
+first-local-run.mdx
+
+Clone your assigned application, install locked dependencies, run it locally, and submit a focused first pull request.
+
+
+Architecture
+
+Topic
+
+File
+
+Description
+
+Owner
+
+Mobile Architecture Overview
+
+index.mdx
+
+Understand feature responsibilities, dependency direction, and safe order submission across Android, iOS, and React Native.
+
+
+Mobile Architecture — Layers & Responsibilities
+
+mobile-architecture.mdx
+
+Understand presentation, domain, repository, data adapters, and application composition through the chicken-order feature on Android, iOS, and React Native.
+
+
+Network Resilience & Circuit Breakers
+
+circuit-breaker-resilience.mdx
+
+Handle chicken-order timeouts, cancellation, circuit rejection, and uncertain outcomes without creating duplicate orders.
+
+
+Feature Flags — Control Chicken Ordering
+
+feature-flags.mdx
+
+Configure Unleash, persist permitted flag data, and safely evaluate chicken-ordering behavior across Android, iOS, and React Native.
+
+
+Branching & Pull Request Conventions
+
+branching-prs.mdx
+
+Prepare focused application changes, submit reviewable pull requests, and integrate only with current checks and required approval.
+
+
+Platform & SDKs
+
+Topic
+
+File
+
+Description
+
+Owner
+
+Platform & SDKs Overview
+
+development-platforms-and-internal-sdks.mdx
+
+Choose the platform guide, understand the feature layers, and follow the same chicken-order example on Android, iOS, and React Native.
+
+
+Android Standards — MVVM Chicken Order
+
+native-android-standards.mdx
+
+Understand the Android stack, then implement a complete Compose chicken-order demo with ViewModel, StateFlow, use case, repository, and injected API.
+
+
+iOS Standards — MVVM Chicken Order
+
+native-ios-standards.mdx
+
+Understand SwiftUI and MVVM, then implement a chicken-order demo with observable state, Swift concurrency, use cases, repositories, and an injected API.
+
+
+React Native Standards — MVVM Chicken Order
+
+react-native-standards.mdx
+
+Understand React Native and Redux Toolkit responsibilities, then implement a complete chicken-order demo with typed state, use cases, repositories, and injected data access.
+
+
+App Foundations — Shared Capabilities
+
+enterprise-app-foundations.mdx
+
+Shared mobile foundations for semantic design tokens, credential security, localization, push routing, controlled branding, and recoverable account-data cleanup across Android, iOS, and React Native.
+
+
+Master SDK Catalog
+
+master-sdk-catalog.mdx
+
+Shared mobile SDK catalog.
+
+
+Chicken Order — MVVM Reference for All Platforms
+
+chicken-order-mvvm-reference.mdx
+
+Copyable Android, iOS, and React Native demo features with views, state owners, use cases, repositories, and injected API adapters.
+
+
+Push Notifications & Deep Linking
+
+Topic
+
+File
+
+Description
+
+Owner
+
+Push Notifications & Deep Linking — Start Here
+
+index.mdx
+
+Understand device registration, AWS SNS endpoints and topics, FCM/APNs delivery, and the Java or PushJS backend integration path.
+
+
+Notification Guidelines
+
+notification-guidelines.mdx
+
+Design small, private notification payloads, respect user preferences, and verify provider acceptance separately from device behavior.
+
+
+FCM Mobile Setup
+
+fcm-mobile-setup.mdx
+
+Set up Firebase Cloud Messaging on Android, iOS, and React Native with FcmService and NotificationService templates and explicit application bindings.
+
+
+Direct APNs Setup — iOS
+
+apns-ios-setup.mdx
+
+Configure direct Apple Push Notification service registration with ApnsService and NotificationService templates, native lifecycle wiring, and separate backend integration.
+
+
+Java Push Backend — AWS SNS
+
+java-backend.mdx
+
+Configure the Java SNS client, register and reconcile platform endpoints, manage topic subscriptions, and publish correctly encoded mobile payloads.
+
+
+Node.js PushJS Backend
+
+nodejs-pushjs-backend.mdx
+
+Configure protected access to the internal PushJS package, use its documented registration and messaging methods, and preserve verified endpoint/subscription outcomes.
+
+
+Deep Linking — Integration Template
+
+deep-linking.mdx
+
+Configure verified HTTPS links and route only allowlisted destinations through authenticated application readiness on Android, iOS, and React Native.
+
+
+Testing & Quality
+
+Topic
+
+File
+
+Description
+
+Owner
+
+Testing & Quality — Start Here
+
+index.mdx
+
+Write feature tests, run local checks, enforce coverage, and inspect real-device results in the approved CI/CD workflow.
+
+
+Write Tests — Place a Chicken Order
+
+writing-tests.mdx
+
+Test My Chicken App's sample order boundary, Redux Toolkit integration, and native device journey across three platform tabs.
+
+
+Coverage & Quality Gates
+
+coverage-and-quality-gates.mdx
+
+Enforce complete production coverage, distinguish supported metrics, reject incomplete evidence, and retain current-source reports.
+
+
+Real-Device Testing with Sauce Labs
+
+sauce-labs-real-device-testing.mdx
+
+Prepare native app and test packages, connect the supplied Bitrise steps, run device tests, and inspect the completed result.
+
+
+IDE-Assisted Test Generation
+
+ide-assisted-test-generation.mdx
+
+Draft My Chicken App tests in the approved IDE, verify the assertions, and commit code for CI execution without LLM calls.
+
+
+Complete Login Example — Code, Tests & Sauce Labs
+
+login-device-test-example.mdx
+
+Follow a React Native Login feature through success and failure tests, approved AI authoring, and shared Bitrise execution on Sauce Labs.
+
+
+CI/CD
+
+Topic
+
+File
+
+Description
+
+Owner
+
+Mobile CI/CD — Start Here
+
+index.mdx
+
+Understand how your mobile code becomes a tested app and reaches its users. Start with the tools, repositories, and setup order.
+
+
+Prepare Your Repository
+
+prepare-your-repository.mdx
+
+Find your application files, run the existing local checks, and identify the source repository and branch before CI/CD enrollment.
+
+
+Prepare Your Repository & CAMP File
+
+repository-readiness.mdx
+
+Prepare an existing mobile repository for governed Bitrise enrollment, using the Enterprise CAMP schema.
+
+
+CAMP File Reference
+
+campfile-reference.mdx
+
+Create campfile.yml at the application root, fill in the documented metadata, and confirm the accepted format before publishing.
+
+
+Enroll Your Application with GitOps
+
+gitops-enrollment.mdx
+
+Create the Enterprise enrollment YAML, validate it, follow protected promotion, and inspect first provisioning.
+
+
+Understand the Configuration Repository
+
+configuration-repository.mdx
+
+Find the application request directory, understand the platform repositories, and prepare to submit a first enrollment request.
+
+
+Enroll Your Application
+
+enroll-your-application.mdx
+
+Select an approved Bitrise template, create the exact request YAML, and submit one new application request for review.
+
+
+PR Quality & Security Gates
+
+quality-and-security-gates.mdx
+
+Set up the reference Danger rules and NowSecure assessment/severity integration, then verify the resulting gates.
+
+
+Review & Promote Your Request
+
+review-and-promote.mdx
+
+Inspect the request checks, follow the approved promotion process, and distinguish validation success from the live apply outcome.
+
+
+Understand Bitrise Pipelines
+
+bitrise-pipelines.mdx
+
+Read the supplied pipeline YAML, understand where commands run, and connect build routes to device tests and delivery.
+
+
+Deliver the App & Verify Availability
+
+delivery-and-verification.mdx
+
+Deliver the signed candidate through its approved private or store route, then verify the exact version and audience.
+
+
+Danger PR Checks with Bitrise
+
+danger-pr-checks.mdx
+
+Understand the platform-owned Danger workflow and inspect automated PR feedback from Bitrise.
+
+
+Parallel Testing
+
+parallel-testing.mdx
+
+Understand the supplied module-selection YAML, conditional test workflows, and the inputs required to run them reliably.
+
+
+NowSecure Security Gates
+
+nowsecure-security-gates.mdx
+
+Submit the intended Android or iOS binary, inspect its completed assessment, and verify the security decision before release.
+
+
+Signing Credentials & Diagnostics
+
+signing-and-credentials.mdx
+
+Understand protected signing credentials, follow their path through Vela and Bitrise, and investigate signing failures.
+
+
+Deploy the App & Verify Availability
+
+deploy-and-verify.mdx
+
+Follow the approved package into enterprise or store distribution and confirm the exact version is available to its intended audience.
+
+
+Later Builds — Code Changes & Template Updates
+
+later-builds.mdx
+
+Follow app changes from GitHub events to Bitrise results, then understand how shared workflow updates and template changes are adopted.
+
+
+Troubleshooting & Safe Recovery
+
+troubleshooting-and-recovery.mdx
+
+Find the failed CI/CD phase, preserve completed work, and follow the reviewed recovery procedure for the exact app and candidate.
+
+
+Complete CI/CD Project Preview
+
+integrated-project-preview.mdx
+
+See the Android, iOS, and React Native file layout, supplied configuration blocks, and integration definitions still required for execution.
+
+
+Workshop — From Source to Verified Delivery
+
+workshop-walkthrough.mdx
+
+Follow one application from local preparation through request review, platform apply, build results, and user verification.
+
+
+Platform Operations
+
+Topic
+
+File
+
+Description
+
+Owner
+
+CI/CD Operations Overview
+
+operations/index.mdx
+
+Start here after enrollment to find the right operational guide, repository, and owner.
+
+
+Bitrise Template Catalog
+
+operations/bitrise-template-catalog.mdx
+
+Find the approved template ID and exact version. Platform owners use the same guide to validate, publish, and verify a successor version of the shared bitrise.yml.
+
+
+Configuration Engine
+
+operations/configuration-engine.mdx
+
+Trace an enrollment request through validation, Docker dry run, and protected live apply. Includes Python development commands and the evidence to preserve.
+
+
+Bitrise Limits & Costs
+
+operations/bitrise-limits-and-costs.mdx
+
+Check workspace limits and retention, diagnose slow builds, and understand how parent and child workflows affect credit usage.
+
+
+Repository Inactivity Checks
+
+operations/repository-inactivity.mdx
+
+Read the scheduled RepoInactivity workflow and its YAML. Covers inactivity thresholds, reminder tracking, and when archival can occur.
+
+
+Bitrise MCP Integration
+
+operations/bitrise-mcp.mdx
+
+Connect an approved Copilot or ChatGPT client through the Bitrise gateway. Covers credential setup, client configuration, and verifying access with a read-only query.
+
+
+Platform Operations, MCP & RepoInactivity
+
+platform-operations.mdx
+
+Combined page covering enrolled app settings, shared templates, RepoInactivity, and Bitrise MCP. Its inactivity and MCP topics overlap with the dedicated guides above.
+
+
+App Store & Distribution
+
+Topic
+
+File
+
+Description
+
+Owner
+
+App Stores & Distribution — Start Here
+
+index.mdx
+
+Choose the Enterprise internal store or public store route, prepare the release handoff, and verify the exact version reaches its intended users.
+
+
+Signing & Release Approval
+
+signing-and-release-approval.mdx
+
+Request the correct signing setup, complete the TGRC deployment request and spreadsheet, and hand the identified candidate to the authorized release owner.
+
+
+Enterprise App Store
+
+enterprise-app-store.mdx
+
+Choose the internal QA, UAT, or production catalog, request business access, install the store client, and verify the intended application version.
+
+
+Apple App Store
+
+apple-app-store.mdx
+
+Prepare Apple listing information and assets, hand over the signed IPA, upload with Transporter, and verify review and release separately.
+
+
+Google Play
+
+google-play.mdx
+
+Prepare an Android listing and signed release, configure reviewer/tester access, and verify the approved Play track and version.
+
+
+Lost-Device Data Wipe
+
+lost-device-data-wipe.mdx
+
+Authorized administrator procedure for selecting a lost/stolen device, requesting application data removal, and recording the verified outcome in Digital.ai App Management.
+
+
+Observability
+
+Topic
+
+File
+
+Description
+
+Owner
+
+Mobile Observability — Start Here
+
+index.mdx
+
+Understand the Enterprise Datadog setup, privacy boundaries, mobile signals, and verification path across Android, iOS, and React Native.
+
+
+Datadog Mobile Integration
+
+datadog-mobile-integration.mdx
+
+Add Datadog to Android, iOS, or React Native, track a safe ordering journey, and prepare release symbols.
+
+
+Monitoring & Troubleshooting
+
+monitoring-and-troubleshooting.mdx
+
+Find mobile events, investigate crashes and slow journeys, and diagnose missing Datadog telemetry.
+
+
+GenAI & Tools
+
+Topic
+
+File
+
+Description
+
+Owner
+
+GenAI & Developer Tools — Setup Guide
+
+index.mdx
+
+Configure GitHub Copilot or ChatGPT to use the mobile engineering rules, platform standards, and verified project context.
+
+
+Shared Engineering Rules
+
+engineering-rules.mdx
+
+Copyable mobile engineering instructions for GitHub Copilot and ChatGPT, with Android, iOS, and React Native additions.
+
+
+GitHub Copilot Setup
+
+github-copilot-setup.mdx
+
+Configure Copilot repository instructions in Android Studio, Xcode, or VS Code and verify the mobile engineering rules are available.
+
+
+ChatGPT Setup
+
+chatgpt-setup.mdx
+
+Configure approved ChatGPT project instructions, provide permitted engineering references, and verify the context before requesting mobile code.
+
+
+Help & Support
+
+Topic
+
+File
+
+Description
+
+Owner
+
+FAQ
+
+index.mdx
+
+Section navigation
+
+
+Mobile Engineering Glossary
+
+glossary.mdx
+
+Plain-language definitions and the distinctions developers need to build, test, and release mobile apps.
+
+
+Support
+
+support.mdx
+
+Section navigation
+
+
