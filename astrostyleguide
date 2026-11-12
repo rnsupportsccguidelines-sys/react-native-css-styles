@@ -9,109 +9,31 @@ sidebar:
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 import MermaidViewer from "@components/MermaidViewer.astro";
 
-**Sauce Labs device testing is part of the configured CI/CD process.** Bitrise builds the app and native test packages. The shared workflow starts Sauce Labs, which runs your prepared device tests and returns the result.
+**Sauce Labs provides real Android and iOS devices in the cloud to run your app’s automated device tests.**
+We use it to verify user journeys across selected devices and OS versions before distribution.
+As part of CI/CD, Bitrise prepares the app and test packages, starts the configured Sauce Labs run, and reports the completed result.
 
 | What you maintain | Where it belongs |
 |---|---|
-| App code, tests, and CAMP | Application repository. CAMP is the only app-owned CI/CD configuration. |
-| Versioned `bitrise.yml`, Sauce request/runner configuration, and shared automation | `mobile-platform-configuration-bitrise-template`, maintained by Platform Engineering. |
+| App code, tests, CAMP, and `.sauce/saucelabs_request.yml` | Application repository. Use the owner-confirmed schema for the Sauce Labs request. |
+| Versioned `bitrise.yml`, runner configuration, and shared automation | `mobile-platform-configuration-bitrise-template`, maintained by Platform Engineering. |
 | Custom step implementation | The referenced step repository. Its `step.yml` identifies its inputs, outputs, and code entry point. |
 | Sauce credentials | Approved protected runtime bindings supplied by the platform owner. |
 
-### How the YAML reaches the upload script
+## Setup order
 
-```text
-Shared bitrise.yml references the custom step repository and version
-  → Bitrise loads that version
-  → Reads step.yml
-  → Runs the declared entry point
-  → Step code uploads packages and starts the configured device tests
-  → Bitrise receives the completed result
-```
+Start with a working local MyChickenapp. Follow these steps in order. Use a synthetic test account and an approved backend environment.
 
-For a Bash step, the entry point might be `step.sh`. Inspect the actual pinned `step.yml` to identify the file. The step may use another supported toolkit. [Bitrise step properties](https://docs.bitrise.io/en/bitrise-ci/references/steps-reference/step-properties-reference)
+| Step | App developer | Platform/test owner | Result to inspect |
+|---|---|---|---|
+| 1. Confirm integration | Identify the existing Bitrise app and selected template version. | Confirm that version includes the Sauce Labs steps and an approved trigger. | Workflow and app identity are known. |
+| 2. Write the device test | Add the test in the app's Android instrumentation or iOS UI-test target and run it locally. | Confirm the device strategy and isolated backend access. | The test runner discovers the test and its assertions pass. |
+| 3. Add the request | Commit `.sauce/saucelabs_request.yml` using the owner-supplied schema. | Confirm the pinned app-create step accepts the schema and path. | Request validation succeeds. |
+| 4. Prepare packages | Identify the native targets, scheme/variant, and test suite. | Configure producers for matching app and native test packages. | Source revision and package pair match. |
+| 5. Execute | Commit reviewed changes and follow the configured trigger or approved controlled start. | Bind credentials and supply runner configuration, upload inputs, and device selection. | Bitrise reaches app-create, upload, and test execution. |
+| 6. Verify | Open the actual Sauce Labs run and inspect the executed tests and available evidence. | Confirm completed results propagate to the required Bitrise check. | Every required device suite has a confirmed outcome. |
 
-### Which tests run?
-
-| Input | Execution |
-|---|---|
-| `login.test.js` through `yarn test`, when configured for Jest | JavaScript tests run on your Mac or the Bitrise runner. |
-| Android application APK and matching instrumentation test APK | Sauce Labs runs the configured Android device suite. |
-| Compatible iOS application and XCUITest runner products | Sauce Labs runs the configured iOS device suite. |
-| Uploaded app package | Upload completes. Device execution still needs a configured test suite and start operation. |
-
-A device test supplies actions and assertions, such as entering credentials, tapping Sign in, and checking Home. Sauce Labs supplies the devices. The shared integration starts and checks the run.
-
-The supplied integration uses two custom steps. The app-create step registers the app from request configuration. The upload-and-test step handles the package upload and test run. Their pinned implementations define the actual contracts.
-
-A separate `react-native-sauce.sh` is optional. A workflow can use custom steps, inline Bash, or an approved shared script. If it calls a missing script, that step fails. A script runs only when invoked.
-
-Read [Writing Tests](/mobile/testing-quality/writing-tests/) for test code and [Bitrise Pipelines](/mobile/cicd/bitrise-pipelines/) for workflow placement. The supplied React Native v1.10.0 sample omits Sauce Labs. Select a version that includes the approved integration.
-
-## Set up your first device test
-
-**Starting point — MyChickenapp runs locally on your Mac.** Use an approved test environment. The example journey signs in and checks that Home appears. Replace it with the reviewed journey required for your feature.
-
-### Step 1 — identify the existing build setup
-
-Find the app's Bitrise identity, selected template ID, and applied version. If the app has no enrollment, complete [CI/CD setup](/mobile/cicd/) first.
-
-Ask Platform Engineering to confirm that the selected version includes the Sauce Labs integration. The supplied `react-native-qa-uat` v1.10.0 sample needs an approved successor or another compatible version to run Sauce Labs.
-
-**Result —** you know which app, template, and workflow will execute the device test.
-
-### Step 2 — add the device test to the app repository
-
-Choose your platform in section 3. Reuse its existing test target and dependencies. Add a test that opens the actual screen, performs the intended actions, and checks the expected result. Expose the reviewed screen identifiers and configure the isolated fixture.
-
-| Platform | App team prepares |
-|---|---|
-| Android | JUnit instrumentation test in the configured `androidTest` source set. |
-| iOS | XCUITest in the configured UI-test target and shared test scheme. |
-| React Native | Android instrumentation and/or iOS XCUITest for the native app targets being tested. Keep JavaScript tests in the existing Jest setup. |
-
-Follow [Writing Tests](/mobile/testing-quality/writing-tests/) for code examples. Run the relevant native test locally before committing it.
-
-**Result —** a real test runner discovers and executes the test against the app.
-
-### Step 3 — build the application and test products
-
-Use the platform commands in section 3. Android needs both the app APK and matching test APK. iOS needs the compatible device application and XCUITest runner products.
-
-Record the source commit, build variant or scheme, and actual output paths. The shared workflow must produce the matching pair again on Bitrise.
-
-**Result —** Platform Engineering can identify exactly which app and tests the cloud run must use.
-
-### Step 4 — connect the shared template
-
-Give the platform/test owner the app identity, test target or suite, output paths, and required device/OS coverage. The owner supplies these shared integration details:
-
-| Shared setup | What the owner confirms |
-|---|---|
-| Sauce Labs account and region | Approved account, access, and compatible storage/execution region. |
-| Protected credentials | Runtime bindings for `SAUCE_USERNAME` and `SAUCE_ACCESS_KEY`. |
-| Request and runner configuration | Accepted private request schema and the runtime paths supplied by the template. |
-| Custom steps | Approved repository versions, `step.yml` inputs/outputs, and entry points. |
-| Package handoff | How the built app/test paths become upload inputs and storage references. |
-| Test execution | Suite selection, device matrix, completion waiting, and failure propagation. |
-
-Use section 5 to inspect the supplied integration YAML with the owner. Its private artifact inputs and schema require the actual pinned step contract. Record any missing input before enabling the run.
-
-**Result —** the effective Bitrise workflow has a confirmed way to upload the package pair and start the required suite.
-
-### Step 5 — run the approved workflow and follow its logs
-
-Commit the reviewed test and application changes. Use the workflow's confirmed trigger or approved controlled start. In Bitrise, inspect the build, registration, upload, and test execution steps in sequence. Match the source revision and package identities.
-
-Open the resulting Sauce Labs run. Inspect the allocated device/OS, executed tests, assertions, and completed status. If Bitrise and Sauce Labs show different results, ask the integration owner to inspect completion and exit-status handling.
-
-**Result —** the required device suite completed for the intended app/test pair.
-
-### Step 6 — retain evidence for the same run
-
-Follow section 8 for the completed run identity, test summary, and available video, screenshots, and logs. Keep Android and iOS outcomes separate. Use the failure guide at the end of this page when a stage is missing, failed, or unknown.
-
-**Result —** your first cloud execution has inspectable evidence. The app's remaining coverage, security, signing, and release checks determine its next stage.
+The supplied v1.10.0 build template omits Sauce Labs. Its app-create and upload-and-test workflow examples in this page come from the separate supplied integration reference.
 
 ## 1. Understand the test flow
 
@@ -137,6 +59,23 @@ flowchart TD
 ```
 
 </MermaidViewer>
+
+### Which tests run?
+
+| Input | Execution |
+|---|---|
+| `login.test.js` through `yarn test`, when configured for Jest | JavaScript tests run on your Mac or the Bitrise runner. |
+| Android application APK and matching instrumentation test APK | Sauce Labs runs the configured Android device suite. |
+| Compatible iOS application and XCUITest runner products | Sauce Labs runs the configured iOS device suite. |
+| Uploaded app package | Upload completes. Device execution still needs a configured test suite and start operation. |
+
+A device test supplies actions and assertions, such as entering credentials, tapping Sign in, and checking Home. Sauce Labs supplies the devices. The shared integration starts and checks the run.
+
+The supplied integration uses two custom steps. The app-create step registers the app from request configuration. The upload-and-test step handles the package upload and test run. Their pinned implementations define the actual contracts.
+
+A separate `react-native-sauce.sh` is optional. A workflow can use custom steps, inline Bash, or an approved shared script. If it calls a missing script, that step fails. A script runs only when invoked.
+
+Read [Writing Tests](/mobile/testing-quality/writing-tests/) for test code and [Bitrise Pipelines](/mobile/cicd/bitrise-pipelines/) for workflow placement. The supplied React Native v1.10.0 sample omits Sauce Labs. Select a version that includes the approved integration.
 
 ## 2. Confirm access, region, and execution ownership
 
@@ -177,7 +116,39 @@ Parallel tests need independent state. Confirm cleanup and test-account allocati
 
 **Attach screenshot — approved device criteria and actual allocated device/OS with private pool/account information hidden.**
 
-## 3. Prepare the packages for your platform
+## 3. Add the app-specific request configuration
+
+The latest app-create step reads:
+
+```text
+.sauce/saucelabs_request.yml
+```
+
+Its input name is exactly `saucelabs_request_yml`. Add the request at `.sauce/saucelabs_request.yml` in the application repository using the schema supplied by the private step owner. The shared Bitrise workflow reads it from the app checkout. Keep credential values in protected runtime bindings. The supplied reference omits the complete private schema, so obtain that contract before creating the file contents.
+
+Earlier supplied examples use `saucelabs.request.yml`, `request_file_path`, and other aliases. The latest integration contract shown below uses the path/input above. Confirm compatibility before changing a live consumer.
+
+<details>
+<summary>Earlier request metadata example — confirm the consumer before using</summary>
+
+The recovered older page contains this earlier metadata example. It is retained for applications whose pinned integration accepts that contract. The latest step excerpt omits the schema, so the owner must establish compatibility before using these fields at the new request path.
+
+```yaml
+app_name: sample-mobile-app
+platform: android
+owner_email: mobile-test-owner@example.invalid
+team: sample-mobile-team
+description: Synthetic Enterprise workshop application for device testing
+business_unit: sample-business-unit
+environment: qa
+repository: https://git.example.invalid/mobile/sample-mobile-app.git
+```
+
+Confirm the accepted required/optional fields and platform values from the actual validator. This example’s synthetic ownership and URL values require replacement.
+
+</details>
+
+## 4. Prepare the packages for your platform
 
 <Tabs>
 <TabItem label="Android">
@@ -187,6 +158,8 @@ Parallel tests need independent state. Confirm cleanup and test-account allocati
 ```text
 application-root/
 ├── campfile.yml
+├── .sauce/
+│   └── saucelabs_request.yml      # App-specific request configuration
 ├── <Gradle project and wrapper>
 └── <application-module>/src/androidTest/
     └── <chicken-order device test>
@@ -291,6 +264,8 @@ Bind the app and test references to separate verified `storage:<ID>` values from
 ```text
 application-root/
 ├── campfile.yml
+├── .sauce/
+│   └── saucelabs_request.yml      # App-specific request configuration
 ├── <Xcode project or workspace>/
 └── <XCUITest target source>/
 ```
@@ -361,6 +336,8 @@ Use the Android native JUnit-based device path for the Android application. For 
 ```text
 react-native-application/
 ├── campfile.yml
+├── .sauce/
+│   └── saucelabs_request.yml      # App-specific request configuration
 ├── package.json
 ├── android/    # App and instrumentation test sources
 └── ios/        # App and configured iOS test target
@@ -373,39 +350,45 @@ Appium capability examples in the reference describe an alternative integration.
 </TabItem>
 </Tabs>
 
-## 4. Understand the template-owned request configuration
+## 5. Read the shared Bitrise integration
 
-The latest app-create step reads:
+### Find the two custom step repositories
+
+| Reference | URL |
+|---|---|
+| `bitrise-step-saucelabs-app-create` | |
+| Approved Sauce Labs upload-and-test integration repository | |
+
+Use the approved repository and version to inspect `step.yml`, accepted inputs, and the execution entry point.
+
+### What the app-create step does
+
+`bitrise-step-saucelabs-app-create` contains the custom step that reads the app-specific request and registers/provisions the application through the approved Sauce Labs integration.
+
+| Connection | What to inspect |
+|---|---|
+| Shared `bitrise.yml` | References the app-create repository at an approved version. |
+| App repository | Contains `.sauce/saucelabs_request.yml`, passed through the `saucelabs_request_yml` input. |
+| Custom step's `step.yml` | Defines the accepted inputs, outputs, toolkit, and entry point. |
+| Step implementation | Performs the registration operation and returns the documented identity/output. |
+| Upload-and-test step | Consumes the required integration outputs and app/test packages according to its pinned contract. |
+
+The supplied description names `SAUCE_APP_ID` as an output. Verify what that ID represents in the pinned implementation before passing it to another step. Registration identity, binary storage identity, and test-run identity need their own confirmed mappings.
+
+### How the YAML reaches the upload script
 
 ```text
-.sauce/saucelabs_request.yml
+Shared bitrise.yml references the custom step repository and version
+  → Bitrise loads that version
+  → Reads step.yml
+  → Runs the declared entry point
+  → Step code uploads packages and starts the configured device tests
+  → Bitrise receives the completed result
 ```
 
-Its input name is exactly `saucelabs_request_yml`. Platform Engineering supplies this configuration through the approved template. The template owner confirms the schema and how the file is made available at this path on the runner. The private schema and runtime materialization mechanism are not supplied in the reference.
+For a Bash step, the entry point might be `step.sh`. Inspect the actual pinned `step.yml` to identify the file. The step may use another supported toolkit. [Bitrise step properties](https://docs.bitrise.io/en/bitrise-ci/references/steps-reference/step-properties-reference)
 
-Earlier supplied examples use `saucelabs.request.yml`, `request_file_path`, and other aliases. The latest integration contract shown below uses the path/input above. Confirm compatibility before changing a live consumer.
-
-<details>
-<summary>Earlier request metadata example — confirm the consumer before using</summary>
-
-The recovered older page contains this earlier metadata example. It is retained for applications whose pinned integration accepts that contract. The latest step excerpt omits the schema, so the owner must establish compatibility before using these fields at the new request path.
-
-```yaml
-app_name: sample-mobile-app
-platform: android
-owner_email: mobile-test-owner@example.invalid
-team: sample-mobile-team
-description: Synthetic Enterprise workshop application for device testing
-business_unit: sample-business-unit
-environment: qa
-repository: https://git.example.invalid/mobile/sample-mobile-app.git
-```
-
-Confirm the accepted required/optional fields and platform values from the actual validator. This example’s synthetic ownership and URL values require replacement.
-
-</details>
-
-## 5. Read the shared Bitrise integration
+**App creation, upload, and test execution are started by the shared `bitrise.yml`.** It calls code in the two custom step repositories.
 
 This Android/React Native workflow is reproduced exactly. It installs npm dependencies, runs the configured unit test script, builds Android, optionally installs `saucectl`, then calls the two private steps.
 
@@ -470,7 +453,7 @@ workflows:
 | `WORKDIR` | Actual application package root after checkout. |
 | `PROJECT_LOCATION` | Real Android Gradle project location. |
 | `MODULE`, `VARIANT` | Real module and build variant for the selected route. |
-| `saucelabs_request_yml` | Path accepted by the pinned app-create schema. |
+| `saucelabs_request_yml` | App-repo request path accepted by the pinned app-create step, shown as `.sauce/saucelabs_request.yml`. |
 | `SAUCE_USERNAME`, `SAUCE_ACCESS_KEY` | Protected bindings for the authorized account. |
 | Native test package | Matching Android test APK or iOS runner from its approved producer. |
 
@@ -492,7 +475,7 @@ The source uses `SAUCE_APP_ID` in more than one description. Confirm its actual 
 
 Earlier references name outputs such as `CREATION_STATUS`, `SAUCE_APP_FILE_NAME`, and `SAUCE_TEST_EXIT_CODE`. Other versions name status/job/count outputs differently. Retain the aliases required by the selected pinned implementation and verify the exact candidate handoff.
 
-## 6. Verify package identity and run the native suite
+## 6. Confirm the exact packages used by the run
 
 ### Inspect each local package
 
@@ -508,7 +491,84 @@ shasum -a 256 "$MOBILE_DEVICE_PACKAGE"
 
 Record the source commit, target, package/version, signing evidence, and hash. Cross-workflow execution needs the actual artifact transfer.
 
+## 7. Inspect the completed device result
+
+The source registration description names `SAUCE_APP_ID`. Its upload/test description shows an `appium:app` storage capability example. A capability value belongs to its test-client configuration and needs an actual step output mapping before being treated as a shell variable.
+
+The latest excerpt does not define complete job-ID, pass/fail-count, result-URL, or exit-code output names. Confirm them from the pinned custom step rather than assuming the aliases from older examples.
+
+| Evidence | What to inspect |
+|---|---|
+| Build and source identity | The tests ran against the intended application commit/package. |
+| Application and test package | Correct platform pair and storage identities. |
+| Device matrix | Required suites ran on the approved devices/OS versions. |
+| Completed session result | Actual completion and result for each required suite. |
+| Execution evidence | Available video, timestamped screenshots, and device/browser logs. |
+| Network capture | HAR evidence where capture is enabled and supported. |
+| Bitrise result | The completed required test result affects progression through the approved workflow. |
+
+Set failure-path evidence retention through the approved workflow while preserving the original test result. Artifact download patterns request matching files; enabled capture and supported collection determine which videos, screenshots, and network records actually exist.
+
+Confirm the configured report producer and collector if Bitrise requires a JUnit XML report. A `*.xml` download pattern selects available files; the test runner/reporting setup must produce them. The private step must expose the actual completed run identity and propagate its required result.
+
+The source directs users to **Automated → Test Results** in Sauce Labs. Match each result to its actual build/session identity. Inspect missing, skipped, queued, timed-out, or inconclusive suites before reporting the required matrix as passed.
+
+**Attach screenshot — exact device session, app/build identity, and completed result with sensitive details hidden.**
+
+## 8. Use the chicken-order test consistently
+
+Follow [Writing Tests](/mobile/testing-quality/writing-tests/) for the platform test implementation. For the demonstration, the test opens My Chicken App, places a synthetic chicken order, and asserts the expected confirmation using the app's actual selectors and demo response.
+
+Review the assertions and package pairing before committing. AI assistance remains in authoring with Copilot or ChatGPT. CI executes the committed test code.
+
+A device-test pass and JavaScript/native unit coverage are separate results. Use [Coverage & Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/) for coverage collection, thresholds, and the defined production-code scope.
+
+## 9. Verify the integration before using it as a release gate
+
+Use owner-approved controlled cases or existing execution evidence. The private integration must have an inspectable result for each case.
+
+| Case | Expected behavior |
+|---|---|
+| Request lacks a required field | Validation reports the error before the configured cloud operation. |
+| App/test package pair is wrong | The preparation or execution result fails explicitly. |
+| Native test-package reference is missing | The required native suite remains incomplete. |
+| A required chicken-order assertion fails | Test failure is visible in Sauce Labs and the required Bitrise result. |
+| No tests are discovered or a required suite is skipped | The required device gate remains incomplete. |
+| Device allocation or backend access fails | Infrastructure failure is reported with the actual session evidence. |
+| Notification/upload response becomes unknown | Existing identities are preserved and remote state is reconciled before another write. |
+| Test failure occurs before evidence collection | The original failure remains visible while the approved collector handles available diagnostics. |
+| Android passes and iOS fails | Both platform outcomes remain visible independently. |
+
+Only mark the device gate passed after the required suites complete for the intended packages and matrix. Coverage, security assessment, release signing, and destination availability have their own required results.
+
+## If a step fails
+
+| Symptom | Next action |
+|---|---|
+| Credentials rejected | Ask the authorized owner to inspect account, region, binding, and permissions. |
+| Request YAML rejected | Validate against the pinned private app-create schema and exact input/path. |
+| Application cannot launch | Inspect package type, native identity, signing compatibility, and required runtime configuration. |
+| Runner/test package is missing | Inspect the actual producer and its output/storage mapping. |
+| Device remains queued | Inspect account concurrency, availability, and approved device criteria. |
+| No required tests execute | Confirm test target, instrumentation runner/scheme, class filters, and package pairing. |
+| Test result is pending or timed out | Inspect the exact session and completion behavior before another dispatch. |
+| Bitrise passes despite failed required tests | Inspect the private step's exit/result handling and pipeline failure configuration. |
+| Upload outcome is unknown | Preserve the request/package identity and reconcile remote state before another upload. |
+
+For partial or unknown operations, use [CI/CD Troubleshooting & Recovery](../cicd/troubleshooting-and-recovery.mdx). For the complete file map, use [CI/CD Project Preview](../cicd/integrated-project-preview.mdx).
+
+Continue with [IDE-Assisted Test Generation](./ide-assisted-test-generation.mdx) for authoring and reviewing tests with the approved AI tools.
+
+## Optional implementation references
+
+<details>
+<summary>Shared shell wrapper and earlier direct-upload scripts</summary>
+
+These examples are maintained as shared tooling when the approved integration uses them. Platform Engineering selects one supported execution path. The custom-step workflow above can provide the automation directly.
+
 ### `scripts/testing/run-native-sauce.sh`
+
+**Optional shared runner example.** The template owner decides whether to use this wrapper or the custom step implementation.
 
 This earlier teaching wrapper assumes relative runner paths for its configuration. Platform Engineering can maintain it as shared tooling if the approved integration uses it. Confirm the actual runtime location and invocation before use. The custom-step approach can supply the same automation without this wrapper. It requires an installed CLI and separate app/test storage references.
 
@@ -567,7 +627,7 @@ exec saucectl run --config "$config"
 
 This wrapper is a teaching adaptation, with added checks for the documented native regions and unresolved/whitespace-containing storage references. It checks input shape and file availability. The approved adapter must also verify the actual remote package identity and bytes. Use the detailed `.sauce/espresso.yml` or `.sauce/xcuitest.yml` above when this wrapper is selected.
 
-## 7. Understand the standalone upload and runner scripts
+### Earlier direct-upload and runner references
 
 The latest reference also supplies direct upload and execution scripts. Choose one approved upload path. If the private workflow uploads the packages, a separate upload command must be coordinated with that implementation.
 
@@ -614,70 +674,5 @@ saucectl run --config .sauce/xcuitest.yml
 
 Run that command only in the approved job with its actual configured package references, credentials, and pinned CLI. The `.sauce/config.yml` reference selects the Android example unless its contents are changed through review.
 
-## 8. Inspect the completed device result
 
-The source registration description names `SAUCE_APP_ID`. Its upload/test description shows an `appium:app` storage capability example. A capability value belongs to its test-client configuration and needs an actual step output mapping before being treated as a shell variable.
-
-The latest excerpt does not define complete job-ID, pass/fail-count, result-URL, or exit-code output names. Confirm them from the pinned custom step rather than assuming the aliases from older examples.
-
-| Evidence | What to inspect |
-|---|---|
-| Build and source identity | The tests ran against the intended application commit/package. |
-| Application and test package | Correct platform pair and storage identities. |
-| Device matrix | Required suites ran on the approved devices/OS versions. |
-| Completed session result | Actual completion and result for each required suite. |
-| Execution evidence | Available video, timestamped screenshots, and device/browser logs. |
-| Network capture | HAR evidence where capture is enabled and supported. |
-| Bitrise result | The completed required test result affects progression through the approved workflow. |
-
-Set failure-path evidence retention through the approved workflow while preserving the original test result. Artifact download patterns request matching files; enabled capture and supported collection determine which videos, screenshots, and network records actually exist.
-
-Confirm the configured report producer and collector if Bitrise requires a JUnit XML report. A `*.xml` download pattern selects available files; the test runner/reporting setup must produce them. The private step must expose the actual completed run identity and propagate its required result.
-
-The source directs users to **Automated → Test Results** in Sauce Labs. Match each result to its actual build/session identity. Inspect missing, skipped, queued, timed-out, or inconclusive suites before reporting the required matrix as passed.
-
-**Attach screenshot — exact device session, app/build identity, and completed result with sensitive details hidden.**
-
-## 9. Use the chicken-order test consistently
-
-Follow [Writing Tests](/mobile/testing-quality/writing-tests/) for the platform test implementation. For the demonstration, the test opens My Chicken App, places a synthetic chicken order, and asserts the expected confirmation using the app's actual selectors and demo response.
-
-Review the assertions and package pairing before committing. AI assistance remains in authoring with Copilot or ChatGPT. CI executes the committed test code.
-
-A device-test pass and JavaScript/native unit coverage are separate results. Use [Coverage & Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/) for coverage collection, thresholds, and the defined production-code scope.
-
-## 10. Verify the integration before using it as a release gate
-
-Use owner-approved controlled cases or existing execution evidence. The private integration must have an inspectable result for each case.
-
-| Case | Expected behavior |
-|---|---|
-| Request lacks a required field | Validation reports the error before the configured cloud operation. |
-| App/test package pair is wrong | The preparation or execution result fails explicitly. |
-| Native test-package reference is missing | The required native suite remains incomplete. |
-| A required chicken-order assertion fails | Test failure is visible in Sauce Labs and the required Bitrise result. |
-| No tests are discovered or a required suite is skipped | The required device gate remains incomplete. |
-| Device allocation or backend access fails | Infrastructure failure is reported with the actual session evidence. |
-| Notification/upload response becomes unknown | Existing identities are preserved and remote state is reconciled before another write. |
-| Test failure occurs before evidence collection | The original failure remains visible while the approved collector handles available diagnostics. |
-| Android passes and iOS fails | Both platform outcomes remain visible independently. |
-
-Only mark the device gate passed after the required suites complete for the intended packages and matrix. Coverage, security assessment, release signing, and destination availability have their own required results.
-
-## If a step fails
-
-| Symptom | Next action |
-|---|---|
-| Credentials rejected | Ask the authorized owner to inspect account, region, binding, and permissions. |
-| Request YAML rejected | Validate against the pinned private app-create schema and exact input/path. |
-| Application cannot launch | Inspect package type, native identity, signing compatibility, and required runtime configuration. |
-| Runner/test package is missing | Inspect the actual producer and its output/storage mapping. |
-| Device remains queued | Inspect account concurrency, availability, and approved device criteria. |
-| No required tests execute | Confirm test target, instrumentation runner/scheme, class filters, and package pairing. |
-| Test result is pending or timed out | Inspect the exact session and completion behavior before another dispatch. |
-| Bitrise passes despite failed required tests | Inspect the private step's exit/result handling and pipeline failure configuration. |
-| Upload outcome is unknown | Preserve the request/package identity and reconcile remote state before another upload. |
-
-For partial or unknown operations, use [CI/CD Troubleshooting & Recovery](../cicd/troubleshooting-and-recovery.mdx). For the complete file map, use [CI/CD Project Preview](../cicd/integrated-project-preview.mdx).
-
-Continue with [IDE-Assisted Test Generation](./ide-assisted-test-generation.mdx) for authoring and reviewing tests with the approved AI tools.
+</details>
