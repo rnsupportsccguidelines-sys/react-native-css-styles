@@ -1,278 +1,618 @@
 ---
-title: "Later Builds — Code Changes & Template Updates"
-description: "Follow app changes from GitHub events to Bitrise results, then understand how shared workflow updates and template changes are adopted."
+title: "Real-Device Testing with Sauce Labs"
+description: "Prepare native app and test packages, connect the supplied Bitrise steps, run device tests, and inspect the completed result."
 sidebar:
-  label: Later Builds
-  order: 13
+  label: Sauce Labs Device Testing
+  order: 4
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 import MermaidViewer from "@components/MermaidViewer.astro";
 
-Your app is already enrolled. Use this page when you change application code, update the shared workflow, or need a different template for the existing Bitrise app.
+**Sauce Labs device testing is part of the configured CI/CD process.** Bitrise builds the app and native test packages. The shared workflow starts Sauce Labs, which runs your prepared device tests and returns the result.
 
-**Example throughout this page — MyChickenapp.** Its application code and its enrollment YAML live in separate repositories. The app already has a Bitrise identity and an applied shared workflow.
-
-| Question | Where to look |
+| What you maintain | Where it belongs |
 |---|---|
-| Which application code will be built? | The application repository, branch, and source revision selected for the run. |
-| Which commands will execute? | The workflow configuration currently applied to the Bitrise app. |
-| What starts the run? | An enabled trigger matching the received event, or an approved manual/API/scheduled start. |
-| Who changes the build commands? | Platform Engineering, through shared template review and adoption. |
+| App code, tests, and CAMP | Application repository. CAMP is the only app-owned CI/CD configuration. |
+| Versioned `bitrise.yml`, Sauce request/runner configuration, and shared automation | `mobile-platform-configuration-bitrise-template`, maintained by Platform Engineering. |
+| Custom step implementation | The referenced step repository. Its `step.yml` identifies its inputs, outputs, and code entry point. |
+| Sauce credentials | Approved protected runtime bindings supplied by the platform owner. |
 
-An application commit and a template version identify two different inputs to a build. Record both when investigating its result.
-
-<Aside type="caution" title="Keep the existing enrollment and Bitrise app">
-
-App developers maintain code, tests, and `campfile.yml` in the app repo. Platform Engineering maintains the shared `bitrise.yml`. Accepted enrollment requests are create-only. Use the approved existing-app change procedure for template or lifecycle changes.
-
-</Aside>
-
-## 1. Choose the change you are making
-
-| Your change | Where the change belongs | What starts the next action |
-|---|---|---|
-| Change Login, Home, or another feature | Application repo. | A configured app-repo event reaches Bitrise and matches a trigger. |
-| Push a second fix to an open application PR | Same application repo and PR branch. | The configured PR-update event can start checks for the new revision. |
-| Change tests or app dependencies | Application repo, including the applicable lockfile. | The configured app trigger starts the required checks and build. |
-| Change a shared build command, test stilstep, or deployment script | Bitrise template repo, maintained by Platform Engineering. | Catalog validation, review, publication, then approved adoption by the consumer. |
-| Upgrade the template version | Approved existing-app adoption procedure. | The platform applies the approved version to the existing app. |
-| Change the template ID | Approved existing-app lifecycle or migration procedure. | The platform verifies compatibility and applies the approved configuration. |
-| Investigate an unsuccessful run | Existing Bitrise app and destination evidence. | Follow reviewed recovery before repeating operations with external side effects. |
-
-## 2. Understand the two repository events
-
-| Event | System that processes it | What it does |
-|---|---|---|
-| First enrollment request reaches protected `main` in `mobile-platform-configuration` | Vela and the configuration engine. | Provisions the Bitrise app and applies its selected workflow configuration. |
-| Later application PR or push event | The configured GitHub-to-Bitrise connection and Bitrise trigger rules. | Selects a workflow in the existing Bitrise app to build the intended application revision. |
-
-The first setup records the relationship between the app repository, Bitrise app, and selected template. Later source builds reuse that relationship.
-
-### What remains available after the first enrollment?
-
-After successful enrollment, the platform has an existing Bitrise app connected to the application source and configured with the selected workflow. That connection and applied configuration are what later builds use.
-
-You can follow the next build without reopening the original enrollment request. Open the existing Bitrise app and inspect its incoming event, selected workflow, and checkout revision.
-
-### How GitHub tells Bitrise about a change
-
-1. You push a commit or open/update a PR in the **application repository**.
-2. The configured GitHub connection sends the event to Bitrise. A webhook is an event notification that contains details such as the repository, event, and revision.
-3. Bitrise evaluates the configured event and branch filters.
-4. A matching trigger selects the workflow or pipeline.
-5. The run checks out its selected revision and executes the applied workflow configuration.
-6. Inspect the build log and configured GitHub check/status to confirm the result belongs to that revision.
-
-For a webhook-based integration, the platform owner can inspect the application repo's **Settings → Webhooks → Recent deliveries**, subject to GitHub access and interface labels. A GitHub App integration uses installation event subscriptions, which are managed separately. Confirm which connection your enterprise uses before diagnosing a missing event. [Bitrise incoming webhooks](https://docs.bitrise.io/en/bitrise-platform/integrations/webhooks/adding-incoming-webhooks), [GitHub App events](https://docs.bitrise.io/en/bitrise-platform/repository-access/github-app-integration)
-
-The supplied v1.10.0 template defines workflows but supplies no complete app trigger mapping. Record the actual PR event, source/target branch filters, and selected workflow with Platform Engineering. The branch and workflow examples below illustrate the flow.
-
-<MermaidViewer title="Later application changes — GitHub event to verified result">
-
-```mermaid
-flowchart TD
-    APP["APPLICATION REPOSITORY<br/>Commit a code or test change"]
-    EVENT["GitHub PR or push event"]
-    CONNECTION["Configured webhook or GitHub App<br/>Delivers the event to Bitrise"]
-    MATCH{"Does an enabled trigger<br/>match the event and branch?"}
-    RUN["Existing Bitrise app<br/>Runs the selected workflow for its selected revision"]
-    RESULT["Inspect completed checks and artifacts<br/>Record the source commit and build ID"]
-    DELIVERY["When configured and approved<br/>Deliver the candidate and verify exact-version access"]
-    NO["No matching automatic build<br/>Owner inspects the event and trigger configuration"]
-    APP --> EVENT --> CONNECTION --> MATCH
-    MATCH -->|"Yes"| RUN --> RESULT --> DELIVERY
-    MATCH -->|"No"| NO
-    classDef repo fill:#30204f,stroke:#fbbf24,color:#ffffff,stroke-width:3px;
-    classDef step fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
-    classDef decision fill:#713f12,stroke:#fcd34d,color:#ffffff,stroke-width:2px;
-    classDef result fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
-    class APP repo;
-    class EVENT,CONNECTION,RUN step;
-    class MATCH,NO decision;
-    class RESULT,DELIVERY result;
-```
-
-</MermaidViewer>
-
-## 3. Case A — first code change after enrollment
-
-**Example — change Login in MyChickenapp.**
-
-1. Edit the application code and its tests in the app repo.
-2. Run the project’s local checks. If your repo defines `test` for Yarn, run:
-
-```bash
-yarn test
-```
-
-3. Commit and push through the application's normal branch process. Open its PR.
-4. The configured PR event reaches Bitrise. If a PR trigger matches, the existing app starts the selected checks. Danger runs when that workflow includes it.
-5. Review the current-revision check results and obtain the required peer approvals.
-6. Merge into the approved application branch. If its push event matches a build trigger, Bitrise starts the configured build route.
-7. Open that run. Match the source revision, branch, workflow, applied template version, and artifact.
-8. Follow the route's checks, security decision, signing, and delivery requirements. Confirm destination access for the exact version.
-
-PR runs may use a PR revision or a generated merge revision according to configuration. A merge to the application branch can produce a different commit. Read the actual run identity instead of assuming the PR build and post-merge build used identical commits.
-
-**Expected result —** the new application revision is associated with its own check/build evidence. The approved workflow and applicable approvals decide whether it progresses to delivery.
-
-### Walk through the events for one Login change
-
-The revision labels below are teaching labels. Read actual commit IDs in GitHub and Bitrise. The table assumes your app has both an appropriate PR trigger and a post-merge push trigger.
-
-| Event | What GitHub sends | What Bitrise does | What you open |
-|---|---|---|---|
-| You edit Login locally | Nothing until you publish the change. | No new remote run from an unpublished edit. | Local test output. |
-| You push the branch and open the PR | Push and PR events according to the connected integration. | Evaluates each enabled trigger and starts the matching workflow. One event can match a different workflow from the other. | PR checks and the corresponding build's cause. |
-| The PR check runs for revision A | The connected integration supplies the PR context. | Runs its selected revision and the configured PR checks. | Actual checkout revision, tests, and Danger feedback when included. |
-| You merge the reviewed PR | A push to the target application branch. | If the branch trigger matches, starts a new run for the accepted branch revision. | Post-merge build ID and source commit. |
-| The route produces an artifact | A build result is available in Bitrise. | Runs the remaining configured steps and any permitted delivery operation. | Artifact identity, deployment step result, and destination version. |
-
-**The workflow file does not need to change for another Login fix.** The same commands can build a new application revision.
-
-## 4. Case B — a second code change or another push to the same PR
-
-**Example — fix Login again, or add a Home change.**
-
-| Situation | What happens |
-|---|---|
-| Push another commit to the same open PR | The configured PR-update connection and trigger can start checks for the updated revision. Read the latest required statuses. |
-| A new PR is opened after the previous one merged | Its configured event follows the same connection and trigger path using the existing Bitrise app. |
-| Merge the second approved change | The configured branch event can start a new build for that revision. Record its own build and package identity. |
-| An earlier build is still running | Record both build IDs and revisions. Queueing, concurrency, cancellation, and delivery ordering follow the configured platform policy. |
-
-A passing result for the earlier revision establishes its own outcome. Inspect the second revision's required checks before approving or releasing it. For overlapping releases, the owner must confirm ordering so an older candidate does not replace the intended newer version.
-
-### Example with two successive releases
-
-| | First change | Second change |
-|---|---|---|
-| Feature edited | Fix Login. | Add a Home feature. |
-| Application identity | Existing MyChickenapp Bitrise app. | The same existing Bitrise app. |
-| Source revision | First accepted application revision. | Second accepted application revision. |
-| Workflow configuration | Currently applied shared template version. | The same version, unless an approved adoption occurred between runs. |
-| Build output | A candidate associated with the first build ID. | A candidate associated with the second build ID. |
-| Release evidence | Result for the first candidate. | Independent result for the second candidate. |
-
-The second source change enters through the application repo's connection and trigger. The original enrollment YAML remains the record of initial provisioning.
-
-## 5. Case C — Platform Engineering changes shared bitrise.yml
-
-**Example — add a test step, adjust a build command, or introduce Sauce Labs or NowSecure.**
-
-1. The template owner changes the workflow and scripts in `mobile-platform-configuration-bitrise-template`.
-2. Follow the catalog's immutable-version process. Create the successor version and required metadata, validate the YAML/scripts and compatibility, and obtain review.
-3. Publish the approved version and record its catalog commit and checksum evidence.
-4. Use the approved adoption process for the existing consumer. Confirm how that process applies the workflow configuration to the Bitrise app.
-5. Inspect the applied configuration in Bitrise. Confirm the version and changed steps before selecting a verification run.
-6. Run the approved controlled verification using the intended app revision. Inspect the affected routes, artifacts, and any destination effects.
-
-**Publishing a template and applying it to an existing Bitrise app are separate actions.** The supplied material does not define an automatic upgrade of every enrolled app or a complete executable adoption command. Platform Engineering must confirm that handoff. [Template publication and adoption](/mobile/cicd/operations/bitrise-template-catalog/)
-
-### Example — add an automated test step
-
-Suppose Platform Engineering adds a step to run the app's approved test command. The template change first receives its own validation, review, and publication. The owner then follows approved adoption for MyChickenapp and inspects the applied workflow.
-
-The verification build must show the new test step and its actual test result. A merged template PR alone leaves the existing app's adoption unconfirmed. Record the published version, the adoption result, and the verification build together.
-
-<MermaidViewer title="A shared workflow change reaches an existing app through approved adoption">
-
-```mermaid
-flowchart TD
-    TEMPLATE["TEMPLATE REPOSITORY<br/>Create and review the successor bitrise.yml version"]
-    RELEASE["Validate and publish<br/>Record version, catalog commit, and integrity evidence"]
-    ADOPT["Approved existing-app adoption<br/>Platform owner applies the selected configuration"]
-    APP["Existing Bitrise app<br/>Inspect applied workflows and runtime bindings"]
-    VERIFY["Controlled verification build<br/>Match app revision, template, and results"]
-    TEMPLATE --> RELEASE --> ADOPT --> APP --> VERIFY
-    classDef repo fill:#30204f,stroke:#fbbf24,color:#ffffff,stroke-width:3px;
-    classDef step fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
-    classDef result fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
-    class TEMPLATE repo;
-    class RELEASE,ADOPT,APP step;
-    class VERIFY result;
-```
-
-</MermaidViewer>
-
-## 6. Case D — upgrade the version or change the template ID
-
-The following values illustrate a request to change workflow selection. They are a discussion record for the platform owner, not an enrollment update schema.
+### How the YAML reaches the upload script
 
 ```text
-Existing Bitrise app: [recorded app identity]
-Application source revision: [commit selected for verification]
-Current template ID and version: [actual applied values]
-Requested template ID and version: [approved compatible selection]
-Reason for the change: [required behavior]
-Catalog commit: [reviewed published revision]
-Adoption procedure: [owner-confirmed process]
-Verification routes: [applicable workflows]
-Recovery procedure: [reviewed procedure]
+Shared bitrise.yml references the custom step repository and version
+  → Bitrise loads that version
+  → Reads step.yml
+  → Runs the declared entry point
+  → Step code uploads packages and starts the configured device tests
+  → Bitrise receives the completed result
 ```
 
-| Change | What the owner must establish |
+For a Bash step, the entry point might be `step.sh`. Inspect the actual pinned `step.yml` to identify the file. The step may use another supported toolkit. [Bitrise step properties](https://docs.bitrise.io/en/bitrise-ci/references/steps-reference/step-properties-reference)
+
+### Which tests run?
+
+| Input | Execution |
 |---|---|
-| Same template ID, successor version | Input compatibility, changed steps, required bindings, adoption procedure, and verification. |
-| Different template ID | Supported app platform, source branch, workflow names, package producers, protected bindings, destinations, and existing-app migration support. |
-| Add a new workflow requirement | Publish/adopt a version that implements the requirement, then verify its result in the existing app. |
-| Change the source branch or connected repository | Use the approved lifecycle procedure and verify the new event filters and checkout identity. |
+| `login.test.js` through `yarn test`, when configured for Jest | JavaScript tests run on your Mac or the Bitrise runner. |
+| Android application APK and matching instrumentation test APK | Sauce Labs runs the configured Android device suite. |
+| Compatible iOS application and XCUITest runner products | Sauce Labs runs the configured iOS device suite. |
+| Uploaded app package | Upload completes. Device execution still needs a configured test suite and start operation. |
 
-The accepted request is create-only. The supplied references omit the existing-app update manifest/API and migration commands. Have the platform owner supply that procedure and record its result. Preserve the existing app and destination identities throughout the change.
+A device test supplies actions and assertions, such as entering credentials, tapping Sign in, and checking Home. Sauce Labs supplies the devices. The shared integration starts and checks the run.
 
-### Example — choose a different template ID
+The supplied integration uses two custom steps. The app-create step registers the app from request configuration. The upload-and-test step handles the package upload and test run. Their pinned implementations define the actual contracts.
 
-Suppose MyChickenapp needs a different approved workflow family. Give the platform owner the current app identity, current template ID/version, and proposed ID/version. The owner checks that the new family supports the app's native targets, workflow names, signing, and destinations, then performs the supported migration.
+A separate `react-native-sauce.sh` is optional. A workflow can use custom steps, inline Bash, or an approved shared script. If it calls a missing script, that step fails. A script runs only when invoked.
 
-After migration, inspect the applied workflow in the existing Bitrise app and run the approved verification revision. Confirm the intended trigger selects an available workflow and that the produced candidate reaches the correct destination when delivery is permitted.
+Read [Writing Tests](/mobile/testing-quality/writing-tests/) for test code and [Bitrise Pipelines](/mobile/cicd/bitrise-pipelines/) for workflow placement. The supplied React Native v1.10.0 sample omits Sauce Labs. Select a version that includes the approved integration.
 
-## 7. Case E — start another build or investigate a failed run
+## 1. Understand the test flow
 
-A manual or scheduled run follows the platform's configured start mechanism. Confirm the selected app revision, applied workflow, runtime inputs, and permitted delivery effects before starting it. A manual run does not demonstrate that webhook triggering works.
+<MermaidViewer title="From your app and tests to a device-test result">
 
-If a run failed before a permitted retry, follow the reviewed recovery procedure. If it may already have uploaded, signed, enabled, or distributed a candidate, preserve the build ID and let the owner reconcile exact destination state first.
+```mermaid
+flowchart TD
+    A["Write and review the device test"] --> B["Build the application<br/>and matching test package"]
+    B --> C["Register the app and upload<br/>the required packages"]
+    C --> D["Run the test on<br/>the approved cloud devices"]
+    D --> E["Inspect the completed result<br/>and available test evidence"]
+    E --> F{"Did the required suite pass?"}
+    F -->|Yes| G["Continue through the approved pipeline"]
+    F -->|No or unresolved| H["Investigate the exact test run<br/>before release progression"]
+    classDef step fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
+    classDef decision fill:#422006,stroke:#fbbf24,color:#ffffff,stroke-width:2px;
+    classDef success fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    classDef help fill:#881337,stroke:#fda4af,color:#ffffff,stroke-width:2px;
+    class A,B,C,D,E step;
+    class F decision;
+    class G success;
+    class H help;
+```
 
-## 8. Follow the candidate from build to delivery
+</MermaidViewer>
 
-For each applicable Android and iOS route, record the source commit, build ID, package version, artifact hash/reference, applied template version, and required results.
+## 2. Confirm access, region, and execution ownership
 
-| Stage | What to inspect |
+| Owner | Responsibility |
 |---|---|
-| Tests and coverage | Required suites actually executed and fresh reports passed the configured thresholds. |
-| NowSecure, when included | Completed assessment for the exact binary and approved severity decision. |
-| Signing | Required native signing and destination processing are confirmed. |
-| Private Bitrise artifact | Exact APK, IPA, or other expected output is available in the run. |
-| Destination delivery | Intended version is enabled/processed and available to the approved audience. |
+| Developer | Commit reviewed tests, verify selectors, and identify native targets. |
+| Platform/integration owner | Bind credentials, pin tools/steps, and configure the package handoff and approved trigger. |
+| QA/test owner | Confirm devices, concurrency, isolated test data, and test-backend connectivity. |
 
-The supplied v1.10.0 example can upload private Bitrise artifacts while `SKIP_DEPLOY` remains `true`. Its `qa_parallel` and `uat_parallel` workflows launch native platform builds. Inspect the selected version for actual tests and security steps. [Bitrise Pipelines](/mobile/cicd/bitrise-pipelines/)
+Cloud devices need the approved network path to the test backend. Confirm that path independently of the developer Mac’s VPN.
 
-When the platform uses a separate recurring-distribution worker, confirm how it discovers the existing Bitrise app's builds and records progress. The source describes inventory, a cursor, version markers, and checksums. It omits the complete worker, schedule, and concurrency contract.
+Obtain the Sauce Labs access approved for your role. Have the authorized integration owner confirm the account, selected data center, devices, and protected credentials.
 
-| Reported stream outcome | Required handling |
+| Input | What to confirm |
 |---|---|
-| `matched` or `completed` | Verify the marked destination version and preserve completed operations. |
-| `not_published` before mutation | Correct the deterministic input/retention issue while preserving cursor and evidence. |
-| `side_effect_unknown` | Stop further writes and have the owner reconcile the exact version marker and checksum. |
-| Identity, cursor, pagination, or latest-version mismatch | Have the authorized owner disable the external schedule and investigate. |
-| Missing or duplicate inventory | Keep the schedule disabled and correct inventory through review. |
+| `SAUCE_USERNAME` | Account identity bound to the approved workflow. |
+| `SAUCE_ACCESS_KEY` | Protected access key for that identity. |
+| Region | Storage and test execution use the approved compatible data center. |
+| Device matrix | Available device names/platform versions, concurrency, and required suites. |
+| CLI/custom-step versions | Approved compatible pins and supported inputs/outputs. |
 
-**Attach screenshot — source revision, workflow, step results, and exact destination version with sensitive details hidden.**
+The supplied native-runner example uses `us-west-1`. Current Espresso/XCUITest documentation lists `us-west-1` and `eu-central-1` for these runners. The source's separate US East REST listing must be confirmed for the actual product/API before use. [Espresso configuration](https://docs.saucelabs.com/mobile-apps/automated-testing/espresso-xcuitest/espresso/)
 
-## 9. Trace a missing, duplicate, or unexpected build
+Keep the credential values in the protected platform configuration. A device test needing runtime application configuration or test credentials requires the runner's approved injection mechanism.
 
-Follow the chain in order. Begin in the repo where the change was made, then inspect event delivery, trigger selection, the Bitrise run, and destination results.
+### Choose the device matrix and test data
 
-| Observation | Follow the chain |
+| Decision | What to record |
 |---|---|
-| No build after a push or PR update | Confirm the event occurred in the app repo, the connection delivered it, and an enabled event/branch filter matched. |
-| Connection delivered the event but no run appeared | Ask the owner to inspect trigger filters and selected workflow availability. |
-| One action produced multiple builds | Compare event types and run causes. PR and push triggers may both match. Have the owner check duplicate connections and intended trigger overlap. |
-| A run used an unexpected revision | Inspect PR merge-revision settings, source branch, selected commit, and checkout log. |
-| Template published but new steps are absent | Inspect approved adoption and the effective configuration for the specific app. |
-| New template needs a missing secret or input | Ask the template owner to confirm protected provisioning and runtime input mapping. |
-| New build succeeded but testers see the old version | Inspect whether delivery ran, the selected destination, processing/signing, audience assignment, and exact-version access. |
+| Required coverage | Android device families, iPhone families, OS versions, and app capabilities actually required. |
+| Device selection | Approved criteria and the actual model/OS allocated to each run. |
+| Concurrency | Per-suite setting and shared account capacity across active builds. |
+| Test data | Synthetic orders, approved isolated accounts, and a known initial app/backend state. |
+| Connectivity | The approved path from cloud devices to the test backend. |
+| Completion | Every required suite/device combination that actually executed. |
 
-**Attach screenshot — the configured event and branch filter beside the selected workflow, with private connection details hidden.**
+Parallel tests need independent state. Confirm cleanup and test-account allocation so one chicken-order test cannot alter another test’s result. Hardware-dependent features need their own supported device conditions. Inspect any re-signing or instrumentation effect on the application under test.
 
-**Next — [Troubleshooting & Recovery](/mobile/cicd/troubleshooting-and-recovery/).**
+**Attach screenshot — approved device criteria and actual allocated device/OS with private pool/account information hidden.**
+
+## 3. Prepare the packages for your platform
+
+<Tabs>
+<TabItem label="Android">
+
+### App files and runner requirements
+
+```text
+application-root/
+├── campfile.yml
+├── <Gradle project and wrapper>
+└── <application-module>/src/androidTest/
+    └── <chicken-order device test>
+```
+
+For the team's Android device path, use JUnit/AndroidJUnitRunner and the approved UI-test framework. The Sauce configuration selects `kind: espresso`. That runner name and the JUnit XML report format serve different roles.
+
+Build the application APK and matching instrumentation test APK using the module/variant supported by your project. Confirm the configured test class, application identity, runner, signing compatibility, and resulting output paths.
+
+The latest reference builds the app but omits a matching test-APK producer. Obtain the approved producer tasks and actual output contract before dispatching the device suite.
+
+### Build the application and test APKs
+
+This retained project-dependent example assumes module `app` and variant `debug`. Run it from the Gradle root only when the real tasks exist. For React Native, that root is normally `android/`.
+
+```bash
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
+```
+
+Inspect both outputs, AndroidJUnitRunner, test class, application ID, and signing compatibility. These tasks prepare packages for the cloud run.
+
+### Template-owned `.sauce/config.yml` reference
+
+This YAML is reproduced exactly from the latest reference. Replace its test-runner marker, class selector, device criteria, and application reference according to the approved configuration.
+
+```yaml
+apiVersion: v1alpha
+kind: espresso       # or xcuitest for iOS
+sauce:
+  region: us-west-1
+  concurrency: 2
+
+espresso:
+  app: storage:$SAUCE_APP_ID
+  testApp: storage:<your-test-runner-id>
+
+suites:
+  - name: "smoke-tests"
+    devices:
+      - name: "Google Pixel.*"
+        platformVersion: "14"
+    testOptions:
+      class:
+        - com.example.tests.SmokeTestSuite
+```
+
+`SAUCE_APP_ID` must resolve to the uploaded application bytes for this run when used in `storage:$SAUCE_APP_ID`. The private registration step also uses the name `SAUCE_APP_ID`. Confirm whether its returned identity is the same storage identity required by the runner before connecting the two.
+
+The inline comment `# or xcuitest for iOS` is retained from the supplied example. An iOS configuration also needs the `xcuitest` settings and compatible app/runner packages shown in the iOS tab. Changing only `kind` leaves the rest of this Android configuration incompatible.
+
+The separate `testApp` reference must identify the matching instrumentation package. Current vendor documentation defines the distinct application/test inputs and supports `v1alpha`. [Native Android runner fields](https://docs.saucelabs.com/mobile-apps/automated-testing/espresso-xcuitest/espresso/)
+
+### Template-owned `.sauce/espresso.yml` teaching adaptation
+
+This detailed example is retained from the earlier page. It selects two suites and requests artifact downloads. Its `MOBILE_*` variables are documentation-owned bindings supplied by the approved adapter. Use this configuration instead of the minimal config only when the actual runner hook supports the chosen path.
+
+```yaml
+apiVersion: v1alpha
+kind: espresso
+defaults:
+  timeout: 10m
+sauce:
+  region: $MOBILE_SAUCE_REGION
+  concurrency: 2
+  metadata:
+    build: $MOBILE_TEST_BUILD_LABEL
+    tags: [enterprise, android, regression]
+espresso:
+  app: $MOBILE_NATIVE_APP_REF
+  testApp: $MOBILE_NATIVE_TEST_REF
+suites:
+  - name: android-pixel-chicken-order
+    devices:
+      - name: "Google Pixel.*"
+        platformVersion: $MOBILE_ANDROID_OS
+    testOptions:
+      class:
+        - com.example.mychicken.order.PlaceChickenOrderUiTest
+  - name: android-galaxy-chicken-order
+    devices:
+      - name: "Samsung Galaxy.*"
+        platformVersion: $MOBILE_ANDROID_OS
+    testOptions:
+      class:
+        - com.example.mychicken.order.PlaceChickenOrderUiTest
+artifacts:
+  download:
+    when: always
+    match: ["*.xml", "*.log", "*.mp4", "*.png"]
+    directory: ./test-results/native-android
+```
+
+The 10-minute suite timeout and concurrency of two are teaching values. Confirm the approved budget and account capacity before adopting them.
+
+Bind the app and test references to separate verified `storage:<ID>` values from the same candidate/region. Device names, OS, concurrency, test class, and result-directory handling must match the approved matrix and actual project.
+
+</TabItem>
+<TabItem label="iOS">
+
+### App files and runner requirements
+
+```text
+application-root/
+├── campfile.yml
+├── <Xcode project or workspace>/
+└── <XCUITest target source>/
+```
+
+Prepare an actual test-enabled shared scheme and the matching device application and XCUITest runner packages. Confirm signing/re-signing compatibility and package identity with the integration owner. A generic app build alone leaves the runner package outstanding.
+
+The latest reference supplies no complete iOS build/upload workflow. Obtain the approved native producers and pinned custom-step contract before execution.
+
+### Build the device test products
+
+Run this retained teaching example as Bash on the approved Mac after replacing the workspace and shared test-enabled scheme. It requires the owner-approved device-signing setup.
+
+```bash
+set -euo pipefail
+
+MOBILE_IOS_WORKSPACE='REPLACE_WITH_ACTUAL_WORKSPACE.xcworkspace'
+MOBILE_IOS_SCHEME='REPLACE_WITH_SHARED_TEST_SCHEME'
+mkdir -p .tmp
+MOBILE_DERIVED_DATA="$(mktemp -d .tmp/device-tests.XXXXXX)"
+xcodebuild build-for-testing \
+  -workspace "$MOBILE_IOS_WORKSPACE" \
+  -scheme "$MOBILE_IOS_SCHEME" \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath "$MOBILE_DERIVED_DATA"
+```
+
+The command produces device test products. Obtain the approved packaging/re-signing procedure for the application and runner. A ready-to-upload pair still needs that packaging verification.
+
+### Template-owned `.sauce/xcuitest.yml` adaptation
+
+This is a separately labeled vendor-based teaching example. Its input names are local example bindings, not confirmed outputs from the private steps. The approved integration must provide the actual matching storage references and device selection.
+
+```yaml
+apiVersion: v1alpha
+kind: xcuitest
+defaults:
+  timeout: 10m
+sauce:
+  region: $MOBILE_SAUCE_REGION
+  concurrency: 1
+  metadata:
+    build: $MOBILE_TEST_BUILD_LABEL
+    tags: [enterprise, ios, regression]
+xcuitest:
+  app: $MOBILE_NATIVE_APP_REF
+  testApp: $MOBILE_NATIVE_TEST_REF
+suites:
+  - name: ios-iphone-chicken-order
+    devices:
+      - name: "iPhone.*"
+        platformVersion: $MOBILE_IOS_OS
+artifacts:
+  download:
+    when: always
+    match: ["*.xml", "*.log", "*.mp4", "*.png"]
+    directory: ./test-results/native-ios
+```
+
+The 10-minute timeout and concurrency of one are teaching values requiring the approved budget and account capacity.
+
+Configure `MOBILE_SAUCE_REGION`, `MOBILE_IOS_OS`, and `MOBILE_TEST_BUILD_LABEL` through the approved runner. Set `MOBILE_NATIVE_APP_REF` and `MOBILE_NATIVE_TEST_REF` to the matching application/runner storage references. Confirm the real device criteria, artifact download behavior, and environment interpolation with the pinned CLI. [XCUITest runner fields](https://docs.saucelabs.com/mobile-apps/automated-testing/espresso-xcuitest/xcuitest/)
+
+</TabItem>
+<TabItem label="React Native">
+
+Use the Android native JUnit-based device path for the Android application. For iOS, use the separately approved XCUITest path when that is the configured team strategy. Run Jest/Redux Toolkit tests separately as part of the JavaScript checks.
+
+```text
+react-native-application/
+├── campfile.yml
+├── package.json
+├── android/    # App and instrumentation test sources
+└── ios/        # App and configured iOS test target
+```
+
+Platform Engineering confirms separate platform request values and supplies the runner files from the shared template. The latest excerpt gives one request path but no complete request schema or multi-platform request-selection contract. Keep the Android and iOS package pairs/results independent.
+
+Appium capability examples in the reference describe an alternative integration. Use the team's approved native path for this example, and retain Appium only where separately configured and approved.
+
+</TabItem>
+</Tabs>
+
+## 4. Understand the template-owned request configuration
+
+The latest app-create step reads:
+
+```text
+.sauce/saucelabs_request.yml
+```
+
+Its input name is exactly `saucelabs_request_yml`. Platform Engineering supplies this configuration through the approved template. The template owner confirms the schema and how the file is made available at this path on the runner. The private schema and runtime materialization mechanism are not supplied in the reference.
+
+Earlier supplied examples use `saucelabs.request.yml`, `request_file_path`, and other aliases. The latest integration contract shown below uses the path/input above. Confirm compatibility before changing a live consumer.
+
+<details>
+<summary>Earlier request metadata example — confirm the consumer before using</summary>
+
+The recovered older page contains this earlier metadata example. It is retained for applications whose pinned integration accepts that contract. The latest step excerpt omits the schema, so the owner must establish compatibility before using these fields at the new request path.
+
+```yaml
+app_name: sample-mobile-app
+platform: android
+owner_email: mobile-test-owner@example.invalid
+team: sample-mobile-team
+description: Synthetic Enterprise workshop application for device testing
+business_unit: sample-business-unit
+environment: qa
+repository: https://git.example.invalid/mobile/sample-mobile-app.git
+```
+
+Confirm the accepted required/optional fields and platform values from the actual validator. This example’s synthetic ownership and URL values require replacement.
+
+</details>
+
+## 5. Read the shared Bitrise integration
+
+This Android/React Native workflow is reproduced exactly. It installs npm dependencies, runs the configured unit test script, builds Android, optionally installs `saucectl`, then calls the two private steps.
+
+```yaml
+workflows:
+  deploy:
+    steps:
+      # 1. Clone the repository
+      - git-clone@8: {}
+
+      # 2. Install dependencies
+      - npm@3:
+          title: npm install
+          inputs:
+            - workdir: "$WORKDIR"
+            - command: install
+
+      # 3. Run unit tests
+      - npm@3:
+          title: npm test
+          inputs:
+            - workdir: "$WORKDIR"
+            - command: test
+
+      # 4. Set up Android build tools
+      - install-missing-android-tools@3: {}
+
+      # 5. Build the Android app
+      - android-build@1:
+          inputs:
+            - project_location: "$PROJECT_LOCATION"
+            - module: "$MODULE"
+            - variant: "$VARIANT"
+
+      # 6. [Optional] Install saucectl for running tests
+      - script@1:
+          inputs:
+            - content: |-
+                npm install -g saucectl
+                saucectl --version
+
+      # 7. Register / provision the app in Sauce Labs
+      - git::https://git.enterprise.com/ACES-Mobile-Engineering/bitrise-step-saucelabs-app-create.git@1.0.0:
+          title: Create Sauce Labs App
+          inputs:
+            - saucelabs_request_yml: ".sauce/saucelabs_request.yml"
+            - sauce_username: "$SAUCE_USERNAME"
+            - sauce_access_key: "$SAUCE_ACCESS_KEY"
+
+      # 8. Upload the built APK and run tests
+      - git::https://git.enterprise.com/ACES-Mobile-Engineering/saucelabs-bitrise-step.git@1.0.0:
+          title: Upload App to Sauce Labs and Run Tests
+          inputs:
+            - sauce_username: "$SAUCE_USERNAME"
+            - sauce_access_key: "$SAUCE_ACCESS_KEY"
+```
+
+### Explain the integration inputs
+
+| Input or step | Required setup |
+|---|---|
+| `WORKDIR` | Actual application package root after checkout. |
+| `PROJECT_LOCATION` | Real Android Gradle project location. |
+| `MODULE`, `VARIANT` | Real module and build variant for the selected route. |
+| `saucelabs_request_yml` | Path accepted by the pinned app-create schema. |
+| `SAUCE_USERNAME`, `SAUCE_ACCESS_KEY` | Protected bindings for the authorized account. |
+| Native test package | Matching Android test APK or iOS runner from its approved producer. |
+
+The example's upload/test step shows only credentials. Its app/test artifact discovery, runner invocation, region, completion behavior, and report outputs require the pinned private `step.yml`/implementation contract. Obtain those definitions from the owner.
+
+The source installs `saucectl` without a version pin. Preserve this reference for comparison and obtain the approved CLI installation/version process before release execution.
+
+**Expected result —** after the missing producer and private-step contracts are configured, the approved complete workflow selects the current application/test pair and waits for the required suites to finish.
+
+### Keep the three identities separate
+
+| Identity | What it identifies | Evidence needed |
+|---|---|---|
+| Registration identity | The application metadata managed by the private integration. | Actual app-create result and its documented meaning. |
+| Storage identity | Uploaded application or test-package bytes. | Exact upload receipt, region, package association, and approved readback. |
+| Test-job/session identity | An execution of the selected test suite/device configuration. | Completed job result tied to the intended app/test references. |
+
+The source uses `SAUCE_APP_ID` in more than one description. Confirm its actual producer and meaning before assigning it to a runner’s storage reference. The latest excerpts leave the test-package upload and storage-ID producer unspecified.
+
+Earlier references name outputs such as `CREATION_STATUS`, `SAUCE_APP_FILE_NAME`, and `SAUCE_TEST_EXIT_CODE`. Other versions name status/job/count outputs differently. Retain the aliases required by the selected pinned implementation and verify the exact candidate handoff.
+
+## 6. Verify package identity and run the native suite
+
+### Inspect each local package
+
+Run this retained diagnostic block in the approved preparation job for each actual app/test package. Replace the path before running it.
+
+```bash
+set -euo pipefail
+
+MOBILE_DEVICE_PACKAGE='/REPLACE/path/to/the-actual-package'
+test -s "$MOBILE_DEVICE_PACKAGE"
+shasum -a 256 "$MOBILE_DEVICE_PACKAGE"
+```
+
+Record the source commit, target, package/version, signing evidence, and hash. Cross-workflow execution needs the actual artifact transfer.
+
+### `scripts/testing/run-native-sauce.sh`
+
+This earlier teaching wrapper assumes relative runner paths for its configuration. Platform Engineering can maintain it as shared tooling if the approved integration uses it. Confirm the actual runtime location and invocation before use. The custom-step approach can supply the same automation without this wrapper. It requires an installed CLI and separate app/test storage references.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+set +x
+: "${SAUCE_USERNAME:?Protected Sauce identity required}"
+: "${SAUCE_ACCESS_KEY:?Protected Sauce access key required}"
+: "${MOBILE_NATIVE_FRAMEWORK:?espresso or xcuitest required}"
+: "${MOBILE_NATIVE_APP_REF:?Verified current app storage reference required}"
+: "${MOBILE_NATIVE_TEST_REF:?Verified matching test runner storage reference required}"
+: "${MOBILE_SAUCE_REGION:?Approved Sauce region required}"
+: "${MOBILE_TEST_BUILD_LABEL:?Sanitized build correlation label required}"
+case "$MOBILE_SAUCE_REGION" in
+  us-west-1|eu-central-1) ;;
+  *) printf "%s\n" "Use a supported approved native-runner region." >&2; exit 1 ;;
+esac
+for reference in "$MOBILE_NATIVE_APP_REF" "$MOBILE_NATIVE_TEST_REF"; do
+  case "$reference" in
+    storage:*) [[ -n "${reference#storage:}" ]] || exit 1 ;;
+    *) exit 1 ;;
+  esac
+  case "$reference" in
+    *[[:space:]]*|*'<'*|*'>'*|*REPLACE_WITH_*)
+      printf "%s\n" "Set verified app/test storage references before dispatch." >&2
+      exit 1
+      ;;
+  esac
+done
+[[ "$MOBILE_NATIVE_APP_REF" != "$MOBILE_NATIVE_TEST_REF" ]] || exit 1
+case "$MOBILE_NATIVE_FRAMEWORK" in
+  espresso)
+    : "${MOBILE_ANDROID_OS:?Approved Android OS target required}"
+    config='.sauce/espresso.yml'
+    ;;
+  xcuitest)
+    : "${MOBILE_IOS_OS:?Approved iOS OS target required}"
+    config='.sauce/xcuitest.yml'
+    ;;
+  *) exit 1 ;;
+esac
+test -s "$config"
+command -v saucectl >/dev/null
+exec saucectl run --config "$config"
+```
+
+| Example input | Value to supply |
+|---|---|
+| `MOBILE_NATIVE_FRAMEWORK` | `espresso` or `xcuitest`. |
+| `MOBILE_NATIVE_APP_REF` | Verified current `storage:<app ID>`. |
+| `MOBILE_NATIVE_TEST_REF` | Verified matching `storage:<test package ID>`. |
+| `MOBILE_SAUCE_REGION` | Approved compatible region. |
+| `MOBILE_ANDROID_OS` / `MOBILE_IOS_OS` | Approved OS version for the selected suite. |
+| `MOBILE_TEST_BUILD_LABEL` | Sanitized source/build correlation label. |
+
+This wrapper is a teaching adaptation, with added checks for the documented native regions and unresolved/whitespace-containing storage references. It checks input shape and file availability. The approved adapter must also verify the actual remote package identity and bytes. Use the detailed `.sauce/espresso.yml` or `.sauce/xcuitest.yml` above when this wrapper is selected.
+
+## 7. Understand the standalone upload and runner scripts
+
+The latest reference also supplies direct upload and execution scripts. Choose one approved upload path. If the private workflow uploads the packages, a separate upload command must be coordinated with that implementation.
+
+### Supplied application upload script
+
+The following script is unchanged. It uploads `$APP_PATH` to the US West Storage API and reads `.item.id` from its response.
+
+```bash
+RESPONSE=$(curl -u "$SAUCE_USERNAME:$SAUCE_ACCESS_KEY" \
+  --location \
+  --request POST 'https://api.us-west-1.saucelabs.com/v1/storage/upload' \
+  -F "payload=@$APP_PATH" \
+  -F "name=$(basename "$APP_PATH")")
+
+APP_ID=$(echo "$RESPONSE" | jq -r '.item.id')
+envman add --key SAUCE_APP_ID --value "$APP_ID"
+echo "Uploaded app to Sauce Labs. Storage ID: $APP_ID"
+```
+
+Before using this excerpt, confirm the input file, account region, response validation, and exact storage identity. The script omits complete HTTP/error handling. It also does not upload a matching test package or validate the result against the registered application identity.
+
+`envman add` exposes the ID through the running workflow environment. Separate workflow VMs need the approved output handoff. For an ambiguous upload result, inspect exact remote state before repeating the write.
+
+### Supplied `saucectl` script
+
+This script is reproduced exactly. The vendor installer downloads and executes code, so its version/provenance and approved installation method require owner confirmation before use.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Install saucectl
+curl -L https://saucelabs.github.io/saucectl/install | bash
+
+# Run tests using the configuration file in the repo
+saucectl run --config .sauce/config.yml
+```
+
+For the separately adapted iOS configuration, the command is:
+
+```bash
+saucectl run --config .sauce/xcuitest.yml
+```
+
+Run that command only in the approved job with its actual configured package references, credentials, and pinned CLI. The `.sauce/config.yml` reference selects the Android example unless its contents are changed through review.
+
+## 8. Inspect the completed device result
+
+The source registration description names `SAUCE_APP_ID`. Its upload/test description shows an `appium:app` storage capability example. A capability value belongs to its test-client configuration and needs an actual step output mapping before being treated as a shell variable.
+
+The latest excerpt does not define complete job-ID, pass/fail-count, result-URL, or exit-code output names. Confirm them from the pinned custom step rather than assuming the aliases from older examples.
+
+| Evidence | What to inspect |
+|---|---|
+| Build and source identity | The tests ran against the intended application commit/package. |
+| Application and test package | Correct platform pair and storage identities. |
+| Device matrix | Required suites ran on the approved devices/OS versions. |
+| Completed session result | Actual completion and result for each required suite. |
+| Execution evidence | Available video, timestamped screenshots, and device/browser logs. |
+| Network capture | HAR evidence where capture is enabled and supported. |
+| Bitrise result | The completed required test result affects progression through the approved workflow. |
+
+Set failure-path evidence retention through the approved workflow while preserving the original test result. Artifact download patterns request matching files; enabled capture and supported collection determine which videos, screenshots, and network records actually exist.
+
+Confirm the configured report producer and collector if Bitrise requires a JUnit XML report. A `*.xml` download pattern selects available files; the test runner/reporting setup must produce them. The private step must expose the actual completed run identity and propagate its required result.
+
+The source directs users to **Automated → Test Results** in Sauce Labs. Match each result to its actual build/session identity. Inspect missing, skipped, queued, timed-out, or inconclusive suites before reporting the required matrix as passed.
+
+**Attach screenshot — exact device session, app/build identity, and completed result with sensitive details hidden.**
+
+## 9. Use the chicken-order test consistently
+
+Follow [Writing Tests](/mobile/testing-quality/writing-tests/) for the platform test implementation. For the demonstration, the test opens My Chicken App, places a synthetic chicken order, and asserts the expected confirmation using the app's actual selectors and demo response.
+
+Review the assertions and package pairing before committing. AI assistance remains in authoring with Copilot or ChatGPT. CI executes the committed test code.
+
+A device-test pass and JavaScript/native unit coverage are separate results. Use [Coverage & Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/) for coverage collection, thresholds, and the defined production-code scope.
+
+## 10. Verify the integration before using it as a release gate
+
+Use owner-approved controlled cases or existing execution evidence. The private integration must have an inspectable result for each case.
+
+| Case | Expected behavior |
+|---|---|
+| Request lacks a required field | Validation reports the error before the configured cloud operation. |
+| App/test package pair is wrong | The preparation or execution result fails explicitly. |
+| Native test-package reference is missing | The required native suite remains incomplete. |
+| A required chicken-order assertion fails | Test failure is visible in Sauce Labs and the required Bitrise result. |
+| No tests are discovered or a required suite is skipped | The required device gate remains incomplete. |
+| Device allocation or backend access fails | Infrastructure failure is reported with the actual session evidence. |
+| Notification/upload response becomes unknown | Existing identities are preserved and remote state is reconciled before another write. |
+| Test failure occurs before evidence collection | The original failure remains visible while the approved collector handles available diagnostics. |
+| Android passes and iOS fails | Both platform outcomes remain visible independently. |
+
+Only mark the device gate passed after the required suites complete for the intended packages and matrix. Coverage, security assessment, release signing, and destination availability have their own required results.
+
+## If a step fails
+
+| Symptom | Next action |
+|---|---|
+| Credentials rejected | Ask the authorized owner to inspect account, region, binding, and permissions. |
+| Request YAML rejected | Validate against the pinned private app-create schema and exact input/path. |
+| Application cannot launch | Inspect package type, native identity, signing compatibility, and required runtime configuration. |
+| Runner/test package is missing | Inspect the actual producer and its output/storage mapping. |
+| Device remains queued | Inspect account concurrency, availability, and approved device criteria. |
+| No required tests execute | Confirm test target, instrumentation runner/scheme, class filters, and package pairing. |
+| Test result is pending or timed out | Inspect the exact session and completion behavior before another dispatch. |
+| Bitrise passes despite failed required tests | Inspect the private step's exit/result handling and pipeline failure configuration. |
+| Upload outcome is unknown | Preserve the request/package identity and reconcile remote state before another upload. |
+
+For partial or unknown operations, use [CI/CD Troubleshooting & Recovery](../cicd/troubleshooting-and-recovery.mdx). For the complete file map, use [CI/CD Project Preview](../cicd/integrated-project-preview.mdx).
+
+Continue with [IDE-Assisted Test Generation](./ide-assisted-test-generation.mdx) for authoring and reviewing tests with the approved AI tools.
