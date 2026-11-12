@@ -48,6 +48,71 @@ A separate `react-native-sauce.sh` is optional. A workflow can use custom steps,
 
 Read [Writing Tests](/mobile/testing-quality/writing-tests/) for test code and [Bitrise Pipelines](/mobile/cicd/bitrise-pipelines/) for workflow placement. The supplied React Native v1.10.0 sample omits Sauce Labs. Select a version that includes the approved integration.
 
+## Set up your first device test
+
+**Starting point — MyChickenapp runs locally on your Mac.** Use an approved test environment. The example journey signs in and checks that Home appears. Replace it with the reviewed journey required for your feature.
+
+### Step 1 — identify the existing build setup
+
+Find the app's Bitrise identity, selected template ID, and applied version. If the app has no enrollment, complete [CI/CD setup](/mobile/cicd/) first.
+
+Ask Platform Engineering to confirm that the selected version includes the Sauce Labs integration. The supplied `react-native-qa-uat` v1.10.0 sample needs an approved successor or another compatible version to run Sauce Labs.
+
+**Result —** you know which app, template, and workflow will execute the device test.
+
+### Step 2 — add the device test to the app repository
+
+Choose your platform in section 3. Reuse its existing test target and dependencies. Add a test that opens the actual screen, performs the intended actions, and checks the expected result. Expose the reviewed screen identifiers and configure the isolated fixture.
+
+| Platform | App team prepares |
+|---|---|
+| Android | JUnit instrumentation test in the configured `androidTest` source set. |
+| iOS | XCUITest in the configured UI-test target and shared test scheme. |
+| React Native | Android instrumentation and/or iOS XCUITest for the native app targets being tested. Keep JavaScript tests in the existing Jest setup. |
+
+Follow [Writing Tests](/mobile/testing-quality/writing-tests/) for code examples. Run the relevant native test locally before committing it.
+
+**Result —** a real test runner discovers and executes the test against the app.
+
+### Step 3 — build the application and test products
+
+Use the platform commands in section 3. Android needs both the app APK and matching test APK. iOS needs the compatible device application and XCUITest runner products.
+
+Record the source commit, build variant or scheme, and actual output paths. The shared workflow must produce the matching pair again on Bitrise.
+
+**Result —** Platform Engineering can identify exactly which app and tests the cloud run must use.
+
+### Step 4 — connect the shared template
+
+Give the platform/test owner the app identity, test target or suite, output paths, and required device/OS coverage. The owner supplies these shared integration details:
+
+| Shared setup | What the owner confirms |
+|---|---|
+| Sauce Labs account and region | Approved account, access, and compatible storage/execution region. |
+| Protected credentials | Runtime bindings for `SAUCE_USERNAME` and `SAUCE_ACCESS_KEY`. |
+| Request and runner configuration | Accepted private request schema and the runtime paths supplied by the template. |
+| Custom steps | Approved repository versions, `step.yml` inputs/outputs, and entry points. |
+| Package handoff | How the built app/test paths become upload inputs and storage references. |
+| Test execution | Suite selection, device matrix, completion waiting, and failure propagation. |
+
+Use section 5 to inspect the supplied integration YAML with the owner. Its private artifact inputs and schema require the actual pinned step contract. Record any missing input before enabling the run.
+
+**Result —** the effective Bitrise workflow has a confirmed way to upload the package pair and start the required suite.
+
+### Step 5 — run the approved workflow and follow its logs
+
+Commit the reviewed test and application changes. Use the workflow's confirmed trigger or approved controlled start. In Bitrise, inspect the build, registration, upload, and test execution steps in sequence. Match the source revision and package identities.
+
+Open the resulting Sauce Labs run. Inspect the allocated device/OS, executed tests, assertions, and completed status. If Bitrise and Sauce Labs show different results, ask the integration owner to inspect completion and exit-status handling.
+
+**Result —** the required device suite completed for the intended app/test pair.
+
+### Step 6 — retain evidence for the same run
+
+Follow section 8 for the completed run identity, test summary, and available video, screenshots, and logs. Keep Android and iOS outcomes separate. Use the failure guide at the end of this page when a stage is missing, failed, or unknown.
+
+**Result —** your first cloud execution has inspectable evidence. The app's remaining coverage, security, signing, and release checks determine its next stage.
+
 ## 1. Understand the test flow
 
 <MermaidViewer title="From your app and tests to a device-test result">
