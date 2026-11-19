@@ -1,6 +1,6 @@
 ---
 title: "Testing & Quality"
-description: "Set up mobile tests, run local checks, and understand how tests reach real devices through CI."
+description: "Set up mobile tests from scratch using a chicken-order example for Android, iOS, and React Native."
 sidebar:
   label: Start Here
   order: 1
@@ -9,168 +9,124 @@ sidebar:
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 import MermaidViewer from "@components/MermaidViewer.astro";
 
-Use this section to set up testing in your mobile application and run your first tests. Follow the pages in order. The examples use **MyChickenapp** to check chicken ordering and sign-in success and failure.
+Start here if you have a working mobile app and are setting up tests for the first time. Follow the pages in order to install the test tools, write your first test, run local checks, and understand the results.
 
-## Understand the journey
+All examples use **placing a chicken order in MyChickenapp**. Test valid orders, invalid quantities, unavailable items, service failures, and repeated submission.
 
-You write test files in the application repository. Run the local checks from your IDE terminal, review the results, and push the change. Bitrise runs the configured checks. The device workflow builds the app and runs the selected tests on Sauce Labs phones.
+## Understand the flow
 
-<MermaidViewer title="From your first test to a real-device result">
+<MermaidViewer title="Write, check, review, and run on a device">
 
 ```mermaid
 flowchart TD
-    SETUP["Set up the test framework<br/>Choose your platform"]
-    WRITE["Write a test<br/>App code and test files"]
-    LOCAL["Run checks on your Mac<br/>Read and fix failures"]
-    REVIEW["Push and open a merge request<br/>Bitrise runs required checks"]
-    MERGE["Review and merge<br/>Configured device workflow starts"]
-    DEVICE["Sauce Labs phone<br/>Run the installed app and test"]
-    RESULT["Read the result<br/>Assertions, reports, and available video"]
-    SETUP --> WRITE --> LOCAL --> REVIEW --> MERGE --> DEVICE --> RESULT
+    SETUP["Set up test tools<br/>Choose Android, iOS, or React Native"]
+    WRITE["Write chicken-order tests<br/>Check expected results"]
+    LOCAL["Run on your Mac<br/>Read and fix failed checks"]
+    REVIEW["Push and open a review<br/>Bitrise runs required checks"]
+    DEVICE["Run the configured device workflow<br/>Test the installed app on Sauce Labs"]
+    RESULT["Read results<br/>Assertions, reports, and available video"]
+    SETUP --> WRITE --> LOCAL --> REVIEW
+    REVIEW -->|Required review and configured trigger| DEVICE
+    DEVICE --> RESULT
     classDef local fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
-    classDef ci fill:#3b0764,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
+    classDef review fill:#3b0764,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
     classDef cloud fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
     class SETUP,WRITE,LOCAL local;
-    class REVIEW,MERGE ci;
+    class REVIEW review;
     class DEVICE,RESULT cloud;
 ```
 
 </MermaidViewer>
 
-The supplied reference uses `primary` for feature-push and merge-request checks. Its `deploy-android` and `deploy-ios` workflows run configured device tests after a merge to the default branch. Check your approved shared template for the actual workflow names, enabled platforms, and triggers for your enrolled app.
+Your application repository contains the feature code and tests. Platform Engineering maintains the versioned **bitrise.yml** in **mobile-platform-configuration-bitrise-template**. Enrollment selects the approved template ID and version. Follow the actual triggers configured for that version.
 
-## Before setup
+## Choose the test you need
 
-| Access or tool | Why you need it | Owner in the supplied reference |
+| Test | Chicken-order example | Tools |
 | --- | --- | --- |
-| Enterprise Git and VPN | Clone the framework and reference files, then push changes. Standalone provisioning requires project Maintainer access. | GitLab group owner and Enterprise IT. |
-| Bitrise workspace | Configure or inspect the app and build status. Standalone setup requires Admin or Owner API access. | Bitrise workspace owner. |
-| Sauce Labs organization | Run on available real devices with the account's device minutes. | Sauce Labs organization admin. |
-| Internal custom step repositories | Allow Bitrise to fetch app-create and upload step code. | Internal step owners. |
-| Dedicated test account in ERPM | Supply matching username and password to the app fixture or test backend. | App/backend and ERPM owners. |
-| Optional Teams channel or email list | Receive the build result. | Teams channel admin or notification owner. |
-| Node.js, npm, Git, Bash, curl, Python, and VS Code | Run the supplied local and provisioning scripts. | Your team and approved workstation setup. |
-| Android Studio or Xcode | Build or run native app targets locally. | Your workstation setup. |
+| Unit test | Reject quantity zero before calling the order service. | React Native Jest, Android JUnit, or iOS XCTest. |
+| Component or state test | Show a validation error or update the Redux Toolkit order state. | The project's configured component or state test tools. |
+| Device test | Select chicken, enter quantity two, tap Place order, and verify confirmation. | React Native WebdriverIO/Appium, Android Espresso, or iOS XCUITest. |
 
-The supplied guide records Node 18 or 20 for its reference environment. Confirm the supported runtime for the available framework release. Use Copilot or ChatGPT through the approved enterprise setup when drafting tests.
+A unit test checks a small piece of behavior with controlled dependencies. A device test interacts with the installed app. For the React Native device path, **WebdriverIO runs the spec**, **Appium performs the actions**, and **Sauce Labs supplies the phone**.
 
-## Choose your test
+A **page object** groups screen actions, such as selecting chicken and entering quantity. A **spec** calls those actions and checks the visible result. The supplied React Native framework provides reusable BasePage helpers, driver setup, Sauce wiring, keyboard handling, and diagnostics.
 
-| What you want to check | Example | Tool |
-| --- | --- | --- |
-| A function or rule | Reject an order with quantity zero. | React Native Jest, Android JUnit, or iOS XCTest. |
-| A component or state change | Show a sign-in error or update the Redux Toolkit order state. | The project's component and state test setup. |
-| A journey in the installed app | Enter credentials, tap Sign in, and verify the next screen. | React Native WebdriverIO and Appium, Android Espresso, or iOS XCUITest. |
+## Prepare your app
 
-For the React Native device path, **WebdriverIO runs the test**, **Appium performs the taps and typing**, and **Sauce Labs provides the phone**. For native suites, Espresso or XCUITest performs the screen interactions through its configured device runner.
-
-Start with the local tests for the feature you changed. Add the device journey required by your team's test strategy. A device test can cover several screens in one journey.
-
-## Set up from scratch
-
-| Step | What you do | Where to follow it |
-| --- | --- | --- |
-| 1 | Run the app manually and inspect its existing test targets, dependencies, and package scripts. | Your application's development instructions. |
-| 2 | Obtain the approved framework release and support files. Configure the runner and place the test files. | [Write and Run Tests](/mobile/testing-quality/writing-tests/) |
-| 3 | Run your first local test and check its expected result. | [Write and Run Tests](/mobile/testing-quality/writing-tests/) |
-| 4 | Run quality checks and configure the team's production coverage requirement. | [Coverage and Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/) |
-| 5 | Follow the complete sign-in example with success and failure assertions. | [Complete Login Example](/mobile/testing-quality/login-device-test-example/) |
-| 6 | Use Copilot or ChatGPT to draft additional tests, then review and execute them. | [IDE-Assisted Test Generation](/mobile/testing-quality/ide-assisted-test-generation/) |
-| 7 | Configure the approved cloud integration and inspect the completed device run. | [CI/CD → Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/) |
-
-For the supplied React Native framework, developers write **page objects** and **specs**. A page object groups screen actions such as entering a password. A spec calls those actions and asserts the result. The package provides reusable driver setup, Sauce wiring, keyboard handling, and crash diagnostics. Android Espresso and iOS XCUITest use the framework's copy-in templates.
-
-## Know which files you maintain
-
-| Location | Purpose |
+| You need | How you use it |
 | --- | --- |
-| Application source and local test files | Feature implementation and unit, component, or state assertions. |
-| `tests/pages/` | React Native device-test screen actions extending the framework's `BasePage`. |
-| `tests/<feature>/` | Device specs selected by the WebdriverIO configuration. |
-| `tests/wdio.conf.ts` | Framework configuration selecting specs and the target. |
-| `tests/conventions.md` | Rules used by developers and approved IDE assistants. |
-| Approved shared Bitrise template | CI workflow YAML and platform-owned automation for governed apps. |
+| An app that runs locally | Open the order screen and verify the journey manually. |
+| Repository access and the approved framework release | Obtain the actual package, configuration templates, and conventions. |
+| Existing project dependencies and test targets | Preserve the app's current build tools, Jest setup, or native test targets. |
+| An isolated order fixture or approved test backend | Run tests without placing real customer orders. |
+| Stable accessibility IDs | Let device tests find the order controls reliably. |
+| Bitrise and Sauce result access | Inspect the cloud build and device run after integration. |
 
-The supplied standalone reference also includes app-owned CI files and direct provisioning scripts. Use that setup only where your application follows the standalone model. For enrolled applications, follow the approved shared-template process in CI/CD.
+Obtain required test credentials through the approved secret store. Platform Engineering manages CI credential bindings, signing, provisioning, and shared automation. Keep secrets out of committed files and AI prompts.
 
-## Run the configured commands
+## Follow the pages in order
 
-Open the app's `package.json` and inspect `scripts` before running a command. After adding the actual framework and support files, the supplied reference uses these commands from the app root:
+| Order | Page | What you will do |
+| --- | --- | --- |
+| 1 | This overview | Understand the tools, ownership, and setup order. |
+| 2 | [Write and Run Tests](/mobile/testing-quality/writing-tests/) | Install the framework, place the files, and run the first local tests. |
+| 3 | [Coverage and Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/) | Run checks, collect coverage, and fix failures. |
+| 4 | [Complete Chicken Order Example](/mobile/testing-quality/chicken-order-example/) | Follow Android, iOS, and React Native code in platform tabs. |
+| 5 | [IDE-Assisted Test Generation](/mobile/testing-quality/ide-assisted-test-generation/) | Draft tests with Copilot or ChatGPT, then review and run them. |
+| 6 | [Mobile Test Automation Reference](/mobile/testing-quality/mobile-test-automation-reference/) | Look up the supplied framework details, variables, commands, and recorded implementation status. |
+
+[CI/CD → Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/) covers enrollment, app registration, binary upload, device execution, reports, and optional notifications.
+
+## Run your first local checks
+
+First follow Write and Run Tests to install the available framework release and add the actual configuration files. Then inspect the scripts object in package.json. For the React Native setup described in this section, run these commands from the application root:
 
 <Tabs>
-<TabItem label="First setup">
-
-```bash
-npm run bootstrap
-```
-
-The reference script installs dependencies, prepares the ignored local vault, and checks the environment. Fill the required test credentials through your approved secret store.
-
-</TabItem>
-<TabItem label="Local quality checks">
-
-```bash
-npm run pipeline:local
-```
-
-Runs lint, the security check, Jest, and the E2E TypeScript check.
-
-</TabItem>
-<TabItem label="Jest tests">
+<TabItem label="Run Jest tests">
 
 ```bash
 npm run test:unit
 ```
 
-Executes the configured Jest unit and component tests.
+Expected result: the selected unit and component tests execute and their assertions pass. Read the first failed assertion when a test fails.
 
 </TabItem>
-<TabItem label="Device-test type check">
+<TabItem label="Check device-test TypeScript">
 
 ```bash
 npm run test:e2e:verify
 ```
 
-Checks device-test TypeScript. Execute the configured device suite separately to check the installed app.
+Expected result: TypeScript finishes successfully. This validates test code; execute the configured device suite to check the actual app journey.
 
 </TabItem>
 </Tabs>
 
-Read the first failing command's output, fix the reported cause, and rerun the affected check. When the local checks pass, commit the feature and reviewed tests together and inspect the merge-request build status.
+Use the native commands in the Android or iOS tab of Write and Run Tests for those platforms. The team requires **100% coverage for the defined production scope and supported metrics**. The coverage page explains how to configure and inspect that requirement.
 
-## Read the evidence
+## Know where results appear
 
-The team requires **100% coverage for the defined production scope and supported metrics**. The coverage page shows how to collect and inspect it. The supplied reference's local command list needs the coverage configuration described there to enforce this requirement.
+| Result | Where to inspect it |
+| --- | --- |
+| Local tests and type errors | Your IDE terminal and the configured local reports. |
+| Required CI checks | The source review status and corresponding Bitrise build. |
+| Published JUnit and HTML reports | Bitrise build Artifacts, when configured. |
+| Device outcome, video, and Appium logs | The corresponding Sauce Labs job, when available. |
+| Optional email or Teams alert | The configured recipients or channel, with the build reference. |
 
-For device tests, confirm that the intended assertions ran against the intended app build and platform. Open the available JUnit or HTML report and use the Sauce video or Appium log to investigate failures.
+Confirm the source commit, app build, platform, device, test count, and actual assertions before accepting a result.
 
-**Attach screenshot — local test result and a completed device test report using synthetic test data.**
+The supplied framework v1.1.0 built and type-checked locally when the guide was provided. Package publication, migration of the reference app, and live end-to-end execution were pending confirmation. Confirm the available framework release with Mobile Engineering before installation.
 
-The [Mobile Test Automation Reference](/mobile/cicd/mobile-test-automation-reference/) preserves the complete supplied setup, access requirements, variables, provisioning steps, notifications, troubleshooting, and ownership. At the time of that guide, the v1.1.0 package built and type-checked locally. Its publication, reference-app migration, and full live device run were pending confirmation. Confirm the available release with Mobile Engineering before installing it.
-
-## Find each part of the setup guide
-
-| Reference section | Where to read it | What is covered |
-| --- | --- | --- |
-| 1. How it works | [Open the page](/mobile/testing-quality/) | Flow, trigger boundaries, roles of the test tools. |
-| 2. Access and accounts | [Open the page](/mobile/testing-quality/) | Access owners, local tools, and prerequisites. |
-| 3. Integration points | [Open the page](/mobile/cicd/mobile-test-automation-reference/) | All I1–I14 links and their configuration owners. |
-| 4. Secrets and configuration | [Open the page](/mobile/testing-quality/login-device-test-example/) | Credentials, local vault, runtime variables; provisioning bindings remain in the CI/CD reference. |
-| 5. Step-by-step setup | [Open the page](/mobile/testing-quality/writing-tests/) | Package installation, templates, support files, scripts, and local setup; standalone provisioning and notifications remain in CI/CD. |
-| 6. Writing tests | [Open the page](/mobile/testing-quality/writing-tests/) | Accessibility IDs, page objects, naming, assertions, waits, secrets, and fresh test state. |
-| 7. Daily developer workflow | [Open the page](/mobile/testing-quality/) | Local check, push, review, merge, and results; exact source commands in the CI/CD reference. |
-| 8. Setup smoke tests | [Open the page](/mobile/testing-quality/coverage-and-quality-gates/) | Link to the four reference exercises and expected outcomes in CI/CD. |
-| 9. Troubleshooting | [Open the page](/mobile/testing-quality/login-device-test-example/) | Login, locators, region, and device failures; complete integration troubleshooting remains in CI/CD. |
-| 10. Security rules | [Open the page](/mobile/testing-quality/coverage-and-quality-gates/) | Ignored files, credential rotation, audit mode, PR exposure, and branch protection. |
-| 11. Team rollout | [Open the page](/mobile/cicd/mobile-test-automation-reference/) | Week-by-week rollout plan and metrics. |
-| 12. Ownership and support | [Open the page](/mobile/cicd/mobile-test-automation-reference/) | Reference implementation, framework, steps, workspace, Sauce, Git, and ERPM contacts. |
-| 13. File map and commands | [Open the page](/mobile/cicd/mobile-test-automation-reference/) | All supplied file paths, command names, and implementation status. |
+**Attach screenshot — local chicken-order test results and the matching device run using synthetic test data.**
 
 **Next — [Write and Run Tests](/mobile/testing-quality/writing-tests/).**
 
 
 
--------------
+-----------_
+
 
 ---
 title: "Write and Run Tests — Place a Chicken Order"
@@ -215,63 +171,49 @@ npm i -D @wdio/cli @wdio/local-runner @wdio/mocha-framework @wdio/sauce-service 
 
 ### Copy the framework templates
 
+Select the starter spec from the package’s templates/specs/ directory. Adapt its screen actions and assertions to placing a chicken order, then save it at the destination below.
+
 | From the package | Into your app | Purpose |
 | --- | --- | --- |
 | `templates/wdio.conf.ts` | `tests/wdio.conf.ts` | Calls the package's `createConfig` and selects specs. |
 | `templates/pages/*.ts` | `tests/pages/` | Screen actions extending `BasePage`. |
-| `templates/specs/login.test.ts` | `tests/login/login.test.ts` | Starting device test. |
+| Starter spec from `templates/specs/` | `tests/order/place-order.test.ts` | Adapt the package’s supplied spec to the chicken-order screen. |
 | `templates/.env.example` | `.env` | Local configuration, ignored by Git. |
 | `conventions.md` | `tests/conventions.md` | Rules for developers and IDE assistants. |
 
 Use the reference project's `tests/tsconfig.json` for the E2E type-check script. Configure Jest to discover its own unit tests and WebdriverIO to discover the device specs. New projects use package helpers instead of copying the reference app's older `tests/base` implementation.
 
-### Obtain the matching support files
+### Configure application test commands
 
-The reference app provides `scripts/`, including bootstrap, lint, security, vault, and local-pipeline scripts. It also provides `.vault/secrets.env.example`, ignored-file rules, and an empty `src/config/buildEnv.ts` placeholder. Obtain those actual files before adding commands that invoke them.
-
-The reference app's complete script object is reproduced below. Merge the relevant entries into the existing `package.json`. Provisioning and notification entries require the standalone setup described in [CI/CD](/mobile/cicd/mobile-test-automation-reference/#5-step-by-step-setup). Governed apps use the approved shared template.
+Merge the test commands into your existing package.json. Use the framework's approved configuration and TypeScript files before running them.
 
 <Tabs>
-<TabItem label="package.json scripts">
+<TabItem label="package.json test scripts">
 
 ```json
 {
-"scripts": {
-  "test:unit": "jest",
-  "test:e2e": "wdio run tests/wdio.conf.ts",
-  "test:e2e:verify": "tsc --noEmit -p tests/tsconfig.json",
-  "lint": "bash scripts/lint.sh",
-  "security": "bash scripts/security-scan.sh",
-  "pipeline:local": "bash scripts/run-pipeline-local.sh",
-  "bootstrap": "bash scripts/bootstrap-dev.sh",
-  "provision": "bash scripts/provision/provision.sh",
-  "provision:apply": "bash scripts/provision/provision.sh --apply",
-  "notify:test": "bash scripts/notify-teams.sh --test",
-  "notify:preview": "bash scripts/notify-teams.sh --preview"
-}
+  "scripts": {
+    "test:unit": "jest",
+    "test:e2e": "wdio run tests/wdio.conf.ts",
+    "test:e2e:verify": "tsc --noEmit -p tests/tsconfig.json"
+  }
 }
 ```
 
 </TabItem>
-</Tabs>
-
-### Run the first checks
-
-<Tabs>
-<TabItem label="Run setup checks">
+<TabItem label="Run local tests">
 
 ```bash
-npm run bootstrap
+npm run test:unit
 npm run test:e2e:verify
-npm run pipeline:local
 ```
 
 </TabItem>
 </Tabs>
 
-Bootstrap prepares the project. Fill the ignored local vault from the approved secret store. A successful type check means the test code compiles. Execute the device suite after configuring the target in the Login example.
+If your project already defines local bootstrap or quality scripts, run those through its existing package commands. Platform Engineering maintains bitrise.yml, provisioning, cloud upload, reporting, and notification automation in the shared template or referenced step implementation. Follow [Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/) for the repository connection.
 
-For Android Espresso and iOS XCUITest, obtain the framework's copy-in templates through `scripts/scaffold.sh`. Follow the native tabs below for test targets and local commands. The supplied guide does not provide scaffold arguments, so use the release's documented invocation.
+For Android Espresso and iOS XCUITest, obtain the framework's copy-in templates through scripts/scaffold.sh in the framework repository. Use the release's documented arguments. Follow the native tabs below for test targets and local commands.
 
 ## 1. Use these explicit sample rules
 
@@ -321,7 +263,7 @@ Follow the supplied rules when adding a device test:
 
 | Rule | What to write |
 | --- | --- |
-| Locators | Accessibility IDs such as `~username`, `~loginButton`, and `~accountBalance`. |
+| Locators | Accessibility IDs such as `~chicken.quantity`, `~chicken.place-order`, and `~chicken.confirmation`. |
 | Structure | Specs call page objects. Put element lookup and screen actions in the page object. |
 | Names | `describe('<Feature>')` and `it('<user> <action> and <expected outcome>')`. |
 | Assertions | At least one `expect(...).toBeDisplayed()` for the visible outcome. |
@@ -329,22 +271,22 @@ Follow the supplied rules when adding a device test:
 | Credentials | Read the test credentials from `process.env`. |
 | Independence | Start each test from app launch with a known initial state. |
 
-Give every tested control a stable accessibility ID. These are the reference identifiers; use those that match the app you installed.
+Give every tested control a stable accessibility ID. These identifiers adapt the reference’s accessibility-ID rule to the chicken-order screen. Match them to the app you installed.
 
 <Tabs>
 <TabItem label="React Native accessibility IDs">
 
 ```jsx
-<TextInput accessibilityLabel="username" testID="username" />
-<Pressable accessibilityLabel="loginButton" testID="loginButton" />
-<Text accessibilityLabel="accountBalance" testID="accountBalance">{balance}</Text>
+<TextInput accessibilityLabel="chicken.quantity" testID="chicken.quantity" />
+<Pressable accessibilityLabel="chicken.place-order" testID="chicken.place-order" />
+<Text accessibilityLabel="chicken.order-id" testID="chicken.order-id">{orderId}</Text>
 ```
 
 </TabItem>
 <TabItem label="Android accessibility ID">
 
 ```xml
-android:contentDescription="loginButton"
+android:contentDescription="chicken.place-order"
 ```
 
 Set this attribute on the relevant view. The native code tabs below use their own documented chicken-order identifiers.
@@ -353,7 +295,7 @@ Set this attribute on the relevant view. The native code tabs below use their ow
 <TabItem label="iOS accessibility ID">
 
 ```swift
-loginButton.accessibilityIdentifier = "loginButton"
+placeOrderButton.accessibilityIdentifier = "chicken.place-order"
 ```
 
 Set the identifier on the actual control in your screen.
@@ -362,14 +304,14 @@ Set the identifier on the actual control in your screen.
 </Tabs>
 
 
-Use your existing device-test setup. The supplied framework design places the runner configuration in `tests/wdio.conf.ts`, screen actions in `tests/pages/`, and specs under `tests/<feature>/`. A spec such as `tests/login/login.test.ts` runs through WebdriverIO when its `specs` configuration selects it. Keep Jest discovery scoped to its own tests. The reference uses the `*.test.ts` suffix for a device spec. WebdriverIO selects it by path, so reuse the directory and naming convention your runner already discovers.
+Use your existing device-test setup. The supplied framework design places the runner configuration in `tests/wdio.conf.ts`, screen actions in `tests/pages/`, and specs under `tests/<feature>/`. A spec such as `tests/order/place-order.test.ts` runs through WebdriverIO when its `specs` configuration selects it. Keep Jest discovery scoped to its own tests. The reference uses the `*.test.ts` suffix for a device spec. WebdriverIO selects it by path, so reuse the directory and naming convention your runner already discovers.
 
 1. Give the controls stable accessibility identifiers and verify them on the target platform. Use accessibility-ID selectors for this framework.
-2. Add or extend a page object for actions such as entering credentials and tapping Sign in.
+2. Add or extend a page object for actions such as selecting chicken and tapping Place order.
 3. In the spec, call the page object and assert a visible result such as the order confirmation. Keep selectors and condition-based waits in the page object. Start each test from a known app state and read any test credentials from the configured environment.
 4. In the reference repository, run `npm run test:e2e:verify` and `npm run pipeline:local` before pushing.
 
-The package supplies driver setup, Sauce configuration, keyboard handling, and crash diagnostics. The guide reports that v1.1.0 builds and type-checks locally, with its Git tag, migration, and device run pending. Use the approved setup available to your project. The Android Espresso and iOS XCUITest framework examples use copy-in templates. For a complete walkthrough of screen actions and assertions, see the [Complete Login Example](/mobile/testing-quality/login-device-test-example/).
+The package supplies driver setup, Sauce configuration, keyboard handling, and crash diagnostics. The guide reports that v1.1.0 builds and type-checks locally, with its Git tag, migration, and device run pending. Use the approved setup available to your project. The Android Espresso and iOS XCUITest framework examples use copy-in templates. For a complete walkthrough of screen actions and assertions, see the [Complete Chicken Order Example](/mobile/testing-quality/chicken-order-example/).
 
 ## 2. Copy the implementation and tests for your platform
 
@@ -849,10 +791,12 @@ src/features/order/place-order.ts
 src/features/order/place-order.test.ts
 src/features/order/order-store.ts
 src/features/order/order-store.test.ts
-android/app/src/androidTest/java/com/example/mychicken/order/PlaceChickenOrderUiTest.kt
+tests/pages/ChickenOrderPage.ts
+tests/order/place-order.test.ts
+tests/wdio.conf.ts
 ```
 
-JavaScript/TypeScript tests use the existing Jest configuration. Redux tests use a fresh real **Redux Toolkit** store. Native Android device testing retains the team's JUnit instrumentation path; JUnit XML is only a report format and does not replace Jest execution.
+JavaScript/TypeScript tests use the existing Jest configuration. Redux tests use a fresh real **Redux Toolkit** store. Use the supplied WebdriverIO/Appium package for React Native device tests. Keep Jest discovery scoped to the unit and Redux Toolkit tests.
 
 ### `place-order.ts` — sample application code
 
@@ -1136,15 +1080,13 @@ test('confirmed order is not submitted again by repeated dispatch', async () => 
 });
 ```
 
-### Existing Android JUnit device journey
+### React Native device journey
 
-Use the Android tab's `PlaceChickenOrderUiTest.kt` in the React Native Android instrumentation target, with the actual `MainActivity` package. The `chicken.*` descriptions must be exposed by the rendered native accessibility tree; React Native `testID` alone is not proof an Espresso content-description matcher can find the element.
-
-Bind `accessibilityLabel`/native properties appropriately and inspect actual selectors. A View-based example needs compatible Views/idling synchronization; if the current React Native architecture/runner differs, use the approved native test adapter rather than assuming this matcher works unchanged. The iOS packaged-app journey uses the approved iOS UI-test strategy; Android JUnit does not execute it.
+Follow the [Complete Chicken Order Example](/mobile/testing-quality/chicken-order-example/) for ChickenOrderPage, the device spec, and framework runtime configuration. Page objects extend BasePage, and WebdriverIO selects the spec in tests/order/.
 
 ### Run
 
-First inspect `package.json` and confirm that `test:ci` invokes the existing Jest setup. If that script is absent, use the repository's equivalent test command; do not assume the overview creates scripts for you:
+First inspect `package.json` and confirm that `test:unit` invokes the existing Jest setup. If that script is absent, use the repository's equivalent test command; do not assume the overview creates scripts for you:
 
 ```bash
 npm run test:unit -- --runTestsByPath \
@@ -1220,7 +1162,7 @@ For the Android example, run this only when module `app` and variant `debug` exi
 
 These tasks build packages; they do not execute the cloud tests. Use [Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/) for iOS device packaging, the exact supplied Bitrise YAML, request input mappings, and completed-result checks. Do not upload a Simulator application as an iOS device package.
 
-The supplied integration expects `.sauce/saucelabs_request.yml` through `saucelabs_request_yml`. Obtain its schema from the pinned private step's owner. Keep device selectors and class names consistent with the test you actually built. A sample selector such as `SmokeTestSuite` must be replaced or mapped to the real suite.
+The current reference uses app-side saucelabs_request.yml and saucelabs_request.ios.yml. Match their locations and metadata to the copied bitrise.yml and the referenced app-create step. Keep device selectors and class names consistent with the test you actually built. A sample selector such as `SmokeTestSuite` must be replaced or mapped to the real suite.
 
 Use [Parallel Testing](/mobile/cicd/parallel-testing/) for module selection and report handoff. Missing or unexpectedly skipped required tests do not count as a pass. NowSecure assessment, signing, and delivery remain separate CI/CD gates.
 
@@ -1229,8 +1171,7 @@ Use [Parallel Testing](/mobile/cicd/parallel-testing/) for module selection and 
 **Next — [Coverage & Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/).**
 
 
-
---------------------
+-----------------------
 
 
 ---
@@ -1292,13 +1233,13 @@ The reference security scan checks ignored secret files and generated credential
 
 Teams Workflows URLs contain a secret token. Treat the full URL as a credential. The reference's npm audit runs in report-only mode, with high and critical findings reviewed each release.
 
-The reference exposes `TEST_PASSWORD` to merge-request builds and keeps Sauce keys out of them. Have the CI owner confirm that policy and its branch trust settings for your app. The guide's local and live verification status is recorded in the [complete reference](/mobile/cicd/mobile-test-automation-reference/).
+The reference exposes `TEST_PASSWORD` to merge-request builds and keeps Sauce keys out of them. Have the CI owner confirm that policy and its branch trust settings for your app. The guide's local and live verification status is recorded in the [complete reference](/mobile/testing-quality/mobile-test-automation-reference/).
 
 ## Read the reference scripts correctly
 
 The supplied `scripts/lint.sh` skips lint if ESLint is absent. Check the log to confirm which checks actually ran. The reference's `scripts/security-scan.sh` checks tracked secret files and generated credentials, with npm audit findings reported for review. A green local command alone cannot establish that lint, coverage, or real-device assertions executed.
 
-For the standalone reference, protect the default branch against direct pushes and force pushes and require the pipeline to pass before merge. The framework setup guide includes smoke tests for feature pushes, merge-request status, post-merge device execution, and rejected direct pushes. Follow [the setup verification instructions](/mobile/cicd/mobile-test-automation-reference/#8-verify-the-setup-smoke-tests) in an isolated approved exercise.
+For this reference setup, protect the default branch against direct pushes and force pushes and require the pipeline to pass before merge. The framework setup guide includes smoke tests for feature pushes, merge-request status, post-merge device execution, and rejected direct pushes. Follow [the setup verification instructions](/mobile/testing-quality/mobile-test-automation-reference/#8-verify-the-setup-smoke-tests) in an isolated approved exercise.
 
 ## Set the coverage target
 
@@ -1791,14 +1732,14 @@ The helper checks line counters, including required production targets. Reports 
 
 The helper verifies **file presence and counters**, not report authenticity or candidate identity. The protected workflow must generate fresh reports after actual tests, associate them with the exact commit/run/target, and reject stale or substituted evidence. Build configuration and scope are both reviewed inputs.
 
-## Step 4 — Run the check in the approved Bitrise workflow
+## Step 4 — Run the check in the shared Bitrise workflow
 
-Have the template owner place the following **teaching excerpt** in the approved npm workflow after checkout and dependency/tool setup. It is not a replacement for the enterprise template or a complete `bitrise.yml`.
+Have the template owner add the coverage step to the approved versioned bitrise.yml in mobile-platform-configuration-bitrise-template after checkout and dependency/tool setup. This snippet is a coverage adaptation to meet the team requirement. The supplied reference workflow must retain its existing build and test steps.
 
 The step creates a fresh report directory, runs the existing coverage script, then verifies that report. `set -euo pipefail` preserves command failures. The required repository status must also be configured to block merging on failure; adding YAML alone does not configure branch protection.
 
 <Tabs>
-<TabItem label="Shared Bitrise step">
+<TabItem label="Bitrise coverage step">
 
 ```yaml
 # Bitrise excerpt: npm project with approved tooling already prepared.
@@ -1862,10 +1803,12 @@ Record the source commit, build/run reference, tool versions, test counts, scope
 
 **Attach screenshot — required CI status and verifier result for the same candidate revision.**
 
-**Next — [Complete Place Chicken order Example](/mobile/testing-quality/login-device-test-example/).** Follow the success and failure cases in your platform tab. For a cloud device run, continue to [CI/CD → Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/).
+**Next — [Complete Chicken Order Example](/mobile/testing-quality/chicken-order-example/).** Follow the success and failure cases in your platform tab. For a cloud device run, continue to [CI/CD → Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/).
 
 
--------------
+
+
+______________________
 
 
 ---
@@ -2799,13 +2742,13 @@ For a missing element, inspect the accessibility IDs and keyboard state. For an 
 
 ## Run through CI
 
-Commit the application and reviewed tests together. Follow [Coverage and Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/) and [CI/CD → Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/) for required checks, packaging, upload, and device execution. Governed apps use the shared Bitrise template.
+Commit the application and reviewed tests together. Follow [Coverage and Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/) and [CI/CD → Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/) for required checks, packaging, upload, and device execution. Platform Engineering maintains bitrise.yml in mobile-platform-configuration-bitrise-template. The application uses its approved template ID and version.
 
 Use [IDE-Assisted Test Generation](/mobile/testing-quality/ide-assisted-test-generation/) to draft additional cases with Copilot or ChatGPT.
 
 
 
------------
+----------------------------_
 
 
 
@@ -3237,384 +3180,687 @@ If a draft depends on unavailable product/API or runner contracts, record the mi
 
 
 
----------------------
-
+--------------------------_
 
 ---
-title: "Real-Device Testing with Sauce Labs"
-description: "Connect the supplied mobile test framework to Bitrise, upload the app, run device tests, and read the results."
+title: "Mobile Test Automation Reference Implementation"
+description: "Complete supplied self-service setup reference for the React Native test automation example."
 sidebar:
-  label: Sauce Labs Device Testing
-  order: 9.5
+  label: Test Automation Reference
+  order: 6
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
-import MermaidViewer from "@components/MermaidViewer.astro";
+Use this page to inspect the supplied reference implementation, including its commands, setup steps, and reported verification status.
 
-Sauce Labs provides Android and iOS phones for automated app testing. Bitrise builds your app, uploads it, starts the configured test suite, and publishes the results. This page follows the latest supplied mobile testing reference, version 1.1 dated 17 November 2026.
+## Apply the repository ownership used by your platform
 
-## Start here
+The original supplied reference is preserved below for traceability. Its standalone provisioning and app-owned bitrise.yml instructions differ from the platform's confirmed repository ownership. For this documentation, Platform Engineering maintains bitrise.yml and CI automation in mobile-platform-configuration-bitrise-template. Application developers maintain their app code, tests, CAMP, and required app-specific request configuration. Follow [Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/) for the applicable setup.
 
-Begin with a mobile app that you can open and use locally. The first goal is to place a chicken order on one Sauce Labs device and find the completed test report. Add more devices after that first run succeeds.
+The reference's framework APIs, testing conventions, environment variables, and reported verification status remain useful. Its provisioning and CI script copies describe the original standalone implementation.
 
-| Step | Application developer | Platform owner | Expected result |
-| --- | --- | --- | --- |
-| 1 | Install the framework and write one device test. | Provide a reachable approved framework release. | The test TypeScript check passes. |
-| 2 | Add the app's required Sauce request file. | Provide its actual schema, path, and device settings. | The selected template can read the request. |
-| 3 | Submit enrollment using the approved template ID and version. | Apply the reviewed request and connect the app. | A Bitrise app is connected to the correct source repository. |
-| 4 | Supply the required approved secret references. | Bind Sauce credentials and signing material. | Build and upload steps can authenticate. |
-| 5 | Push and review the test change. | Confirm the required triggers and build status. | The local/merge-request gate passes. |
-| 6 | Follow the configured merge or first-run process. | Inspect the build, upload, and runner handoff. | The intended device suite executes. |
-| 7 | Open the test report and device job. | Investigate infrastructure failures where needed. | The chicken-order assertions pass on the expected app build. |
-
-The shared workflow and private custom steps are supplied by Platform Engineering. Obtain their approved template version and request schema before the cloud setup. Those private implementation files are required to execute the integration.
-
-## Understand what runs where
-
-| Part | Location | Responsibility |
-| --- | --- | --- |
-| `bitrise.yml` | `mobile-platform-configuration-bitrise-template`. | Platform-owned workflows, triggers, builds, test execution, and delivery steps. |
-| `saucelabs_request.yml`, `saucelabs_request.ios.yml` | Application repository. | App registration metadata consumed by the configured workflow. |
-| `tests/wdio.conf.ts` | Application repository. | Selects the React Native device specs and framework configuration. |
-| `tests/pages/`, `tests/<feature>/` | Application repository. | Screen actions and reviewed device assertions. |
-| `@enterprise/rn-appium-framework` | Development dependency installed from the approved framework release. | Driver setup, Sauce wiring, keyboard handling, and diagnostics. |
-| Internal custom steps | Step repositories referenced by `bitrise.yml`. | App registration and binary upload operations. |
-| Appium server and phone | Sauce Labs for a cloud session. | Perform test actions against the installed app. |
-| Reports and optional alerts | Bitrise artifacts, Sauce job, Teams or email. | Show assertions, failures, logs, and run identity. |
-
-For React Native, WebdriverIO executes the committed specs and sends device commands to Appium. Native Android and iOS suites use the framework's Espresso and XCUITest copy-in templates and their matching runner configuration.
-
-<MermaidViewer title="From a code change to a real-device test result">
-
-```mermaid
-flowchart TD
-    CODE["Application repository<br/>App code, tests, CAMP, and request files"]
-    PUSH["Feature push or merge request"]
-    GATE["Bitrise primary<br/>Lint, security, unit tests, E2E type check"]
-    MERGE["Review and merge to main or master"]
-    BUILD["Bitrise deploy-android or deploy-ios<br/>Build app and upload to Sauce"]
-    TEST["Sauce Labs phone<br/>Execute the configured device suite"]
-    REPORT["Results<br/>JUnit, HTML, video, and Appium log"]
-    ALERT["Optional Teams or email<br/>Build result and link"]
-    CODE --> PUSH --> GATE
-    GATE -->|Passing checks and approved review| MERGE
-    MERGE --> BUILD --> TEST --> REPORT --> ALERT
-    classDef repo fill:#172554,stroke:#93c5fd,color:#fff,stroke-width:2px;
-    classDef ci fill:#3b0764,stroke:#d8b4fe,color:#fff,stroke-width:2px;
-    classDef results fill:#064e3b,stroke:#6ee7b7,color:#fff,stroke-width:2px;
-    class CODE,PUSH,MERGE repo;
-    class GATE,BUILD ci;
-    class TEST,REPORT,ALERT results;
-```
-
-</MermaidViewer>
-
-## Repository ownership
-
-**Do not create bitrise.yml or copy CI provisioning, Sauce upload, report, or notification scripts into the application repository.** Platform Engineering maintains that automation in the approved shared template and step repositories. Your app's enrollment request selects the template ID and exact version.
-
-<Tabs>
-<TabItem label="Application repository">
+## Reference overview and contents
 
 ```text
-MyChickenapp/
-├── campfile.yml
-├── package.json
-├── saucelabs_request.yml           # Use the path expected by the selected template
-├── saucelabs_request.ios.yml       # When required by that template
-├── src/                           # Application code and unit/component tests
-└── tests/
-    ├── wdio.conf.ts
-    ├── conventions.md
-    ├── pages/
-    └── order/place-order.test.ts
+================================================================================
+ENTERPRISE MOBILE TEST AUTOMATION — SELF-SERVICE SETUP GUIDE
+================================================================================
+Source Video: WhatsApp Video 2026-11-17 at 23.41.46.mp4
+Version: 1.1 — Updated 17 Nov 2026
+Scope: Installable test framework v1.1.0, test-credential rules, Teams Workflows,
+       optional Sauce -> Teams alerts, Bitrise CI/CD real-device test execution.
+Audience: Any Enterprise mobile team (developers, QA, tech leads) that wants
+          automated real-device testing on every merge request.
+Corporate Identifiers: Standardized to Enterprise (enterprise.com / git.enterprise.com)
+Emojis: None
+================================================================================
+
+OUTCOME
+If you follow this guide top to bottom, you will end up with this flow running
+on your app without help:
+
+VS Code --push--> Enterprise Git (git.enterprise.com) --webhook--> Bitrise CI --upload--> Sauce Labs real device
+   ^                                                                     |
+   +-- results <-------------- status + JUnit/HTML + Teams/email <-------+-- video + Appium log
+                    MR blocked until green
+
+Time needed: About 2-3 hours for the first app (most of it is waiting for access),
+             about 30 minutes for later apps.
+
+Reference implementation: mobile-procurement-app (React Native, Android) is the
+working example. Every file this guide mentions exists in that repo. Copy from it.
+Reusable test framework: enterprise-mobile-test-framework (v1.1.0). Its React Native
+module is now an installable package, @enterprise/rn-appium-framework: your project
+installs it and writes only page objects + specs (driver setup, Sauce wiring, keyboard
+handling, and crash diagnostics live in the package). The Android/Espresso and
+iOS/XCUITest modules are still copy-in templates (scripts/scaffold.sh).
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1.  How it works
+2.  Before you start: access and accounts
+3.  Integration points
+4.  Secrets and configuration reference
+    4.1 Bitrise Secrets (set automatically by provision.sh)
+    4.2 Non-secret switches (bitrise.yml or Bitrise app env vars)
+    4.3 Provisioning config (.provision.env, on your laptop only, gitignored)
+    4.4 Test credentials — what username and password to use
+    4.5 Test framework environment variables (@enterprise/rn-appium-framework)
+    4.6 Local developer secrets (.vault/secrets.env, gitignored)
+5.  Step-by-step setup
+    Step 1 — Get the automation files into your repo (~15 min)
+    Step 2 — Push the repo to Enterprise Git (~5 min)
+    Step 3 — Create the Bitrise app (~10 min, the only console step)
+    Step 4 — Create two API tokens (~5 min)
+    Step 5 — Run provisioning (~5 min)
+    Step 6 — Confirm the Sauce device pool (~5 min)
+    Step 7 — Turn on notifications (optional, ~2-5 min)
+    Step 8 — Run the smoke tests
+    iOS extra steps
+6.  Writing tests
+    6.1 Rules (enforced in review; also in tests/conventions.md)
+    6.2 What the framework gives you
+    6.3 Make your app testable
+    6.4 Add a test
+    6.5 Run on Sauce from your laptop (optional)
+7.  Daily developer workflow
+8.  Verify the setup (smoke tests)
+9.  Troubleshooting
+10. Security rules
+11. Rollout plan for a new team
+12. Ownership and support
+13. Appendix: file map and commands
+    13.1 Files
+    13.2 Commands
+    Current status of the reference implementation
 ```
 
-</TabItem>
-<TabItem label="Shared template repository">
+## 1. HOW IT WORKS
 
 ```text
-mobile-platform-configuration-bitrise-template/
-└── … approved versioned template path …
-    └── bitrise.yml
+================================================================================
+1. HOW IT WORKS
+================================================================================
+The automation has four phases. All four ship as code in your repo; you only
+have to wire up the accounts.
+
+--------------------------------------------------------------------------------
+Phase                      What happens                           Triggered by                     Bitrise workflow
+--------------------------------------------------------------------------------
+1. PR quality gate         Lint, security scan, unit tests,       Push to any branch except        primary
+                           e2e typecheck. MR cannot merge         main/master, and every
+                           until green.                           merge request.
+
+2. Real-device release     Builds a Release APK/IPA, uploads      Push (merge) to main or          deploy-android /
+   test                    to Sauce Labs, runs Appium e2e on      master.                          deploy-ios
+                           a real device, publishes JUnit +
+                           HTML + Sauce video link.
+
+3. Notifications           Posts pass/fail + build link to a      End of deploy-* workflows.       (step inside deploy-*,
+                           Microsoft Teams channel (or email).                                     opt-in)
+
+4. Developer self-service  One-command onboarding, local          Developer runs it locally.       npm run bootstrap,
+                           pre-flight of every CI gate.                                            npm run pipeline:local
+--------------------------------------------------------------------------------
+
+Design rules everyone follows:
+* Tests find elements by accessibility ID only (~loginButton). No XPath, no text or index locators.
+* No secrets in code. Secrets live in Bitrise Secrets (CI) or a gitignored local vault (your laptop).
+* CI never calls an AI/LLM. AI help is used only in the IDE when writing tests; the pipeline is deterministic.
+* Android builds use the Release variant for Sauce. A Debug build has no Metro server on a real device and crashes into the red error screen.
 ```
 
-The selected YAML invokes the configured Sauce steps and platform-owned automation. Inspect that version for the actual step repositories, scripts, and inputs.
+## 2. BEFORE YOU START: ACCESS AND ACCOUNTS
 
-</TabItem>
-</Tabs>
+```text
+================================================================================
+2. BEFORE YOU START: ACCESS AND ACCOUNTS
+================================================================================
+Request these first; they take the longest. Tick each one off:
 
-## 1. Install the framework and prepare one test
+--------------------------------------------------------------------------------
+ID   What you need                                          Who grants it                  How to check you have it
+--------------------------------------------------------------------------------
+A1   Enterprise Git (git.enterprise.com) project with       Your GitLab group owner        You can open Settings -> Repository
+     Maintainer role                                                                       on the project.
 
-Obtain Enterprise Git and VPN access, the approved framework release, access to inspect Bitrise/Sauce results, and a dedicated test account if your app requires one. Check that your existing app builds locally and that Node.js, npm, and Git are available. Platform Engineering supplies cloud credential bindings and internal-step access.
+A2   VPN / network access to git.enterprise.com             Enterprise IT                  git ls-remote https://git.enterprise.com/<group>/<repo>.git works.
 
-For React Native, open MyChickenapp in your IDE and use the terminal at the folder containing package.json. Replace the framework group and confirm the published tag before executing the source installation commands. The source peer-install command uses unpinned packages; obtain compatible approved versions from the framework owner before using it for your project.
+A3   Bitrise workspace membership with Admin role           Mobile Engineering Bitrise     You can click Add new app in the workspace.
+     (Owner/Admin needed for the API)                       workspace owner
 
-<Tabs>
-<TabItem label="React Native installation">
+A4   Sauce Labs account (username + access key) in the      Sauce Labs org admin           You can log in at saucelabs.com and
+     Enterprise org, with real-device minutes                                              see Real Devices.
 
-```bash
-npm i -D 'git+https://git.enterprise.com/<framework-group>/enterprise-mobile-test-framework.git#rn-appium-v1.1.0'
-npm i -D @wdio/cli @wdio/local-runner @wdio/mocha-framework @wdio/sauce-service @wdio/spec-reporter @wdio/junit-reporter webdriverio appium
+A5   Access to the Enterprise-internal Bitrise steps in     ACES Mobile Engineering        You can open:
+     ACES-Mobile-Engineering group (read)                                                  git.enterprise.com/ACES-Mobile-Engineering/saucelabs-bitrise-step
+
+A6   Test user for the app (username + password)            App/backend owner              You can retrieve it from ERPM.
+     stored in ERPM
+
+A7   (Optional) Microsoft Teams Workflows webhook for       Teams/channel admin            You have the Teams webhook URL, or a
+     the channel — or a mailing list for email alerts       (or no one, for email)         distribution email.
+--------------------------------------------------------------------------------
+
+Local tooling on your laptop:
+--------------------------------------------------------------------------------
+Tool                   Version                 Notes
+--------------------------------------------------------------------------------
+Node.js + npm          Node 18 or 20 LTS       bootstrap warns on drift
+Git                    any recent              
+bash, curl, python3    any recent              used by provisioning scripts (macOS/Linux; on Windows use WSL or Git Bash)
+VS Code                latest                  with Copilot/Cursor optional for writing tests
+Android Studio / Xcode only if you build locally CI builds for you; not needed just to write tests
+--------------------------------------------------------------------------------
 ```
 
-</TabItem>
-<TabItem label="Application test commands">
+## 3. INTEGRATION POINTS
 
-```json
-{
-  "scripts": {
-    "test:unit": "jest",
-    "test:e2e": "wdio run tests/wdio.conf.ts",
-    "test:e2e:verify": "tsc --noEmit -p tests/tsconfig.json"
+```text
+================================================================================
+3. INTEGRATION POINTS
+================================================================================
+These are every system the automation touches, and exactly how they connect.
+If something breaks, it is almost always one of these links:
+
+--------------------------------------------------------------------------------
+ID    From -> To                              Mechanism                                           Configured by              What must be true
+--------------------------------------------------------------------------------
+I1    Developer -> Enterprise Git             git push over HTTPS/SSH                             You                        VPN on; you have push rights to feature branches
+I2    Enterprise Git -> Bitrise (trigger)     GitLab project webhook (push + merge-request)       provision.sh (auto)        Webhook URL points to your Bitrise app; SSL verification on
+I3    Bitrise -> Enterprise Git (clone)       SSH deploy key added when the Bitrise app created   You, once, in Bitrise UI   Key is on GitLab project (Settings -> Repository -> Deploy keys)
+I4    Bitrise -> Enterprise Git (status)      Bitrise posts build status to the MR                Bitrise app's Git connect  MR shows the Bitrise pipeline status
+I5    Enterprise Git branch protection        Protected branch + "merge only if pipeline pass"    provision.sh (auto)        Nobody can push directly to main/master
+I6    Bitrise -> Internal steps               git::https://git.enterprise.com/... steps in YAML   Already in bitrise.yml     Bitrise can read those repos (A5)
+I7    Bitrise -> Sauce Labs (app create)      Step bitrise-step-saucelabs-app-create              You edit YAML metadata     app_name, owner_email, team, repository are yours
+I8    Bitrise -> Sauce Labs (upload)          Step saucelabs-bitrise-step using credentials       provision.sh sets secrets  Upload succeeds; file name matches SAUCE_APP_FILE_NAME
+I9    Bitrise -> Sauce Labs (test run)        WebdriverIO + Appium to ondemand.<REGION>.sauce     Already in repo / package  Sauce region matches account; device pattern has free devices
+I10   Bitrise -> App build (test creds)       scripts/write-build-env.sh writes buildEnv.ts       Already in bitrise.yml     TEST_PASSWORD (and DEMO_AUTH_USERNAME) exist as Bitrise Secrets
+I11   Bitrise -> Microsoft Teams              scripts/notify-teams.sh step (TEAMS_ENABLED=true)   provision.sh               Teams webhook URL valid
+I11b  Bitrise -> Email (alternative)          Bitrise built-in email notifications                You in App Notifications   Recipients added; no YAML/secret needed
+I12   Bitrise -> Artifacts                    deploy-to-bitrise-io@2 publishes JUnit + HTML       Already in bitrise.yml     Reports appear under the build's Artifacts tab
+I13   (Optional) Sauce Labs -> Teams          Sauce Account -> Integrations -> Webhooks           You in Sauce + Teams       See Step 7; not a replacement for I11
+I14   Project -> Test framework               npm dependency on @enterprise/rn-appium-framework   You in package.json        Tag rn-appium-v1.1.0 exists and reachable from Bitrise
+--------------------------------------------------------------------------------
+```
+
+## 4. SECRETS AND CONFIGURATION REFERENCE
+
+```text
+================================================================================
+4. SECRETS AND CONFIGURATION REFERENCE
+================================================================================
+
+4.1 Bitrise Secrets (set automatically by provision.sh)
+--------------------------------------------------------------------------------
+Name                Required  Protected  Expose to PRs  Used by
+--------------------------------------------------------------------------------
+TEST_PASSWORD       Yes       Yes        Yes (checked)  Login test, write-build-env.sh
+SAUCE_USERNAME      Yes       Yes        No             Sauce upload + Appium connection
+SAUCE_ACCESS_KEY    Yes       Yes        No             Sauce upload + Appium connection
+DEMO_AUTH_USERNAME  No        No         No             write-build-env.sh (defaults to testuser01)
+TEAMS_WEBHOOK_URL   No        Yes        No             Teams notify step
+TEAMS_ENABLED       No        No         No             true turns Teams on; unset/false = step skips
+--------------------------------------------------------------------------------
+
+4.2 Non-secret switches (bitrise.yml or Bitrise app env vars)
+--------------------------------------------------------------------------------
+Name                          Default                           Meaning
+--------------------------------------------------------------------------------
+RUN_SAUCE_E2E                 true                              false skips every Sauce step (build-only run)
+VARIANT                       Release                           Android build variant. Keep Release for Sauce.
+SAUCE_APP_FILE_NAME           mobile-procurement-app.apk/.ipa   Change to your app's name. Sauce storage file name.
+PLATFORM_NAME                 Android                           Android or iOS for the Appium capabilities.
+PROJECT_LOCATION, MODULE      android, app                      Android Gradle project path and module.
+BITRISE_PROJECT_PATH, SCHEME  ios/App.xcworkspace, App          Change for iOS.
+--------------------------------------------------------------------------------
+
+4.3 Provisioning config (.provision.env, on your laptop only, gitignored)
+Template: .provision.env.example. Holds the two API tokens plus the secret values:
+* BITRISE_TOKEN: Bitrise -> Account settings -> Security -> Personal access tokens
+* BITRISE_APP_SLUG: Your app URL: app.bitrise.io/app/<APP_SLUG>
+* BITRISE_WEBHOOK_URL: Bitrise -> App settings -> Integrations -> Webhooks -> GitLab URL
+* GITLAB_HOST: git.enterprise.com
+* GITLAB_TOKEN: git.enterprise.com -> Preferences -> Access tokens -> scope api
+* GITLAB_PROJECT: group/subgroup/repo path, or numeric project ID
+* DEFAULT_BRANCH: Optional, auto-detected
+* GITLAB_WEBHOOK_SECRET: Optional shared secret for the webhook
+* TEST_PASSWORD, SAUCE_USERNAME, SAUCE_ACCESS_KEY, DEMO_AUTH_USERNAME: from ERPM / Sauce Labs
+* TEAMS_WEBHOOK_URL, TEAMS_ENABLED: Optional, from Teams admin
+The file is sourced by bash. Wrap any value containing spaces, quotes, $, or \ in single quotes.
+
+4.4 Test credentials — what username and password to use
+1. At build time, scripts/write-build-env.sh writes TEST_PASSWORD into the app
+   (src/config/buildEnv.ts) as the only password the login screen accepts.
+2. At test time, the login test types testuser01 + TEST_PASSWORD.
+3. Same secret in both places, so they always match. To change the password, change
+   the Bitrise Secret. The next build bakes in the new value.
+Set the same value in Bitrise Secrets (TEST_PASSWORD), your local .env / .vault/secrets.env,
+and type it by hand if you log in manually on the device. testuser01 is not the password.
+For production APIs, use a dedicated test account from ERPM. Put its username in
+DEMO_AUTH_USERNAME and its password in TEST_PASSWORD.
+
+4.5 Test framework environment variables (@enterprise/rn-appium-framework)
+--------------------------------------------------------------------------------
+Name                          Default               Meaning
+--------------------------------------------------------------------------------
+TEST_TARGET                   local                 sauce = Sauce Labs real devices; unset/local = local emulator
+PLATFORM_NAME                 Android               Android or iOS
+APP_PATH                      — (required locally)  Path to your built .apk / .app
+SAUCE_REGION                  us-west-1             Sauce data center (e.g. eu-central-1)
+SAUCE_APP_URI                 —                     storage:<file-id> exported by upload step; pins this build
+SAUCE_APP_FILENAME_ANDROID/_IOS app.apk / app.ipa   Fallback Sauce storage file name. Set to your app's name.
+SAUCE_DEVICE_ANDROID / _IOS   Samsung.* / iPhone.*  Device pattern
+LOCAL_DEVICE_ANDROID / _IOS   Android Emulator / iPhone 15 Local device name
+APPIUM_HOST / APPIUM_PORT     127.0.0.1 / 4723      Local Appium server
+APP_PACKAGE                   —                     Android application id; lets diagnose() tell crash from missing element
+SAUCE_USERNAME, ACCESS_KEY    —                     Bitrise Secrets only
+--------------------------------------------------------------------------------
+
+4.6 Local developer secrets (.vault/secrets.env, gitignored)
+Created from .vault/secrets.env.example by npm run bootstrap. Same names
+(SAUCE_USERNAME, SAUCE_ACCESS_KEY, TEST_PASSWORD). Read via scripts/vault-get.sh <NAME>.
+In CI the same script reads Bitrise env vars instead (VAULT_BACKEND=env).
+```
+
+## 5. STEP-BY-STEP SETUP
+
+```text
+================================================================================
+5. STEP-BY-STEP SETUP
+================================================================================
+Do the steps in order. Each step ends with a Check so you know it worked before moving on.
+
+Step 1 — Get the automation files into your repo (~15 min)
+If your app is React Native (Android/iOS), you need two things: the pipeline files
+(copied from the reference app) and the test framework (installed as a package).
+
+1a. Copy the pipeline files from mobile-procurement-app into your repo root:
+    bitrise.yml
+    saucelabs_request.yml / saucelabs_request.ios.yml
+    .provision.env.example
+    .vault/secrets.env.example
+    .gitignore (merge the "Secrets" section into yours)
+    scripts/ (whole folder, including scripts/provision/ and notify-teams.sh)
+    src/config/buildEnv.ts (empty-string placeholder only — never real values)
+
+1b. Install the test framework (do not copy tests/base or tests/pages from reference app):
+    # from Enterprise Git, pinned to a tag:
+    npm i -D git+https://git.enterprise.com/<framework-group>/enterprise-mobile-test-framework.git#rn-appium-v1.1.0
+    # WebdriverIO peer dependencies:
+    npm i -D @wdio/cli @wdio/local-runner @wdio/mocha-framework @wdio/sauce-service @wdio/spec-reporter @wdio/junit-reporter webdriverio appium
+
+    Then copy the package templates into your project:
+    templates/wdio.conf.ts       -> tests/wdio.conf.ts (one line: export const config = createConfig({ specs: [...] });)
+    templates/pages/*.ts         -> tests/pages/ (example page objects extending BasePage)
+    templates/specs/login.test.ts -> tests/login/login.test.ts (known-good example)
+    templates/.env.example       -> .env (gitignored)
+    conventions.md               -> tests/conventions.md
+
+1c. Add the scripts to your package.json:
+    "scripts": {
+      "test:unit": "jest",
+      "test:e2e": "wdio run tests/wdio.conf.ts",
+      "test:e2e:verify": "tsc --noEmit -p tests/tsconfig.json",
+      "lint": "bash scripts/lint.sh",
+      "security": "bash scripts/security-scan.sh",
+      "pipeline:local": "bash scripts/run-pipeline-local.sh",
+      "bootstrap": "bash scripts/bootstrap-dev.sh",
+      "provision": "bash scripts/provision/provision.sh",
+      "provision:apply": "bash scripts/provision/provision.sh --apply",
+      "notify:test": "bash scripts/notify-teams.sh --test",
+      "notify:preview": "bash scripts/notify-teams.sh --preview"
+    }
+
+Then personalize (search and replace):
+* saucelabs_request.yml: app_name, owner_email, team, description, repository, business_unit
+* bitrise.yml: SAUCE_APP_FILE_NAME, PROJECT_LOCATION, MODULE (Android); BITRISE_PROJECT_PATH, BITRISE_SCHEME (iOS)
+* tests/ or .env: SAUCE_REGION, SAUCE_APP_FILENAME_*, SAUCE_DEVICE_*, APP_PACKAGE
+* tests/pages/: Your screen's accessibility IDs
+Android Release build prerequisite: your android/app/build.gradle release buildType
+must sign with the debug keystore and keep minifyEnabled false for test builds.
+The pipeline generates the keystore itself.
+Check: npm run bootstrap then npm run pipeline:local both finish green on your laptop.
+
+Step 2 — Push the repo to Enterprise Git (~5 min)
+git remote add origin https://git.enterprise.com/<group>/<your-app>.git # if not set
+git push -u origin main # or master — both supported
+Check: project exists on Enterprise Git.
+
+Step 3 — Create the Bitrise app (~10 min, the only console step)
+* Add new app under the Mobile Engineering workspace.
+* git.enterprise.com project URL. Let Bitrise generate an SSH key and add it as a
+  deploy key on the GitLab project (read-only is enough).
+* Branch: main (or master).
+* Pick "use the bitrise.yml in the repository" (store config in repo). Skip auto-detected workflow.
+* Note app URL: app.bitrise.io/app/<APP_SLUG>.
+Check: Bitrise app page shows workflows primary, deploy-android, deploy-ios.
+
+Step 4 — Create two API tokens (~5 min)
+* Bitrise PAT: Account settings -> Security -> Personal access tokens -> create (set expiry).
+* GitLab PAT: git.enterprise.com -> Preferences -> Access tokens -> scope api -> create (set expiry).
+Check: both tokens copied somewhere safe (ERPM or password manager), not in repo.
+
+Step 5 — Run provisioning (~5 min)
+From your repo root, on VPN:
+cp .provision.env.example .provision.env
+# edit .provision.env — tokens, app slug, project path, secret values
+npm run provision        # DRY-RUN: lists every change, touches nothing
+npm run provision:apply  # applies it
+* Bitrise: creates/updates Secrets in 4.1 and registers incoming webhook on GitLab.
+* GitLab: creates/updates webhook to Bitrise, protects default branch (no direct push,
+  maintainers merge, no force-push), turns on merge only if pipeline succeeds.
+Optional — prove the chain straight away:
+./scripts/provision/provision.sh --apply --trigger-build
+Check:
+* Bitrise App settings -> Secrets lists names in 4.1 (values hidden)
+* GitLab Settings -> Webhooks lists Bitrise URL
+* GitLab Settings -> Repository -> Protected branches lists default branch with Allowed to push: No one
+* GitLab Settings -> Merge requests has Pipelines must succeed ticked
+Then delete .provision.env or revoke the two tokens.
+
+Step 6 — Confirm the Sauce device pool (~5 min)
+In Sauce Labs -> Real Devices, confirm a device matching your pattern
+(Samsung.* for Android, iPhone.* for iOS) is available in your data center.
+Check: at least one matching device shows Available.
+
+Step 7 — Turn on notifications (optional, ~2-5 min)
+* Microsoft Teams (card in a channel): in Teams, open channel -> ... -> Workflows ->
+  template "Send webhook alerts to a channel" -> pick team + channel -> Add workflow ->
+  copy URL. Put in TEAMS_WEBHOOK_URL in .provision.env, run npm run notify:test,
+  then npm run provision:apply.
+  Classic Office 365 "Incoming Webhook" connectors were retired May 2026 and return 403.
+  Only Workflows URLs work; scripts/notify-teams.sh sends Adaptive Card format.
+* Email (no code, no secret): Bitrise -> App -> Notifications -> Email: add recipient addresses.
+Optional add-on — alerts straight from Sauce Labs via webhooks.
+
+Step 8 — Run the smoke tests
+Go to Section 8. When all four pass, you are done.
+
+iOS extra steps:
+deploy-ios is in bitrise.yml, but iOS needs signing before it can produce an IPA for Sauce:
+1. Upload code signing certificate (.p12) and provisioning profile to Bitrise -> App settings -> Code signing. Never commit them — gitignore blocks *.p12 *.mobileprovision.
+2. Set BITRISE_PROJECT_PATH, BITRISE_SCHEME, and BITRISE_DISTRIBUTION_METHOD (default: ad-hoc).
+3. Check the Sauce app request step (it is marked "enable once signing is configured").
+4. Trigger deploy-ios manually from Bitrise until green, then add a trigger for every merge.
+```
+
+## 6. WRITING TESTS
+
+```text
+================================================================================
+6. WRITING TESTS
+================================================================================
+
+6.1 Rules (enforced in review; also in tests/conventions.md)
+1. Locators: accessibility IDs only (~username, ~loginButton, ~accountBalance).
+2. Structure: tests call page objects (LoginPage, DashboardPage); no raw driver.$() in test files.
+3. Naming: describe('<Feature>'), it('<user> <action> and <expected outcome>').
+4. Assertions: at least one expect(...).toBeDisplayed() on a visible outcome.
+5. Waiting: no fixed sleeps; use waitForDisplayed / waitForExist inside page objects.
+6. Secrets: read from process.env; never literal passwords.
+7. Independence: every test starts from app launch.
+
+6.2 What the framework gives you
+Page objects extend BasePage from @enterprise/rn-appium-framework:
+--------------------------------------------------------------------------------
+Helper                   Use it for
+--------------------------------------------------------------------------------
+waitForId(id, timeout?)  Wait until ~id is displayed, return it
+setValueById(id, text)   Wait, then type
+tapById(id)              Wait, then tap. Hides Android soft keyboard first
+exists(id)               True if ~id is in the tree (e.g. "still on login screen?")
+diagnose(appPackage?)    When an element missing: lists on-screen IDs, checks foreground,
+                         pulls native crash block from logcat into CI log
+--------------------------------------------------------------------------------
+
+Example page object:
+import { BasePage } from '@enterprise/rn-appium-framework';
+export class LoginPage extends BasePage {
+  async login(user: string, pass: string) {
+    await this.setValueById('username', user);
+    await this.setValueById('password', pass);
+    await this.tapById('loginButton');
   }
 }
-```
 
-Merge these entries into the existing package.json. Copy the actual framework configuration and TypeScript setup before running them.
+6.3 Make your app testable
+Give every element a test needs a stable accessibility ID:
+// React Native
+<TextInput accessibilityLabel="username" testID="username" />
+<Pressable accessibilityLabel="loginButton" testID="loginButton" />
+<Text accessibilityLabel="accountBalance" testID="accountBalance">{balance}</Text>
+Native Android: android:contentDescription="loginButton".
+Native iOS: accessibilityIdentifier = "loginButton".
 
-</TabItem>
-</Tabs>
+6.4 Add a test
+1. Add/extend a page object in tests/pages/ (extends BasePage) with new locators.
+2. Add a test file under tests/<feature>/<name>.test.ts.
+3. Run npm run test:e2e:verify (typecheck) and npm run pipeline:local.
+4. Push and open an MR. The real-device run happens after merge.
+Using AI in IDE (optional): paste prompt from prompts/reactnative-appium.prompt.md
+with tests/conventions.md into Copilot/Cursor, then review draft.
 
-Copy the package's runner configuration template into tests/wdio.conf.ts, its conventions into tests/conventions.md, and the approved E2E TypeScript configuration into tests/tsconfig.json. Follow [Write and Run Tests](/mobile/testing-quality/writing-tests/) for the complete file mapping.
-
-Keep the app’s existing Jest configuration, and exclude the selected WebdriverIO device-spec paths from Jest discovery. A file named place-order.test.ts can otherwise be picked up by both runners.
-
-Add ChickenOrderPage and the device spec from [Complete Chicken Order Example](/mobile/testing-quality/chicken-order-example/). Select tests/order/place-order.test.ts in the package template's spec configuration. Match the page object's accessibility IDs to your actual screen and run the E2E type check.
-
-For Android Espresso and iOS XCUITest, use the framework's native templates and matching test targets. The next table identifies what the shared workflow must produce for each runner.
-
-| Suite | Application package | Test execution input |
-| --- | --- | --- |
-| React Native Appium on Android | APK with bundled JavaScript for the intended test fixture. | Reviewed JavaScript/TypeScript specs and the framework config. |
-| React Native Appium on iOS | Signed device IPA. | Reviewed JavaScript/TypeScript specs and the framework config. |
-| Native Android Espresso | App APK and matching instrumentation test APK. | Configured instrumentation runner and selected suite. |
-| Native iOS XCUITest | Device app and the correctly packaged UI-test runner. | Matching UI-test products and the approved packaging configuration. |
-
-Appium runs the JavaScript/TypeScript specs directly through WebdriverIO. It does not convert them into Espresso or XCUITest source files. The native suites use their own compiled test products.
-
-**Expected result:** the test files exist, the configured runner selects the intended spec, and npm run test:e2e:verify passes for the React Native example. A type check alone does not execute the phone journey.
-
-## 2. Add the app request and build settings
-
-Obtain the approved Sauce request example from the template owner. Create saucelabs_request.yml and, when required, saucelabs_request.ios.yml in the application checkout at the exact paths expected by the selected template. Fill your app's metadata using that schema. The supplied guide lists metadata names but omits the complete private schema, so use the actual approved example.
-
-The enrollment request and Sauce request have different purposes:
-
-| File | Location | Purpose |
-| --- | --- | --- |
-| Enrollment request | mobile-platform-configuration, at its approved request path. | Selects the app source, template ID, version, and access settings. |
-| Sauce request | Application repository at the template's configured path. | Supplies the app metadata used by the Sauce app-create step. |
-| bitrise.yml | mobile-platform-configuration-bitrise-template. | Defines how the app is built, uploaded, and tested. |
-
-Give the platform owner the build values below through the template's supported configuration process. Put app-specific request fields only in the request schema that accepts them.
-
-
-| Configuration | What to change |
-| --- | --- |
-| Sauce request metadata | `app_name`, `owner_email`, `team`, `description`, `repository`, and `business_unit`. |
-| `SAUCE_APP_FILE_NAME` | Your app's uploaded APK or IPA filename. |
-| `RUN_SAUCE_E2E` | The source defaults to `true`. `false` skips the Sauce steps for a build-only run. |
-| `PROJECT_LOCATION`, `MODULE` | Android project path and module, such as `android` and `app`. |
-| `VARIANT` | The reference uses `Release` for Sauce. |
-| `BITRISE_PROJECT_PATH`, `BITRISE_SCHEME` | Actual iOS workspace/project and scheme. The source's configuration table also abbreviates the scheme as `SCHEME`; follow the variable consumed by the selected shared YAML. |
-| `PLATFORM_NAME` | `Android` or `iOS`, matching the build. |
-| `SAUCE_REGION` | Account data center, with `us-west-1` recorded as the reference default. |
-| `SAUCE_DEVICE_ANDROID`, `SAUCE_DEVICE_IOS` | Available device patterns, such as `Samsung.*` and `iPhone.*`. |
-| `APP_PACKAGE` | Actual Android application ID used by diagnostics. |
-
-**Expected result:** app metadata identifies MyChickenapp, the request path matches the shared YAML, and the owner has the intended platform, artifact filename, region, and device values.
-
-The Android reference uses a test-only Release build with bundled JavaScript, debug-keystore signing, and `minifyEnabled false`. The pipeline generates that keystore. Configure this fixture separately from production signing. A distributed test APK must contain only approved test data. The iOS workflow needs a signed IPA before its cloud suite can run.
-
-## 3. Connect your application through enrollment
-
-1. Push the app code and reviewed tests to the approved source branch.
-2. Select the approved template ID and version with Sauce execution configured.
-3. Follow [Configuration Repository](/mobile/cicd/configuration-repository/) and [Enroll Your Application](/mobile/cicd/enroll-your-application/) to submit the request through the platform process.
-4. After apply, confirm that the Bitrise app is connected to the expected application repository and template version.
-5. Have the platform owner confirm source events, webhook access, branch rules, and required build statuses.
-
-**Expected result:** you can identify the Bitrise app, app source branch, source revision, template ID, and template version.
-
-**Attach screenshot — Bitrise app, selected template version, and connected source repository.**
-
-## 4. Bind protected credentials
-
-Platform Engineering binds credentials to the shared workflow. Supply the approved secret references through the platform process. Keep the actual values out of Git and request YAML.
-
-| Value | Purpose |
-| --- | --- |
-| SAUCE_USERNAME and SAUCE_ACCESS_KEY | Upload and device sessions. |
-| TEST_PASSWORD and applicable test username | Approved test fixture or backend account. |
-| TEAMS_WEBHOOK_URL | Optional result notification through Teams Workflows. |
-| TEAMS_ENABLED | Enables the optional notification step. |
-
-The source reference's developer-run provisioning and API-token commands describe its standalone implementation. Use your platform enrollment process for this shared-template setup. For PR access to credentials and protected signing, follow the platform owner's configured trust and credential policy.
-
-**Expected result:** the owner confirms the required credentials and signing bindings are available to the selected workflow.
-
-## 5. Follow app registration and upload
-
-| Operation | Implementation in the supplied setup | What to inspect |
-| --- | --- | --- |
-| App registration | `bitrise-step-saucelabs-app-create` | Request metadata belongs to your app. |
-| Binary upload | `saucelabs-bitrise-step` | Built file exists and its filename matches configuration. |
-| Resolve uploaded file | `scripts/resolve-sauce-app.sh` or `.js` | Exact uploaded storage identity. |
-| Device execution | WebdriverIO/Appium through the configured framework | Correct platform, app, device, and specs. |
-| HTML report | `scripts/gen-report.js` | Report reflects the actual JUnit results. |
-| Artifact publication | `deploy-to-bitrise-io@2` in the reference | Reports appear under the build's Artifacts tab. |
-
-Use the selected shared `bitrise.yml` to inspect the actual custom step URL, version, inputs, outputs, and invocation order. The supplied text names these integrations without providing their complete YAML or private implementations. The template and step owners provide those actual implementations.
-
-### See the custom steps in the shared YAML
-
-Platform Engineering places these steps under the existing workflow's `steps` list in `mobile-platform-configuration-bitrise-template`. The app build must finish before the upload step. This example uses the earlier supplied custom-step references, with the request path matching the app-root layout shown above.
-
-<Tabs>
-<TabItem label="bitrise.yml — Sauce Labs steps">
-
-```yaml
-# Under the existing workflow's steps list, after building the app.
-- git::https://git.enterprise.com/ACES-Mobile-Engineering/bitrise-step-saucelabs-app-create.git@1.0.0:
-    title: Register Sauce Labs application
-    inputs:
-      - saucelabs_request_yml: "saucelabs_request.yml"
-      - sauce_username: "$SAUCE_USERNAME"
-      - sauce_access_key: "$SAUCE_ACCESS_KEY"
-
-- git::https://git.enterprise.com/ACES-Mobile-Engineering/saucelabs-bitrise-step.git@1.0.0:
-    title: Upload application and run device tests
-    inputs:
-      - sauce_username: "$SAUCE_USERNAME"
-      - sauce_access_key: "$SAUCE_ACCESS_KEY"
-```
-
-</TabItem>
-</Tabs>
-
-Bitrise fetches the referenced step version and reads its `step.yml` to find the executable entry point. The step script runs on the Bitrise runner and connects to Sauce Labs. Keep the request in the app checkout at the path consumed by the selected template.
-
-| Before executing this excerpt | What the template owner confirms |
-| --- | --- |
-| Step versions | These repository URLs and tags are approved and reachable. |
-| Request | The path and YAML content match the pinned app-create step's schema. |
-| Binary | The upload step receives the actual APK or IPA produced by this run. |
-| Tests | The configured framework receives the spec path, platform, device, and uploaded app identity. |
-| Result | A failed device suite fails the required build step and its reports are collected. |
-
-The supplied excerpt contains credential and request inputs. Additional binary paths, runner inputs, outputs, and execution hooks must come from the actual private step contract. In a workflow where the upload step only uploads, the shared YAML must also invoke the configured test runner. Inspect the pinned implementation to confirm which operation starts WebdriverIO and how its exit status reaches Bitrise.
-
-`SAUCE_APP_FILE_NAME` identifies the uploaded filename. `SAUCE_APP_URI` selects the binary for the runner. Prefer the resolved `storage:<file-id>` to identify the exact build. The package also supports `SAUCE_APP_FILENAME_ANDROID` and `SAUCE_APP_FILENAME_IOS` as filename fallbacks. Inspect the selected binary identity when using a filename.
-
-**Expected result:** the shared workflow builds the intended package, uploads it, and passes that exact binary identity to the configured runner.
-
-## 6. Run the configured device suite
-
-Select an available device in the correct account region. The reference defaults are `Samsung.*` and `iPhone.*`; confirm capacity in **Sauce Labs → Real Devices**.
-
-<Tabs>
-<TabItem label="Local code checks">
-
-```bash
-npm run test:unit
-npm run test:e2e:verify
-```
-
-Run these before pushing. The first command executes Jest. The second checks the device-test TypeScript. Run your project’s configured lint, security, and coverage commands as well.
-
-</TabItem>
-<TabItem label="Optional Sauce run from your Mac">
-
-```bash
+6.5 Run on Sauce from your laptop (optional)
 export TEST_TARGET=sauce
+export SAUCE_USERNAME=$(scripts/vault-get.sh SAUCE_USERNAME)
+export SAUCE_ACCESS_KEY=$(scripts/vault-get.sh SAUCE_ACCESS_KEY)
+export TEST_PASSWORD=$(scripts/vault-get.sh TEST_PASSWORD)
+export SAUCE_APP_URI=storage:filename=<your-app>.apk
 npm run test:e2e
+Local emulator: leave TEST_TARGET unset and set APP_PATH to your built .apk/.app.
 ```
 
-Load authorized credentials through your approved local secret mechanism. First configure `SAUCE_APP_URI`, `SAUCE_REGION`, `PLATFORM_NAME`, and device selection through the approved environment. The uploaded binary must contain the intended feature and test fixture.
+## 7. DAILY DEVELOPER WORKFLOW
 
-</TabItem>
-</Tabs>
+```text
+================================================================================
+7. DAILY DEVELOPER WORKFLOW
+================================================================================
+1. git checkout -b feature/my-change
+2. code + tests in VS Code
+3. npm run pipeline:local          # same gates as CI, catches failures before push
+4. git push                       # Bitrise 'primary' runs (~2 minutes)
+5. open MR                        # Bitrise status shows on MR; merge blocked until green
+6. review + merge                 # Bitrise 'deploy-android' builds Release, runs on Sauce real device
+7. check Teams/email / Bitrise artifacts + JUnit + HTML report, Sauce video link
 
-Before opening a merge request, check the files being committed. Run the project’s existing local quality command if it defines one. The source calls it npm run pipeline:local.
+New team member on day one:
+git clone https://git.enterprise.com/<group>/<your-app>.git && cd <your-app>
+npm run bootstrap                 # installs deps, creates local vault, checks env
+# fill .vault/secrets.env from ERPM
+npm run pipeline:local
+```
 
-For the automatic path, push the feature and open a merge request. The source calls its gate primary and its device workflows deploy-android/deploy-ios. Use the actual workflow names and triggers configured in the approved shared template. Inspect the build status in GitLab and wait for all required checks before merging.
+## 8. VERIFY THE SETUP (SMOKE TESTS)
 
-**Expected result:** a Sauce job opens for the intended app build, platform, and device, and shows the chicken-order spec in its results.
+```text
+================================================================================
+8. VERIFY THE SETUP (SMOKE TESTS)
+================================================================================
+--------------------------------------------------------------------------------
+Test                  Do this                          Expected result
+--------------------------------------------------------------------------------
+A. Feature push       Push trivial change to           Only primary runs in Bitrise and goes green.
+                      feature/smoke-a                  deploy-android does not run.
 
-### iOS setup
+B. MR gate            Open MR from feature/smoke-a     Bitrise status appears on MR. Merge button is
+                                                       disabled while pipeline runs or if it fails.
 
-Have Platform Engineering bind the approved iOS certificate and provisioning profile to the shared workflow. Set `BITRISE_PROJECT_PATH`, `BITRISE_SCHEME`, and `BITRISE_DISTRIBUTION_METHOD`; the source defaults to `ad-hoc`. Enable the configured Sauce app request step after signing is ready. Run `deploy-ios` manually until the intended tests execute successfully, then configure its merge trigger. Keep signing files out of Git.
+C. Merge -> device    Merge the MR                     deploy-android runs. Log shows Release APK built,
+   run                                                 Sauce upload succeeded, Sauce job URL printed,
+                                                       e2e passed. Artifacts has JUnit + HTML report.
+                                                       Teams card / email sent.
 
-## 7. Configure optional notifications
+D. Direct push        git push origin main directly    GitLab rejects it (protected branch).
+   blocked
+--------------------------------------------------------------------------------
+All four green = your team is live.
+```
 
-### Email notifications
+## 9. TROUBLESHOOTING
 
-The supplied reference uses Bitrise's built-in email notifications. Have the Bitrise app owner open **Bitrise → App → Notifications → Email** and add the intended recipient addresses or team distribution list. This configuration uses the Bitrise console without adding an email script or SMTP secret to the application.
+```text
+================================================================================
+9. TROUBLESHOOTING
+================================================================================
+--------------------------------------------------------------------------------
+Symptom                                      Likely cause                              Fix
+--------------------------------------------------------------------------------
+Push doesn't start a Bitrise build           Webhook missing or pointing at wrong app  GitLab -> Settings -> Webhooks -> Test -> Push events; re-run npm run provision:apply
+Bitrise Permission denied (publickey) on clone SSH deploy key not on project           Re-add Bitrise SSH public key as GitLab deploy key
+Bitrise can't fetch internal steps           No read access to internal steps          Request access (A5)
+primary fails TEST_PASSWORD missing          Secret not exposed to PR builds           Bitrise Secret TEST_PASSWORD -> Expose for Pull Requests ON
+provision.sh: .provision.env is NOT gitignored .gitignore lacks entry                  Add .provision.env to .gitignore
+provision.sh cannot read project (401/403/404) Wrong project path, token scope, role   Use group/subgroup/repo; token scope api; Maintainer role
+provision.sh unexpected EOF matching quote   Value in .provision.env has quote/$       Wrap in single quotes
+Required approvals warning                   GitLab Free tier                          Enforce review by team policy
+App shows red error screen on Sauce          Debug build uploaded                      Keep VARIANT: Release
+JavascriptException native module not found  Native module not linked for RN arch      Remove or replace module (reference app removed react-native-config)
+Login rejected on device                     Build-time creds empty / wrong password   Check TEST_PASSWORD/DEMO_AUTH_USERNAME secrets & write-build-env.sh step log
+[build-env] TEST_PASSWORD is missing         Secret not set                            Add Bitrise Secret TEST_PASSWORD
+Cannot find module '@enterprise/rn-appium-framework' Package not installed or tag unreachable npm i the git tag; make sure Bitrise can read framework repo
+element '~accountBalance' still not displayed Login didn't complete / keyboard cover   Check Sauce video; confirm accessibility ID exists in Release build
+Sauce no device available                    Device pattern too narrow or pool busy    Widen SAUCE_DEVICE_ANDROID/_IOS
+Sauce auth 401                               Wrong region or credentials               Set SAUCE_REGION to data center; recheck secrets
+Sauce webhook posts nothing to Teams         Used Adaptive-Card template / flow off    Use custom flow with Parse JSON (Step 7); check run history
+security-scan fails buildEnv.ts real values  Generated creds committed                 git checkout -- src/config/buildEnv.ts (placeholder) & rotate password
+security-scan fails secret file tracked      .env / .vault/secrets.env tracked in git  git rm --cached <file> && git commit
+--------------------------------------------------------------------------------
+```
 
-After a controlled test build, check that the intended recipients receive the configured result notification and can open its build reference. Use the build's **Artifacts** tab for the published JUnit and HTML reports, and the Sauce job reference for device evidence. The supplied reference describes pass/fail and build-link notifications; it does not establish that report files are attached to the email.
+## 10. SECURITY RULES
 
-The `owner_email` field in the Sauce request is app ownership metadata. Configure notification recipients through the documented notification settings rather than assuming that field subscribes someone to build emails.
+```text
+================================================================================
+10. SECURITY RULES
+================================================================================
+* Never commit: .env, .vault/secrets.env, .provision.env, keystores, *.p12, provisioning profiles, or src/config/buildEnv.ts with real values (scripts/security-scan.sh checks before push).
+* Secrets live in Bitrise Secrets (CI) and ERPM (humans). Local copies stay in gitignored files.
+* API tokens used for provisioning get an expiry date and are revoked or deleted after setup.
+* TEST_PASSWORD is the only secret exposed to PR builds; Sauce keys are not.
+* Default branch is protected: no direct push, no force push; pipeline must pass.
+* npm audit runs in report-only mode inside security scan; review high/critical findings each release.
+* Teams Workflows URLs contain a sig= token: treat them as secrets. security-scan.sh fails the build if one is committed.
+* If any secret leaks: rotate it first, then clean up history.
+```
 
-**Attach screenshot — Bitrise email notification settings with recipient details hidden.**
+## 11. ROLLOUT PLAN FOR A NEW TEAM
 
-### Teams notifications
+```text
+================================================================================
+11. ROLLOUT PLAN FOR A NEW TEAM
+================================================================================
+--------------------------------------------------------------------------------
+Phase / Step   Activity                                             Owner        Done when
+--------------------------------------------------------------------------------
+Week 1         Request access A1-A7; ask Mobile Engineering         Tech lead    All granted
+               for framework tag (rn-appium-v1.1.0)
 
-The platform-owned workflow can send an Adaptive Card through Teams Workflows or use the approved email notification configuration. Have the channel owner supply the protected Workflows URL through the platform process. Confirm the target channel and inspect delivery after a controlled build.
+Week 1         Steps 1-2: copy files, personalize, add              1 developer  pipeline:local green
+               accessibility IDs to 1 critical flow (login)
 
-The source names scripts/notify-teams.sh as its implementation. Its CI invocation belongs to the platform-owned automation. A direct Sauce-to-Teams webhook is an optional additional integration. The source reports that integration as documented but unverified.
+Week 2         Steps 3-7: Bitrise app, tokens, provision:apply,     Tech lead    Step checks pass
+               Sauce pool, Teams/email
 
-## 8. Open the reports and verify setup
+Week 2         Step 8: smoke tests A-D                              Tech lead    All green
 
-1. Open the Bitrise build for the exact source commit.
-2. Read the build and upload steps and find the Sauce job reference.
-3. Open that job in Sauce Labs and check the allocated device and OS.
-4. Confirm the chicken-order assertion executed and passed.
-5. Open the available video or Appium log to inspect what the test did.
-6. Open Bitrise Artifacts and inspect the JUnit or HTML report.
+Week 3         Add tests for 2-3 more critical flows                Developers   Running on every merge
 
-For the sample fixture, the device test orders two portions and checks that the visible order ID is order-001. A production test must assert the ID returned by its approved isolated service contract.
+Week 3         Team walkthrough Section 7; everyone runs bootstrap  Tech lead    All devs onboarded
 
-Use the following exercises to verify the triggers and merge gate:
+Week 4         iOS signing + deploy-ios; expand device matrix       Team         iOS green on Sauce
+--------------------------------------------------------------------------------
+Metrics to track: % of MRs with a green gate before merge, real-device pass rate
+per release, time from push to result, bugs caught at MR vs after release.
+```
 
-| Exercise | Expected result |
-| --- | --- |
-| Push a small change to `feature/smoke-a`. | `primary` runs; the deploy workflow stays idle. |
-| Open a merge request. | The Bitrise status appears and merge remains blocked while the required check is pending or failed. |
-| Review and merge. | The configured deploy workflow builds, uploads, runs device tests, and publishes JUnit and HTML reports with a Sauce job link. Enabled notifications arrive. |
-| Validate default-branch push protection in an approved exercise. | A direct push is rejected by GitLab. |
+## 12. OWNERSHIP AND SUPPORT
 
-Confirm the app build, commit, platform, allocated device, executed assertions, and completed result. A green build with `RUN_SAUCE_E2E=false` represents a run with Sauce steps skipped. JUnit XML is a report format; its presence does not identify whether the suite used Jest, Appium, Espresso, or XCUITest. Check the suite name and recorded test count.
+```text
+================================================================================
+12. OWNERSHIP AND SUPPORT
+================================================================================
+--------------------------------------------------------------------------------
+Area                                              Contact
+--------------------------------------------------------------------------------
+This guide and reference implementation           Mobile Engineering — mobile-platform@enterprise.com
+Internal Bitrise steps (ACES-Mobile-Engineering/*) ACES Mobile Engineering
+Test framework (@enterprise/rn-appium-framework)  Mobile Engineering — releases via tags + CHANGELOG.md
+Bitrise workspace / seats                         Mobile Engineering Bitrise workspace owner
+Sauce Labs accounts / minutes                     Sauce Labs org admin
+Enterprise Git access / VPN                       Enterprise IT service desk
+Test-user credentials                             ERPM owner for your app
+--------------------------------------------------------------------------------
+Suggest changes to this guide via MR on the reference repo.
+```
 
-**Attach screenshot — merge-request status, completed Sauce job, and Bitrise JUnit/HTML artifacts for the same source revision.**
+## 13. APPENDIX: FILE MAP AND COMMANDS
 
-## 9. Investigate a failed step
+```text
+================================================================================
+13. APPENDIX: FILE MAP AND COMMANDS
+================================================================================
 
-| Symptom | Inspect |
-| --- | --- |
-| Push starts no build. | GitLab webhook URL and test event, then the provisioning result. |
-| Clone fails with `Permission denied (publickey)`. | Bitrise SSH public key and the GitLab deploy key. |
-| Internal step cannot be fetched. | Bitrise read access to the referenced step repository. |
-| Provisioning returns 401, 403, or 404. | Token validity, scope, project path, and role. |
-| Provisioning rejects the local env file. | Git ignore rules and valid Bash quoting. |
-| Framework package cannot be resolved. | Actual release tag, registry/repository access, and installed dependencies. |
-| App shows the Metro error screen. | Uploaded variant and bundled JavaScript in the Release test artifact. |
-| Native module is missing. | Linking and compatibility with the app's React Native architecture. |
-| Test account is rejected. | Matching fixture/backend account and build/test credential values. |
-| Element is missing. | Accessibility IDs, keyboard state, foreground app, and BasePage diagnostics. |
-| Sauce authentication returns 401. | Account region and protected credential bindings. |
-| No device is available. | Device pattern and account capacity. |
-| Teams posts no card. | Workflows URL, enabled flow, expected JSON schema, and workflow run history. |
-| Security check finds generated or tracked secrets. | Rotate exposed values, remove tracked secret files, and restore the empty build-config placeholder. |
+13.1 Files
+--------------------------------------------------------------------------------
+Path                                      Purpose
+--------------------------------------------------------------------------------
+bitrise.yml                               All CI workflows: primary (PR gate), deploy-android, deploy-ios, triggers, Teams notify
+saucelabs_request.yml / .ios.yml          Sauce app registration metadata (no secrets)
+scripts/provision/provision.sh            One-command provisioning orchestrator (dry-run default)
+scripts/provision/bitrise-setup.sh        Bitrise Secrets + webhook registration via API
+scripts/provision/gitlab-setup.sh         GitLab webhook, branch protection, merge gate via API
+scripts/bootstrap-dev.sh                  One-command developer onboarding
+scripts/run-pipeline-local.sh             Runs every CI gate locally
+scripts/security-scan.sh                  Secret hygiene + npm audit (report-only)
+scripts/notify-teams.sh                   Posts pass/fail Adaptive Card to Teams Workflows webhook (opt-in); npm run notify:test sends test card
+scripts/lint.sh                           Lint (skips if ESLint not installed)
+scripts/vault-get.sh                      Reads a secret from local vault or CI env
+scripts/write-build-env.sh                Writes src/config/buildEnv.ts from secrets at build time
+scripts/resolve-sauce-app.sh / .js        Finds the uploaded app's Sauce storage ID
+scripts/gen-report.js                     Builds the HTML test report from JUnit
+src/config/buildEnv.ts                    Build-time config placeholder (empty in git)
+tests/wdio.conf.ts                        WebdriverIO config (new projects: createConfig() from framework)
+tests/base/BaseDriver.ts                  Reference app only: its own Appium/Sauce capabilities. New projects use BaseDriver from package
+tests/pages/*.ts                          Page objects (new projects extend BasePage)
+@enterprise/rn-appium-framework           Installable test framework: BaseDriver, BasePage, createConfig, templates/
+TEAMS_DEMO_RUNBOOK.md                     Create Teams Workflows webhook, test it, demo script, email fallback
+tests/login/login.test.ts                 Example e2e test
+tests/conventions.md                      Test-writing rules (also fed to IDE AI)
+.provision.env.example                    Provisioning config template (real file gitignored)
+.vault/secrets.env.example                Local secret vault template (real file gitignored)
+PROVISIONING.md, PHASE1_SETUP_CHECKLIST.md Deeper reference docs
+LIVE_RUN_GUIDE.md, E2E_TESTING_LESSONS.md Deeper reference docs
+--------------------------------------------------------------------------------
 
-## 10. Understand the reported implementation status
+13.2 Commands
+--------------------------------------------------------------------------------
+Command                                         What it does
+--------------------------------------------------------------------------------
+npm run bootstrap                               Install deps, create local vault, check environment
+npm run pipeline:local                          Run lint, security, unit, e2e typecheck locally
+npm run test:unit                               Jest unit tests
+npm run test:e2e:verify                         Typecheck e2e tests (no device)
+npm run test:e2e                                Run e2e (local emulator or Sauce with TEST_TARGET=sauce)
+npm run security                                Secret hygiene + audit
+npm run provision                               Dry-run provisioning
+npm run provision:apply                         Apply provisioning
+npm run notify:test                             Send a test card to TEAMS_WEBHOOK_URL (from .provision.env)
+npm run notify:preview                          Print the Teams card JSON without sending
+./scripts/provision/provision.sh --apply --trigger-build Apply + start first deploy-android
+--------------------------------------------------------------------------------
 
-The supplied guide reports local pipeline checks passing. Framework v1.1.0 built and type-checked locally, with its Git tag/publication and device run pending. The reference app still used its older copied base/pages implementation, with migration to the package pending.
-
-Live provisioning and the full Bitrise/Sauce run were unconfirmed. Teams cards were tested against a local mock, and the direct Sauce-to-Teams webhook was documented without a live trial. Verify those results for your application before treating setup as complete.
-
-For the exact source, including all integration points, security rules, rollout, contacts, and file/command appendix, use the [Mobile Test Automation Reference](/mobile/cicd/mobile-test-automation-reference/). For writing the test itself, use the [Complete Chicken Order Example](/mobile/testing-quality/chicken-order-example/).
-
-
-
+Current status of the reference implementation:
+--------------------------------------------------------------------------------
+Item                                            State
+--------------------------------------------------------------------------------
+Pipeline code, provisioning scripts, local gates Complete; passing locally
+Teams notifications (Workflows Adaptive Card)   Complete; tested against local mock only — not yet against real Teams channel
+@enterprise/rn-appium-framework v1.1.0          Builds and type-checks locally; not yet tagged/pushed to Enterprise Git and not yet run on device
+Reference app tests                             Still use their own tests/base + tests/pages copy; migration to package is pending
+Provisioning --apply, real-device run e2e-v8    Not yet confirmed live on Bitrise/Sauce
+Sauce -> Teams direct webhook                   Documented only; not tried
+================================================================================
+```
 
