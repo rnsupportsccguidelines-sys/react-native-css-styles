@@ -1,659 +1,3620 @@
-Mobile Engineering Documentation Map
+---
+title: "Testing & Quality"
+description: "Set up mobile tests, run local checks, and understand how tests reach real devices through CI."
+sidebar:
+  label: Start Here
+  order: 1
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidViewer from "@components/MermaidViewer.astro";
+
+Use this section to set up testing in your mobile application and run your first tests. Follow the pages in order. The examples use **MyChickenapp** to check chicken ordering and sign-in success and failure.
 
-Find each documentation file by section and enter the responsible person in the Owner column.
+## Understand the journey
+
+You write test files in the application repository. Run the local checks from your IDE terminal, review the results, and push the change. Bitrise runs the configured checks. The device workflow builds the app and runs the selected tests on Sauce Labs phones.
 
-Portal entry (standalone)
+<MermaidViewer title="From your first test to a real-device result">
 
-Topic
+```mermaid
+flowchart TD
+    SETUP["Set up the test framework<br/>Choose your platform"]
+    WRITE["Write a test<br/>App code and test files"]
+    LOCAL["Run checks on your Mac<br/>Read and fix failures"]
+    REVIEW["Push and open a merge request<br/>Bitrise runs required checks"]
+    MERGE["Review and merge<br/>Configured device workflow starts"]
+    DEVICE["Sauce Labs phone<br/>Run the installed app and test"]
+    RESULT["Read the result<br/>Assertions, reports, and available video"]
+    SETUP --> WRITE --> LOCAL --> REVIEW --> MERGE --> DEVICE --> RESULT
+    classDef local fill:#172554,stroke:#93c5fd,color:#ffffff,stroke-width:2px;
+    classDef ci fill:#3b0764,stroke:#d8b4fe,color:#ffffff,stroke-width:2px;
+    classDef cloud fill:#064e3b,stroke:#6ee7b7,color:#ffffff,stroke-width:2px;
+    class SETUP,WRITE,LOCAL local;
+    class REVIEW,MERGE ci;
+    class DEVICE,RESULT cloud;
+```
 
-File
+</MermaidViewer>
 
-Description
+The supplied reference uses `primary` for feature-push and merge-request checks. Its `deploy-android` and `deploy-ios` workflows run configured device tests after a merge to the default branch. Check your approved shared template for the actual workflow names, enabled platforms, and triggers for your enrolled app.
 
-Owner
+## Before setup
 
-Welcome & Quick Start
+| Access or tool | Why you need it | Owner in the supplied reference |
+| --- | --- | --- |
+| Enterprise Git and VPN | Clone the framework and reference files, then push changes. Standalone provisioning requires project Maintainer access. | GitLab group owner and Enterprise IT. |
+| Bitrise workspace | Configure or inspect the app and build status. Standalone setup requires Admin or Owner API access. | Bitrise workspace owner. |
+| Sauce Labs organization | Run on available real devices with the account's device minutes. | Sauce Labs organization admin. |
+| Internal custom step repositories | Allow Bitrise to fetch app-create and upload step code. | Internal step owners. |
+| Dedicated test account in ERPM | Supply matching username and password to the app fixture or test backend. | App/backend and ERPM owners. |
+| Optional Teams channel or email list | Receive the build result. | Teams channel admin or notification owner. |
+| Node.js, npm, Git, Bash, curl, Python, and VS Code | Run the supplied local and provisioning scripts. | Your team and approved workstation setup. |
+| Android Studio or Xcode | Build or run native app targets locally. | Your workstation setup. |
 
-welcome-and-quick-start.mdx
+The supplied guide records Node 18 or 20 for its reference environment. Confirm the supported runtime for the available framework release. Use Copilot or ChatGPT through the approved enterprise setup when drafting tests.
 
-Get access, choose your onboarding track, set up your workstation, and prepare your first pull request on the Mobile Engineering Platform.
+## Choose your test
 
+| What you want to check | Example | Tool |
+| --- | --- | --- |
+| A function or rule | Reject an order with quantity zero. | React Native Jest, Android JUnit, or iOS XCTest. |
+| A component or state change | Show a sign-in error or update the Redux Toolkit order state. | The project's component and state test setup. |
+| A journey in the installed app | Enter credentials, tap Sign in, and verify the next screen. | React Native WebdriverIO and Appium, Android Espresso, or iOS XCUITest. |
 
-Portal Overview
+For the React Native device path, **WebdriverIO runs the test**, **Appium performs the taps and typing**, and **Sauce Labs provides the phone**. For native suites, Espresso or XCUITest performs the screen interactions through its configured device runner.
 
-Topic
+Start with the local tests for the feature you changed. Add the device journey required by your team's test strategy. A device test can cover several screens in one journey.
 
-File
+## Set up from scratch
 
-Description
+| Step | What you do | Where to follow it |
+| --- | --- | --- |
+| 1 | Run the app manually and inspect its existing test targets, dependencies, and package scripts. | Your application's development instructions. |
+| 2 | Obtain the approved framework release and support files. Configure the runner and place the test files. | [Write and Run Tests](/mobile/testing-quality/writing-tests/) |
+| 3 | Run your first local test and check its expected result. | [Write and Run Tests](/mobile/testing-quality/writing-tests/) |
+| 4 | Run quality checks and configure the team's production coverage requirement. | [Coverage and Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/) |
+| 5 | Follow the complete sign-in example with success and failure assertions. | [Complete Login Example](/mobile/testing-quality/login-device-test-example/) |
+| 6 | Use Copilot or ChatGPT to draft additional tests, then review and execute them. | [IDE-Assisted Test Generation](/mobile/testing-quality/ide-assisted-test-generation/) |
+| 7 | Configure the approved cloud integration and inspect the completed device run. | [CI/CD → Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/) |
 
-Owner
+For the supplied React Native framework, developers write **page objects** and **specs**. A page object groups screen actions such as entering a password. A spec calls those actions and asserts the result. The package provides reusable driver setup, Sauce wiring, keyboard handling, and crash diagnostics. Android Espresso and iOS XCUITest use the framework's copy-in templates.
 
-Mobile Engineering Portal
+## Know which files you maintain
 
-index.mdx
+| Location | Purpose |
+| --- | --- |
+| Application source and local test files | Feature implementation and unit, component, or state assertions. |
+| `tests/pages/` | React Native device-test screen actions extending the framework's `BasePage`. |
+| `tests/<feature>/` | Device specs selected by the WebdriverIO configuration. |
+| `tests/wdio.conf.ts` | Framework configuration selecting specs and the target. |
+| `tests/conventions.md` | Rules used by developers and approved IDE assistants. |
+| Approved shared Bitrise template | CI workflow YAML and platform-owned automation for governed apps. |
 
-Find onboarding, architecture, platform standards, delivery, testing, monitoring, and support documentation.
+The supplied standalone reference also includes app-owned CI files and direct provisioning scripts. Use that setup only where your application follows the standalone model. For enrolled applications, follow the approved shared-template process in CI/CD.
 
+## Run the configured commands
 
-Onboarding
+Open the app's `package.json` and inspect `scripts` before running a command. After adding the actual framework and support files, the supplied reference uses these commands from the app root:
 
-Topic
+<Tabs>
+<TabItem label="First setup">
 
-File
+```bash
+npm run bootstrap
+```
 
-Description
+The reference script installs dependencies, prepares the ignored local vault, and checks the environment. Fill the required test credentials through your approved secret store.
 
-Owner
+</TabItem>
+<TabItem label="Local quality checks">
 
-Start Here — Mobile Engineering
+```bash
+npm run pipeline:local
+```
 
-index.mdx
+Runs lint, the security check, Jest, and the E2E TypeScript check.
 
-Understand the mobile platform, choose your learning path, set up your Mac, and run your first application.
+</TabItem>
+<TabItem label="Jest tests">
 
+```bash
+npm run test:unit
+```
 
-Mobile Foundations for Web & Backend Engineers
+Executes the configured Jest unit and component tests.
 
-non-mobile-engineer-guide.mdx
+</TabItem>
+<TabItem label="Device-test type check">
 
-Learn the mobile concepts that affect your first feature before setting up and running an application.
+```bash
+npm run test:e2e:verify
+```
 
+Checks device-test TypeScript. Execute the configured device suite separately to check the installed app.
 
-Mobile Platform Overview
+</TabItem>
+</Tabs>
 
-platform-overview.mdx
+Read the first failing command's output, fix the reported cause, and rerun the affected check. When the local checks pass, commit the feature and reviewed tests together and inspect the merge-request build status.
 
-Learn the enterprise mobile tools, developer responsibilities, and the difference between local development, enrollment, builds, and delivery.
+## Read the evidence
 
+The team requires **100% coverage for the defined production scope and supported metrics**. The coverage page shows how to collect and inspect it. The supplied reference's local command list needs the coverage configuration described there to enforce this requirement.
 
-Machine Setup — macOS Apple Silicon
+For device tests, confirm that the intended assertions ran against the intended app build and platform. Open the available JUnit or HTML report and use the Sauce video or Appium log to investigate failures.
 
-machine-setup-guide/index.mdx
+**Attach screenshot — local test result and a completed device test report using synthetic test data.**
 
-Install and verify the tools needed to develop Android, iOS, or React Native applications on an Apple Silicon Mac.
+The [Mobile Test Automation Reference](/mobile/cicd/mobile-test-automation-reference/) preserves the complete supplied setup, access requirements, variables, provisioning steps, notifications, troubleshooting, and ownership. At the time of that guide, the v1.1.0 package built and type-checked locally. Its publication, reference-app migration, and full live device run were pending confirmation. Confirm the available release with Mobile Engineering before installing it.
 
+## Find each part of the setup guide
 
-First Local Run & Contribution
+| Reference section | Where to read it | What is covered |
+| --- | --- | --- |
+| 1. How it works | [Open the page](/mobile/testing-quality/) | Flow, trigger boundaries, roles of the test tools. |
+| 2. Access and accounts | [Open the page](/mobile/testing-quality/) | Access owners, local tools, and prerequisites. |
+| 3. Integration points | [Open the page](/mobile/cicd/mobile-test-automation-reference/) | All I1–I14 links and their configuration owners. |
+| 4. Secrets and configuration | [Open the page](/mobile/testing-quality/login-device-test-example/) | Credentials, local vault, runtime variables; provisioning bindings remain in the CI/CD reference. |
+| 5. Step-by-step setup | [Open the page](/mobile/testing-quality/writing-tests/) | Package installation, templates, support files, scripts, and local setup; standalone provisioning and notifications remain in CI/CD. |
+| 6. Writing tests | [Open the page](/mobile/testing-quality/writing-tests/) | Accessibility IDs, page objects, naming, assertions, waits, secrets, and fresh test state. |
+| 7. Daily developer workflow | [Open the page](/mobile/testing-quality/) | Local check, push, review, merge, and results; exact source commands in the CI/CD reference. |
+| 8. Setup smoke tests | [Open the page](/mobile/testing-quality/coverage-and-quality-gates/) | Link to the four reference exercises and expected outcomes in CI/CD. |
+| 9. Troubleshooting | [Open the page](/mobile/testing-quality/login-device-test-example/) | Login, locators, region, and device failures; complete integration troubleshooting remains in CI/CD. |
+| 10. Security rules | [Open the page](/mobile/testing-quality/coverage-and-quality-gates/) | Ignored files, credential rotation, audit mode, PR exposure, and branch protection. |
+| 11. Team rollout | [Open the page](/mobile/cicd/mobile-test-automation-reference/) | Week-by-week rollout plan and metrics. |
+| 12. Ownership and support | [Open the page](/mobile/cicd/mobile-test-automation-reference/) | Reference implementation, framework, steps, workspace, Sauce, Git, and ERPM contacts. |
+| 13. File map and commands | [Open the page](/mobile/cicd/mobile-test-automation-reference/) | All supplied file paths, command names, and implementation status. |
 
-first-local-run.mdx
+**Next — [Write and Run Tests](/mobile/testing-quality/writing-tests/).**
 
-Clone your assigned application, install locked dependencies, run it locally, and submit a focused first pull request.
 
 
-Architecture
+-------------
 
-Topic
+---
+title: "Write and Run Tests — Place a Chicken Order"
+description: "Test My Chicken App's sample order boundary, Redux Toolkit integration, and native device journey across three platform tabs."
+sidebar:
+  label: Write and Run Tests
+  order: 2
+---
 
-File
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidViewer from "@components/MermaidViewer.astro";
 
-Description
+Use **MyChickenapp** to practice testing a chicken order. Start by checking that a valid order returns a receipt and invalid input never reaches the order service. Then, if your team runs device tests, check the same journey in the installed app.
 
-Owner
+| Platform | Start with | Add when you need a device test |
+| --- | --- | --- |
+| Android | JUnit tests in the module's unit-test source set | Espresso in the instrumentation test source set |
+| iOS | XCTest in the unit-test target | XCUITest in the UI-test target |
+| React Native | Jest for the order logic and Redux Toolkit store | An Appium spec in your existing WebdriverIO test setup, or the native suite your team uses |
 
-Mobile Architecture Overview
+Choose your platform tab for the files and commands. If you're testing an existing feature, use its current implementation and inject a controlled order service. Use the sample service for the isolated exercise.
 
-index.mdx
+## Set up the supplied React Native framework
 
-Understand feature responsibilities, dependency direction, and safe order submission across Android, iOS, and React Native.
+Follow these steps from the app root when your project has no device-test setup. Ask Mobile Engineering for the framework repository and published release tag. The supplied guide records the tag and live device run as pending. Use the approved release and dependency versions available to your team.
 
+### Install the framework
 
-Mobile Architecture — Layers & Responsibilities
+Replace `<framework-group>` with your approved repository group before running the command. The URL is quoted so the placeholder is treated as text. These commands install development dependencies. Review the resulting package and lockfile changes with your project owner.
 
-mobile-architecture.mdx
+<Tabs>
+<TabItem label="Install dependencies">
 
-Understand presentation, domain, repository, data adapters, and application composition through the chicken-order feature on Android, iOS, and React Native.
+```bash
+npm i -D 'git+https://git.enterprise.com/<framework-group>/enterprise-mobile-test-framework.git#rn-appium-v1.1.0'
+# WebdriverIO peer dependencies:
+npm i -D @wdio/cli @wdio/local-runner @wdio/mocha-framework @wdio/sauce-service @wdio/spec-reporter @wdio/junit-reporter webdriverio appium
+```
 
+</TabItem>
+</Tabs>
 
-Network Resilience & Circuit Breakers
+### Copy the framework templates
 
-circuit-breaker-resilience.mdx
+| From the package | Into your app | Purpose |
+| --- | --- | --- |
+| `templates/wdio.conf.ts` | `tests/wdio.conf.ts` | Calls the package's `createConfig` and selects specs. |
+| `templates/pages/*.ts` | `tests/pages/` | Screen actions extending `BasePage`. |
+| `templates/specs/login.test.ts` | `tests/login/login.test.ts` | Starting device test. |
+| `templates/.env.example` | `.env` | Local configuration, ignored by Git. |
+| `conventions.md` | `tests/conventions.md` | Rules for developers and IDE assistants. |
 
-Handle chicken-order timeouts, cancellation, circuit rejection, and uncertain outcomes without creating duplicate orders.
+Use the reference project's `tests/tsconfig.json` for the E2E type-check script. Configure Jest to discover its own unit tests and WebdriverIO to discover the device specs. New projects use package helpers instead of copying the reference app's older `tests/base` implementation.
 
+### Obtain the matching support files
 
-Feature Flags — Control Chicken Ordering
+The reference app provides `scripts/`, including bootstrap, lint, security, vault, and local-pipeline scripts. It also provides `.vault/secrets.env.example`, ignored-file rules, and an empty `src/config/buildEnv.ts` placeholder. Obtain those actual files before adding commands that invoke them.
 
-feature-flags.mdx
+The reference app's complete script object is reproduced below. Merge the relevant entries into the existing `package.json`. Provisioning and notification entries require the standalone setup described in [CI/CD](/mobile/cicd/mobile-test-automation-reference/#5-step-by-step-setup). Governed apps use the approved shared template.
 
-Configure Unleash, persist permitted flag data, and safely evaluate chicken-ordering behavior across Android, iOS, and React Native.
+<Tabs>
+<TabItem label="package.json scripts">
 
+```json
+{
+"scripts": {
+  "test:unit": "jest",
+  "test:e2e": "wdio run tests/wdio.conf.ts",
+  "test:e2e:verify": "tsc --noEmit -p tests/tsconfig.json",
+  "lint": "bash scripts/lint.sh",
+  "security": "bash scripts/security-scan.sh",
+  "pipeline:local": "bash scripts/run-pipeline-local.sh",
+  "bootstrap": "bash scripts/bootstrap-dev.sh",
+  "provision": "bash scripts/provision/provision.sh",
+  "provision:apply": "bash scripts/provision/provision.sh --apply",
+  "notify:test": "bash scripts/notify-teams.sh --test",
+  "notify:preview": "bash scripts/notify-teams.sh --preview"
+}
+}
+```
 
-Branching & Pull Request Conventions
+</TabItem>
+</Tabs>
 
-branching-prs.mdx
+### Run the first checks
 
-Prepare focused application changes, submit reviewable pull requests, and integrate only with current checks and required approval.
+<Tabs>
+<TabItem label="Run setup checks">
 
+```bash
+npm run bootstrap
+npm run test:e2e:verify
+npm run pipeline:local
+```
 
-Platform & SDKs
+</TabItem>
+</Tabs>
 
-Topic
+Bootstrap prepares the project. Fill the ignored local vault from the approved secret store. A successful type check means the test code compiles. Execute the device suite after configuring the target in the Login example.
 
-File
+For Android Espresso and iOS XCUITest, obtain the framework's copy-in templates through `scripts/scaffold.sh`. Follow the native tabs below for test targets and local commands. The supplied guide does not provide scaffold arguments, so use the release's documented invocation.
 
-Description
+## 1. Use these explicit sample rules
 
-Owner
+These are **teaching assumptions**. Confirm the actual product rules before adapting them for production.
 
-Platform & SDKs Overview
+This test fixture adds pricing and availability to the chicken-order scenario. Its types and files are separate from the simpler MVVM demo in Platform & SDKs. Choose the example that matches your feature; do not copy both implementations into the same module or assume their tests are interchangeable.
 
-development-platforms-and-internal-sdks.mdx
+| Sample rule | Expected result |
+| :--- | :--- |
+| Item `chicken-grilled`, unit price 1250 minor units | Quantity 2 has a local quoted total of 2500 minor units. |
+| Quantity is an integer from 1 to 20 | Reject zero, negative, fractional (JS), or larger values before submission. |
+| Item unavailable or metadata invalid | No gateway submission. |
+| Order gateway returns `order-001` | Return that actual confirmation, not a fabricated success. |
+| Gateway fails or returns an empty order ID | No confirmed-order state. |
+| Second tap while one submission is pending | One gateway call through the retained feature instance. |
 
-Choose the platform guide, understand the feature layers, and follow the same chicken-order example on Android, iOS, and React Native.
+The local quote is for a single item and excludes tax, delivery, promotions, inventory revalidation, and payment. The real server remains authoritative. This page does not invent HTTP endpoints, payment APIs, or SDK methods.
 
+`requestId` represents a stable identity for one intended order attempt. The actual service must define idempotency and reconciliation. The local in-flight guard does **not** prevent duplicates across restarts, devices, new instances, or unknown-outcome retries. Preserve the request identity and reconcile uncertain submissions before repeating a write.
 
-Android Standards — MVVM Chicken Order
+<MermaidViewer title="Chicken order behavior and the evidence each test supplies">
 
-native-android-standards.mdx
+```mermaid
+flowchart TD
+    A["Select chicken and quantity"] --> B["Validate item and calculate local quote"]
+    B -->|Invalid or unavailable| C["Show validation failure; no submission"]
+    B -->|Valid| D{"Submission already pending?"}
+    D -->|Yes| E["Reject repeated submission"]
+    D -->|No| F["Send one request through injected gateway"]
+    F -->|Valid receipt| G["Show actual order confirmation"]
+    F -->|Failure or invalid receipt| H["No confirmation; classify and reconcile outcome"]
+    classDef source fill:#172554,stroke:#93c5fd,color:#fff,stroke-width:2px;
+    classDef work fill:#4c1d95,stroke:#d8b4fe,color:#fff,stroke-width:2px;
+    classDef done fill:#064e3b,stroke:#6ee7b7,color:#fff,stroke-width:2px;
+    classDef stop fill:#881337,stroke:#fda4af,color:#fff,stroke-width:2px;
+    class A,B,D source;
+    class F work;
+    class G done;
+    class C,E,H stop;
+```
 
-Understand the Android stack, then implement a complete Compose chicken-order demo with ViewModel, StateFlow, use case, repository, and injected API.
+</MermaidViewer>
 
+## React Native Appium authoring
 
-iOS Standards — MVVM Chicken Order
+Follow the supplied rules when adding a device test:
 
-native-ios-standards.mdx
+| Rule | What to write |
+| --- | --- |
+| Locators | Accessibility IDs such as `~username`, `~loginButton`, and `~accountBalance`. |
+| Structure | Specs call page objects. Put element lookup and screen actions in the page object. |
+| Names | `describe('<Feature>')` and `it('<user> <action> and <expected outcome>')`. |
+| Assertions | At least one `expect(...).toBeDisplayed()` for the visible outcome. |
+| Waiting | Use condition-based waits in page objects. |
+| Credentials | Read the test credentials from `process.env`. |
+| Independence | Start each test from app launch with a known initial state. |
 
-Understand SwiftUI and MVVM, then implement a chicken-order demo with observable state, Swift concurrency, use cases, repositories, and an injected API.
+Give every tested control a stable accessibility ID. These are the reference identifiers; use those that match the app you installed.
 
+<Tabs>
+<TabItem label="React Native accessibility IDs">
 
-React Native Standards — MVVM Chicken Order
+```jsx
+<TextInput accessibilityLabel="username" testID="username" />
+<Pressable accessibilityLabel="loginButton" testID="loginButton" />
+<Text accessibilityLabel="accountBalance" testID="accountBalance">{balance}</Text>
+```
 
-react-native-standards.mdx
+</TabItem>
+<TabItem label="Android accessibility ID">
 
-Understand React Native and Redux Toolkit responsibilities, then implement a complete chicken-order demo with typed state, use cases, repositories, and injected data access.
+```xml
+android:contentDescription="loginButton"
+```
 
+Set this attribute on the relevant view. The native code tabs below use their own documented chicken-order identifiers.
 
-App Foundations — Shared Capabilities
+</TabItem>
+<TabItem label="iOS accessibility ID">
 
-enterprise-app-foundations.mdx
+```swift
+loginButton.accessibilityIdentifier = "loginButton"
+```
 
-Shared mobile foundations for semantic design tokens, credential security, localization, push routing, controlled branding, and recoverable account-data cleanup across Android, iOS, and React Native.
+Set the identifier on the actual control in your screen.
 
+</TabItem>
+</Tabs>
 
-Master SDK Catalog
 
-master-sdk-catalog.mdx
+Use your existing device-test setup. The supplied framework design places the runner configuration in `tests/wdio.conf.ts`, screen actions in `tests/pages/`, and specs under `tests/<feature>/`. A spec such as `tests/login/login.test.ts` runs through WebdriverIO when its `specs` configuration selects it. Keep Jest discovery scoped to its own tests. The reference uses the `*.test.ts` suffix for a device spec. WebdriverIO selects it by path, so reuse the directory and naming convention your runner already discovers.
 
-Shared mobile SDK catalog.
+1. Give the controls stable accessibility identifiers and verify them on the target platform. Use accessibility-ID selectors for this framework.
+2. Add or extend a page object for actions such as entering credentials and tapping Sign in.
+3. In the spec, call the page object and assert a visible result such as the order confirmation. Keep selectors and condition-based waits in the page object. Start each test from a known app state and read any test credentials from the configured environment.
+4. In the reference repository, run `npm run test:e2e:verify` and `npm run pipeline:local` before pushing.
 
+The package supplies driver setup, Sauce configuration, keyboard handling, and crash diagnostics. The guide reports that v1.1.0 builds and type-checks locally, with its Git tag, migration, and device run pending. Use the approved setup available to your project. The Android Espresso and iOS XCUITest framework examples use copy-in templates. For a complete walkthrough of screen actions and assertions, see the [Complete Login Example](/mobile/testing-quality/login-device-test-example/).
 
-Chicken Order — MVVM Reference for All Platforms
+## 2. Copy the implementation and tests for your platform
 
-chicken-order-mvvm-reference.mdx
+Follow this order within your platform tab:
 
-Copyable Android, iOS, and React Native demo features with views, state owners, use cases, repositories, and injected API adapters.
+1. Add the sample service only if you are using this isolated learning fixture. For an existing feature, test its real use case through controlled dependencies.
+2. Add unit tests to the unit-test target and run them.
+3. Connect the screen to the approved fixture and expose the identifiers in section 3.
+4. If your team runs device tests, add the UI test and run it on your configured test target.
+5. For a Sauce Labs run, follow the CI/CD guide in section 5.
 
+Retain one service instance for the active order flow. The service blocks overlapping calls only; the feature's state owner must also prevent replay after an unknown result. Currency formatting belongs to the app's approved money/locale model.
 
-Push Notifications & Deep Linking
+<Tabs>
+<TabItem label="Android">
 
-Topic
+### Files
 
-File
+```text
+app/src/main/java/com/example/mychicken/order/PlaceChickenOrder.kt
+app/src/test/java/com/example/mychicken/order/PlaceChickenOrderTest.kt
+app/src/androidTest/java/com/example/mychicken/order/PlaceChickenOrderUiTest.kt
+```
 
-Description
+Use the existing approved JUnit 4 and `kotlinx-coroutines-test` dependencies. The UI target needs the project's AndroidJUnitRunner/Espresso configuration. Do not add guessed version-catalog aliases or upgrade the app's toolchain to match an example.
 
-Owner
+### `PlaceChickenOrder.kt` — sample application code
 
-Push Notifications & Deep Linking — Start Here
+```kotlin
+package com.example.mychicken.order
+
+import java.util.concurrent.atomic.AtomicBoolean
+
+data class ChickenItem(val id: String, val unitPriceMinor: Long, val available: Boolean)
+data class OrderRequest(val requestId: String, val itemId: String, val quantity: Int)
+data class OrderReceipt(val orderId: String)
+interface OrderGateway { suspend fun place(request: OrderRequest): OrderReceipt }
+class OrderFailure(val reason: String) : IllegalArgumentException(reason)
+
+fun quote(item: ChickenItem, quantity: Int): Long {
+    if (item.id.isBlank()) throw OrderFailure("invalid-item")
+    if (!item.available) throw OrderFailure("unavailable")
+    if (quantity !in 1..20) throw OrderFailure("invalid-quantity")
+    if (item.unitPriceMinor <= 0) throw OrderFailure("invalid-price")
+    if (item.unitPriceMinor > Long.MAX_VALUE / quantity) throw OrderFailure("invalid-total")
+    return item.unitPriceMinor * quantity
+}
+
+// Retain one instance for the active order flow, not one per tap.
+class PlaceChickenOrder(private val gateway: OrderGateway) {
+    private val submitting = AtomicBoolean(false)
+
+    suspend fun place(item: ChickenItem, quantity: Int, requestId: String): OrderReceipt {
+        quote(item, quantity)
+        if (requestId.isBlank()) throw OrderFailure("invalid-request-id")
+        if (!submitting.compareAndSet(false, true)) throw OrderFailure("already-submitting")
+        try {
+            val receipt = gateway.place(OrderRequest(requestId, item.id, quantity))
+            if (receipt.orderId.isBlank()) throw OrderFailure("invalid-receipt")
+            return receipt
+        } finally {
+            submitting.set(false)
+        }
+    }
+}
+```
+
+### `PlaceChickenOrderTest.kt` — deterministic JVM tests
+
+```kotlin
+package com.example.mychicken.order
+
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.*
+import org.junit.Test
+
+class PlaceChickenOrderTest {
+    private val item = ChickenItem("chicken-grilled", 1250, true)
+    private class FakeGateway : OrderGateway {
+        val calls = mutableListOf<OrderRequest>()
+        var reply: suspend () -> OrderReceipt = { OrderReceipt("order-001") }
+        override suspend fun place(request: OrderRequest): OrderReceipt {
+            calls += request
+            return reply()
+        }
+    }
+
+    @Test fun calculatesTotalAndAcceptedQuantityBoundaries() {
+        assertEquals(1250L, quote(item, 1))
+        assertEquals(2500L, quote(item, 2))
+        assertEquals(25000L, quote(item, 20))
+    }
+
+    @Test fun invalidInputsNeverSubmit() = runTest {
+        val gateway = FakeGateway()
+        val service = PlaceChickenOrder(gateway)
+        val cases = listOf(
+            Triple(item, 0, "request-001") to "invalid-quantity",
+            Triple(item, -1, "request-001") to "invalid-quantity",
+            Triple(item, 21, "request-001") to "invalid-quantity",
+            Triple(item.copy(available = false), 1, "request-001") to "unavailable",
+            Triple(item.copy(id = " "), 1, "request-001") to "invalid-item",
+            Triple(item.copy(unitPriceMinor = 0), 1, "request-001") to "invalid-price",
+            Triple(item.copy(unitPriceMinor = Long.MAX_VALUE), 2, "request-001") to "invalid-total",
+            Triple(item, 1, " ") to "invalid-request-id"
+        )
+        for ((input, expected) in cases) {
+            val (selected, quantity, id) = input
+            val error = runCatching { service.place(selected, quantity, id) }.exceptionOrNull()
+            assertEquals(expected, (error as? OrderFailure)?.reason)
+        }
+        assertTrue(gateway.calls.isEmpty())
+    }
+
+    @Test fun returnsActualConfirmationAndForwardsIdentity() = runTest {
+        val gateway = FakeGateway()
+        val result = PlaceChickenOrder(gateway).place(item, 2, "request-001")
+        assertEquals(OrderReceipt("order-001"), result)
+        assertEquals(listOf(OrderRequest("request-001", item.id, 2)), gateway.calls)
+    }
+
+    @Test fun propagatesServiceFailure() = runTest {
+        val gateway = FakeGateway()
+        val expected = IllegalStateException("service-unavailable")
+        gateway.reply = { throw expected }
+        val error = runCatching {
+            PlaceChickenOrder(gateway).place(item, 1, "request-001")
+        }.exceptionOrNull()
+        assertSame(expected, error)
+    }
+
+    @Test fun rejectsEmptyConfirmation() = runTest {
+        val gateway = FakeGateway()
+        gateway.reply = { OrderReceipt(" ") }
+        val error = runCatching {
+            PlaceChickenOrder(gateway).place(item, 1, "request-001")
+        }.exceptionOrNull()
+        assertEquals("invalid-receipt", (error as? OrderFailure)?.reason)
+    }
+
+    @Test fun repeatedTapMakesOneSubmission() = runTest {
+        val gateway = FakeGateway()
+        val pending = CompletableDeferred<OrderReceipt>()
+        gateway.reply = { pending.await() }
+        val service = PlaceChickenOrder(gateway)
+        val first = async(start = CoroutineStart.UNDISPATCHED) {
+            service.place(item, 1, "request-001")
+        }
+        val secondError = runCatching {
+            service.place(item, 1, "request-001")
+        }.exceptionOrNull()
+        assertEquals("already-submitting", (secondError as? OrderFailure)?.reason)
+        assertEquals(1, gateway.calls.size)
+        pending.complete(OrderReceipt("order-001"))
+        assertEquals(OrderReceipt("order-001"), first.await())
+    }
+}
+```
+
+### `PlaceChickenOrderUiTest.kt` — actual app UI integration example
+
+This requires the UI controls/isolated fixture specified below. It is not a complete app UI implementation. For asynchronous order submission, the application's approved Espresso idling resource must keep the app synchronized until confirmation; arbitrary sleeps are not a substitute.
+
+```kotlin
+package com.example.mychicken.order
+
+import androidx.test.ext.junit.rules.ActivityScenarioRule
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.*
+import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.matcher.ViewMatchers.*
+import com.example.mychicken.MainActivity // Replace with the real Activity.
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class PlaceChickenOrderUiTest {
+    @get:Rule val activity = ActivityScenarioRule(MainActivity::class.java)
+
+    @Test fun placesChickenOrderAndShowsConfirmation() {
+        onView(withContentDescription("chicken.item.grilled")).perform(click())
+        onView(withContentDescription("chicken.quantity")).perform(replaceText("2"), closeSoftKeyboard())
+        onView(withContentDescription("chicken.total")).check(matches(withText("25.00")))
+        onView(withContentDescription("chicken.place-order")).perform(click())
+        onView(withContentDescription("chicken.confirmation")).check(matches(isDisplayed()))
+        onView(withContentDescription("chicken.order-id")).check(matches(withText("order-001")))
+    }
+}
+```
+
+For Compose-only screens, use the project's Compose semantics/test APIs instead of assuming View matchers can find Compose tags.
+
+### Run
+
+From the directory containing `gradlew`, replace module/variant names where needed:
+
+```bash
+./gradlew :app:testDebugUnitTest --tests 'com.example.mychicken.order.PlaceChickenOrderTest'
+```
+
+With the intended authorized emulator/device available, run the configured UI suite:
+
+```bash
+./gradlew :app:connectedDebugAndroidTest
+```
+
+**Expected:** unit cases exercise the fake only; the device case verifies the actual UI with its approved fixture. A compiled APK alone is not a completed test suite.
+
+</TabItem>
+<TabItem label="iOS">
+
+### Files
+
+```text
+MyChickenApp/Order/PlaceChickenOrder.swift
+MyChickenAppTests/PlaceChickenOrderTests.swift
+MyChickenAppUITests/PlaceChickenOrderUITests.swift
+```
+
+Add the first file to the application target, the second to the unit-test target, and the third to the UI-test target. Replace `@testable import MyChickenApp` with the actual product module. Keep the existing XCTest/concurrency/toolchain configuration.
+
+### `PlaceChickenOrder.swift` — sample application code
+
+```swift
+import Foundation
+
+struct ChickenItem: Sendable {
+    let id: String
+    let unitPriceMinor: Int64
+    let available: Bool
+}
+struct OrderRequest: Sendable, Equatable {
+    let requestId: String
+    let itemId: String
+    let quantity: Int
+}
+struct OrderReceipt: Sendable, Equatable { let orderId: String }
+protocol OrderGateway: Sendable {
+    func place(_ request: OrderRequest) async throws -> OrderReceipt
+}
+enum OrderFailure: Error, Equatable {
+    case invalidItem, unavailable, invalidQuantity, invalidPrice, invalidTotal
+    case invalidRequestId, alreadySubmitting, invalidReceipt
+}
+
+func quote(_ item: ChickenItem, quantity: Int) throws -> Int64 {
+    if item.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        throw OrderFailure.invalidItem
+    }
+    guard item.available else { throw OrderFailure.unavailable }
+    guard (1...20).contains(quantity) else { throw OrderFailure.invalidQuantity }
+    guard item.unitPriceMinor > 0 else { throw OrderFailure.invalidPrice }
+    let (total, overflow) = item.unitPriceMinor.multipliedReportingOverflow(by: Int64(quantity))
+    guard !overflow else { throw OrderFailure.invalidTotal }
+    return total
+}
+
+// Retain one instance for the active order flow, not one per tap.
+actor PlaceChickenOrder {
+    private let gateway: any OrderGateway
+    private var submitting = false
+    init(gateway: any OrderGateway) { self.gateway = gateway }
+
+    func place(_ item: ChickenItem, quantity: Int,
+               requestId: String) async throws -> OrderReceipt {
+        _ = try quote(item, quantity: quantity)
+        guard !requestId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw OrderFailure.invalidRequestId
+        }
+        guard !submitting else { throw OrderFailure.alreadySubmitting }
+        submitting = true
+        defer { submitting = false }
+        let receipt = try await gateway.place(OrderRequest(
+            requestId: requestId, itemId: item.id, quantity: quantity))
+        guard !receipt.orderId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw OrderFailure.invalidReceipt
+        }
+        return receipt
+    }
+}
+```
+
+### `PlaceChickenOrderTests.swift` — deterministic async tests
+
+The fake actor provides an explicit start/finish gate for the concurrent-submission test; no timing sleeps are used.
+
+```swift
+import XCTest
+@testable import MyChickenApp // Replace with the actual product module.
+
+private actor FakeOrderGateway: OrderGateway {
+    enum Mode: Sendable { case success, failure, empty, suspended }
+    enum ServiceFailure: Error { case unavailable }
+    private(set) var calls: [OrderRequest] = []
+    private let mode: Mode
+    private var pending: CheckedContinuation<OrderReceipt, any Error>?
+    private var startedWaiters: [CheckedContinuation<Void, Never>] = []
+    init(_ mode: Mode = .success) { self.mode = mode }
+
+    func place(_ request: OrderRequest) async throws -> OrderReceipt {
+        calls.append(request)
+        switch mode {
+        case .success: return OrderReceipt(orderId: "order-001")
+        case .failure: throw ServiceFailure.unavailable
+        case .empty: return OrderReceipt(orderId: " ")
+        case .suspended:
+            return try await withCheckedThrowingContinuation { continuation in
+                pending = continuation
+                startedWaiters.forEach { $0.resume() }
+                startedWaiters.removeAll()
+            }
+        }
+    }
+    func waitUntilStarted() async {
+        if pending != nil { return }
+        await withCheckedContinuation { startedWaiters.append($0) }
+    }
+    func finish() {
+        pending?.resume(returning: OrderReceipt(orderId: "order-001"))
+        pending = nil
+    }
+}
+
+@MainActor
+final class PlaceChickenOrderTests: XCTestCase {
+    private let item = ChickenItem(id: "chicken-grilled", unitPriceMinor: 1250, available: true)
+
+    func testCalculatesTotal() throws {
+        XCTAssertEqual(try quote(item, quantity: 1), 1250)
+        XCTAssertEqual(try quote(item, quantity: 2), 2500)
+        XCTAssertEqual(try quote(item, quantity: 20), 25000)
+    }
+
+    func testInvalidInputsNeverSubmit() async {
+        let gateway = FakeOrderGateway()
+        let service = PlaceChickenOrder(gateway: gateway)
+        let cases: [(ChickenItem, Int, String, OrderFailure)] = [
+            (item, 0, "request-001", .invalidQuantity),
+            (item, -1, "request-001", .invalidQuantity),
+            (item, 21, "request-001", .invalidQuantity),
+            (ChickenItem(id: item.id, unitPriceMinor: 1250, available: false), 1, "request-001", .unavailable),
+            (ChickenItem(id: " ", unitPriceMinor: 1250, available: true), 1, "request-001", .invalidItem),
+            (ChickenItem(id: item.id, unitPriceMinor: 0, available: true), 1, "request-001", .invalidPrice),
+            (ChickenItem(id: item.id, unitPriceMinor: Int64.max, available: true), 2, "request-001", .invalidTotal),
+            (item, 1, " ", .invalidRequestId)
+        ]
+        for (selected, quantity, id, expected) in cases {
+            do {
+                _ = try await service.place(selected, quantity: quantity, requestId: id)
+                XCTFail("Expected validation failure")
+            } catch { XCTAssertEqual(error as? OrderFailure, expected) }
+        }
+        let calls = await gateway.calls
+        XCTAssertTrue(calls.isEmpty)
+    }
+
+    func testReturnsActualConfirmationAndForwardsIdentity() async throws {
+        let gateway = FakeOrderGateway()
+        let result = try await PlaceChickenOrder(gateway: gateway)
+            .place(item, quantity: 2, requestId: "request-001")
+        XCTAssertEqual(result, OrderReceipt(orderId: "order-001"))
+        let calls = await gateway.calls
+        XCTAssertEqual(calls, [OrderRequest(requestId: "request-001", itemId: item.id, quantity: 2)])
+    }
+
+    func testServiceFailureDoesNotBecomeConfirmation() async {
+        let service = PlaceChickenOrder(gateway: FakeOrderGateway(.failure))
+        do {
+            _ = try await service.place(item, quantity: 1, requestId: "request-001")
+            XCTFail("Expected service failure")
+        } catch {
+            XCTAssertTrue(error is FakeOrderGateway.ServiceFailure)
+        }
+    }
+
+    func testEmptyConfirmationIsRejected() async {
+        let service = PlaceChickenOrder(gateway: FakeOrderGateway(.empty))
+        do {
+            _ = try await service.place(item, quantity: 1, requestId: "request-001")
+            XCTFail("Expected receipt failure")
+        } catch { XCTAssertEqual(error as? OrderFailure, .invalidReceipt) }
+    }
+
+    func testRepeatedTapMakesOneSubmission() async throws {
+        let gateway = FakeOrderGateway(.suspended)
+        let service = PlaceChickenOrder(gateway: gateway)
+        let first = Task { try await service.place(item, quantity: 1, requestId: "request-001") }
+        await gateway.waitUntilStarted()
+        do {
+            _ = try await service.place(item, quantity: 1, requestId: "request-001")
+            XCTFail("Expected in-flight guard")
+        } catch { XCTAssertEqual(error as? OrderFailure, .alreadySubmitting) }
+        let calls = await gateway.calls
+        XCTAssertEqual(calls.count, 1)
+        await gateway.finish()
+        let result = try await first.value
+        XCTAssertEqual(result, OrderReceipt(orderId: "order-001"))
+    }
+}
+```
+
+### `PlaceChickenOrderUITests.swift` — actual app UI integration example
+
+The approved test target must launch against the isolated fixture and expose the identifiers below. Do not invent an unsupported launch argument to switch environments.
+
+```swift
+import XCTest
+
+final class PlaceChickenOrderUITests: XCTestCase {
+    func testPlacesChickenOrderAndShowsConfirmation() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        // The approved test target/environment must already use the isolated fixture.
+        app.launch()
+        let item = app.buttons["chicken.item.grilled"]
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        XCTAssertTrue(item.isHittable)
+        item.tap()
+        let quantity = app.textFields["chicken.quantity"]
+        XCTAssertTrue(quantity.waitForExistence(timeout: 5))
+        XCTAssertTrue(quantity.isHittable)
+        quantity.tap()
+        // Fixture starts empty; adapt clearing to the real control if prefilled.
+        quantity.typeText("2")
+        let total = app.staticTexts["chicken.total"]
+        let correctTotal = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND label == %@", "25.00"),
+            object: total)
+        XCTAssertEqual(XCTWaiter.wait(for: [correctTotal], timeout: 5), .completed)
+        let submit = app.buttons["chicken.place-order"]
+        XCTAssertTrue(submit.waitForExistence(timeout: 5))
+        XCTAssertTrue(submit.isHittable && submit.isEnabled)
+        submit.tap()
+        let confirmation = app.otherElements["chicken.confirmation"]
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        let orderId = app.staticTexts["chicken.order-id"]
+        let correctReceipt = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND label == %@", "order-001"),
+            object: orderId)
+        XCTAssertEqual(XCTWaiter.wait(for: [correctReceipt], timeout: 5), .completed)
+    }
+}
+```
+
+### Run
+
+Replace the workspace, shared test-enabled scheme, and available Simulator ID. Save/run this block as Bash from the application root:
+
+```bash
+set -euo pipefail
+
+MOBILE_IOS_WORKSPACE='REPLACE_WITH_ACTUAL_WORKSPACE.xcworkspace'
+MOBILE_IOS_SCHEME='REPLACE_WITH_SHARED_TEST_SCHEME'
+MOBILE_SIMULATOR_UDID='REPLACE_WITH_AVAILABLE_SIMULATOR_ID'
+
+xcodebuild test \
+  -workspace "$MOBILE_IOS_WORKSPACE" \
+  -scheme "$MOBILE_IOS_SCHEME" \
+  -destination "platform=iOS Simulator,id=$MOBILE_SIMULATOR_UDID" \
+  -enableCodeCoverage YES
+```
+
+Use `-project` for a project-only configuration. The scheme determines which test targets run. Confirm the intended unit/UI suites are included; this command does not prove Sauce Labs real-device execution.
+
+</TabItem>
+<TabItem label="React Native">
+
+### Files
+
+```text
+src/features/order/place-order.ts
+src/features/order/place-order.test.ts
+src/features/order/order-store.ts
+src/features/order/order-store.test.ts
+android/app/src/androidTest/java/com/example/mychicken/order/PlaceChickenOrderUiTest.kt
+```
+
+JavaScript/TypeScript tests use the existing Jest configuration. Redux tests use a fresh real **Redux Toolkit** store. Native Android device testing retains the team's JUnit instrumentation path; JUnit XML is only a report format and does not replace Jest execution.
+
+### `place-order.ts` — sample application code
+
+```typescript
+export type ChickenItem = Readonly<{
+  id: string;
+  unitPriceMinor: number;
+  available: boolean;
+}>;
+export type OrderRequest = Readonly<{
+  requestId: string;
+  itemId: string;
+  quantity: number;
+}>;
+export type OrderReceipt = Readonly<{ orderId: string }>;
+export interface OrderGateway {
+  place(request: OrderRequest): Promise<OrderReceipt>;
+}
+export class OrderError extends Error {}
+
+export function quote(item: ChickenItem, quantity: number): number {
+  if (!item.id.trim()) throw new OrderError('invalid-item');
+  if (!item.available) throw new OrderError('unavailable');
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
+    throw new OrderError('invalid-quantity');
+  }
+  if (!Number.isSafeInteger(item.unitPriceMinor) || item.unitPriceMinor <= 0) {
+    throw new OrderError('invalid-price');
+  }
+  const total = item.unitPriceMinor * quantity;
+  if (!Number.isSafeInteger(total)) throw new OrderError('invalid-total');
+  return total;
+}
+
+// Keep one instance per active order flow; recreating it per tap loses the guard.
+export class PlaceChickenOrder {
+  private submitting = false;
+  constructor(private readonly gateway: OrderGateway) {}
+
+  async place(item: ChickenItem, quantity: number,
+              requestId: string): Promise<OrderReceipt> {
+    quote(item, quantity);
+    if (!requestId.trim()) throw new OrderError('invalid-request-id');
+    if (this.submitting) throw new OrderError('already-submitting');
+    this.submitting = true;
+    try {
+      const receipt = await this.gateway.place({
+        requestId, itemId: item.id, quantity,
+      });
+      if (!receipt.orderId.trim()) throw new OrderError('invalid-receipt');
+      return receipt;
+    } finally {
+      this.submitting = false;
+    }
+  }
+}
+```
+
+### `place-order.test.ts` — deterministic unit tests
+
+```typescript
+import { ChickenItem, OrderGateway, OrderReceipt, OrderRequest,
+  PlaceChickenOrder, quote } from './place-order';
+
+const item: ChickenItem = { id: 'chicken-grilled', unitPriceMinor: 1250, available: true };
+
+function fixture(reply: (request: OrderRequest) => Promise<OrderReceipt> =
+  async () => ({ orderId: 'order-001' })) {
+  const calls: OrderRequest[] = [];
+  const gateway: OrderGateway = {
+    place: async request => { calls.push(request); return reply(request); },
+  };
+  return { service: new PlaceChickenOrder(gateway), calls };
+}
+
+test('two portions have the exact displayed minor-unit total', () => {
+  expect(quote(item, 1)).toBe(1250);
+  expect(quote(item, 2)).toBe(2500);
+  expect(quote(item, 20)).toBe(25000);
+});
+
+test.each([0, -1, 21, 1.5, Number.NaN, Number.POSITIVE_INFINITY])('rejects invalid quantity %s before submission', async quantity => {
+  const { service, calls } = fixture();
+  await expect(service.place(item, quantity, 'request-001')).rejects.toThrow('invalid-quantity');
+  expect(calls).toHaveLength(0);
+});
+
+test('unavailable item is not submitted', async () => {
+  const { service, calls } = fixture();
+  await expect(service.place({ ...item, available: false }, 1, 'request-001'))
+    .rejects.toThrow('unavailable');
+  expect(calls).toHaveLength(0);
+});
+
+test.each([
+  [{ ...item, id: ' ' }, 'request-001', 'invalid-item'],
+  [{ ...item, unitPriceMinor: 0 }, 'request-001', 'invalid-price'],
+  [item, ' ', 'invalid-request-id'],
+] as const)('rejects invalid metadata without submission', async (selected, id, error) => {
+  const { service, calls } = fixture();
+  await expect(service.place(selected, 1, id)).rejects.toThrow(error);
+  expect(calls).toHaveLength(0);
+});
+
+test('unsafe total is rejected', () => {
+  expect(() => quote({ ...item, unitPriceMinor: Number.MAX_SAFE_INTEGER }, 2))
+    .toThrow('invalid-total');
+});
+
+test('returns the actual order confirmation and forwards request identity', async () => {
+  const { service, calls } = fixture();
+  await expect(service.place(item, 2, 'request-001')).resolves.toEqual({ orderId: 'order-001' });
+  expect(calls).toEqual([{ requestId: 'request-001', itemId: item.id, quantity: 2 }]);
+});
+
+test('service error is preserved and no confirmation is fabricated', async () => {
+  const failure = new Error('service-unavailable');
+  const { service } = fixture(async () => { throw failure; });
+  await expect(service.place(item, 1, 'request-001')).rejects.toBe(failure);
+});
+
+test('empty confirmation is rejected', async () => {
+  const { service } = fixture(async () => ({ orderId: ' ' }));
+  await expect(service.place(item, 1, 'request-001')).rejects.toThrow('invalid-receipt');
+});
+
+test('repeated tap during submission makes only one gateway call', async () => {
+  let complete!: (receipt: OrderReceipt) => void;
+  const pending = new Promise<OrderReceipt>(resolve => { complete = resolve; });
+  const { service, calls } = fixture(() => pending);
+  const first = service.place(item, 1, 'request-001');
+  await expect(service.place(item, 1, 'request-001')).rejects.toThrow('already-submitting');
+  expect(calls).toHaveLength(1);
+  complete({ orderId: 'order-001' });
+  await expect(first).resolves.toEqual({ orderId: 'order-001' });
+});
+```
+
+### `order-store.ts` — actual Redux Toolkit state integration
+
+The store rejects repeated dispatch while submitting and prevents automatic repeat after confirmation or an unknown outcome. It intentionally provides no arbitrary reset/retry action; reconciliation/new-order lifecycle needs the real product contract. This guard is in-memory and still requires durable request identity for restart safety.
+
+```typescript
+import { configureStore, createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { ChickenItem, PlaceChickenOrder, quote } from './place-order';
+
+type OrderState = {
+  status: 'idle' | 'submitting' | 'confirmed' | 'invalid' | 'unknown';
+  orderId: string | null;
+  error: string | null;
+};
+const initialState: OrderState = { status: 'idle', orderId: null, error: null };
+type Input = { item: ChickenItem; quantity: number; requestId: string };
+
+export const submitOrder = createAsyncThunk<
+  { orderId: string }, Input,
+  { state: { order: OrderState }; extra: { service: PlaceChickenOrder }; rejectValue: { kind: "invalid" | "unknown"; message: string } }
+>('order/submit', async (input, { extra, rejectWithValue }) => {
+  // Classify only validation performed before any submission as safe to correct.
+  try {
+    quote(input.item, input.quantity);
+    if (!input.requestId.trim()) throw new Error('invalid-request-id');
+  } catch (error) {
+    return rejectWithValue({ kind: 'invalid', message:
+      error instanceof Error ? error.message : 'invalid-input' });
+  }
+  try {
+    return await extra.service.place(input.item, input.quantity, input.requestId);
+  } catch {
+    // Do not classify gateway outcome by its message: an unknown write may exist.
+    return rejectWithValue({ kind: 'unknown', message: 'outcome-unknown' });
+  }
+}, {
+  condition: (_, { getState }) => ['idle', 'invalid'].includes(getState().order.status),
+});
+
+const slice = createSlice({
+  name: 'order', initialState, reducers: {},
+  extraReducers: builder => {
+    builder.addCase(submitOrder.pending, state => {
+      state.status = 'submitting'; state.orderId = null; state.error = null;
+    }).addCase(submitOrder.fulfilled, (state, action) => {
+      state.status = 'confirmed'; state.orderId = action.payload.orderId;
+    }).addCase(submitOrder.rejected, (state, action) => {
+      const failure = action.payload ?? { kind: 'unknown', message: 'outcome-unknown' };
+      state.status = failure.kind === 'invalid' ? 'invalid' : 'unknown';
+      state.orderId = null; state.error = failure.message;
+    });
+  },
+});
+
+export function makeOrderStore(service: PlaceChickenOrder) {
+  return configureStore({
+    reducer: { order: slice.reducer },
+    middleware: getDefault => getDefault({ thunk: { extraArgument: { service } } }),
+  });
+}
+```
+
+### `order-store.test.ts` — real store tests
+
+```typescript
+import { PlaceChickenOrder, OrderReceipt } from './place-order';
+import { makeOrderStore, submitOrder } from './order-store';
+
+const input = {
+  item: { id: 'chicken-grilled', unitPriceMinor: 1250, available: true },
+  quantity: 2, requestId: 'request-001',
+};
+
+test('real Redux store exposes the actual confirmation', async () => {
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => ({ orderId: 'order-001' }),
+  }));
+  await store.dispatch(submitOrder(input));
+  expect(store.getState().order).toEqual({ status: 'confirmed', orderId: 'order-001', error: null });
+});
+
+test('repeated dispatch while pending makes one submission', async () => {
+  let calls = 0;
+  let complete!: (receipt: OrderReceipt) => void;
+  const pending = new Promise<OrderReceipt>(resolve => { complete = resolve; });
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => { calls++; return pending; },
+  }));
+  const first = store.dispatch(submitOrder(input));
+  const second = await store.dispatch(submitOrder(input));
+  expect(submitOrder.rejected.match(second) && second.meta.condition).toBe(true);
+  expect(calls).toBe(1);
+  expect(store.getState().order.status).toBe('submitting');
+  complete({ orderId: 'order-001' });
+  await first;
+  expect(store.getState().order.status).toBe('confirmed');
+});
+
+test('unknown outcome blocks an automatic repeat', async () => {
+  let calls = 0;
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => { calls++; throw new Error('network-timeout'); },
+  }));
+  await store.dispatch(submitOrder(input));
+  expect(store.getState().order.status).toBe('unknown');
+  await store.dispatch(submitOrder(input));
+  expect(calls).toBe(1);
+});
+
+test('invalid quantity never calls the service and allows corrected input', async () => {
+  let calls = 0;
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => { calls++; return { orderId: 'order-001' }; },
+  }));
+  await store.dispatch(submitOrder({ ...input, quantity: 0 }));
+  expect(store.getState().order.status).toBe('invalid');
+  expect(calls).toBe(0);
+  await store.dispatch(submitOrder(input));
+  expect(calls).toBe(1);
+  expect(store.getState().order.status).toBe('confirmed');
+});
+
+// An error message that resembles validation must not unlock another server write.
+test('gateway validation-like error remains an unknown submission outcome', async () => {
+  let calls = 0;
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => { calls++; throw new Error('unavailable'); },
+  }));
+  await store.dispatch(submitOrder(input));
+  expect(store.getState().order.status).toBe('unknown');
+  await store.dispatch(submitOrder(input));
+  expect(calls).toBe(1);
+});
+
+test('confirmed order is not submitted again by repeated dispatch', async () => {
+  let calls = 0;
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => { calls++; return { orderId: 'order-001' }; },
+  }));
+  await store.dispatch(submitOrder(input));
+  await store.dispatch(submitOrder(input));
+  expect(calls).toBe(1);
+  expect(store.getState().order.orderId).toBe('order-001');
+});
+```
+
+### Existing Android JUnit device journey
+
+Use the Android tab's `PlaceChickenOrderUiTest.kt` in the React Native Android instrumentation target, with the actual `MainActivity` package. The `chicken.*` descriptions must be exposed by the rendered native accessibility tree; React Native `testID` alone is not proof an Espresso content-description matcher can find the element.
+
+Bind `accessibilityLabel`/native properties appropriately and inspect actual selectors. A View-based example needs compatible Views/idling synchronization; if the current React Native architecture/runner differs, use the approved native test adapter rather than assuming this matcher works unchanged. The iOS packaged-app journey uses the approved iOS UI-test strategy; Android JUnit does not execute it.
+
+### Run
+
+First inspect `package.json` and confirm that `test:ci` invokes the existing Jest setup. If that script is absent, use the repository's equivalent test command; do not assume the overview creates scripts for you:
+
+```bash
+npm run test:unit -- --runTestsByPath \
+  src/features/order/place-order.test.ts \
+  src/features/order/order-store.test.ts
+```
+
+For Yarn, use `yarn test:unit --runTestsByPath` with those same paths. Then run full production coverage, not only this feature selection:
+
+```bash
+npm run test:coverage
+```
+
+**Expected:** actual unit/store cases execute, repeated dispatch submits once, and an uncertain service outcome never becomes a confirmed order or automatic resubmission.
+
+</TabItem>
+</Tabs>
+
+## 3. Bind the UI fixtures and selectors
+
+These fixture values are synthetic. The domain code above is complete as a teaching boundary; the UI/device examples require your actual UI, isolated service adapter, and selector bindings.
+
+| Control / fixture | Example identifier or value |
+| :--- | :--- |
+| Grilled chicken item | `chicken.item.grilled` |
+| Quantity input | `chicken.quantity`, initially empty for the shown UI examples. |
+| Quoted total | `chicken.total`; fixture renders `25.00` for two portions of the sample price. |
+| Submit control | `chicken.place-order` |
+| Confirmation container | `chicken.confirmation` |
+| Confirmed order ID | `chicken.order-id`, isolated fixture response `order-001`. |
+
+Use the actual test locale/currency formatting and UI element type. If the app uses a different confirmation container or prefilled quantity, update the test to match the real UI rather than weakening the assertion. Do not hardcode `order-001` against a live service that generates different order IDs.
+
+The fake unit tests test the ordering boundary, not cart rendering, payment, actual stock, or a backend implementation. Add state/UI tests for selecting the item, showing the quote, disabled submit state, and rendering the returned receipt. A use-case test alone does not prove those UI behaviors.
+
+## 4. Inspect the results before committing
+
+| Evidence | Required interpretation |
+| :--- | :--- |
+| Invalid input | Gateway call count remains zero. |
+| Success | Receipt and submitted request identity exactly match expected values. |
+| Pending duplicate | One actual gateway call, not two successful promises. |
+| Service error | No fabricated confirmation; unknown side effects require reconciliation. |
+| Redux integration | Real reducer/thunk/store state is asserted, not mocked Redux hooks. |
+| Native UI | Actual rendered selectors and completed assertions; no fixed sleeps. |
+| Coverage | Full production inventory and configured metrics must meet the team requirement. This example is not a 100% whole-project coverage claim. |
+
+The feature/request models, quantity rule, fake service, and error names are documentation examples. Integrate through the app's real architecture and approved API contract; do not create a parallel production API just to match them.
+
+## 5. Connect the committed tests to CI
+
+After reviewing the change, commit the application code and tests together. Bitrise runs that committed revision. Copilot or ChatGPT may help author tests; CI does not call an LLM.
+
+| Stage | What to prepare | Result to inspect |
+|---|---|---|
+| Local / CI logic tests | The project's unit or Jest test commands. | Tests discovered, actual assertions executed, and passing results. |
+| Coverage gate | Full production scope and supported metric configuration. | Fresh reports and passing required thresholds. A selected feature run alone is insufficient. |
+| Android packaging | Matching application APK and instrumentation test APK. | Package identity, runner, test class, variant, and output paths. |
+| iOS packaging | Device application and matching XCUITest runner products. | Shared scheme, source identity, signing compatibility, and actual package paths. |
+| Sauce Labs execution | Approved request, runner configuration, and protected credentials. | Completed required suites and actual device/OS results tied to the packages. |
+
+For the Android example, run this only when module `app` and variant `debug` exist. Use the Gradle root; in React Native, this is normally `android/`:
+
+<Tabs>
+<TabItem label="Build Android test packages">
+
+```bash
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
+```
+
+</TabItem>
+</Tabs>
+
+These tasks build packages; they do not execute the cloud tests. Use [Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/) for iOS device packaging, the exact supplied Bitrise YAML, request input mappings, and completed-result checks. Do not upload a Simulator application as an iOS device package.
+
+The supplied integration expects `.sauce/saucelabs_request.yml` through `saucelabs_request_yml`. Obtain its schema from the pinned private step's owner. Keep device selectors and class names consistent with the test you actually built. A sample selector such as `SmokeTestSuite` must be replaced or mapped to the real suite.
+
+Use [Parallel Testing](/mobile/cicd/parallel-testing/) for module selection and report handoff. Missing or unexpectedly skipped required tests do not count as a pass. NowSecure assessment, signing, and delivery remain separate CI/CD gates.
+
+**Attach screenshot — unit/store results and the actual device order-confirmation test, with sensitive data redacted.**
+
+**Next — [Coverage & Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/).**
+
+
+
+--------------------
+
+
+---
+title: "Coverage & Quality Gates"
+description: "Enforce complete production coverage, distinguish supported metrics, reject incomplete evidence, and retain current-source reports."
+sidebar:
+  label: Coverage & Quality Gates
+  order: 3
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidViewer from "@components/MermaidViewer.astro";
+
+Run the checks before pushing your change. If a check fails, fix the reported problem and rerun it. Then collect coverage to see which production code still needs tests.
+
+## Run the reference app checks before pushing
+
+If your repository defines the supplied scripts, run these from the app root:
+
+<Tabs>
+<TabItem label="Run local checks">
+
+```bash
+npm run pipeline:local
+```
+
+</TabItem>
+</Tabs>
+
+That command runs lint, the security check, Jest unit tests, and the E2E type check. To isolate a test failure, use the corresponding script:
+
+<Tabs>
+<TabItem label="Run local checks">
+
+```bash
+npm run test:unit
+npm run test:e2e:verify
+```
+
+</TabItem>
+</Tabs>
+
+The E2E type check validates TypeScript. Run the configured device suite to verify the installed app. The reference security script checks for committed secrets and reports npm audit findings. Follow your repository's existing enforcement and coverage commands.
+
+### What each check tells you
+
+| Check | What it verifies | What to do if it fails |
+| --- | --- | --- |
+| Lint | The configured code rules | Read the file and line in the output and fix the violation. |
+| Security scan | Committed-secret checks in the supplied script | Remove exposed values from tracked files and rotate leaked secrets. The reference reports npm audit findings separately for review. |
+| Jest | The assertions in your unit and component tests | Open the failing test and compare its expected and actual result. |
+| E2E type check | TypeScript device-test files compile | Fix the reported types or missing imports. |
+| Coverage | How much production code the tests execute | Open the report and add tests for uncovered behavior. |
+| Device suite | The selected user journey works in the installed app | Inspect the failing assertion, device log, and available video. |
+
+## Keep credentials out of committed files
+
+The reference security scan checks ignored secret files and generated credentials. Keep `.env`, `.vault/secrets.env`, `.provision.env`, keystores, certificates, provisioning profiles, and populated `src/config/buildEnv.ts` out of commits. Commit only the empty build-config placeholder. Rotate exposed credentials before cleaning them from history.
+
+Teams Workflows URLs contain a secret token. Treat the full URL as a credential. The reference's npm audit runs in report-only mode, with high and critical findings reviewed each release.
+
+The reference exposes `TEST_PASSWORD` to merge-request builds and keeps Sauce keys out of them. Have the CI owner confirm that policy and its branch trust settings for your app. The guide's local and live verification status is recorded in the [complete reference](/mobile/cicd/mobile-test-automation-reference/).
+
+## Read the reference scripts correctly
+
+The supplied `scripts/lint.sh` skips lint if ESLint is absent. Check the log to confirm which checks actually ran. The reference's `scripts/security-scan.sh` checks tracked secret files and generated credentials, with npm audit findings reported for review. A green local command alone cannot establish that lint, coverage, or real-device assertions executed.
+
+For the standalone reference, protect the default branch against direct pushes and force pushes and require the pipeline to pass before merge. The framework setup guide includes smoke tests for feature pushes, merge-request status, post-merge device execution, and rejected direct pushes. Follow [the setup verification instructions](/mobile/cicd/mobile-test-automation-reference/#8-verify-the-setup-smoke-tests) in an isolated approved exercise.
+
+## Set the coverage target
+
+**The team requirement is 100% for the defined production scope and supported metrics.** The supplied reference command list does not establish a coverage gate. The configuration and verifier below are documentation examples for adding that requirement to your existing setup.
+
+Run Android commands from the Gradle root and iOS tests from the configured Xcode project. Run the example coverage verifier from the Git repository root.
+
+## Understand what 100% means
+
+For each supported metric, all measured code must be covered. The report must include every required executable production file, including files no test imported. Checking only changed files is insufficient.
+
+A line executed without an assertion can still be covered. Add the order validation, confirmation, service-failure, and repeated-submission assertions from [Writing Tests](/mobile/testing-quality/writing-tests/); do not write empty tests simply to execute lines.
+
+<MermaidViewer title="Coverage gate: complete source scope, fresh reports, and exact counters">
+
+```mermaid
+flowchart TB
+    SOURCE["Exact source commit<br/>Reviewed roots and classifications"] --> INVENTORY["Discover tracked production files"]
+    SOURCE --> RUN["Execute required tests<br/>Pinned tool and target configuration"]
+    RUN --> REPORT["Fresh coverage reports<br/>Jest, JaCoCo, or xccov"]
+    INVENTORY --> MATCH["Compare expected files and report paths"]
+    REPORT --> MATCH
+    MATCH --> CHECK{"All required counters complete?"}
+    CHECK -->|Yes| PASS["Record passing coverage evidence<br/>Other release gates still apply"]
+    CHECK -->|No or missing| BLOCK["Block progression<br/>Fix tests, collection, or mapping"]
+    classDef input fill:#172554,stroke:#93c5fd,color:#fff,stroke-width:2px;
+    classDef work fill:#312e81,stroke:#a5b4fc,color:#fff,stroke-width:2px;
+    classDef gate fill:#78350f,stroke:#fcd34d,color:#fff,stroke-width:2px;
+    classDef pass fill:#064e3b,stroke:#6ee7b7,color:#fff,stroke-width:2px;
+    classDef stop fill:#881337,stroke:#fda4af,color:#fff,stroke-width:2px;
+    class SOURCE input;
+    class INVENTORY,RUN,REPORT,MATCH work;
+    class CHECK gate;
+    class PASS pass;
+    class BLOCK stop;
+```
+
+</MermaidViewer>
+
+## Step 1 — List the production files to measure
+
+Create the following files as you follow this page. Use only the scope files needed by your application:
+
+<Tabs>
+<TabItem label="File layout">
+
+```text
+application-root/
+├── scripts/testing/check-coverage.py
+├── testing/
+│   ├── coverage-scope.rn.json
+│   ├── coverage-scope.android.json
+│   └── coverage-scope.ios.json
+├── <existing Jest configuration, for JavaScript tests>
+└── <existing Android/iOS build and test configuration>
+```
+
+</TabItem>
+</Tabs>
+
+React Native applications need JavaScript coverage plus the applicable handwritten native-code coverage. One report does not measure all three layers.
+
+
+List all shipped source roots, including application entry points, native modules, adapters, UI, and bootstrap code. For each platform, identify the report/tool and supported metrics. Do not omit a file simply because coverage is difficult to collect.
+
+| Platform | Metrics and report | Required action |
+| :--- | :--- | :--- |
+| React Native JS/TS | Existing Jest/Istanbul statements, branches, functions, and lines. Android JUnit measures a different execution layer. | Preserve 100% for supported production metrics; do not infer JS/TS coverage from an Android/JUnit test pass or XML test report. Native modules also follow native policy. |
+| Android | Approved JaCoCo/Kover setup; metrics depend on the configured tool and bytecode filtering. | Enforce the approved executable scope at 100%; retain per-file/class details and explain generated-code treatment. |
+| iOS | Xcode/xccov executable line coverage. | Enforce 100% executable lines for every intended production target/file; do not label this branch coverage. |
+
+A generated file, third-party library, resource, or declaration-only file needs an explicit classification. Reviewed generated/vendor exclusions do not permit removing handwritten startup, adapters, or UI. Non-executable files need validation/review appropriate to their type; zero executable lines is not evidence of tested behavior.
+
+If the selected tooling cannot measure a required area or metric, record the gap and owner decision. Do not present the narrower percentage as complete application coverage.
+
+## Step 2 — Collect coverage in the existing project
+
+<Tabs>
+<TabItem label="React Native">
+
+Merge the following properties into the **existing Jest configuration**. Preserve its React Native preset, transforms, module mapping, setup, and test environment. Replace/add source roots to match the inventory.
+
+```javascript
+// jest.config.cjs — excerpt, not a replacement for the existing preset.
+module.exports = {
+  collectCoverageFrom: [
+    'src/**/*.{js,jsx,ts,tsx}',
+    'App.{js,jsx,ts,tsx}',
+    'index.{js,jsx,ts,tsx}',
+    '!**/*.d.ts',
+    '!**/*.test.{js,jsx,ts,tsx}',
+    '!**/*.spec.{js,jsx,ts,tsx}',
+    '!**/__tests__/**',
+  ],
+  coverageReporters: ['text', 'lcov', 'json-summary'],
+  coverageThreshold: {
+    global: { statements: 100, branches: 100, functions: 100, lines: 100 },
+  },
+};
+```
+
+Run through the established package script:
+
+```json
+{
+  "scripts": {
+    "test:coverage": "jest --ci --coverage --runInBand"
+  }
+}
+```
+
+```bash
+npm run test:coverage
+```
+
+Jest threshold configuration and explicit collection are separate controls. Inspect the file list as well as percentages, and include any production folders outside `src`. Do not use `--passWithNoTests`. [Jest configuration](https://jestjs.io/docs/configuration) documents collection and thresholds.
+
+</TabItem>
+<TabItem label="Android">
+
+Run the actual unit and instrumentation suites for the approved variant. Enable the project's approved coverage plugin/configuration and merge supported reports when policy requires multiple test layers. Do not sum covered-line totals from different runs: overlapping lines require a tool-supported merge.
+
+For a standard debug application, the test command shape is:
+
+```bash
+./gradlew :app:testDebugUnitTest
+```
+
+The Android coverage-report and verification task names depend on the current AGP/plugin/variant configuration. Inspect the existing Gradle tasks and use the approved names; `jacocoTestReport` is not universally created for every Android module. Do not assume that enabling JaCoCo creates or wires an Android report/verifier automatically.
+
+The following is a **rule fragment inside an already configured `JacocoCoverageVerification` task**, whose exact class/source/execution inputs must match the report. It is not a complete Android plugin setup:
+
+```kotlin
+violationRules {
+    rule {
+        element = "CLASS"
+        limit {
+            counter = "LINE"
+            value = "COVEREDRATIO"
+            minimum = "1.0".toBigDecimal()
+        }
+        limit {
+            counter = "BRANCH"
+            value = "COVEREDRATIO"
+            minimum = "1.0".toBigDecimal()
+        }
+    }
+}
+```
+
+Wire the configured verification task into the required check path explicitly. Verify that all intended classes are included and missing execution data cannot produce success. This fragment alone does not establish either condition. See [Gradle JaCoCo](https://docs.gradle.org/current/userguide/jacoco_plugin.html).
+
+The [JaCoCo counter definitions](https://www.jacoco.org/jacoco/trunk/doc/counters.html) describe what is measured; exception handling is not treated as branch coverage. Test error paths even if the branch counter is already complete.
+
+The actual Android module/plugin versions and existing coverage task definitions were not supplied. Bind the report/verification tasks in the approved template rather than copying an incompatible universal AGP configuration.
+
+**Owner-provided inputs:** exact report-generation task, instrumented class/source directories, execution-data files, intended modules/variants, and generated-code policy. A missing report producer remains a setup blocker; the verifier below does not create instrumentation.
+
+Discover the configured tasks:
+
+```bash
+./gradlew :app:tasks --all
+```
+
+After the owner confirms the actual task, run it with the tests. Save/run as Bash from the directory containing the applicable wrapper:
+
+```bash
+set -euo pipefail
+: "${MOBILE_ANDROID_COVERAGE_TASK:?Actual approved coverage-report task required}"
+./gradlew :app:testDebugUnitTest "$MOBILE_ANDROID_COVERAGE_TASK"
+```
+
+Replace `app/debug` as needed. Request a fresh, variant-matched XML report from that producer; do not reuse an old report if no execution data was generated.
+
+</TabItem>
+<TabItem label="iOS">
+
+In the test scheme/test plan, enable coverage for every production target in scope. Confirm that extensions/frameworks are included rather than just the app target. [Apple's coverage instructions](https://help.apple.com/xcode/mac/current/en.lproj/dev9e0e09978.html) explain collection and inspection.
+
+On an approved Mac with a shared test-enabled scheme, use a **new** result-bundle path for this run:
+
+```bash
+set -euo pipefail
+
+MOBILE_IOS_WORKSPACE='REPLACE_WITH_ACTUAL_WORKSPACE.xcworkspace'
+MOBILE_IOS_SCHEME='REPLACE_WITH_SHARED_TEST_SCHEME'
+MOBILE_SIMULATOR_UDID='REPLACE_WITH_AVAILABLE_SIMULATOR_ID'
+mkdir -p .tmp
+MOBILE_IOS_COVERAGE_RUN="$(mktemp -d .tmp/ios-coverage.XXXXXX)"
+MOBILE_RESULT_BUNDLE="$MOBILE_IOS_COVERAGE_RUN/TestResults.xcresult"
+
+xcodebuild test \
+  -workspace "$MOBILE_IOS_WORKSPACE" \
+  -scheme "$MOBILE_IOS_SCHEME" \
+  -destination "platform=iOS Simulator,id=$MOBILE_SIMULATOR_UDID" \
+  -enableCodeCoverage YES \
+  -resultBundlePath "$MOBILE_RESULT_BUNDLE"
+xcrun xccov view --report --json "$MOBILE_RESULT_BUNDLE" \
+  > "$MOBILE_IOS_COVERAGE_RUN/coverage.json"
+```
+
+The command creates a new project-local result directory. Keep `MOBILE_IOS_COVERAGE_RUN` available for the verifier below, or record its exact generated path in the same workflow. Keep it ignored by Git. Use `-project` where appropriate. `MOBILE_...` values are example-owned inputs, not vendor defaults. Check the pinned Xcode's `xcrun xccov help` for its accepted invocation. Apple describes programmatic xccov access in [Testing in Xcode](https://developer.apple.com/videos/play/wwdc2019/413/).
+
+The command produces line coverage; it does not fail merely because coverage is below 100%. A required verifier must compare every inventoried production file with report counters. Missing targets/files or zero usable evidence must block. The local helper below supports xccov's file line counters.
+
+</TabItem>
+</Tabs>
+
+## Step 3 — Verify file completeness as well as percentages
+
+A report that omits an untested file can look green. The helper below derives expected files from **tracked source under reviewed production roots**, then compares every expected file with report counters. New tracked files inside those roots automatically enter the gate.
+
+The scope file is a **local coverage configuration**, not an enterprise API contract. It must cover every shipped module/target, entry point, and source language. The script cannot discover that a new top-level directory is production; changes to build targets and source roots require review. Run it from the repository root on the identified source commit.
+
+### Configure the actual source scope
+
+Use a separate scope file for each platform. These layouts are examples; replace paths/targets with your repository's actual ones. Include only roots that exist and contain tracked files. Add handwritten native modules and extensions instead of assuming React Native means JavaScript only.
+
+<Tabs>
+<TabItem label="React Native scope">
+
+**File: `testing/coverage-scope.rn.json`.** This example assumes both listed entry files exist. Edit the entry list to match the real app.
+
+```json
+{
+  "source_roots": ["src"],
+  "suffixes": [".js", ".jsx", ".ts", ".tsx"],
+  "entry_files": ["App.tsx", "index.js"],
+  "classifications": {}
+}
+```
+
+Tests colocated under `src/`, `.d.ts` files, and tracked generated/vendor files must be listed by exact path with a reviewed classification reason. For the previous page's My Chicken App layout, populate the JSON `classifications` object as follows, then add the remaining actual test/declaration paths:
+
+```json
+{
+  "src/features/order/place-order.test.ts": "Jest test source; reviewed separately",
+  "src/features/order/order-store.test.ts": "Jest integration test source; reviewed separately"
+}
+```
+
+This block is the **value of `classifications`**, not a separate scope file. Do not classify production `place-order.ts` or `order-store.ts` out of measurement.
+
+</TabItem>
+<TabItem label="Android scope">
+
+**File: `testing/coverage-scope.android.json`.** Example matching the previous page's Kotlin files under `app/src/main/java`; add existing Kotlin, variant, and other production roots as needed.
+
+```json
+{
+  "source_roots": ["app/src/main/java"],
+  "suffixes": [".kt", ".java"],
+  "entry_files": [],
+  "classifications": {}
+}
+```
+
+The helper maps JaCoCo package/source filenames into these source roots. If two modules have the same package/source path, it fails on ambiguity: run each module's report against its own reviewed scope or supply an approved unambiguous aggregation. Kotlin package paths must match this mapping; alternate layouts need a reviewed path adapter.
+
+</TabItem>
+<TabItem label="iOS scope">
+
+**File: `testing/coverage-scope.ios.json`.** Replace the source root and xccov report target name. Include all production extensions/frameworks as applicable.
+
+```json
+{
+  "source_roots": ["MyChickenApp"],
+  "suffixes": [".swift", ".m", ".mm", ".c", ".cpp"],
+  "entry_files": [],
+  "classifications": {},
+  "xccov_targets": ["MyChickenApp.app"]
+}
+```
+
+Target names must exactly match the report from your pinned Xcode. Test targets do not substitute for missing production targets. Headers, resources, target membership, and build settings still need their separate inventory/classification; this example checks executable source, not every file format.
+
+</TabItem>
+</Tabs>
+
+`classifications` is an exact-path-to-reason object for files assessed separately, such as tests, generated/vendor code, or verified non-executable declarations. Reasons need the team's approval/reference. A classification removes a file from executable checking, so review changes like gate-policy changes. It must never become a bypass for handwritten executable production code. Stale/out-of-scope classifications fail.
+
+### Add the shared coverage-check script
+
+**File: `scripts/testing/check-coverage.py`.** Python 3 standard library only; requires Git and the current tracked source. The approved CI runtime supplies both.
+
+<Tabs>
+<TabItem label="check-coverage.py">
+
+```python
+import argparse
+import json
+import subprocess
+from pathlib import Path
+import xml.etree.ElementTree as ET
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--format', choices=['jest', 'jacoco', 'xccov'], required=True)
+parser.add_argument('--report', required=True)
+parser.add_argument('--scope', required=True)
+args = parser.parse_args()
+root = Path.cwd().resolve()
+git_root = subprocess.run(['git', 'rev-parse', '--show-toplevel'],
+                          check=True, capture_output=True, text=True).stdout.strip()
+if Path(git_root).resolve() != root:
+    raise SystemExit('Run from the repository root')
+
+def stop(message):
+    raise SystemExit(message)
+
+def canonical(value):
+    path = Path(value)
+    absolute = path.resolve() if path.is_absolute() else (root / path).resolve()
+    return absolute.relative_to(root).as_posix()
+
+scope = json.loads(Path(args.scope).read_text())
+roots = scope['source_roots']
+suffixes = scope['suffixes']
+entries = scope.get('entry_files', [])
+exclusions = scope.get('classifications', {})
+if not roots or not suffixes:
+    stop('Declare all production roots and source suffixes')
+for value in [*roots, *entries, *exclusions]:
+    if canonical(value) != value:
+        stop('Scope paths must be canonical and repository-relative')
+if not all(isinstance(reason, str) and reason.strip() for reason in exclusions.values()):
+    stop('Every classification needs a reviewed reason')
+tracked = subprocess.run(['git', 'ls-files', '-z'], check=True, capture_output=True).stdout
+tracked = set(tracked.decode('utf-8').split('\0')) - {''}
+if not set(entries) <= tracked:
+    stop('Declared entry file missing from tracked source')
+for folder in roots:
+    if not any(name.startswith(folder + '/') for name in tracked):
+        stop('Production root has no tracked files: ' + folder)
+candidates = {name for name in tracked if name.endswith(tuple(suffixes)) and (
+    name in entries or any(name.startswith(folder + '/') for folder in roots))}
+if not set(exclusions) <= candidates:
+    stop('Classification is stale or outside declared source scope')
+expected = candidates - set(exclusions)
+if not expected or any(canonical(name) != name or not (root / name).is_file() for name in expected):
+    stop('No usable production inventory or tracked file missing on disk')
+
+files = {}
+def add(name, counters):
+    try:
+        key = canonical(name)
+    except ValueError:
+        return  # A required file will still fail as missing below.
+    if key not in expected:
+        return
+    if key in files:
+        stop('Duplicate report file; use a reviewed merge/target map: ' + key)
+    files[key] = counters
+
+if args.format == 'jacoco':
+    document = ET.parse(args.report).getroot()
+    for package in document.findall('.//package'):
+        for source in package.findall('sourcefile'):
+            relative = '/'.join(filter(None, [package.attrib['name'], source.attrib['name']]))
+            matches = [folder + '/' + relative for folder in roots
+                       if folder + '/' + relative in expected]
+            if len(matches) > 1:
+                stop('Ambiguous Android source mapping; split module reports')
+            if matches:
+                # JaCoCo omits counters whose total is zero.
+                counters = {name: {'total': 0, 'covered': 0}
+                            for name in ['LINE', 'BRANCH', 'METHOD', 'INSTRUCTION']}
+                seen = set()
+                for counter in source.findall('counter'):
+                    metric = counter.attrib['type']
+                    if metric in seen:
+                        stop('Duplicate JaCoCo metric')
+                    seen.add(metric)
+                    covered, missed = int(counter.attrib['covered']), int(counter.attrib['missed'])
+                    if covered < 0 or missed < 0:
+                        stop('Invalid JaCoCo counters')
+                    counters[metric] = {'total': covered + missed, 'covered': covered}
+                add(matches[0], counters)
+    metrics = ['LINE', 'BRANCH', 'METHOD', 'INSTRUCTION']
+else:
+    document = json.loads(Path(args.report).read_text())
+    if args.format == 'jest':
+        for name, counters in document.items():
+            if name != 'total':
+                add(name, counters)
+        metrics = ['statements', 'branches', 'functions', 'lines']
+    else:
+        targets = scope['xccov_targets']
+        if not targets or len(targets) != len(set(targets)):
+            stop('Declare unique production xccov target names')
+        selected = [target for target in document['targets'] if target['name'] in targets]
+        if sorted(target['name'] for target in selected) != sorted(targets):
+            stop('Missing or duplicate required xccov target')
+        for target in selected:
+            for file in target['files']:
+                add(file['path'], {'lines': {
+                    'total': file['executableLines'], 'covered': file['coveredLines']}})
+        metrics = ['lines']
+
+failures = []
+for name in sorted(expected):
+    counters = files.get(name)
+    if counters is None:
+        failures.append(name + ': missing from report')
+        continue
+    usable = False
+    for metric in metrics:
+        values = counters.get(metric, {})
+        total, covered = values.get('total'), values.get('covered')
+        if (type(total) is not int or type(covered) is not int or
+                total < 0 or covered < 0 or covered > total):
+            failures.append(name + ': invalid ' + metric + ' counters')
+            continue
+        usable = usable or total > 0
+        if covered != total:
+            failures.append(name + ': uncovered ' + metric)
+    primary = 'LINE' if args.format == 'jacoco' else 'lines'
+    if not usable or counters.get(primary, {}).get('total', 0) == 0:
+        failures.append(name + ': no executable evidence; classify explicitly')
+if failures:
+    stop('Coverage gate failed:\n' + '\n'.join(failures))
+print(f'Coverage gate passed: {len(expected)} files; {len(exclusions)} classified separately')
+```
+
+</TabItem>
+</Tabs>
+
+The script reads the scope file, obtains tracked paths with Git, maps report entries to those paths, and exits unsuccessfully if a required file is missing or its measured counters are incomplete. Add new source files to Git before running it; untracked files are not included in this inventory.
+
+The helper supports Jest JSON summary, **JaCoCo XML**, and selected-target **xccov JSON**. It does not claim compatibility with arbitrary Kover/export schemas. Pin and verify the report producer. Missing/corrupt report structures exit unsuccessfully rather than become success.
+
+For a verified JaCoCo report, omitted counters represent zero totals under the [JaCoCo XML writer contract](https://raw.githubusercontent.com/jacoco/jacoco/master/org.jacoco.report/src/org/jacoco/report/internal/xml/XMLCoverageWriter.java). A file still needs executable line evidence. Zero branches means no measured branch opportunities; it is not a reason to manufacture a 100% branch count. Exception-handler coverage also needs meaningful tests beyond the counter definition.
+
+### Run the check for your platform
+
+Run the test/report producer first, then the matching command below. The verifier does not run tests or create reports.
+
+| Platform | Report read by the verifier | Configuration |
+|---|---|---|
+| React Native JS/TS | `coverage/coverage-summary.json` for the shown local Jest command. | `testing/coverage-scope.rn.json` |
+| Android | Actual fresh JaCoCo XML path supplied by the configured Gradle task. | `testing/coverage-scope.android.json` |
+| iOS | `coverage.json` exported into the new Xcode run directory. | `testing/coverage-scope.ios.json` |
+
+For React Native Android, generate the report from the Gradle root, then return to the application Git root before running the verifier. Its scope paths and report mappings are relative to that root. For example, a native source root may be `android/app/src/main/java` rather than `app/src/main/java`.
+
+
+<Tabs>
+<TabItem label="React Native gate">
+
+After the configured Jest coverage run:
+
+```bash
+python3 scripts/testing/check-coverage.py \
+  --format jest \
+  --report coverage/coverage-summary.json \
+  --scope testing/coverage-scope.rn.json
+```
+
+</TabItem>
+<TabItem label="Android gate">
+
+After the configured Android tests and XML report generation:
+
+```bash
+set -euo pipefail
+: "${MOBILE_ANDROID_COVERAGE_XML:?Actual JaCoCo XML path required}"
+python3 scripts/testing/check-coverage.py \
+  --format jacoco \
+  --report "$MOBILE_ANDROID_COVERAGE_XML" \
+  --scope testing/coverage-scope.android.json
+```
+
+The report path is an example-owned input. Generate it through the actual approved Gradle task; assigning a path does not create coverage. The helper checks line, branch, method, and instruction counters for all mapped in-scope source files. Inspect tool-generated/filtered code and scope treatment before interpreting the metric as handwritten source coverage.
+
+</TabItem>
+<TabItem label="iOS gate">
+
+After the earlier Xcode collection/export, in the same shell/workflow binding context (`MOBILE_IOS_COVERAGE_RUN` must identify that fresh run):
+
+```bash
+python3 scripts/testing/check-coverage.py \
+  --format xccov \
+  --report "$MOBILE_IOS_COVERAGE_RUN/coverage.json" \
+  --scope testing/coverage-scope.ios.json
+```
+
+The helper checks line counters, including required production targets. Reports must use this checkout's source paths; a different path prefix requires a reviewed normalizer. Duplicate mappings fail rather than guessing how to merge different targets/runs.
+
+</TabItem>
+</Tabs>
+
+The helper verifies **file presence and counters**, not report authenticity or candidate identity. The protected workflow must generate fresh reports after actual tests, associate them with the exact commit/run/target, and reject stale or substituted evidence. Build configuration and scope are both reviewed inputs.
+
+## Step 4 — Run the check in the approved Bitrise workflow
+
+Have the template owner place the following **teaching excerpt** in the approved npm workflow after checkout and dependency/tool setup. It is not a replacement for the enterprise template or a complete `bitrise.yml`.
+
+The step creates a fresh report directory, runs the existing coverage script, then verifies that report. `set -euo pipefail` preserves command failures. The required repository status must also be configured to block merging on failure; adding YAML alone does not configure branch protection.
+
+<Tabs>
+<TabItem label="Shared Bitrise step">
+
+```yaml
+# Bitrise excerpt: npm project with approved tooling already prepared.
+- script@1:
+    title: Execute tests and enforce production coverage
+    inputs:
+      - content: |-
+          #!/usr/bin/env bash
+          set -euo pipefail
+          mkdir -p .tmp
+          MOBILE_COVERAGE_DIR="$(mktemp -d .tmp/js-coverage.XXXXXX)"
+          npm run test:coverage -- --coverageDirectory "$MOBILE_COVERAGE_DIR"
+          python3 scripts/testing/check-coverage.py \
+            --format jest \
+            --report "$MOBILE_COVERAGE_DIR/coverage-summary.json" \
+            --scope testing/coverage-scope.rn.json
+```
+
+</TabItem>
+</Tabs>
+
+A required gate must preserve these distinctions:
+
+| Evidence | Required decision |
+| :--- | :--- |
+| Tests fail, even with 100% coverage | Block. Assertions still failed. |
+| Coverage fails, even with passing tests | Block. The production coverage requirement is unmet. |
+| Coverage passes but required device suite is incomplete | Device gate remains blocked/incomplete. |
+| Coverage and device checks pass but security/approval is missing | Remaining release gate stays blocked. |
+
+The excerpt measures JavaScript/TypeScript only. It does not configure Android coverage, Xcode coverage, Sauce Labs execution, or NowSecure assessment.
+
+Use [Bitrise Pipelines](/mobile/cicd/bitrise-pipelines/) for approved workflow placement and [Parallel Testing](/mobile/cicd/parallel-testing/) for cross-workflow flag/report handoff. Reports from separate VMs require the confirmed producer/collector contract; local shell variables do not transfer them automatically.
+
+Only use the Python binding provisioned by the approved runner. Native workflows invoke their actual configured test/report/verifier tasks, with the same fail-closed requirement. Configure failure-path evidence collection separately without swallowing the original failure.
+
+## Step 5 — Prove the gate fails correctly
+
+| Deliberate fixture/change | Expected behavior |
+| :--- | :--- |
+| One production file is not imported by any test | Included with uncovered code; gate fails. |
+| Required file missing from report | Gate fails. |
+| Missing/corrupt report or empty inventory | Gate fails. |
+| Covered count below total | Gate fails. |
+| Metric is unsupported | Do not fabricate it; use approved metric mapping and record the limitation. |
+| Required suite is skipped or discovers no tests | Required test evidence is incomplete, regardless of percentage. |
+| New tracked file under a production root has no report entry | The derived inventory includes it; the gate fails. |
+| New production root/target was added | Review and extend scope, report targets, and collection; the helper cannot infer build ownership. |
+| Old report copied into this build | Reject through revision/run provenance checks. |
+
+Store source commit, report tool/configuration, production inventory/classification, suite results, metrics, and verifier result with the build evidence. Do not claim a synthetic helper check proves complete native application coverage.
+
+
+## Inspect and record the result
+
+Open the report's uncovered files/lines, then identify whether the cause is a missing behavior test, incorrect source collection, a missing target, or an ambiguous mapping. Fix the real cause; do not remove the file, weaken thresholds, or fabricate counters.
+
+Record the source commit, build/run reference, tool versions, test counts, scope file revision, required target set, report references, and verifier result. For split native reports, retain every required module's independent outcome. An overall average must not hide a failing module.
+
+**Attach screenshot — platform coverage report showing the intended targets/files and supported metrics, with sensitive paths/source details redacted.**
+
+**Attach screenshot — required CI status and verifier result for the same candidate revision.**
+
+**Next — [Complete Place Chicken order Example](/mobile/testing-quality/login-device-test-example/).** Follow the success and failure cases in your platform tab. For a cloud device run, continue to [CI/CD → Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/).
+
+
+-------------
+
+
+---
+title: "Complete Chicken Order Example"
+description: "Test placing a chicken order on Android, iOS, and React Native with unit and device code in tabs."
+sidebar:
+  label: Complete Chicken Order Example
+  order: 4
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidViewer from "@components/MermaidViewer.astro";
+
+Follow the same chicken-order scenario on Android, iOS, or React Native. Choose your platform tab, add the sample service and tests to the listed targets, and run the local tests. Use the device example with your existing order screen and isolated test environment.
+
+## What the example checks
+
+| Scenario | Expected result |
+| --- | --- |
+| Order two available portions | Submit one request and show the returned order ID. |
+| Invalid quantity or unavailable item | Reject the order before calling the gateway. |
+| Gateway fails or returns an empty order ID | Keep the order unconfirmed. |
+| A second submission arrives while the first is pending | Call the gateway once. |
+| React Native Redux state changes | Verify the real store, reducer, and thunk behavior. |
+
+The sample item costs 1250 minor units. Two portions have a local quoted total of 2500 minor units, displayed as 25.00 in this fixture. Confirm the real product's currency, availability, and server pricing rules before adapting the sample.
+
+<MermaidViewer title="Place a chicken order">
+
+```mermaid
+flowchart TD
+    CHOOSE["Choose chicken and quantity"] --> VALIDATE["Check the order rules"]
+    VALIDATE -->|Invalid| ERROR["Show an error"]
+    VALIDATE -->|Valid| SEND["Send one order request"]
+    SEND -->|Confirmed| RECEIPT["Show the returned order ID"]
+    SEND -->|Failed or unknown| REVIEW["Keep the order unconfirmed"]
+    classDef step fill:#172554,stroke:#93c5fd,color:#fff,stroke-width:2px;
+    classDef success fill:#064e3b,stroke:#6ee7b7,color:#fff,stroke-width:2px;
+    classDef error fill:#78350f,stroke:#fcd34d,color:#fff,stroke-width:2px;
+    class CHOOSE,VALIDATE,SEND step;
+    class RECEIPT success;
+    class ERROR,REVIEW error;
+```
+
+</MermaidViewer>
+
+## Add the files and run the tests
+
+Complete [framework setup](/mobile/testing-quality/writing-tests/) first. The service and unit tests below use controlled dependencies. Device tests require your app's actual screen, matching accessibility identifiers, and an approved test backend or isolated adapter.
+
+<Tabs>
+<TabItem label="Android">
+
+### Files
+
+```text
+app/src/main/java/com/example/mychicken/order/PlaceChickenOrder.kt
+app/src/test/java/com/example/mychicken/order/PlaceChickenOrderTest.kt
+app/src/androidTest/java/com/example/mychicken/order/PlaceChickenOrderUiTest.kt
+```
+
+Use the existing approved JUnit 4 and `kotlinx-coroutines-test` dependencies. The UI target needs the project's AndroidJUnitRunner/Espresso configuration. Do not add guessed version-catalog aliases or upgrade the app's toolchain to match an example.
+
+### `PlaceChickenOrder.kt` — sample application code
+
+```kotlin
+package com.example.mychicken.order
+
+import java.util.concurrent.atomic.AtomicBoolean
+
+data class ChickenItem(val id: String, val unitPriceMinor: Long, val available: Boolean)
+data class OrderRequest(val requestId: String, val itemId: String, val quantity: Int)
+data class OrderReceipt(val orderId: String)
+interface OrderGateway { suspend fun place(request: OrderRequest): OrderReceipt }
+class OrderFailure(val reason: String) : IllegalArgumentException(reason)
+
+fun quote(item: ChickenItem, quantity: Int): Long {
+    if (item.id.isBlank()) throw OrderFailure("invalid-item")
+    if (!item.available) throw OrderFailure("unavailable")
+    if (quantity !in 1..20) throw OrderFailure("invalid-quantity")
+    if (item.unitPriceMinor <= 0) throw OrderFailure("invalid-price")
+    if (item.unitPriceMinor > Long.MAX_VALUE / quantity) throw OrderFailure("invalid-total")
+    return item.unitPriceMinor * quantity
+}
+
+// Retain one instance for the active order flow, not one per tap.
+class PlaceChickenOrder(private val gateway: OrderGateway) {
+    private val submitting = AtomicBoolean(false)
+
+    suspend fun place(item: ChickenItem, quantity: Int, requestId: String): OrderReceipt {
+        quote(item, quantity)
+        if (requestId.isBlank()) throw OrderFailure("invalid-request-id")
+        if (!submitting.compareAndSet(false, true)) throw OrderFailure("already-submitting")
+        try {
+            val receipt = gateway.place(OrderRequest(requestId, item.id, quantity))
+            if (receipt.orderId.isBlank()) throw OrderFailure("invalid-receipt")
+            return receipt
+        } finally {
+            submitting.set(false)
+        }
+    }
+}
+```
+
+### `PlaceChickenOrderTest.kt` — deterministic JVM tests
+
+```kotlin
+package com.example.mychicken.order
+
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.*
+import org.junit.Test
+
+class PlaceChickenOrderTest {
+    private val item = ChickenItem("chicken-grilled", 1250, true)
+    private class FakeGateway : OrderGateway {
+        val calls = mutableListOf<OrderRequest>()
+        var reply: suspend () -> OrderReceipt = { OrderReceipt("order-001") }
+        override suspend fun place(request: OrderRequest): OrderReceipt {
+            calls += request
+            return reply()
+        }
+    }
+
+    @Test fun calculatesTotalAndAcceptedQuantityBoundaries() {
+        assertEquals(1250L, quote(item, 1))
+        assertEquals(2500L, quote(item, 2))
+        assertEquals(25000L, quote(item, 20))
+    }
+
+    @Test fun invalidInputsNeverSubmit() = runTest {
+        val gateway = FakeGateway()
+        val service = PlaceChickenOrder(gateway)
+        val cases = listOf(
+            Triple(item, 0, "request-001") to "invalid-quantity",
+            Triple(item, -1, "request-001") to "invalid-quantity",
+            Triple(item, 21, "request-001") to "invalid-quantity",
+            Triple(item.copy(available = false), 1, "request-001") to "unavailable",
+            Triple(item.copy(id = " "), 1, "request-001") to "invalid-item",
+            Triple(item.copy(unitPriceMinor = 0), 1, "request-001") to "invalid-price",
+            Triple(item.copy(unitPriceMinor = Long.MAX_VALUE), 2, "request-001") to "invalid-total",
+            Triple(item, 1, " ") to "invalid-request-id"
+        )
+        for ((input, expected) in cases) {
+            val (selected, quantity, id) = input
+            val error = runCatching { service.place(selected, quantity, id) }.exceptionOrNull()
+            assertEquals(expected, (error as? OrderFailure)?.reason)
+        }
+        assertTrue(gateway.calls.isEmpty())
+    }
+
+    @Test fun returnsActualConfirmationAndForwardsIdentity() = runTest {
+        val gateway = FakeGateway()
+        val result = PlaceChickenOrder(gateway).place(item, 2, "request-001")
+        assertEquals(OrderReceipt("order-001"), result)
+        assertEquals(listOf(OrderRequest("request-001", item.id, 2)), gateway.calls)
+    }
+
+    @Test fun propagatesServiceFailure() = runTest {
+        val gateway = FakeGateway()
+        val expected = IllegalStateException("service-unavailable")
+        gateway.reply = { throw expected }
+        val error = runCatching {
+            PlaceChickenOrder(gateway).place(item, 1, "request-001")
+        }.exceptionOrNull()
+        assertSame(expected, error)
+    }
+
+    @Test fun rejectsEmptyConfirmation() = runTest {
+        val gateway = FakeGateway()
+        gateway.reply = { OrderReceipt(" ") }
+        val error = runCatching {
+            PlaceChickenOrder(gateway).place(item, 1, "request-001")
+        }.exceptionOrNull()
+        assertEquals("invalid-receipt", (error as? OrderFailure)?.reason)
+    }
+
+    @Test fun repeatedTapMakesOneSubmission() = runTest {
+        val gateway = FakeGateway()
+        val pending = CompletableDeferred<OrderReceipt>()
+        gateway.reply = { pending.await() }
+        val service = PlaceChickenOrder(gateway)
+        val first = async(start = CoroutineStart.UNDISPATCHED) {
+            service.place(item, 1, "request-001")
+        }
+        val secondError = runCatching {
+            service.place(item, 1, "request-001")
+        }.exceptionOrNull()
+        assertEquals("already-submitting", (secondError as? OrderFailure)?.reason)
+        assertEquals(1, gateway.calls.size)
+        pending.complete(OrderReceipt("order-001"))
+        assertEquals(OrderReceipt("order-001"), first.await())
+    }
+}
+```
+
+### `PlaceChickenOrderUiTest.kt` — actual app UI integration example
+
+This requires the UI controls/isolated fixture specified below. It is not a complete app UI implementation. For asynchronous order submission, the application's approved Espresso idling resource must keep the app synchronized until confirmation; arbitrary sleeps are not a substitute.
+
+```kotlin
+package com.example.mychicken.order
+
+import androidx.test.ext.junit.rules.ActivityScenarioRule
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.*
+import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.matcher.ViewMatchers.*
+import com.example.mychicken.MainActivity // Replace with the real Activity.
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class PlaceChickenOrderUiTest {
+    @get:Rule val activity = ActivityScenarioRule(MainActivity::class.java)
+
+    @Test fun placesChickenOrderAndShowsConfirmation() {
+        onView(withContentDescription("chicken.item.grilled")).perform(click())
+        onView(withContentDescription("chicken.quantity")).perform(replaceText("2"), closeSoftKeyboard())
+        onView(withContentDescription("chicken.total")).check(matches(withText("25.00")))
+        onView(withContentDescription("chicken.place-order")).perform(click())
+        onView(withContentDescription("chicken.confirmation")).check(matches(isDisplayed()))
+        onView(withContentDescription("chicken.order-id")).check(matches(withText("order-001")))
+    }
+}
+```
+
+For Compose-only screens, use the project's Compose semantics/test APIs instead of assuming View matchers can find Compose tags.
+
+### Run
+
+From the directory containing `gradlew`, replace module/variant names where needed:
+
+```bash
+./gradlew :app:testDebugUnitTest --tests 'com.example.mychicken.order.PlaceChickenOrderTest'
+```
+
+With the intended authorized emulator/device available, run the configured UI suite:
+
+```bash
+./gradlew :app:connectedDebugAndroidTest
+```
+
+**Expected:** unit cases exercise the fake only; the device case verifies the actual UI with its approved fixture. A compiled APK alone is not a completed test suite.
+
+</TabItem>
+<TabItem label="iOS">
+
+### Files
+
+```text
+MyChickenApp/Order/PlaceChickenOrder.swift
+MyChickenAppTests/PlaceChickenOrderTests.swift
+MyChickenAppUITests/PlaceChickenOrderUITests.swift
+```
+
+Add the first file to the application target, the second to the unit-test target, and the third to the UI-test target. Replace `@testable import MyChickenApp` with the actual product module. Keep the existing XCTest/concurrency/toolchain configuration.
+
+### `PlaceChickenOrder.swift` — sample application code
+
+```swift
+import Foundation
+
+struct ChickenItem: Sendable {
+    let id: String
+    let unitPriceMinor: Int64
+    let available: Bool
+}
+struct OrderRequest: Sendable, Equatable {
+    let requestId: String
+    let itemId: String
+    let quantity: Int
+}
+struct OrderReceipt: Sendable, Equatable { let orderId: String }
+protocol OrderGateway: Sendable {
+    func place(_ request: OrderRequest) async throws -> OrderReceipt
+}
+enum OrderFailure: Error, Equatable {
+    case invalidItem, unavailable, invalidQuantity, invalidPrice, invalidTotal
+    case invalidRequestId, alreadySubmitting, invalidReceipt
+}
+
+func quote(_ item: ChickenItem, quantity: Int) throws -> Int64 {
+    if item.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        throw OrderFailure.invalidItem
+    }
+    guard item.available else { throw OrderFailure.unavailable }
+    guard (1...20).contains(quantity) else { throw OrderFailure.invalidQuantity }
+    guard item.unitPriceMinor > 0 else { throw OrderFailure.invalidPrice }
+    let (total, overflow) = item.unitPriceMinor.multipliedReportingOverflow(by: Int64(quantity))
+    guard !overflow else { throw OrderFailure.invalidTotal }
+    return total
+}
+
+// Retain one instance for the active order flow, not one per tap.
+actor PlaceChickenOrder {
+    private let gateway: any OrderGateway
+    private var submitting = false
+    init(gateway: any OrderGateway) { self.gateway = gateway }
+
+    func place(_ item: ChickenItem, quantity: Int,
+               requestId: String) async throws -> OrderReceipt {
+        _ = try quote(item, quantity: quantity)
+        guard !requestId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw OrderFailure.invalidRequestId
+        }
+        guard !submitting else { throw OrderFailure.alreadySubmitting }
+        submitting = true
+        defer { submitting = false }
+        let receipt = try await gateway.place(OrderRequest(
+            requestId: requestId, itemId: item.id, quantity: quantity))
+        guard !receipt.orderId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw OrderFailure.invalidReceipt
+        }
+        return receipt
+    }
+}
+```
+
+### `PlaceChickenOrderTests.swift` — deterministic async tests
+
+The fake actor provides an explicit start/finish gate for the concurrent-submission test; no timing sleeps are used.
+
+```swift
+import XCTest
+@testable import MyChickenApp // Replace with the actual product module.
+
+private actor FakeOrderGateway: OrderGateway {
+    enum Mode: Sendable { case success, failure, empty, suspended }
+    enum ServiceFailure: Error { case unavailable }
+    private(set) var calls: [OrderRequest] = []
+    private let mode: Mode
+    private var pending: CheckedContinuation<OrderReceipt, any Error>?
+    private var startedWaiters: [CheckedContinuation<Void, Never>] = []
+    init(_ mode: Mode = .success) { self.mode = mode }
+
+    func place(_ request: OrderRequest) async throws -> OrderReceipt {
+        calls.append(request)
+        switch mode {
+        case .success: return OrderReceipt(orderId: "order-001")
+        case .failure: throw ServiceFailure.unavailable
+        case .empty: return OrderReceipt(orderId: " ")
+        case .suspended:
+            return try await withCheckedThrowingContinuation { continuation in
+                pending = continuation
+                startedWaiters.forEach { $0.resume() }
+                startedWaiters.removeAll()
+            }
+        }
+    }
+    func waitUntilStarted() async {
+        if pending != nil { return }
+        await withCheckedContinuation { startedWaiters.append($0) }
+    }
+    func finish() {
+        pending?.resume(returning: OrderReceipt(orderId: "order-001"))
+        pending = nil
+    }
+}
+
+@MainActor
+final class PlaceChickenOrderTests: XCTestCase {
+    private let item = ChickenItem(id: "chicken-grilled", unitPriceMinor: 1250, available: true)
+
+    func testCalculatesTotal() throws {
+        XCTAssertEqual(try quote(item, quantity: 1), 1250)
+        XCTAssertEqual(try quote(item, quantity: 2), 2500)
+        XCTAssertEqual(try quote(item, quantity: 20), 25000)
+    }
+
+    func testInvalidInputsNeverSubmit() async {
+        let gateway = FakeOrderGateway()
+        let service = PlaceChickenOrder(gateway: gateway)
+        let cases: [(ChickenItem, Int, String, OrderFailure)] = [
+            (item, 0, "request-001", .invalidQuantity),
+            (item, -1, "request-001", .invalidQuantity),
+            (item, 21, "request-001", .invalidQuantity),
+            (ChickenItem(id: item.id, unitPriceMinor: 1250, available: false), 1, "request-001", .unavailable),
+            (ChickenItem(id: " ", unitPriceMinor: 1250, available: true), 1, "request-001", .invalidItem),
+            (ChickenItem(id: item.id, unitPriceMinor: 0, available: true), 1, "request-001", .invalidPrice),
+            (ChickenItem(id: item.id, unitPriceMinor: Int64.max, available: true), 2, "request-001", .invalidTotal),
+            (item, 1, " ", .invalidRequestId)
+        ]
+        for (selected, quantity, id, expected) in cases {
+            do {
+                _ = try await service.place(selected, quantity: quantity, requestId: id)
+                XCTFail("Expected validation failure")
+            } catch { XCTAssertEqual(error as? OrderFailure, expected) }
+        }
+        let calls = await gateway.calls
+        XCTAssertTrue(calls.isEmpty)
+    }
+
+    func testReturnsActualConfirmationAndForwardsIdentity() async throws {
+        let gateway = FakeOrderGateway()
+        let result = try await PlaceChickenOrder(gateway: gateway)
+            .place(item, quantity: 2, requestId: "request-001")
+        XCTAssertEqual(result, OrderReceipt(orderId: "order-001"))
+        let calls = await gateway.calls
+        XCTAssertEqual(calls, [OrderRequest(requestId: "request-001", itemId: item.id, quantity: 2)])
+    }
+
+    func testServiceFailureDoesNotBecomeConfirmation() async {
+        let service = PlaceChickenOrder(gateway: FakeOrderGateway(.failure))
+        do {
+            _ = try await service.place(item, quantity: 1, requestId: "request-001")
+            XCTFail("Expected service failure")
+        } catch {
+            XCTAssertTrue(error is FakeOrderGateway.ServiceFailure)
+        }
+    }
+
+    func testEmptyConfirmationIsRejected() async {
+        let service = PlaceChickenOrder(gateway: FakeOrderGateway(.empty))
+        do {
+            _ = try await service.place(item, quantity: 1, requestId: "request-001")
+            XCTFail("Expected receipt failure")
+        } catch { XCTAssertEqual(error as? OrderFailure, .invalidReceipt) }
+    }
+
+    func testRepeatedTapMakesOneSubmission() async throws {
+        let gateway = FakeOrderGateway(.suspended)
+        let service = PlaceChickenOrder(gateway: gateway)
+        let first = Task { try await service.place(item, quantity: 1, requestId: "request-001") }
+        await gateway.waitUntilStarted()
+        do {
+            _ = try await service.place(item, quantity: 1, requestId: "request-001")
+            XCTFail("Expected in-flight guard")
+        } catch { XCTAssertEqual(error as? OrderFailure, .alreadySubmitting) }
+        let calls = await gateway.calls
+        XCTAssertEqual(calls.count, 1)
+        await gateway.finish()
+        let result = try await first.value
+        XCTAssertEqual(result, OrderReceipt(orderId: "order-001"))
+    }
+}
+```
+
+### `PlaceChickenOrderUITests.swift` — actual app UI integration example
+
+The approved test target must launch against the isolated fixture and expose the identifiers below. Do not invent an unsupported launch argument to switch environments.
+
+```swift
+import XCTest
+
+final class PlaceChickenOrderUITests: XCTestCase {
+    func testPlacesChickenOrderAndShowsConfirmation() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        // The approved test target/environment must already use the isolated fixture.
+        app.launch()
+        let item = app.buttons["chicken.item.grilled"]
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        XCTAssertTrue(item.isHittable)
+        item.tap()
+        let quantity = app.textFields["chicken.quantity"]
+        XCTAssertTrue(quantity.waitForExistence(timeout: 5))
+        XCTAssertTrue(quantity.isHittable)
+        quantity.tap()
+        // Fixture starts empty; adapt clearing to the real control if prefilled.
+        quantity.typeText("2")
+        let total = app.staticTexts["chicken.total"]
+        let correctTotal = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND label == %@", "25.00"),
+            object: total)
+        XCTAssertEqual(XCTWaiter.wait(for: [correctTotal], timeout: 5), .completed)
+        let submit = app.buttons["chicken.place-order"]
+        XCTAssertTrue(submit.waitForExistence(timeout: 5))
+        XCTAssertTrue(submit.isHittable && submit.isEnabled)
+        submit.tap()
+        let confirmation = app.otherElements["chicken.confirmation"]
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        let orderId = app.staticTexts["chicken.order-id"]
+        let correctReceipt = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND label == %@", "order-001"),
+            object: orderId)
+        XCTAssertEqual(XCTWaiter.wait(for: [correctReceipt], timeout: 5), .completed)
+    }
+}
+```
+
+### Run
+
+Replace the workspace, shared test-enabled scheme, and available Simulator ID. Save/run this block as Bash from the application root:
+
+```bash
+set -euo pipefail
+
+MOBILE_IOS_WORKSPACE='REPLACE_WITH_ACTUAL_WORKSPACE.xcworkspace'
+MOBILE_IOS_SCHEME='REPLACE_WITH_SHARED_TEST_SCHEME'
+MOBILE_SIMULATOR_UDID='REPLACE_WITH_AVAILABLE_SIMULATOR_ID'
+
+xcodebuild test \
+  -workspace "$MOBILE_IOS_WORKSPACE" \
+  -scheme "$MOBILE_IOS_SCHEME" \
+  -destination "platform=iOS Simulator,id=$MOBILE_SIMULATOR_UDID" \
+  -enableCodeCoverage YES
+```
+
+Use `-project` for a project-only configuration. The scheme determines which test targets run. Confirm the intended unit/UI suites are included; this command does not prove Sauce Labs real-device execution.
+
+</TabItem>
+<TabItem label="React Native">
+
+### Files
+
+```text
+src/features/order/place-order.ts
+src/features/order/place-order.test.ts
+src/features/order/order-store.ts
+src/features/order/order-store.test.ts
+tests/pages/ChickenOrderPage.ts
+tests/order/place-order.test.ts
+tests/wdio.conf.ts
+```
+
+JavaScript/TypeScript tests use the existing Jest configuration. Redux tests use a fresh real **Redux Toolkit** store. The supplied React Native device framework uses WebdriverIO/Appium. Jest runs the unit and Redux Toolkit tests. WebdriverIO selects the separate device spec under tests/order/. Keep discovery scoped to the correct runner.
+
+### `place-order.ts` — sample application code
+
+```typescript
+export type ChickenItem = Readonly<{
+  id: string;
+  unitPriceMinor: number;
+  available: boolean;
+}>;
+export type OrderRequest = Readonly<{
+  requestId: string;
+  itemId: string;
+  quantity: number;
+}>;
+export type OrderReceipt = Readonly<{ orderId: string }>;
+export interface OrderGateway {
+  place(request: OrderRequest): Promise<OrderReceipt>;
+}
+export class OrderError extends Error {}
+
+export function quote(item: ChickenItem, quantity: number): number {
+  if (!item.id.trim()) throw new OrderError('invalid-item');
+  if (!item.available) throw new OrderError('unavailable');
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
+    throw new OrderError('invalid-quantity');
+  }
+  if (!Number.isSafeInteger(item.unitPriceMinor) || item.unitPriceMinor <= 0) {
+    throw new OrderError('invalid-price');
+  }
+  const total = item.unitPriceMinor * quantity;
+  if (!Number.isSafeInteger(total)) throw new OrderError('invalid-total');
+  return total;
+}
+
+// Keep one instance per active order flow; recreating it per tap loses the guard.
+export class PlaceChickenOrder {
+  private submitting = false;
+  constructor(private readonly gateway: OrderGateway) {}
+
+  async place(item: ChickenItem, quantity: number,
+              requestId: string): Promise<OrderReceipt> {
+    quote(item, quantity);
+    if (!requestId.trim()) throw new OrderError('invalid-request-id');
+    if (this.submitting) throw new OrderError('already-submitting');
+    this.submitting = true;
+    try {
+      const receipt = await this.gateway.place({
+        requestId, itemId: item.id, quantity,
+      });
+      if (!receipt.orderId.trim()) throw new OrderError('invalid-receipt');
+      return receipt;
+    } finally {
+      this.submitting = false;
+    }
+  }
+}
+```
+
+### `place-order.test.ts` — deterministic unit tests
+
+```typescript
+import { ChickenItem, OrderGateway, OrderReceipt, OrderRequest,
+  PlaceChickenOrder, quote } from './place-order';
+
+const item: ChickenItem = { id: 'chicken-grilled', unitPriceMinor: 1250, available: true };
+
+function fixture(reply: (request: OrderRequest) => Promise<OrderReceipt> =
+  async () => ({ orderId: 'order-001' })) {
+  const calls: OrderRequest[] = [];
+  const gateway: OrderGateway = {
+    place: async request => { calls.push(request); return reply(request); },
+  };
+  return { service: new PlaceChickenOrder(gateway), calls };
+}
+
+test('two portions have the exact displayed minor-unit total', () => {
+  expect(quote(item, 1)).toBe(1250);
+  expect(quote(item, 2)).toBe(2500);
+  expect(quote(item, 20)).toBe(25000);
+});
+
+test.each([0, -1, 21, 1.5, Number.NaN, Number.POSITIVE_INFINITY])('rejects invalid quantity %s before submission', async quantity => {
+  const { service, calls } = fixture();
+  await expect(service.place(item, quantity, 'request-001')).rejects.toThrow('invalid-quantity');
+  expect(calls).toHaveLength(0);
+});
+
+test('unavailable item is not submitted', async () => {
+  const { service, calls } = fixture();
+  await expect(service.place({ ...item, available: false }, 1, 'request-001'))
+    .rejects.toThrow('unavailable');
+  expect(calls).toHaveLength(0);
+});
+
+test.each([
+  [{ ...item, id: ' ' }, 'request-001', 'invalid-item'],
+  [{ ...item, unitPriceMinor: 0 }, 'request-001', 'invalid-price'],
+  [item, ' ', 'invalid-request-id'],
+] as const)('rejects invalid metadata without submission', async (selected, id, error) => {
+  const { service, calls } = fixture();
+  await expect(service.place(selected, 1, id)).rejects.toThrow(error);
+  expect(calls).toHaveLength(0);
+});
+
+test('unsafe total is rejected', () => {
+  expect(() => quote({ ...item, unitPriceMinor: Number.MAX_SAFE_INTEGER }, 2))
+    .toThrow('invalid-total');
+});
+
+test('returns the actual order confirmation and forwards request identity', async () => {
+  const { service, calls } = fixture();
+  await expect(service.place(item, 2, 'request-001')).resolves.toEqual({ orderId: 'order-001' });
+  expect(calls).toEqual([{ requestId: 'request-001', itemId: item.id, quantity: 2 }]);
+});
+
+test('service error is preserved and no confirmation is fabricated', async () => {
+  const failure = new Error('service-unavailable');
+  const { service } = fixture(async () => { throw failure; });
+  await expect(service.place(item, 1, 'request-001')).rejects.toBe(failure);
+});
+
+test('empty confirmation is rejected', async () => {
+  const { service } = fixture(async () => ({ orderId: ' ' }));
+  await expect(service.place(item, 1, 'request-001')).rejects.toThrow('invalid-receipt');
+});
+
+test('repeated tap during submission makes only one gateway call', async () => {
+  let complete!: (receipt: OrderReceipt) => void;
+  const pending = new Promise<OrderReceipt>(resolve => { complete = resolve; });
+  const { service, calls } = fixture(() => pending);
+  const first = service.place(item, 1, 'request-001');
+  await expect(service.place(item, 1, 'request-001')).rejects.toThrow('already-submitting');
+  expect(calls).toHaveLength(1);
+  complete({ orderId: 'order-001' });
+  await expect(first).resolves.toEqual({ orderId: 'order-001' });
+});
+```
+
+### `order-store.ts` — actual Redux Toolkit state integration
+
+The store rejects repeated dispatch while submitting and prevents automatic repeat after confirmation or an unknown outcome. It intentionally provides no arbitrary reset/retry action; reconciliation/new-order lifecycle needs the real product contract. This guard is in-memory and still requires durable request identity for restart safety.
+
+```typescript
+import { configureStore, createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { ChickenItem, PlaceChickenOrder, quote } from './place-order';
+
+type OrderState = {
+  status: 'idle' | 'submitting' | 'confirmed' | 'invalid' | 'unknown';
+  orderId: string | null;
+  error: string | null;
+};
+const initialState: OrderState = { status: 'idle', orderId: null, error: null };
+type Input = { item: ChickenItem; quantity: number; requestId: string };
+
+export const submitOrder = createAsyncThunk<
+  { orderId: string }, Input,
+  { state: { order: OrderState }; extra: { service: PlaceChickenOrder }; rejectValue: { kind: "invalid" | "unknown"; message: string } }
+>('order/submit', async (input, { extra, rejectWithValue }) => {
+  // Classify only validation performed before any submission as safe to correct.
+  try {
+    quote(input.item, input.quantity);
+    if (!input.requestId.trim()) throw new Error('invalid-request-id');
+  } catch (error) {
+    return rejectWithValue({ kind: 'invalid', message:
+      error instanceof Error ? error.message : 'invalid-input' });
+  }
+  try {
+    return await extra.service.place(input.item, input.quantity, input.requestId);
+  } catch {
+    // Do not classify gateway outcome by its message: an unknown write may exist.
+    return rejectWithValue({ kind: 'unknown', message: 'outcome-unknown' });
+  }
+}, {
+  condition: (_, { getState }) => ['idle', 'invalid'].includes(getState().order.status),
+});
+
+const slice = createSlice({
+  name: 'order', initialState, reducers: {},
+  extraReducers: builder => {
+    builder.addCase(submitOrder.pending, state => {
+      state.status = 'submitting'; state.orderId = null; state.error = null;
+    }).addCase(submitOrder.fulfilled, (state, action) => {
+      state.status = 'confirmed'; state.orderId = action.payload.orderId;
+    }).addCase(submitOrder.rejected, (state, action) => {
+      const failure = action.payload ?? { kind: 'unknown', message: 'outcome-unknown' };
+      state.status = failure.kind === 'invalid' ? 'invalid' : 'unknown';
+      state.orderId = null; state.error = failure.message;
+    });
+  },
+});
+
+export function makeOrderStore(service: PlaceChickenOrder) {
+  return configureStore({
+    reducer: { order: slice.reducer },
+    middleware: getDefault => getDefault({ thunk: { extraArgument: { service } } }),
+  });
+}
+```
+
+### `order-store.test.ts` — real store tests
+
+```typescript
+import { PlaceChickenOrder, OrderReceipt } from './place-order';
+import { makeOrderStore, submitOrder } from './order-store';
+
+const input = {
+  item: { id: 'chicken-grilled', unitPriceMinor: 1250, available: true },
+  quantity: 2, requestId: 'request-001',
+};
+
+test('real Redux store exposes the actual confirmation', async () => {
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => ({ orderId: 'order-001' }),
+  }));
+  await store.dispatch(submitOrder(input));
+  expect(store.getState().order).toEqual({ status: 'confirmed', orderId: 'order-001', error: null });
+});
+
+test('repeated dispatch while pending makes one submission', async () => {
+  let calls = 0;
+  let complete!: (receipt: OrderReceipt) => void;
+  const pending = new Promise<OrderReceipt>(resolve => { complete = resolve; });
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => { calls++; return pending; },
+  }));
+  const first = store.dispatch(submitOrder(input));
+  const second = await store.dispatch(submitOrder(input));
+  expect(submitOrder.rejected.match(second) && second.meta.condition).toBe(true);
+  expect(calls).toBe(1);
+  expect(store.getState().order.status).toBe('submitting');
+  complete({ orderId: 'order-001' });
+  await first;
+  expect(store.getState().order.status).toBe('confirmed');
+});
+
+test('unknown outcome blocks an automatic repeat', async () => {
+  let calls = 0;
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => { calls++; throw new Error('network-timeout'); },
+  }));
+  await store.dispatch(submitOrder(input));
+  expect(store.getState().order.status).toBe('unknown');
+  await store.dispatch(submitOrder(input));
+  expect(calls).toBe(1);
+});
+
+test('invalid quantity never calls the service and allows corrected input', async () => {
+  let calls = 0;
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => { calls++; return { orderId: 'order-001' }; },
+  }));
+  await store.dispatch(submitOrder({ ...input, quantity: 0 }));
+  expect(store.getState().order.status).toBe('invalid');
+  expect(calls).toBe(0);
+  await store.dispatch(submitOrder(input));
+  expect(calls).toBe(1);
+  expect(store.getState().order.status).toBe('confirmed');
+});
+
+// An error message that resembles validation must not unlock another server write.
+test('gateway validation-like error remains an unknown submission outcome', async () => {
+  let calls = 0;
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => { calls++; throw new Error('unavailable'); },
+  }));
+  await store.dispatch(submitOrder(input));
+  expect(store.getState().order.status).toBe('unknown');
+  await store.dispatch(submitOrder(input));
+  expect(calls).toBe(1);
+});
+
+test('confirmed order is not submitted again by repeated dispatch', async () => {
+  let calls = 0;
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => { calls++; return { orderId: 'order-001' }; },
+  }));
+  await store.dispatch(submitOrder(input));
+  await store.dispatch(submitOrder(input));
+  expect(calls).toBe(1);
+  expect(store.getState().order.orderId).toBe('order-001');
+});
+```
+
+### ChickenOrderPage.ts — device actions
+
+Place this in `tests/pages/ChickenOrderPage.ts`. It uses the supplied framework helpers. Expose the same accessibility IDs on the app's controls for both Android and iOS.
+
+```typescript
+import { BasePage } from '@enterprise/rn-appium-framework';
+
+export class ChickenOrderPage extends BasePage {
+  async place(quantity: string): Promise<void> {
+    await this.tapById('chicken.item.grilled');
+    await this.setValueById('chicken.quantity', quantity);
+    await this.tapById('chicken.place-order');
+  }
+
+  async confirmation() {
+    return this.waitForId('chicken.confirmation');
+  }
+
+  async orderId() {
+    return this.waitForId('chicken.order-id');
+  }
+}
+```
+
+### place-order.test.ts — Appium device spec
+
+Place this file in `tests/order/` and select it through the installed package's `tests/wdio.conf.ts` template. Configure a fresh app launch at the order screen with an empty quantity field and the isolated service returning `order-001`.
+
+```typescript
+import { browser, expect } from '@wdio/globals';
+import { ChickenOrderPage } from '../pages/ChickenOrderPage';
+
+const page = new ChickenOrderPage();
+
+describe('Place a chicken order', () => {
+  beforeEach(async () => {
+    await browser.reloadSession();
+  });
+
+  it('user orders two portions and sees the order confirmation', async () => {
+    await page.place('2');
+    await expect(await page.confirmation()).toBeDisplayed();
+    await expect(await page.orderId()).toHaveText('order-001');
+  });
+});
+```
+
+Inspect the native hierarchy before selecting the order ID assertion for your platform. The test assumes the displayed text is exposed by the control. Failure cases and duplicate-submission behavior are exercised by the unit and store tests above. Match device failure assertions to the actual screen's error contract.
+
+### Run
+
+First inspect `package.json` and confirm that `test:unit` invokes the existing Jest setup. If that script is absent, use the repository's equivalent test command; do not assume the overview creates scripts for you:
+
+```bash
+npm run test:unit -- --runTestsByPath \
+  src/features/order/place-order.test.ts \
+  src/features/order/order-store.test.ts
+```
+
+For Yarn, use `yarn test:unit --runTestsByPath` with those same paths. Then run full production coverage, not only this feature selection:
+
+```bash
+npm run test:coverage
+```
+
+**Expected:** actual unit/store cases execute, repeated dispatch submits once, and an uncertain service outcome never becomes a confirmed order or automatic resubmission.
+
+</TabItem>
+</Tabs>
+
+## Match the device screen
+
+| Control / fixture | Example identifier or value |
+| :--- | :--- |
+| Grilled chicken item | `chicken.item.grilled` |
+| Quantity input | `chicken.quantity`, initially empty for the shown UI examples. |
+| Quoted total | `chicken.total`; fixture renders `25.00` for two portions of the sample price. |
+| Submit control | `chicken.place-order` |
+| Confirmation container | `chicken.confirmation` |
+| Confirmed order ID | `chicken.order-id`, isolated fixture response `order-001`. |
+
+
+
+For React Native, expose the displayed controls through the accessibility IDs used by ChickenOrderPage. Use the installed package's BasePage, device configuration, and runner lifecycle. The source guide records framework publication and live device execution as pending confirmation.
+
+The examples provide the order service and tests. Connect them to your existing UI and approved API adapter. The local submission guard covers overlapping calls within one service instance. Preserve the order request identity and reconcile uncertain results before retrying.
+
+**Attach screenshot — chicken order selection, confirmation, and completed platform test results.**
+
+## Configure the device run
+
+Use the installed framework's `tests/wdio.conf.ts` template to select `tests/order/place-order.test.ts`. Set the platform, device, and built app through the framework configuration. Supply account credentials through approved protected storage.
+
+| Variable | Use |
+| --- | --- |
+| `TEST_PASSWORD` | Password for the selected test account or synthetic fixture. |
+| `DEMO_AUTH_USERNAME` | Matching username, where the fixture supports it. |
+| `TEST_TARGET` | `sauce` for cloud devices, or unset/local for a local device. |
+| `PLATFORM_NAME` | `Android` or `iOS`. |
+| `APP_PATH` | Built APK or simulator app for local execution. |
+| `APPIUM_HOST`, `APPIUM_PORT` | Local Appium endpoint, default `127.0.0.1:4723`. |
+| `LOCAL_DEVICE_ANDROID`, `LOCAL_DEVICE_IOS` | Local target names. |
+| `SAUCE_REGION` | Account data center, such as `us-west-1` or `eu-central-1`. |
+| `SAUCE_APP_URI` | Exact uploaded binary reference exported by the upload operation. |
+| `SAUCE_APP_FILENAME_ANDROID`, `SAUCE_APP_FILENAME_IOS` | Filename fallback for the selected platform. |
+| `SAUCE_DEVICE_ANDROID`, `SAUCE_DEVICE_IOS` | Available cloud device patterns. |
+| `APP_PACKAGE` | Android application ID for diagnostics. |
+| `SAUCE_USERNAME`, `SAUCE_ACCESS_KEY` | Protected Sauce credentials. |
+
+The order example uses a controlled order gateway and a fresh app session at the order screen. Configure any required test account through your application's existing fixture. Keep generated values and local secret files out of commits.
+
+<Tabs>
+<TabItem label="Run device tests">
+
+```bash
+npm run test:e2e:verify
+npm run test:e2e
+```
+
+</TabItem>
+</Tabs>
+
+The first command type-checks the device tests. The second executes them on the configured target. A local run needs the app package, target device, and Appium service. A Sauce run needs the uploaded app reference, matching region, available device, and protected Sauce credentials.
+
+For a missing element, inspect the accessibility IDs and keyboard state. For an unavailable device, check the selected device pattern and account capacity. For an authentication error, verify the Sauce region and credential bindings.
+
+## Run through CI
+
+Commit the application and reviewed tests together. Follow [Coverage and Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/) and [CI/CD → Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/) for required checks, packaging, upload, and device execution. Governed apps use the shared Bitrise template.
+
+Use [IDE-Assisted Test Generation](/mobile/testing-quality/ide-assisted-test-generation/) to draft additional cases with Copilot or ChatGPT.
+
+
+
+-----------
+
+
+
+---
+title: "IDE-Assisted Test Generation"
+description: "Draft My Chicken App tests in the approved IDE, verify the assertions, and commit code for CI execution without LLM calls."
+sidebar:
+  label: IDE Test Generation
+  order: 5
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidViewer from "@components/MermaidViewer.astro";
+
+Use **GitHub Copilot or ChatGPT** to draft a focused chicken-order test, then review and run it yourself. The assistant helps write code; your existing test runner executes it.
+
+**Start with:** the feature, test files, and fixtures from [Writing Tests](/mobile/testing-quality/writing-tests/). This page adds prompts and review steps; it does not create another test framework.
+
+**Work location — your application repository and approved assistant.** Open files in the IDE for a supported integration, or provide permitted excerpts to ChatGPT. Use only approved accounts and context. Do not send credentials, customer data, private logs, or unapproved source. A rules file does not enable account-level data protection or enforce access controls.
+
+## 1. Keep generation in the IDE
+
+**Generate during development; execute committed tests in CI.** Bitrise does not call an LLM. Generated tests follow the same review, coverage, and device gates as handwritten tests.
+
+For assistant setup, use [GitHub Copilot Setup](/mobile/genai-and-tools/github-copilot-setup/) or [ChatGPT Setup](/mobile/genai-and-tools/chatgpt-setup/). This page describes the test-authoring workflow, not an IDE plugin installation.
+
+The examples test MyChickenapp. For the supplied React Native framework, generate WebdriverIO/Appium specs that call page objects extending BasePage. Android Espresso and iOS XCUITest use their native test targets.
+
+<MermaidViewer title="Generate locally, verify behavior, then execute reviewed code in CI">
+
+```mermaid
+flowchart TD
+    A["Define expected chicken-order behavior"] --> B["Select permitted code, fixtures and conventions"]
+    B --> C["Copilot or ChatGPT drafts one test"]
+    C --> D["Developer inspects assertions and dependencies"]
+    D --> E["Run locally; confirm regression is detected"]
+    E --> F{"Test is valid?"}
+    F -->|No| D
+    F -->|Yes| G["Commit and request peer review"]
+    G --> H["Bitrise runs committed tests and coverage"]
+    H --> I["Configured device suites run on Sauce Labs"]
+    I --> J["Record actual result and evidence"]
+    classDef human fill:#172554,stroke:#93c5fd,color:#fff,stroke-width:2px;
+    classDef draft fill:#4c1d95,stroke:#d8b4fe,color:#fff,stroke-width:2px;
+    classDef gate fill:#713f12,stroke:#fde047,color:#fff,stroke-width:2px;
+    classDef done fill:#064e3b,stroke:#6ee7b7,color:#fff,stroke-width:2px;
+    class A,B,D,G human;
+    class C,H,I draft;
+    class E,F gate;
+    class J done;
+```
+
+</MermaidViewer>
+
+**Blue shows developer review, purple shows drafting or execution, and amber shows validation.** A generated unit test runs in its unit-test runner; it is not uploaded to Sauce Labs. The cloud stage runs the separately configured native device suites.
+
+## 2. Provide a precise scenario and safe context
+
+Choose one behavior and its expected result before prompting. This example uses the teaching fixture from Writing Tests; its pricing and availability rules are not a confirmed product API contract:
+
+<Tabs>
+<TabItem label="Copyable prompt">
+
+```text
+My Chicken App — placing a chicken order
+Given the selected sample chicken item is available and costs 1250 minor units,
+when quantity is 2, the local quote is 2500 minor units.
+When the injected fake gateway confirms request-001 with order-001,
+the order flow returns that exact receipt.
+Invalid input must make zero gateway calls.
+A repeated submission while the first is pending must not call the gateway twice.
+No real ordering service, payment, credentials, or customer data may be used.
+```
+
+</TabItem>
+</Tabs>
+
+The real product/server rules still need team confirmation. This prompt is not permission to invent a checkout API, taxes, delivery fees, or server idempotency guarantees.
+
+| Supply only if permitted | Verify before prompting |
+| :--- | :--- |
+| Relevant production boundary and request/receipt types | Actual file and method names; no unrelated proprietary logic. |
+| Existing test and fake | Real fixture lifecycle and imports; no secrets or customer payloads. |
+| Page Objects/base test, if they exist | Actual selectors/methods; do not invent a missing base class. |
+| `tests/conventions.md` | Current approved rules and exact execution command. |
+| Redux store factory, for JS integration | Real Redux Toolkit reducer/thunk and injected I/O boundary. |
+
+Inspect the IDE's attached/context files. If policy does not permit sending a source excerpt, provide an approved interface description or synthetic example instead.
+
+**Attach screenshot — permitted context selection with code/account details redacted as required.**
+
+For the React Native framework, provide `tests/conventions.md`, the relevant page object, the spec, and the app's accessibility identifiers. Ask Copilot or ChatGPT to extend the existing page object and spec using accessibility IDs. Keep credentials and production data out of the prompt. Run the existing E2E type check and verify the behavior on the configured runner.
+
+## 3. Add or reuse `conventions.md`
+
+**File:** `tests/conventions.md` for the supplied framework. This starter is a documentation example, not a newly issued Enterprise policy:
+
+<Tabs>
+<TabItem label="Test conventions">
+
+```markdown
+# My Chicken App — test authoring conventions
+
+- Use the supplied acceptance criteria and existing approved runner/dependencies.
+- Reuse real methods, fixtures, selectors, and targets; report missing contracts.
+- Use fakes for unit tests; never create real orders or embed secrets/customer data.
+- Assert receipt/request identity, totals, errors, and actual gateway call counts.
+- Use fresh test state and controlled completion; no fixed sleeps, retries, or skipped assertions.
+- Keep the complete production coverage requirement; never add ignores to get a pass.
+- Preserve Redux Toolkit. Use the project's configured device runner: the supplied React Native framework uses WebdriverIO/Appium, while native suites use their existing targets.
+- CI runs committed tests only; no LLM calls or generated replacement tests in CI.
+```
+
+</TabItem>
+</Tabs>
+
+Reuse existing repository instructions. Supply `conventions.md` explicitly as permitted context; creating this filename does not guarantee an assistant automatically reads it. It guides authoring; test runners and required checks enforce results.
+
+## 4. Use the platform prompt and execution command
+
+Follow the same steps for each platform:
+
+1. Open the listed application and test files, then inspect what context the assistant will receive.
+2. Supply the prompt and conventions through the approved assistant.
+3. Review the returned draft before adding it to the existing test file.
+4. Run the focused test and verify its assertions.
+5. Run full coverage and the configured device suites before completing the normal PR process.
+
+The drafts below are **methods/blocks for the existing Writing Tests files**, not standalone files. Retain their actual imports, fixtures, package/module, and test-class definitions. These prompts do not target the separate, simpler Platform & SDKs demo.
+
+<Tabs>
+<TabItem label="Android Studio — JUnit / Espresso">
+
+### Context files
+
+```text
+app/src/main/java/com/example/mychicken/order/PlaceChickenOrder.kt
+app/src/test/java/com/example/mychicken/order/PlaceChickenOrderTest.kt
+app/src/androidTest/java/com/example/mychicken/order/PlaceChickenOrderUiTest.kt
+tests/conventions.md
+```
+
+For React Native Android, use these under its actual native project path. Compose-only UI needs Compose semantics, not invented View IDs.
+
+### Prompt — unit behavior
+
+```text
+Using the open PlaceChickenOrder.kt and PlaceChickenOrderTest.kt,
+draft one Kotlin/JUnit test named unavailableChickenDoesNotSubmit.
+Use the existing runTest, FakeGateway, and item fixture inside that test class.
+Set item.available=false; assert OrderFailure.reason is unavailable
+and the gateway's calls list stays empty.
+Follow conventions.md. Do not introduce dependencies, new APIs, sleeps,
+real network calls, retries, or changes to production rules.
+Return the proposed test method only and identify any missing context.
+```
+
+### Expected draft shape
+
+Append inside the existing configured `PlaceChickenOrderTest` class:
+
+```kotlin
+@Test fun unavailableChickenDoesNotSubmit() = runTest {
+    val gateway = FakeGateway()
+    val error = runCatching {
+        PlaceChickenOrder(gateway).place(
+            item.copy(available = false), 1, "request-001")
+    }.exceptionOrNull()
+    assertEquals("unavailable", (error as? OrderFailure)?.reason)
+    assertTrue(gateway.calls.isEmpty())
+}
+```
+
+The existing input table already exercises this case; this method illustrates a focused generated draft. Avoid duplicating it if that adds no regression value.
+
+### Prompt — device journey
+
+```text
+Using PlaceChickenOrderUiTest.kt and the actual order screen, draft an
+Espresso test that orders two portions and verifies the returned order ID.
+Reuse the screen's accessibility identifiers and approved idling setup.
+Use the isolated order fixture. Start each test from a fresh app state.
+Report missing selectors or fixture configuration before guessing them.
+```
+
+### Run locally
+
+From the actual native Gradle root:
+
+```bash
+./gradlew :app:testDebugUnitTest \
+  --tests 'com.example.mychicken.order.PlaceChickenOrderTest'
+```
+
+For a UI draft, give the assistant the actual Activity, selectors, and idling-resource contract. Require the exact returned order ID/quote assertions from Writing Tests. Execute the configured device suite only after the isolated fixture is ready:
+
+```bash
+./gradlew :app:connectedDebugAndroidTest
+```
+
+Replace module/variant/package values. These are local tasks, not commands to create Sauce jobs from the IDE.
+
+</TabItem>
+<TabItem label="Xcode — XCTest / XCUITest">
+
+### Context files
+
+```text
+MyChickenApp/Order/PlaceChickenOrder.swift
+MyChickenAppTests/PlaceChickenOrderTests.swift
+MyChickenAppUITests/PlaceChickenOrderUITests.swift
+tests/conventions.md
+```
+
+### Prompt — unit behavior
+
+```text
+Using PlaceChickenOrder.swift and the existing PlaceChickenOrderTests.swift,
+draft testUnavailableChickenDoesNotSubmit for the existing XCTest class.
+Use FakeOrderGateway and the current item fixture. Set available=false.
+Assert the thrown OrderFailure is unavailable and await the actor's calls
+before asserting that they are empty. Do not put await inside XCTest's
+synchronous assertion autoclosures.
+Follow conventions.md and the current Swift concurrency configuration.
+No real orders, new SDK APIs, fixed sleeps, or changes to business rules.
+Return only the test method and any missing prerequisites.
+```
+
+### Expected draft shape
+
+Append inside the existing `PlaceChickenOrderTests` class:
+
+```swift
+func testUnavailableChickenDoesNotSubmit() async {
+    let gateway = FakeOrderGateway()
+    let selected = ChickenItem(id: item.id, unitPriceMinor: 1250, available: false)
+    do {
+        _ = try await PlaceChickenOrder(gateway: gateway)
+            .place(selected, quantity: 1, requestId: "request-001")
+        XCTFail("Expected unavailable chicken to be rejected")
+    } catch {
+        XCTAssertEqual(error as? OrderFailure, .unavailable)
+    }
+    let calls = await gateway.calls
+    XCTAssertTrue(calls.isEmpty)
+}
+```
+
+For a UI draft, supply the actual accessibility identifiers, control types, test locale, and isolated launch environment. Require bounded existence/hittability/readiness waits; do not assume a newly generated base class or launch argument exists.
+
+### Prompt — device journey
+
+```text
+Using PlaceChickenOrderUITests.swift and the actual order screen, draft
+an XCUITest that orders two portions and verifies the returned order ID.
+Reuse the app's accessibility identifiers and condition-based waits.
+Use the isolated order fixture and the existing UI-test target.
+Report missing selectors or fixture configuration before guessing them.
+```
+
+### Run locally
+
+Replace the actual workspace, shared test-enabled scheme, and available Simulator ID. Save/run the complete block as Bash:
+
+```bash
+set -euo pipefail
+MOBILE_IOS_WORKSPACE='REPLACE_WITH_ACTUAL_WORKSPACE.xcworkspace'
+MOBILE_IOS_SCHEME='REPLACE_WITH_SHARED_TEST_SCHEME'
+MOBILE_SIMULATOR_UDID='REPLACE_WITH_AVAILABLE_SIMULATOR_ID'
+
+xcodebuild test \
+  -workspace "$MOBILE_IOS_WORKSPACE" \
+  -scheme "$MOBILE_IOS_SCHEME" \
+  -destination "platform=iOS Simulator,id=$MOBILE_SIMULATOR_UDID" \
+  -enableCodeCoverage YES
+```
+
+The selected scheme must include the intended test target. Use `-project` for project-only setups. A successful local test does not establish a packaged real-device result.
+
+</TabItem>
+<TabItem label="VS Code — React Native">
+
+### Context files
+
+```text
+src/features/order/place-order.ts
+src/features/order/place-order.test.ts
+src/features/order/order-store.ts
+src/features/order/order-store.test.ts
+tests/conventions.md
+```
+
+### Prompt — real Redux Toolkit integration
+
+```text
+Using the open order-store.ts and order-store.test.ts, draft one Jest
+integration test for My Chicken App: repeated dispatch after confirmation
+must not submit a second order.
+Create a fresh real store with makeOrderStore and an injected fake gateway.
+Use the existing input fixture, count gateway calls, dispatch submitOrder twice,
+and assert one gateway call plus the unchanged confirmed order ID.
+Do not mock Redux hooks, replace Redux Toolkit, change the configured runner, call a real
+service, add dependencies, skip assertions, or reset state to hide a failure.
+Follow conventions.md. Return only the proposed test and missing prerequisites.
+```
+
+### Expected draft shape
+
+Append to the existing configured `order-store.test.ts`:
+
+```typescript
+test('confirmed order is not submitted again', async () => {
+  let calls = 0;
+  const store = makeOrderStore(new PlaceChickenOrder({
+    place: async () => { calls++; return { orderId: 'order-001' }; },
+  }));
+  await store.dispatch(submitOrder(input));
+  await store.dispatch(submitOrder(input));
+  expect(calls).toBe(1);
+  expect(store.getState().order.status).toBe('confirmed');
+  expect(store.getState().order.orderId).toBe('order-001');
+});
+```
+
+Writing Tests already includes this regression; reuse it rather than create a second copy merely because the draft looks different.
+
+### Run locally
+
+Confirm `test:unit` exists in `package.json` and invokes the existing Jest runner. If it does, use:
+
+```bash
+npm run test:unit -- --runTestsByPath \
+  src/features/order/place-order.test.ts \
+  src/features/order/order-store.test.ts
+```
+
+Then run full production coverage, not only the generated file:
+
+```bash
+npm run test:coverage
+```
+
+Use the selected package manager's equivalent. JavaScript unit tests use Jest. The supplied React Native device framework uses WebdriverIO/Appium. Native Espresso and XCUITest suites run in their configured targets. Match the existing runner when using an assistant draft.
+
+### Prompt — React Native device journey
+
+Open `tests/pages/ChickenOrderPage.ts`, `tests/order/place-order.test.ts`, the order screen, and `tests/conventions.md`. Use the following prompt for Copilot or ChatGPT:
+
+```text
+Extend the existing React Native chicken-order device test.
+Use @enterprise/rn-appium-framework and the existing BasePage subclass.
+Use accessibility IDs only. Put locators and waits in the page object.
+The spec should call page actions and assert the visible order confirmation.
+Read test credentials from process.env. Start each test from app launch
+using the existing runner lifecycle. Do not add fixed sleeps.
+Return the changed page object and spec, and identify missing context.
+```
+
+Run `npm run test:e2e:verify` and `npm run pipeline:local` after reviewing the draft. Run `npm run test:e2e` only after the target, app package, and isolated fixture are configured. Verify the actual assertions on the selected device.
+
+</TabItem>
+</Tabs>
+
+## 5. Verify that the draft detects the intended regression
+
+Review the generated diff before execution. Reject invented imports, unused tests, changed production requirements, no-op assertions, fixed sleeps, hidden retries, and coverage exclusions.
+
+| Verification | What to observe |
+| :--- | :--- |
+| Correct implementation | Test passes with the expected assertions and call counts. |
+| Controlled local regression | The relevant test fails for the intended reason. |
+| Failure/unknown outcome | No fabricated confirmation or automatic repeat of an uncertain order. |
+| Complete coverage gate | Full production inventory and thresholds remain enforced. |
+
+To demonstrate regression detection, use an isolated local test branch/fixture. For example, temporarily introduce an incorrect quote in the sample or remove the sample's confirmed-state guard, then run the relevant test. Confirm the intended assertion fails; restore the change in the editor and rerun. Never commit/deploy the deliberately broken implementation or weaken the expected result to make it green.
+
+## 6. Review and publish the test change
+
+From the application repository, inspect source/test changes:
+
+<Tabs>
+<TabItem label="Run the checks">
+
+```bash
+git status --short
+git diff --check
+git diff --stat
+git diff
+```
+
+</TabItem>
+</Tabs>
+
+Stage only intended source/test files by their actual paths. Inspect `git diff --cached` before committing through the team's normal branch/PR process. Required peer reviews, Danger status, coverage gates, and Bitrise checks still apply.
+
+CI runs the committed tests through the existing workflow. No workflow change is needed merely because an assistant helped author a test. A new framework, target, fixture mechanism, or device integration still needs its actual configuration.
+
+| Work | Where it runs | What must remain consistent |
+|---|---|---|
+| Draft a test | Approved Copilot/ChatGPT authoring environment. | Permitted context and existing project conventions. |
+| Focused unit/store test | Your Mac, then the configured Bitrise test workflow. | Actual test discovery, assertions, and exit status. |
+| Full coverage | Configured local/CI coverage commands. | Complete production scope, fresh reports, and 100% for supported metrics. |
+| Native device journey | Local device target and approved Sauce Labs integration. | Matching app/test packages, real selectors, fixtures, and completed suite results. |
+| Release progression | Approved CI/CD routes. | Required review, security, signing, and destination verification. |
+
+Use [Coverage & Quality Gates](/mobile/testing-quality/coverage-and-quality-gates/) for enforcement, [Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/) for packaging and the exact integration YAML, and [Danger PR Checks](/mobile/cicd/danger-pr-checks/) for PR feedback. Keep each configuration in its owning guide.
+
+**Attach screenshot — reviewed test diff and passing local result, with sensitive code/data hidden.**
+
+## 7. Set up the workflow once per team
+
+| Step | Action / expected result |
+| :--- | :--- |
+| 1 | Establish and commit the actual base/lifecycle helpers once per platform. Reuse existing helpers; do not create fictitious classes to satisfy a prompt. |
+| 2 | Establish Page Objects/selectors for the real chicken selection, quantity, submit, and confirmation controls. |
+| 3 | Review the short `conventions.md` with the team. |
+| 4 | Walk one developer through a focused prompt using permitted context and the known order scenario. |
+| 5 | Review/run the test and execute the approved Bitrise → Sauce path; inspect actual device failures and evidence. |
+| 6 | Reuse the verified infrastructure for subsequent behavior tests, with new explicit acceptance criteria. |
+
+The assistant drafts structure. The developer owns behavior, imports, selectors, credentials/context, assertions, and validity. Platform/QA owners retain integration, device-matrix, protected-input, and evidence responsibilities.
+
+If a draft depends on unavailable product/API or runner contracts, record the missing input rather than invent a working implementation. No AI prompt or green generated test replaces the real product specification.
+
+**Continue:** use the reviewed [CI/CD section](/mobile/cicd/) to connect test results to the remaining security, signing, and delivery gates.
+
+**Next — [CI/CD → Sauce Labs Device Testing](/mobile/cicd/sauce-labs-real-device-testing/).** Follow the approved workflow to run reviewed device tests and inspect reports.
+
+
+
+
+---------------------
+
+
+---
+title: "Real-Device Testing with Sauce Labs"
+description: "Connect the supplied mobile test framework to Bitrise, upload the app, run device tests, and read the results."
+sidebar:
+  label: Sauce Labs Device Testing
+  order: 9.5
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import MermaidViewer from "@components/MermaidViewer.astro";
+
+Sauce Labs provides Android and iOS phones for automated app testing. Bitrise builds your app, uploads it, starts the configured test suite, and publishes the results. This page follows the latest supplied mobile testing reference, version 1.1 dated 17 November 2026.
+
+## Start here
+
+Begin with a mobile app that you can open and use locally. The first goal is to place a chicken order on one Sauce Labs device and find the completed test report. Add more devices after that first run succeeds.
+
+| Step | Application developer | Platform owner | Expected result |
+| --- | --- | --- | --- |
+| 1 | Install the framework and write one device test. | Provide a reachable approved framework release. | The test TypeScript check passes. |
+| 2 | Add the app's required Sauce request file. | Provide its actual schema, path, and device settings. | The selected template can read the request. |
+| 3 | Submit enrollment using the approved template ID and version. | Apply the reviewed request and connect the app. | A Bitrise app is connected to the correct source repository. |
+| 4 | Supply the required approved secret references. | Bind Sauce credentials and signing material. | Build and upload steps can authenticate. |
+| 5 | Push and review the test change. | Confirm the required triggers and build status. | The local/merge-request gate passes. |
+| 6 | Follow the configured merge or first-run process. | Inspect the build, upload, and runner handoff. | The intended device suite executes. |
+| 7 | Open the test report and device job. | Investigate infrastructure failures where needed. | The chicken-order assertions pass on the expected app build. |
+
+The shared workflow and private custom steps are supplied by Platform Engineering. Obtain their approved template version and request schema before the cloud setup. Those private implementation files are required to execute the integration.
+
+## Understand what runs where
+
+| Part | Location | Responsibility |
+| --- | --- | --- |
+| `bitrise.yml` | `mobile-platform-configuration-bitrise-template`. | Platform-owned workflows, triggers, builds, test execution, and delivery steps. |
+| `saucelabs_request.yml`, `saucelabs_request.ios.yml` | Application repository. | App registration metadata consumed by the configured workflow. |
+| `tests/wdio.conf.ts` | Application repository. | Selects the React Native device specs and framework configuration. |
+| `tests/pages/`, `tests/<feature>/` | Application repository. | Screen actions and reviewed device assertions. |
+| `@enterprise/rn-appium-framework` | Development dependency installed from the approved framework release. | Driver setup, Sauce wiring, keyboard handling, and diagnostics. |
+| Internal custom steps | Step repositories referenced by `bitrise.yml`. | App registration and binary upload operations. |
+| Appium server and phone | Sauce Labs for a cloud session. | Perform test actions against the installed app. |
+| Reports and optional alerts | Bitrise artifacts, Sauce job, Teams or email. | Show assertions, failures, logs, and run identity. |
+
+For React Native, WebdriverIO executes the committed specs and sends device commands to Appium. Native Android and iOS suites use the framework's Espresso and XCUITest copy-in templates and their matching runner configuration.
+
+<MermaidViewer title="From a code change to a real-device test result">
+
+```mermaid
+flowchart TD
+    CODE["Application repository<br/>App code, tests, CAMP, and request files"]
+    PUSH["Feature push or merge request"]
+    GATE["Bitrise primary<br/>Lint, security, unit tests, E2E type check"]
+    MERGE["Review and merge to main or master"]
+    BUILD["Bitrise deploy-android or deploy-ios<br/>Build app and upload to Sauce"]
+    TEST["Sauce Labs phone<br/>Execute the configured device suite"]
+    REPORT["Results<br/>JUnit, HTML, video, and Appium log"]
+    ALERT["Optional Teams or email<br/>Build result and link"]
+    CODE --> PUSH --> GATE
+    GATE -->|Passing checks and approved review| MERGE
+    MERGE --> BUILD --> TEST --> REPORT --> ALERT
+    classDef repo fill:#172554,stroke:#93c5fd,color:#fff,stroke-width:2px;
+    classDef ci fill:#3b0764,stroke:#d8b4fe,color:#fff,stroke-width:2px;
+    classDef results fill:#064e3b,stroke:#6ee7b7,color:#fff,stroke-width:2px;
+    class CODE,PUSH,MERGE repo;
+    class GATE,BUILD ci;
+    class TEST,REPORT,ALERT results;
+```
+
+</MermaidViewer>
+
+## Repository ownership
+
+**Do not create bitrise.yml or copy CI provisioning, Sauce upload, report, or notification scripts into the application repository.** Platform Engineering maintains that automation in the approved shared template and step repositories. Your app's enrollment request selects the template ID and exact version.
+
+<Tabs>
+<TabItem label="Application repository">
+
+```text
+MyChickenapp/
+├── campfile.yml
+├── package.json
+├── saucelabs_request.yml           # Use the path expected by the selected template
+├── saucelabs_request.ios.yml       # When required by that template
+├── src/                           # Application code and unit/component tests
+└── tests/
+    ├── wdio.conf.ts
+    ├── conventions.md
+    ├── pages/
+    └── order/place-order.test.ts
+```
+
+</TabItem>
+<TabItem label="Shared template repository">
+
+```text
+mobile-platform-configuration-bitrise-template/
+└── … approved versioned template path …
+    └── bitrise.yml
+```
+
+The selected YAML invokes the configured Sauce steps and platform-owned automation. Inspect that version for the actual step repositories, scripts, and inputs.
+
+</TabItem>
+</Tabs>
+
+## 1. Install the framework and prepare one test
+
+Obtain Enterprise Git and VPN access, the approved framework release, access to inspect Bitrise/Sauce results, and a dedicated test account if your app requires one. Check that your existing app builds locally and that Node.js, npm, and Git are available. Platform Engineering supplies cloud credential bindings and internal-step access.
+
+For React Native, open MyChickenapp in your IDE and use the terminal at the folder containing package.json. Replace the framework group and confirm the published tag before executing the source installation commands. The source peer-install command uses unpinned packages; obtain compatible approved versions from the framework owner before using it for your project.
+
+<Tabs>
+<TabItem label="React Native installation">
+
+```bash
+npm i -D 'git+https://git.enterprise.com/<framework-group>/enterprise-mobile-test-framework.git#rn-appium-v1.1.0'
+npm i -D @wdio/cli @wdio/local-runner @wdio/mocha-framework @wdio/sauce-service @wdio/spec-reporter @wdio/junit-reporter webdriverio appium
+```
+
+</TabItem>
+<TabItem label="Application test commands">
+
+```json
+{
+  "scripts": {
+    "test:unit": "jest",
+    "test:e2e": "wdio run tests/wdio.conf.ts",
+    "test:e2e:verify": "tsc --noEmit -p tests/tsconfig.json"
+  }
+}
+```
+
+Merge these entries into the existing package.json. Copy the actual framework configuration and TypeScript setup before running them.
+
+</TabItem>
+</Tabs>
+
+Copy the package's runner configuration template into tests/wdio.conf.ts, its conventions into tests/conventions.md, and the approved E2E TypeScript configuration into tests/tsconfig.json. Follow [Write and Run Tests](/mobile/testing-quality/writing-tests/) for the complete file mapping.
+
+Keep the app’s existing Jest configuration, and exclude the selected WebdriverIO device-spec paths from Jest discovery. A file named place-order.test.ts can otherwise be picked up by both runners.
+
+Add ChickenOrderPage and the device spec from [Complete Chicken Order Example](/mobile/testing-quality/chicken-order-example/). Select tests/order/place-order.test.ts in the package template's spec configuration. Match the page object's accessibility IDs to your actual screen and run the E2E type check.
+
+For Android Espresso and iOS XCUITest, use the framework's native templates and matching test targets. The next table identifies what the shared workflow must produce for each runner.
+
+| Suite | Application package | Test execution input |
+| --- | --- | --- |
+| React Native Appium on Android | APK with bundled JavaScript for the intended test fixture. | Reviewed JavaScript/TypeScript specs and the framework config. |
+| React Native Appium on iOS | Signed device IPA. | Reviewed JavaScript/TypeScript specs and the framework config. |
+| Native Android Espresso | App APK and matching instrumentation test APK. | Configured instrumentation runner and selected suite. |
+| Native iOS XCUITest | Device app and the correctly packaged UI-test runner. | Matching UI-test products and the approved packaging configuration. |
+
+Appium runs the JavaScript/TypeScript specs directly through WebdriverIO. It does not convert them into Espresso or XCUITest source files. The native suites use their own compiled test products.
+
+**Expected result:** the test files exist, the configured runner selects the intended spec, and npm run test:e2e:verify passes for the React Native example. A type check alone does not execute the phone journey.
+
+## 2. Add the app request and build settings
+
+Obtain the approved Sauce request example from the template owner. Create saucelabs_request.yml and, when required, saucelabs_request.ios.yml in the application checkout at the exact paths expected by the selected template. Fill your app's metadata using that schema. The supplied guide lists metadata names but omits the complete private schema, so use the actual approved example.
+
+The enrollment request and Sauce request have different purposes:
+
+| File | Location | Purpose |
+| --- | --- | --- |
+| Enrollment request | mobile-platform-configuration, at its approved request path. | Selects the app source, template ID, version, and access settings. |
+| Sauce request | Application repository at the template's configured path. | Supplies the app metadata used by the Sauce app-create step. |
+| bitrise.yml | mobile-platform-configuration-bitrise-template. | Defines how the app is built, uploaded, and tested. |
+
+Give the platform owner the build values below through the template's supported configuration process. Put app-specific request fields only in the request schema that accepts them.
+
+
+| Configuration | What to change |
+| --- | --- |
+| Sauce request metadata | `app_name`, `owner_email`, `team`, `description`, `repository`, and `business_unit`. |
+| `SAUCE_APP_FILE_NAME` | Your app's uploaded APK or IPA filename. |
+| `RUN_SAUCE_E2E` | The source defaults to `true`. `false` skips the Sauce steps for a build-only run. |
+| `PROJECT_LOCATION`, `MODULE` | Android project path and module, such as `android` and `app`. |
+| `VARIANT` | The reference uses `Release` for Sauce. |
+| `BITRISE_PROJECT_PATH`, `BITRISE_SCHEME` | Actual iOS workspace/project and scheme. The source's configuration table also abbreviates the scheme as `SCHEME`; follow the variable consumed by the selected shared YAML. |
+| `PLATFORM_NAME` | `Android` or `iOS`, matching the build. |
+| `SAUCE_REGION` | Account data center, with `us-west-1` recorded as the reference default. |
+| `SAUCE_DEVICE_ANDROID`, `SAUCE_DEVICE_IOS` | Available device patterns, such as `Samsung.*` and `iPhone.*`. |
+| `APP_PACKAGE` | Actual Android application ID used by diagnostics. |
+
+**Expected result:** app metadata identifies MyChickenapp, the request path matches the shared YAML, and the owner has the intended platform, artifact filename, region, and device values.
+
+The Android reference uses a test-only Release build with bundled JavaScript, debug-keystore signing, and `minifyEnabled false`. The pipeline generates that keystore. Configure this fixture separately from production signing. A distributed test APK must contain only approved test data. The iOS workflow needs a signed IPA before its cloud suite can run.
+
+## 3. Connect your application through enrollment
+
+1. Push the app code and reviewed tests to the approved source branch.
+2. Select the approved template ID and version with Sauce execution configured.
+3. Follow [Configuration Repository](/mobile/cicd/configuration-repository/) and [Enroll Your Application](/mobile/cicd/enroll-your-application/) to submit the request through the platform process.
+4. After apply, confirm that the Bitrise app is connected to the expected application repository and template version.
+5. Have the platform owner confirm source events, webhook access, branch rules, and required build statuses.
+
+**Expected result:** you can identify the Bitrise app, app source branch, source revision, template ID, and template version.
+
+**Attach screenshot — Bitrise app, selected template version, and connected source repository.**
+
+## 4. Bind protected credentials
+
+Platform Engineering binds credentials to the shared workflow. Supply the approved secret references through the platform process. Keep the actual values out of Git and request YAML.
+
+| Value | Purpose |
+| --- | --- |
+| SAUCE_USERNAME and SAUCE_ACCESS_KEY | Upload and device sessions. |
+| TEST_PASSWORD and applicable test username | Approved test fixture or backend account. |
+| TEAMS_WEBHOOK_URL | Optional result notification through Teams Workflows. |
+| TEAMS_ENABLED | Enables the optional notification step. |
+
+The source reference's developer-run provisioning and API-token commands describe its standalone implementation. Use your platform enrollment process for this shared-template setup. For PR access to credentials and protected signing, follow the platform owner's configured trust and credential policy.
+
+**Expected result:** the owner confirms the required credentials and signing bindings are available to the selected workflow.
+
+## 5. Follow app registration and upload
+
+| Operation | Implementation in the supplied setup | What to inspect |
+| --- | --- | --- |
+| App registration | `bitrise-step-saucelabs-app-create` | Request metadata belongs to your app. |
+| Binary upload | `saucelabs-bitrise-step` | Built file exists and its filename matches configuration. |
+| Resolve uploaded file | `scripts/resolve-sauce-app.sh` or `.js` | Exact uploaded storage identity. |
+| Device execution | WebdriverIO/Appium through the configured framework | Correct platform, app, device, and specs. |
+| HTML report | `scripts/gen-report.js` | Report reflects the actual JUnit results. |
+| Artifact publication | `deploy-to-bitrise-io@2` in the reference | Reports appear under the build's Artifacts tab. |
+
+Use the selected shared `bitrise.yml` to inspect the actual custom step URL, version, inputs, outputs, and invocation order. The supplied text names these integrations without providing their complete YAML or private implementations. The template and step owners provide those actual implementations.
+
+### See the custom steps in the shared YAML
+
+Platform Engineering places these steps under the existing workflow's `steps` list in `mobile-platform-configuration-bitrise-template`. The app build must finish before the upload step. This example uses the earlier supplied custom-step references, with the request path matching the app-root layout shown above.
+
+<Tabs>
+<TabItem label="bitrise.yml — Sauce Labs steps">
+
+```yaml
+# Under the existing workflow's steps list, after building the app.
+- git::https://git.enterprise.com/ACES-Mobile-Engineering/bitrise-step-saucelabs-app-create.git@1.0.0:
+    title: Register Sauce Labs application
+    inputs:
+      - saucelabs_request_yml: "saucelabs_request.yml"
+      - sauce_username: "$SAUCE_USERNAME"
+      - sauce_access_key: "$SAUCE_ACCESS_KEY"
+
+- git::https://git.enterprise.com/ACES-Mobile-Engineering/saucelabs-bitrise-step.git@1.0.0:
+    title: Upload application and run device tests
+    inputs:
+      - sauce_username: "$SAUCE_USERNAME"
+      - sauce_access_key: "$SAUCE_ACCESS_KEY"
+```
+
+</TabItem>
+</Tabs>
+
+Bitrise fetches the referenced step version and reads its `step.yml` to find the executable entry point. The step script runs on the Bitrise runner and connects to Sauce Labs. Keep the request in the app checkout at the path consumed by the selected template.
+
+| Before executing this excerpt | What the template owner confirms |
+| --- | --- |
+| Step versions | These repository URLs and tags are approved and reachable. |
+| Request | The path and YAML content match the pinned app-create step's schema. |
+| Binary | The upload step receives the actual APK or IPA produced by this run. |
+| Tests | The configured framework receives the spec path, platform, device, and uploaded app identity. |
+| Result | A failed device suite fails the required build step and its reports are collected. |
+
+The supplied excerpt contains credential and request inputs. Additional binary paths, runner inputs, outputs, and execution hooks must come from the actual private step contract. In a workflow where the upload step only uploads, the shared YAML must also invoke the configured test runner. Inspect the pinned implementation to confirm which operation starts WebdriverIO and how its exit status reaches Bitrise.
+
+`SAUCE_APP_FILE_NAME` identifies the uploaded filename. `SAUCE_APP_URI` selects the binary for the runner. Prefer the resolved `storage:<file-id>` to identify the exact build. The package also supports `SAUCE_APP_FILENAME_ANDROID` and `SAUCE_APP_FILENAME_IOS` as filename fallbacks. Inspect the selected binary identity when using a filename.
+
+**Expected result:** the shared workflow builds the intended package, uploads it, and passes that exact binary identity to the configured runner.
+
+## 6. Run the configured device suite
+
+Select an available device in the correct account region. The reference defaults are `Samsung.*` and `iPhone.*`; confirm capacity in **Sauce Labs → Real Devices**.
+
+<Tabs>
+<TabItem label="Local code checks">
+
+```bash
+npm run test:unit
+npm run test:e2e:verify
+```
+
+Run these before pushing. The first command executes Jest. The second checks the device-test TypeScript. Run your project’s configured lint, security, and coverage commands as well.
+
+</TabItem>
+<TabItem label="Optional Sauce run from your Mac">
+
+```bash
+export TEST_TARGET=sauce
+npm run test:e2e
+```
+
+Load authorized credentials through your approved local secret mechanism. First configure `SAUCE_APP_URI`, `SAUCE_REGION`, `PLATFORM_NAME`, and device selection through the approved environment. The uploaded binary must contain the intended feature and test fixture.
+
+</TabItem>
+</Tabs>
+
+Before opening a merge request, check the files being committed. Run the project’s existing local quality command if it defines one. The source calls it npm run pipeline:local.
+
+For the automatic path, push the feature and open a merge request. The source calls its gate primary and its device workflows deploy-android/deploy-ios. Use the actual workflow names and triggers configured in the approved shared template. Inspect the build status in GitLab and wait for all required checks before merging.
+
+**Expected result:** a Sauce job opens for the intended app build, platform, and device, and shows the chicken-order spec in its results.
+
+### iOS setup
+
+Have Platform Engineering bind the approved iOS certificate and provisioning profile to the shared workflow. Set `BITRISE_PROJECT_PATH`, `BITRISE_SCHEME`, and `BITRISE_DISTRIBUTION_METHOD`; the source defaults to `ad-hoc`. Enable the configured Sauce app request step after signing is ready. Run `deploy-ios` manually until the intended tests execute successfully, then configure its merge trigger. Keep signing files out of Git.
+
+## 7. Configure optional notifications
+
+### Email notifications
+
+The supplied reference uses Bitrise's built-in email notifications. Have the Bitrise app owner open **Bitrise → App → Notifications → Email** and add the intended recipient addresses or team distribution list. This configuration uses the Bitrise console without adding an email script or SMTP secret to the application.
+
+After a controlled test build, check that the intended recipients receive the configured result notification and can open its build reference. Use the build's **Artifacts** tab for the published JUnit and HTML reports, and the Sauce job reference for device evidence. The supplied reference describes pass/fail and build-link notifications; it does not establish that report files are attached to the email.
+
+The `owner_email` field in the Sauce request is app ownership metadata. Configure notification recipients through the documented notification settings rather than assuming that field subscribes someone to build emails.
+
+**Attach screenshot — Bitrise email notification settings with recipient details hidden.**
+
+### Teams notifications
+
+The platform-owned workflow can send an Adaptive Card through Teams Workflows or use the approved email notification configuration. Have the channel owner supply the protected Workflows URL through the platform process. Confirm the target channel and inspect delivery after a controlled build.
+
+The source names scripts/notify-teams.sh as its implementation. Its CI invocation belongs to the platform-owned automation. A direct Sauce-to-Teams webhook is an optional additional integration. The source reports that integration as documented but unverified.
+
+## 8. Open the reports and verify setup
+
+1. Open the Bitrise build for the exact source commit.
+2. Read the build and upload steps and find the Sauce job reference.
+3. Open that job in Sauce Labs and check the allocated device and OS.
+4. Confirm the chicken-order assertion executed and passed.
+5. Open the available video or Appium log to inspect what the test did.
+6. Open Bitrise Artifacts and inspect the JUnit or HTML report.
+
+For the sample fixture, the device test orders two portions and checks that the visible order ID is order-001. A production test must assert the ID returned by its approved isolated service contract.
+
+Use the following exercises to verify the triggers and merge gate:
+
+| Exercise | Expected result |
+| --- | --- |
+| Push a small change to `feature/smoke-a`. | `primary` runs; the deploy workflow stays idle. |
+| Open a merge request. | The Bitrise status appears and merge remains blocked while the required check is pending or failed. |
+| Review and merge. | The configured deploy workflow builds, uploads, runs device tests, and publishes JUnit and HTML reports with a Sauce job link. Enabled notifications arrive. |
+| Validate default-branch push protection in an approved exercise. | A direct push is rejected by GitLab. |
+
+Confirm the app build, commit, platform, allocated device, executed assertions, and completed result. A green build with `RUN_SAUCE_E2E=false` represents a run with Sauce steps skipped. JUnit XML is a report format; its presence does not identify whether the suite used Jest, Appium, Espresso, or XCUITest. Check the suite name and recorded test count.
+
+**Attach screenshot — merge-request status, completed Sauce job, and Bitrise JUnit/HTML artifacts for the same source revision.**
+
+## 9. Investigate a failed step
+
+| Symptom | Inspect |
+| --- | --- |
+| Push starts no build. | GitLab webhook URL and test event, then the provisioning result. |
+| Clone fails with `Permission denied (publickey)`. | Bitrise SSH public key and the GitLab deploy key. |
+| Internal step cannot be fetched. | Bitrise read access to the referenced step repository. |
+| Provisioning returns 401, 403, or 404. | Token validity, scope, project path, and role. |
+| Provisioning rejects the local env file. | Git ignore rules and valid Bash quoting. |
+| Framework package cannot be resolved. | Actual release tag, registry/repository access, and installed dependencies. |
+| App shows the Metro error screen. | Uploaded variant and bundled JavaScript in the Release test artifact. |
+| Native module is missing. | Linking and compatibility with the app's React Native architecture. |
+| Test account is rejected. | Matching fixture/backend account and build/test credential values. |
+| Element is missing. | Accessibility IDs, keyboard state, foreground app, and BasePage diagnostics. |
+| Sauce authentication returns 401. | Account region and protected credential bindings. |
+| No device is available. | Device pattern and account capacity. |
+| Teams posts no card. | Workflows URL, enabled flow, expected JSON schema, and workflow run history. |
+| Security check finds generated or tracked secrets. | Rotate exposed values, remove tracked secret files, and restore the empty build-config placeholder. |
+
+## 10. Understand the reported implementation status
+
+The supplied guide reports local pipeline checks passing. Framework v1.1.0 built and type-checked locally, with its Git tag/publication and device run pending. The reference app still used its older copied base/pages implementation, with migration to the package pending.
+
+Live provisioning and the full Bitrise/Sauce run were unconfirmed. Teams cards were tested against a local mock, and the direct Sauce-to-Teams webhook was documented without a live trial. Verify those results for your application before treating setup as complete.
+
+For the exact source, including all integration points, security rules, rollout, contacts, and file/command appendix, use the [Mobile Test Automation Reference](/mobile/cicd/mobile-test-automation-reference/). For writing the test itself, use the [Complete Chicken Order Example](/mobile/testing-quality/chicken-order-example/).
 
-index.mdx
 
-Understand device registration, AWS SNS endpoints and topics, FCM/APNs delivery, and the Java or PushJS backend integration path.
-
-
-Notification Guidelines
-
-notification-guidelines.mdx
-
-Design small, private notification payloads, respect user preferences, and verify provider acceptance separately from device behavior.
-
-
-FCM Mobile Setup
-
-fcm-mobile-setup.mdx
-
-Set up Firebase Cloud Messaging on Android, iOS, and React Native with FcmService and NotificationService templates and explicit application bindings.
-
-
-Direct APNs Setup — iOS
-
-apns-ios-setup.mdx
-
-Configure direct Apple Push Notification service registration with ApnsService and NotificationService templates, native lifecycle wiring, and separate backend integration.
-
-
-Java Push Backend — AWS SNS
-
-java-backend.mdx
-
-Configure the Java SNS client, register and reconcile platform endpoints, manage topic subscriptions, and publish correctly encoded mobile payloads.
-
-
-Node.js PushJS Backend
-
-nodejs-pushjs-backend.mdx
-
-Configure protected access to the internal PushJS package, use its documented registration and messaging methods, and preserve verified endpoint/subscription outcomes.
-
-
-Deep Linking — Integration Template
-
-deep-linking.mdx
-
-Configure verified HTTPS links and route only allowlisted destinations through authenticated application readiness on Android, iOS, and React Native.
-
-
-Testing & Quality
-
-Topic
-
-File
-
-Description
-
-Owner
-
-Testing & Quality — Start Here
-
-index.mdx
-
-Write feature tests, run local checks, enforce coverage, and inspect real-device results in the approved CI/CD workflow.
-
-
-Write Tests — Place a Chicken Order
-
-writing-tests.mdx
-
-Test My Chicken App's sample order boundary, Redux Toolkit integration, and native device journey across three platform tabs.
-
-
-Coverage & Quality Gates
-
-coverage-and-quality-gates.mdx
-
-Enforce complete production coverage, distinguish supported metrics, reject incomplete evidence, and retain current-source reports.
-
-
-Real-Device Testing with Sauce Labs
-
-sauce-labs-real-device-testing.mdx
-
-Prepare native app and test packages, connect the supplied Bitrise steps, run device tests, and inspect the completed result.
-
-
-IDE-Assisted Test Generation
-
-ide-assisted-test-generation.mdx
-
-Draft My Chicken App tests in the approved IDE, verify the assertions, and commit code for CI execution without LLM calls.
-
-
-Complete Login Example — Code, Tests & Sauce Labs
-
-login-device-test-example.mdx
-
-Follow a React Native Login feature through success and failure tests, approved AI authoring, and shared Bitrise execution on Sauce Labs.
-
-
-CI/CD
-
-Topic
-
-File
-
-Description
-
-Owner
-
-Mobile CI/CD — Start Here
-
-index.mdx
-
-Understand how your mobile code becomes a tested app and reaches its users. Start with the tools, repositories, and setup order.
-
-
-Prepare Your Repository
-
-prepare-your-repository.mdx
-
-Find your application files, run the existing local checks, and identify the source repository and branch before CI/CD enrollment.
-
-
-Prepare Your Repository & CAMP File
-
-repository-readiness.mdx
-
-Prepare an existing mobile repository for governed Bitrise enrollment, using the Enterprise CAMP schema.
-
-
-CAMP File Reference
-
-campfile-reference.mdx
-
-Create campfile.yml at the application root, fill in the documented metadata, and confirm the accepted format before publishing.
-
-
-Enroll Your Application with GitOps
-
-gitops-enrollment.mdx
-
-Create the Enterprise enrollment YAML, validate it, follow protected promotion, and inspect first provisioning.
-
-
-Understand the Configuration Repository
-
-configuration-repository.mdx
-
-Find the application request directory, understand the platform repositories, and prepare to submit a first enrollment request.
-
-
-Enroll Your Application
-
-enroll-your-application.mdx
-
-Select an approved Bitrise template, create the exact request YAML, and submit one new application request for review.
-
-
-PR Quality & Security Gates
-
-quality-and-security-gates.mdx
-
-Set up the reference Danger rules and NowSecure assessment/severity integration, then verify the resulting gates.
-
-
-Review & Promote Your Request
-
-review-and-promote.mdx
-
-Inspect the request checks, follow the approved promotion process, and distinguish validation success from the live apply outcome.
-
-
-Understand Bitrise Pipelines
-
-bitrise-pipelines.mdx
-
-Read the supplied pipeline YAML, understand where commands run, and connect build routes to device tests and delivery.
-
-
-Deliver the App & Verify Availability
-
-delivery-and-verification.mdx
-
-Deliver the signed candidate through its approved private or store route, then verify the exact version and audience.
-
-
-Danger PR Checks with Bitrise
-
-danger-pr-checks.mdx
-
-Understand the platform-owned Danger workflow and inspect automated PR feedback from Bitrise.
-
-
-Parallel Testing
-
-parallel-testing.mdx
-
-Understand the supplied module-selection YAML, conditional test workflows, and the inputs required to run them reliably.
-
-
-NowSecure Security Gates
-
-nowsecure-security-gates.mdx
-
-Submit the intended Android or iOS binary, inspect its completed assessment, and verify the security decision before release.
-
-
-Signing Credentials & Diagnostics
-
-signing-and-credentials.mdx
-
-Understand protected signing credentials, follow their path through Vela and Bitrise, and investigate signing failures.
-
-
-Deploy the App & Verify Availability
-
-deploy-and-verify.mdx
-
-Follow the approved package into enterprise or store distribution and confirm the exact version is available to its intended audience.
-
-
-Later Builds — Code Changes & Template Updates
-
-later-builds.mdx
-
-Follow app changes from GitHub events to Bitrise results, then understand how shared workflow updates and template changes are adopted.
-
-
-Troubleshooting & Safe Recovery
-
-troubleshooting-and-recovery.mdx
-
-Find the failed CI/CD phase, preserve completed work, and follow the reviewed recovery procedure for the exact app and candidate.
-
-
-Complete CI/CD Project Preview
-
-integrated-project-preview.mdx
-
-See the Android, iOS, and React Native file layout, supplied configuration blocks, and integration definitions still required for execution.
-
-
-Workshop — From Source to Verified Delivery
-
-workshop-walkthrough.mdx
-
-Follow one application from local preparation through request review, platform apply, build results, and user verification.
-
-
-Platform Operations
-
-Topic
-
-File
-
-Description
-
-Owner
-
-CI/CD Operations Overview
-
-operations/index.mdx
-
-Start here after enrollment to find the right operational guide, repository, and owner.
-
-
-Bitrise Template Catalog
-
-operations/bitrise-template-catalog.mdx
-
-Find the approved template ID and exact version. Platform owners use the same guide to validate, publish, and verify a successor version of the shared bitrise.yml.
-
-
-Configuration Engine
-
-operations/configuration-engine.mdx
-
-Trace an enrollment request through validation, Docker dry run, and protected live apply. Includes Python development commands and the evidence to preserve.
-
-
-Bitrise Limits & Costs
-
-operations/bitrise-limits-and-costs.mdx
-
-Check workspace limits and retention, diagnose slow builds, and understand how parent and child workflows affect credit usage.
-
-
-Repository Inactivity Checks
-
-operations/repository-inactivity.mdx
-
-Read the scheduled RepoInactivity workflow and its YAML. Covers inactivity thresholds, reminder tracking, and when archival can occur.
-
-
-Bitrise MCP Integration
-
-operations/bitrise-mcp.mdx
-
-Connect an approved Copilot or ChatGPT client through the Bitrise gateway. Covers credential setup, client configuration, and verifying access with a read-only query.
-
-
-Platform Operations, MCP & RepoInactivity
-
-platform-operations.mdx
-
-Combined page covering enrolled app settings, shared templates, RepoInactivity, and Bitrise MCP. Its inactivity and MCP topics overlap with the dedicated guides above.
-
-
-App Store & Distribution
-
-Topic
-
-File
-
-Description
-
-Owner
-
-App Stores & Distribution — Start Here
-
-index.mdx
-
-Choose the Enterprise internal store or public store route, prepare the release handoff, and verify the exact version reaches its intended users.
-
-
-Signing & Release Approval
-
-signing-and-release-approval.mdx
-
-Request the correct signing setup, complete the TGRC deployment request and spreadsheet, and hand the identified candidate to the authorized release owner.
-
-
-Enterprise App Store
-
-enterprise-app-store.mdx
-
-Choose the internal QA, UAT, or production catalog, request business access, install the store client, and verify the intended application version.
-
-
-Apple App Store
-
-apple-app-store.mdx
-
-Prepare Apple listing information and assets, hand over the signed IPA, upload with Transporter, and verify review and release separately.
-
-
-Google Play
-
-google-play.mdx
-
-Prepare an Android listing and signed release, configure reviewer/tester access, and verify the approved Play track and version.
-
-
-Lost-Device Data Wipe
-
-lost-device-data-wipe.mdx
-
-Authorized administrator procedure for selecting a lost/stolen device, requesting application data removal, and recording the verified outcome in Digital.ai App Management.
-
-
-Observability
-
-Topic
-
-File
-
-Description
-
-Owner
-
-Mobile Observability — Start Here
-
-index.mdx
-
-Understand the Enterprise Datadog setup, privacy boundaries, mobile signals, and verification path across Android, iOS, and React Native.
-
-
-Datadog Mobile Integration
-
-datadog-mobile-integration.mdx
-
-Add Datadog to Android, iOS, or React Native, track a safe ordering journey, and prepare release symbols.
-
-
-Monitoring & Troubleshooting
-
-monitoring-and-troubleshooting.mdx
-
-Find mobile events, investigate crashes and slow journeys, and diagnose missing Datadog telemetry.
-
-
-GenAI & Tools
-
-Topic
-
-File
-
-Description
-
-Owner
-
-GenAI & Developer Tools — Setup Guide
-
-index.mdx
-
-Configure GitHub Copilot or ChatGPT to use the mobile engineering rules, platform standards, and verified project context.
-
-
-Shared Engineering Rules
-
-engineering-rules.mdx
-
-Copyable mobile engineering instructions for GitHub Copilot and ChatGPT, with Android, iOS, and React Native additions.
-
-
-GitHub Copilot Setup
-
-github-copilot-setup.mdx
-
-Configure Copilot repository instructions in Android Studio, Xcode, or VS Code and verify the mobile engineering rules are available.
-
-
-ChatGPT Setup
-
-chatgpt-setup.mdx
-
-Configure approved ChatGPT project instructions, provide permitted engineering references, and verify the context before requesting mobile code.
-
-
-Help & Support
-
-Topic
-
-File
-
-Description
-
-Owner
-
-FAQ
-
-index.mdx
-
-Section navigation
-
-
-Mobile Engineering Glossary
-
-glossary.mdx
-
-Plain-language definitions and the distinctions developers need to build, test, and release mobile apps.
-
-
-Support
-
-support.mdx
-
-Section navigation
 
 
